@@ -58,7 +58,7 @@ export function SupplierResaleSystem({
   const [logisticsPercent, setLogisticsPercent] = useState<number>(12); // Flete + Aduana/Frontera
   const [myaMarkupPercent, setMyaMarkupPercent] = useState<number>(20); // Ganancia MYA sobre costo puesto
   const [retailMultiplier, setRetailMultiplier] = useState<number>(2.0); // Ecuación base: 2.0x costo
-  const [mercadoLibreMarkup, setMercadoLibreMarkup] = useState<number>(38); // Referencia ML sobre PVP
+  const [mercadoLibreMarkup, setMercadoLibreMarkup] = useState<number>(8); // Referencia ML sobre PVP (5-10% sobre PVP)
 
   // Reseller Pack volume quantity
   const [packQuantity, setPackQuantity] = useState<number>(12);
@@ -400,7 +400,6 @@ En Mercado Libre este producto ronda los *${formatCurrency(calculations.estimate
                     >
                       <option value="Total Tools Paraguay">Total Tools Paraguay</option>
                       <option value="Atacado USA Cosméticos">Atacado USA Cosméticos</option>
-                      <option value="Apple Tech USA">Apple / Tech USA</option>
                       {customSuppliers.map((s) => (
                         <option key={s.id} value={s.name}>
                           {s.name}
@@ -498,10 +497,10 @@ En Mercado Libre este producto ronda los *${formatCurrency(calculations.estimate
               3. Parámetros Comerciales & Márgenes
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-zinc-600 mb-1">
-                  Flete + Paso Frontera (%)
+                  Flete + Frontera (%)
                 </label>
                 <input
                   type="number"
@@ -509,7 +508,7 @@ En Mercado Libre este producto ronda los *${formatCurrency(calculations.estimate
                   onChange={(e) => setLogisticsPercent(Number(e.target.value) || 0)}
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm font-bold"
                 />
-                <span className="text-[10px] text-zinc-400 mt-1 block">Tandil puesto: +{calculations.freightAmount.toLocaleString("es-AR")}</span>
+                <span className="text-[10px] text-zinc-400 mt-1 block">Tandil: +{calculations.freightAmount.toLocaleString("es-AR")}</span>
               </div>
 
               <div>
@@ -522,7 +521,7 @@ En Mercado Libre este producto ronda los *${formatCurrency(calculations.estimate
                   onChange={(e) => setMyaMarkupPercent(Number(e.target.value) || 0)}
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm font-bold"
                 />
-                <span className="text-[10px] text-zinc-400 mt-1 block">Tu ganancia sobre costo</span>
+                <span className="text-[10px] text-zinc-400 mt-1 block">Tu ganancia s/costo</span>
               </div>
 
               <div>
@@ -536,7 +535,20 @@ En Mercado Libre este producto ronda los *${formatCurrency(calculations.estimate
                   onChange={(e) => setRetailMultiplier(Number(e.target.value) || 1)}
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm font-bold"
                 />
-                <span className="text-[10px] text-zinc-400 mt-1 block">Regla oficial: 2.0x costo</span>
+                <span className="text-[10px] text-zinc-400 mt-1 block">Regla: 2.0x costo</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-600 mb-1">
+                  Markup Ref. ML (%)
+                </label>
+                <input
+                  type="number"
+                  value={mercadoLibreMarkup}
+                  onChange={(e) => setMercadoLibreMarkup(Number(e.target.value) || 0)}
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm font-bold"
+                />
+                <span className="text-[10px] text-zinc-400 mt-1 block">5-10% s/PVP sugerido</span>
               </div>
             </div>
           </div>

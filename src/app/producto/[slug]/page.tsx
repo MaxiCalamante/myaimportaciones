@@ -92,7 +92,6 @@ export default async function ProductPage({ params }: Props) {
     if (t.includes("DR. ALTHEA") || t.includes("DR ALTHEA")) return "Dr. Althea";
     if (t.includes("CELIMAX")) return "Celimax";
     if (t.includes("KARSEELL")) return "Karseell";
-    if (t.includes("IPHONE") || t.includes("APPLE")) return "Apple";
     return "MYA Importaciones";
   };
 

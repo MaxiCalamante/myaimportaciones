@@ -652,14 +652,6 @@ export async function bulkUpdatePricesAction(options: BulkPriceUpdateOptions) {
           )
         );
       }
-      if (supVal === "tech_apple") {
-        return (
-          titleUpper.includes("IPHONE") ||
-          titleUpper.includes("APPLE") ||
-          catSlug.includes("smartphone") ||
-          catSlug.includes("tecnologia")
-        );
-      }
       return (
         titleUpper.includes(supVal.toUpperCase()) ||
         tagsUpper.some((t: string) => t.includes(supVal.toUpperCase()))
@@ -684,12 +676,7 @@ export async function bulkUpdatePricesAction(options: BulkPriceUpdateOptions) {
   const updates = targetProducts.map((p) => {
     const currentRetail = Number(p.retail_price || 0);
     const currentWholesale = Number(p.wholesale_price || Math.round(currentRetail * 0.75));
-
-    const titleUpper = p.title.toUpperCase();
-    const isTech = titleUpper.includes("IPHONE") || titleUpper.includes("APPLE");
-    const estimatedCost = isTech
-      ? Math.round(currentRetail * 0.78)
-      : Math.round(currentRetail / 2);
+    const estimatedCost = Math.round(currentRetail / 2);
 
     let newRetail = currentRetail;
     let newWholesale = currentWholesale;
@@ -797,7 +784,6 @@ export async function bulkUpdateStockAction(options: {
       const titleUpper = p.title.toUpperCase();
       if (supVal === "total_tools") return titleUpper.includes("TOTAL") || titleUpper.includes("WADFOW");
       if (supVal === "atacado_usa") return ["MEDICUBE", "SKIN1004", "CELIMAX", "DR. ALTHEA", "KARSEELL"].some((b) => titleUpper.includes(b));
-      if (supVal === "tech_apple") return titleUpper.includes("IPHONE") || titleUpper.includes("APPLE");
       return titleUpper.includes(supVal.toUpperCase());
     }
 

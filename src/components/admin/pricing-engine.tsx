@@ -73,7 +73,6 @@ export function PricingEngine({
       "Dr. Althea",
       "Celimax",
       "Karseell",
-      "Apple",
     ];
   }, []);
 
@@ -82,7 +81,6 @@ export function PricingEngine({
     return [
       { id: "total_tools", name: "Total Tools Oficial Paraguay", type: "Herramientas" },
       { id: "atacado_usa", name: "Atacado USA", type: "Cosméticos & K-Beauty" },
-      { id: "tech_apple", name: "Distribución Tech Apple", type: "Smartphones & Tech" },
       ...customSuppliers.map((s) => ({
         id: s.id,
         name: s.name,
@@ -139,14 +137,6 @@ export function PricingEngine({
             )
           );
         }
-        if (supVal === "tech_apple") {
-          return (
-            titleUpper.includes("IPHONE") ||
-            titleUpper.includes("APPLE") ||
-            catSlug.includes("smartphone") ||
-            catSlug.includes("tecnologia")
-          );
-        }
         return (
           titleUpper.includes(supVal.toUpperCase()) ||
           tagsUpper.some((t) => t.includes(supVal.toUpperCase()))
@@ -171,12 +161,8 @@ export function PricingEngine({
       const currentRetail = p.retailPrice;
       const currentWholesale = p.wholesalePrice || Math.round(p.retailPrice * 0.75);
 
-      // Estimate base purchase cost
-      const titleUpper = p.title.toUpperCase();
-      const isTech = titleUpper.includes("IPHONE") || titleUpper.includes("APPLE");
-      const estimatedCost = isTech
-        ? Math.round(currentRetail * 0.78)
-        : Math.round(currentRetail / 2);
+      // Base purchase cost: retail / 2
+      const estimatedCost = Math.round(currentRetail / 2);
 
       let newRetail = currentRetail;
       let newWholesale = currentWholesale;
@@ -203,7 +189,7 @@ export function PricingEngine({
       newRetail = Math.max(100, newRetail);
       newWholesale = Math.max(100, newWholesale);
 
-      const mlRefPrice = Math.round((newRetail * 1.38) / 100) * 100;
+      const mlRefPrice = Math.round((newRetail * 1.08) / 100) * 100;
       const retailProfit = newRetail - estimatedCost;
       const wholesaleProfit = newWholesale - estimatedCost;
 
@@ -949,7 +935,7 @@ export function PricingEngine({
                         {formatCurrency(item.mlRefPrice)}
                       </span>
                       <span className="ml-1.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 border border-emerald-200">
-                        -28% vs ML
+                        -8% vs ML
                       </span>
                     </td>
 

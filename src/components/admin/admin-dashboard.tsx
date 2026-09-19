@@ -84,7 +84,7 @@ export function AdminDashboard({
   const [showStockAudit, setShowStockAudit] = useState(false);
 
   // Suppliers & Cost Control tab states
-  const [supplierFilter, setSupplierFilter] = useState<"all" | "total_tools" | "atacado_usa" | "tech_apple">("all");
+  const [supplierFilter, setSupplierFilter] = useState<"all" | "total_tools" | "atacado_usa">("all");
   const [supplierStockFilter, setSupplierStockFilter] = useState<"all" | "in_stock" | "low_stock" | "out_of_stock">("all");
   const [supplierSearch, setSupplierSearch] = useState("");
   const [supplierPage, setSupplierPage] = useState(1);
@@ -198,7 +198,7 @@ export function AdminDashboard({
     const landedCost = baseArs * (1 + calcShippingPercent / 100);
     const wholesalePrice = Math.round((landedCost * (1 + calcWholesaleMarkup / 100)) / 100) * 100;
     const retailPrice = Math.round((landedCost * (1 + calcRetailMarkup / 100)) / 100) * 100;
-    const mlRefPrice = Math.round((retailPrice * 1.38) / 100) * 100;
+    const mlRefPrice = Math.round((retailPrice * 1.08) / 100) * 100;
 
     const text = `📊 *COTIZACIÓN DE IMPORTACIÓN B2B - MYA IMPORTACIONES*
 Origen: ${calcCost} ${calcCurrency.toUpperCase()} (TC: $${calcExchangeRate} ARS)
@@ -207,7 +207,7 @@ Logística / Despacho: +${calcShippingPercent}%
 📦 Costo puesto en ARS: $${Math.round(landedCost).toLocaleString("es-AR")}
 💼 Precio Mayorista (+${calcWholesaleMarkup}%): $${wholesalePrice.toLocaleString("es-AR")}
 🏷️ Precio Minorista / PVP (+${calcRetailMarkup}%): $${retailPrice.toLocaleString("es-AR")}
-🛒 Referencia Mercado Libre: $${mlRefPrice.toLocaleString("es-AR")} (Ahorro cliente: -28%)
+🛒 Referencia Mercado Libre: $${mlRefPrice.toLocaleString("es-AR")} (Ahorro cliente: -8%)
 💰 Ganancia Neta Minorista: $${(retailPrice - landedCost).toLocaleString("es-AR")}
 💰 Ganancia Neta Mayorista: $${(wholesalePrice - landedCost).toLocaleString("es-AR")}`;
 
@@ -595,12 +595,6 @@ Logística / Despacho: +${calcShippingPercent}%
       catSlug.includes("bateria") ||
       tagsUpper.includes("HERRAMIENTAS");
 
-    const isTech =
-      titleUpper.includes("IPHONE") ||
-      titleUpper.includes("APPLE") ||
-      catSlug.includes("smartphone") ||
-      catSlug.includes("tecnologia");
-
     if (isCosmetic) {
       const costArs = Math.round(product.retailPrice / 2);
       const costUsd = Number((costArs / 1300).toFixed(2));
@@ -629,28 +623,14 @@ Logística / Despacho: +${calcShippingPercent}%
       };
     }
 
-    if (isTech) {
-      const costArs = Math.round(product.retailPrice * 0.78);
-      const costUsd = Number((costArs / 1300).toFixed(2));
-      return {
-        id: "tech_apple" as const,
-        name: "Importación Tech Directa",
-        categoryType: "Smartphones & Apple",
-        badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
-        url: "#",
-        costUsd,
-        costArs,
-      };
-    }
-
     const costArs = Math.round(product.retailPrice / 2);
     const costUsd = Number((costArs / 1300).toFixed(2));
     return {
       id: "general" as const,
-      name: "Proveedor Mayorista",
-      categoryType: "General",
-      badgeColor: "bg-zinc-100 text-zinc-700 border-zinc-200",
-      url: "#",
+      name: "Total Tools / Wadfow",
+      categoryType: "Herramientas & Equipamiento",
+      badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
+      url: "https://www.totalherramientasoficial.com.py/home",
       costUsd,
       costArs,
     };
@@ -660,23 +640,20 @@ Logística / Despacho: +${calcShippingPercent}%
   const supplierMetrics = useMemo(() => {
     let totalToolsCount = 0;
     let atacadoUsaCount = 0;
-    let techCount = 0;
     let outOfStockCount = 0;
 
     data.products.forEach((p) => {
       const sup = getProductSupplier(p);
       const s = stockState[p.id] ?? p.stock;
       if (s <= 0) outOfStockCount++;
-      if (sup.id === "total_tools") totalToolsCount++;
+      if (sup.id === "total_tools" || sup.id === "general") totalToolsCount++;
       else if (sup.id === "atacado_usa") atacadoUsaCount++;
-      else if (sup.id === "tech_apple") techCount++;
     });
 
     return {
       totalProducts: data.products.length,
       totalToolsCount,
       atacadoUsaCount,
-      techCount,
       outOfStockCount,
     };
   }, [data.products, data.categories, stockState]);
@@ -1404,7 +1381,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 const landedCost = baseArs * (1 + calcShippingPercent / 100);
                 const wholesalePrice = Math.round((landedCost * (1 + calcWholesaleMarkup / 100)) / 100) * 100;
                 const retailPrice = Math.round((landedCost * (1 + calcRetailMarkup / 100)) / 100) * 100;
-                const mlRefPrice = Math.round((retailPrice * 1.38) / 100) * 100;
+                const mlRefPrice = Math.round((retailPrice * 1.08) / 100) * 100;
                 const retailProfit = retailPrice - landedCost;
                 const wholesaleProfit = wholesalePrice - landedCost;
 
@@ -1448,7 +1425,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
                     <div className="rounded-xl bg-white p-4 border border-amber-200 shadow-xs">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
-                        Ref. Mercado Libre (-28% ahorro)
+                        Ref. Mercado Libre (-8% ahorro)
                       </span>
                       <p className="mt-2 text-2xl font-black text-amber-800">
                         {formatCurrency(mlRefPrice)}
@@ -1495,18 +1472,18 @@ Logística / Despacho: +${calcShippingPercent}%
               </p>
             </div>
 
-            <div className="rounded-2xl border border-purple-100 bg-white p-5 shadow-xs">
+            <div className="rounded-2xl border border-cyan-100 bg-white p-5 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Apple & Smartphones</span>
-                <span className="rounded-lg bg-purple-50 p-2 text-purple-700">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Total Tools & Wadfow</span>
+                <span className="rounded-lg bg-cyan-50 p-2 text-cyan-700">
                   <Package className="h-4 w-4" />
                 </span>
               </div>
               <p className="mt-3 text-2xl font-black text-zinc-900">
-                {supplierMetrics.techCount.toLocaleString("es-AR")}
+                {supplierMetrics.totalToolsCount.toLocaleString("es-AR")}
               </p>
               <p className="mt-1 text-xs text-zinc-500">
-                Línea iPhones Sellados CPO & Nuevos
+                Herramientas Eléctricas, Batería & Manuales
               </p>
             </div>
 
@@ -1569,7 +1546,6 @@ Logística / Despacho: +${calcShippingPercent}%
                 { id: "all", label: `Todos (${supplierMetrics.totalProducts})` },
                 { id: "total_tools", label: `Total Tools PY (${supplierMetrics.totalToolsCount})` },
                 { id: "atacado_usa", label: `Atacado USA Cosméticos (${supplierMetrics.atacadoUsaCount})` },
-                { id: "tech_apple", label: `Apple / Tech (${supplierMetrics.techCount})` },
               ].map((chip) => (
                 <button
                   key={chip.id}
@@ -3214,7 +3190,7 @@ Logística / Despacho: +${calcShippingPercent}%
                     type="button"
                     onClick={() =>
                       setBulkCsvText(
-                        `SKIN1004 Centella Toner 210ml, Cosmética Coreana, 36000, 27000, 6, 25, Tónico calmante con centella pura de Madagascar\nMedicube Zero Pore Pad 2.0, Cosmética Coreana, 42000, 31500, 6, 30, Discos exfoliantes de doble textura para poros\nApple iPhone 14 128GB, Smartphones & Tecnología, 790000, 650000, 2, 10, Apple iPhone 14 libre de fábrica con garantía\nTotal Tools Sierra Circular 1400W, Herramientas & Equipamiento, 88000, 69000, 2, 15, Sierra circular industrial 185mm 1400W`
+                        `SKIN1004 Centella Toner 210ml, Cosmética Coreana, 36000, 27000, 6, 25, Tónico calmante con centella pura de Madagascar\nMedicube Zero Pore Pad 2.0, Cosmética Coreana, 42000, 31500, 6, 30, Discos exfoliantes de doble textura para poros\nWadfow Rotomartillo 800W, Herramientas & Equipamiento, 65000, 48000, 3, 20, Rotomartillo electro-neumático profesional SDS Plus\nTotal Tools Sierra Circular 1400W, Herramientas & Equipamiento, 88000, 69000, 2, 15, Sierra circular industrial 185mm 1400W`
                       )
                     }
                     className="text-xs text-sky-600 hover:text-sky-700 font-semibold cursor-pointer underline"

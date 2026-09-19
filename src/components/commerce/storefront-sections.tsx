@@ -27,12 +27,12 @@ const heroSlides = [
     btnLink: "/?category=cosmetica-coreana",
   },
   {
-    image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Equipos Liberados con Garantía",
-    title: "Smartphones Apple iPhone & Tecnología",
-    description: "Dispositivos de alta gama importados, probados y garantizados con los mejores precios contado y transferencia de Argentina.",
-    btnText: "Ver Smartphones",
-    btnLink: "/?category=smartphones-tecnologia",
+    image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1800&q=80",
+    eyebrow: "Negocio & Reventa Mayorista",
+    title: "Venta Mayorista para Comercios y Emprendedores",
+    description: "Accedé a precios de importador directo por bulto cerrado en herramientas Total y cosmética coreana con márgenes del 40% al 100%.",
+    btnText: "Ver Precios Mayoristas",
+    btnLink: "/mayoristas",
   },
   {
     image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
@@ -207,10 +207,10 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
       };
     }
     return {
-      badge: "Apple & Smartphones",
-      tagClass: "bg-purple-600 text-white",
+      badge: "Importación Directa",
+      tagClass: "bg-emerald-600 text-white",
       count: "Garantía oficial",
-      bgHover: "hover:border-purple-300 hover:shadow-purple-50/50",
+      bgHover: "hover:border-emerald-300 hover:shadow-emerald-50/50",
     };
   };
 
@@ -449,10 +449,10 @@ export function TestimonialsSection() {
       comment: "Equipamos la cuadrilla con amoladoras y rotomartillos Total Tools y Wadfow. La durabilidad en obra es excelente y la atención mayorista con Factura A fue muy rápida y transparente.",
     },
     {
-      name: "Lucas Peralta",
-      role: "Local de Telefonía & Tecnología (Buenos Aires)",
+      name: "Valeria Gómez",
+      role: "Salón de Belleza & Estilista (Mar del Plata)",
       stars: 5,
-      comment: "Compramos iPhones liberados y accesorios por volumen. Los equipos llegan impecables, testeados y con garantía real. Es nuestro distribuidor de confianza para revender con margen.",
+      comment: "Compramos mascarillas Karseell y cosmética coreana por bulto cerrado. Los productos son 100% auténticos y el margen de reventa para el salón es extraordinario.",
     },
   ];
 

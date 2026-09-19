@@ -32,7 +32,6 @@ const KNOWN_BRANDS: BrandDefinition[] = [
   { id: "celimax", name: "Celimax", match: ["CELIMAX"] },
   { id: "dr_althea", name: "Dr. Althea", match: ["DR. ALTHEA", "DR ALTHEA"] },
   { id: "karseell", name: "Karseell", match: ["KARSEELL"] },
-  { id: "apple", name: "Apple", match: ["APPLE", "IPHONE"] },
 ];
 
 function getProductBrand(product: Product): BrandDefinition | null {
@@ -201,8 +200,8 @@ export function CatalogWithFilters({
       });
     } else if (sortBy === "saving-desc") {
       result.sort((a, b) => {
-        const savingA = (a.retailPrice * 1.38) - a.retailPrice;
-        const savingB = (b.retailPrice * 1.38) - b.retailPrice;
+        const savingA = (a.retailPrice * 1.08) - a.retailPrice;
+        const savingB = (b.retailPrice * 1.08) - b.retailPrice;
         return savingB - savingA;
       });
     } else if (sortBy === "name-asc") {

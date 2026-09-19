@@ -27,7 +27,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.appUrl),
   title: {
-    default: "MYA Importaciones | Cosmética Coreana, Tecnología y Herramientas",
+    default: "MYA Importaciones | Cosmética Coreana y Herramientas Industriales",
     template: "%s | MYA Importaciones",
   },
   description: siteConfig.description,
@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     "Dr Althea",
     "Celimax",
     "Karseell colágeno",
-    "Apple iPhone Argentina",
-    "Smartphones liberados",
     "Herramientas Total Tools",
+    "Herramientas Wadfow",
+    "Precios Mayoristas Argentina",
     "Distribución mayorista y minorista",
   ],
   icons: {
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     locale: "es_AR",
     url: siteConfig.appUrl,
     siteName: siteConfig.brandName,
-    title: "MYA Importaciones | Cosmética Coreana, Tecnología y Herramientas",
+    title: "MYA Importaciones | Cosmética Coreana y Herramientas Industriales",
     description: siteConfig.description,
     images: [
       {

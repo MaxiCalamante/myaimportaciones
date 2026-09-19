@@ -177,9 +177,14 @@ export function ProductDetailsModal() {
               {selectedProduct.retailPrice > 0 && (
                 <div className="flex items-center justify-between px-4 py-2 bg-zinc-50/70 text-xs">
                   <span className="text-zinc-500">Ref. Mercado Libre (aprox.)</span>
-                  <span className="text-zinc-400 line-through font-medium">
-                    {formatCurrency(Math.round((selectedProduct.retailPrice * 1.38) / 100) * 100)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-zinc-400 line-through font-medium">
+                      {formatCurrency(Math.round((selectedProduct.retailPrice * 1.08) / 100) * 100)}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded">
+                      -8% vs ML
+                    </span>
+                  </div>
                 </div>
               )}
               {/* Minorista Row */}

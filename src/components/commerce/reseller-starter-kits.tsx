@@ -81,7 +81,7 @@ export function ResellerStarterKits({ products }: ResellerStarterKitsProps) {
           { name: "Set Destornilladores y Puntas de Impacto Wadfow", qty: 1, query: "destornillador" },
         ],
         perks: [
-          "Ahorro de un 28% vs Mercado Libre",
+          "Ahorro de un 8% vs Mercado Libre",
           "Garantía oficial Total Tools con repuestos",
           "Herramientas indispensables de uso diario",
         ],

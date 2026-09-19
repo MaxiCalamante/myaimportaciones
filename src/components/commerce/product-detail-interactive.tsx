@@ -151,10 +151,10 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             {channel === "retail" && price > 0 && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-zinc-500 line-through">
-                  Precio Ref. Mercado Libre: {formatCurrency(Math.round((price * 1.38) / 100) * 100)}
+                  Precio Ref. Mercado Libre: {formatCurrency(Math.round((price * 1.08) / 100) * 100)}
                 </span>
                 <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-xs font-bold">
-                  ¡Ahorrás {formatCurrency(Math.round(((price * 1.38) - price) / 100) * 100)} comprando directo!
+                  ¡Ahorrás {formatCurrency(Math.round(((price * 1.08) - price) / 100) * 100)} (-8% vs Mercado Libre)!
                 </span>
               </div>
             )}

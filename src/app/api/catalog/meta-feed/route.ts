@@ -25,7 +25,6 @@ function extractBrand(title: string, categoryName: string, tags: string[] = []):
   const t = `${title} ${tags.join(" ")}`.toLowerCase();
   if (t.includes("total") || t.includes("total tools")) return "Total Tools";
   if (t.includes("wadfow")) return "Wadfow";
-  if (t.includes("apple") || t.includes("iphone")) return "Apple";
   if (t.includes("skin1004") || t.includes("centella")) return "SKIN1004";
   if (t.includes("medicube")) return "Medicube";
   if (t.includes("dr althea") || t.includes("dr. althea")) return "Dr. Althea";
@@ -36,7 +35,6 @@ function extractBrand(title: string, categoryName: string, tags: string[] = []):
   if (t.includes("beauty of joseon")) return "Beauty of Joseon";
   if (t.includes("cosrx")) return "COSRX";
   if (categoryName.toLowerCase().includes("herramientas")) return "Total Tools";
-  if (categoryName.toLowerCase().includes("tecnología")) return "Apple";
   return "MYA Importaciones";
 }
 

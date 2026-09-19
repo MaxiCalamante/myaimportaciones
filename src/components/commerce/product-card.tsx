@@ -93,10 +93,10 @@ export function ProductCard({
             {channel === "retail" && price > 0 ? (
               <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] text-zinc-400 line-through">
-                  ML: {formatCurrency(Math.round((price * 1.38) / 100) * 100)}
+                  ML: {formatCurrency(Math.round((price * 1.08) / 100) * 100)}
                 </span>
                 <span className="rounded bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                  -28% vs ML
+                  -8% vs ML
                 </span>
               </div>
             ) : null}
