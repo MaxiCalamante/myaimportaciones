@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2, X } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
+import { getWhatsAppUrl } from "@/lib/site";
 
 export function CartDrawer() {
   const {
@@ -250,8 +251,21 @@ export function CartDrawer() {
             )}
           </div>
 
+          {/* Transfer discount badge */}
+          {cart.length > 0 && (
+            <div className="flex items-center justify-between text-xs text-emerald-800 bg-emerald-50/90 border border-emerald-200 p-2.5 rounded-xl">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                10% OFF pagando con Transferencia:
+              </span>
+              <span className="font-black text-sm text-emerald-700">
+                {formatCurrency(Math.round(cartTotal * 0.90) + shippingCost)}
+              </span>
+            </div>
+          )}
+
           <div className="border-t border-zinc-200 pt-3 flex items-center justify-between text-base font-bold text-zinc-950">
-            <span>Total</span>
+            <span>Total Regular</span>
             <span>{formatCurrency(cartTotal + shippingCost)}</span>
           </div>
 
@@ -264,28 +278,41 @@ export function CartDrawer() {
 
           {cart.length === 0 ? (
             <button
-              className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white opacity-60 cursor-not-allowed"
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-semibold text-white opacity-40 cursor-not-allowed"
               disabled
               type="button"
             >
-              Finalizar compra
+              Carrito Vacío
             </button>
           ) : !isWholesaleValid ? (
             <button
-              className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-zinc-300 px-4 text-sm font-semibold text-zinc-500 cursor-not-allowed opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-zinc-300 px-4 text-sm font-semibold text-zinc-500 cursor-not-allowed opacity-60"
               disabled
               type="button"
             >
               Mínimo mayorista no alcanzado
             </button>
           ) : (
-            <Link
-              className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-              href="/checkout"
-              onClick={() => setCartOpen(false)}
-            >
-              Finalizar compra
-            </Link>
+            <div className="space-y-2">
+              <Link
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-bold text-white hover:bg-zinc-800 transition-colors cursor-pointer shadow-sm"
+                href="/checkout"
+                onClick={() => setCartOpen(false)}
+              >
+                Finalizar Compra en la Web
+              </Link>
+              <a
+                href={getWhatsAppUrl(
+                  `Hola MYA Importaciones! Armé mi carrito y quisiera pedirlo por WhatsApp:\n\n${cart.map((c) => `• ${c.quantity}x ${c.product.title} (${formatCurrency(c.channel === 'wholesale' ? c.product.wholesalePrice : c.product.retailPrice)})`).join('\n')}\n\n*Total a pagar: ${formatCurrency(cartTotal + shippingCost)}*`
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 text-sm font-bold text-white transition-colors shadow-sm cursor-pointer"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Pedir por WhatsApp
+              </a>
+            </div>
           )}
         </div>
       </aside>

@@ -9,6 +9,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { getStorefrontData } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { WhatsAppFloatingButton } from "@/components/commerce/whatsapp-button";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -113,7 +114,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full bg-zinc-50 text-zinc-950">
         <CommerceProvider>
-          <div className="flex min-h-screen flex-col">
+          <div className="flex min-h-screen flex-col pb-16 md:pb-0">
             <SiteHeader initialCategories={categories} initialProducts={products} profile={profile} />
             <main className="flex-1">{children}</main>
             <SiteFooter />
@@ -121,6 +122,7 @@ export default async function RootLayout({
           <CartDrawer />
           <ProductDetailsModal />
           <WhatsAppFloatingButton />
+          <MobileBottomNav />
         </CommerceProvider>
       </body>
     </html>

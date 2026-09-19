@@ -1,18 +1,14 @@
-import { redirect } from "next/navigation";
 import { CheckoutPanel } from "@/components/checkout/checkout-panel";
 import { getCurrentProfile } from "@/lib/auth";
-import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export const metadata = {
-  title: "Checkout | Mayorista Minorista",
+  title: "Finalizar Compra | MYA Importaciones",
+  description: "Completá tu pedido minorista o mayorista con envío a todo el país y descuento por transferencia.",
 };
 
 export default async function CheckoutPage() {
   const auth = await getCurrentProfile();
 
-  if (hasSupabaseConfig() && !auth.profile) {
-    redirect("/login?next=/checkout");
-  }
-
+  // Permite tanto compras de invitados como de usuarios autenticados sin fricción
   return <CheckoutPanel profile={auth.profile} />;
 }

@@ -10,7 +10,7 @@ interface OrderLineInput {
 }
 
 export async function createOrderAction(
-  profileId: string,
+  profileId: string | null,
   paymentMethod: string,
   shippingName: string,
   shippingPhone: string,
@@ -18,7 +18,9 @@ export async function createOrderAction(
   cartTotal: number,
   shippingAmount: number,
   totalAmount: number,
-  lines: OrderLineInput[]
+  lines: OrderLineInput[],
+  customerEmail?: string | null,
+  orderNotes?: string | null
 ) {
   const supabase = await createServerSupabaseClient();
 
@@ -41,12 +43,12 @@ export async function createOrderAction(
     }
   }
 
-  // 2. Insert order
+  // 2. Insert order (compatible with both guest and authenticated users)
   const trackingCode = `ORD-${Math.floor(10000 + Math.random() * 89999)}`;
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
-      profile_id: profileId,
+      profile_id: profileId || null,
       status: "pending",
       customer_tier: lines.some((l) => l.channel === "wholesale") ? "wholesale" : "retail",
       payment_method: paymentMethod,
@@ -56,6 +58,8 @@ export async function createOrderAction(
       shipping_name: shippingName,
       shipping_phone: shippingPhone,
       shipping_address: shippingAddress,
+      customer_email: customerEmail || null,
+      order_notes: orderNotes || null,
       tracking_code: trackingCode,
     })
     .select("id")

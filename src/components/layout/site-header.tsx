@@ -145,6 +145,10 @@ export function SiteHeader({
             </div>
           </div>
 
+          <Link className={linkClass} href="/seguimiento">
+            Seguimiento
+          </Link>
+
           {profile && (
             <Link className={linkClass} href="/cuenta">
               Mis pedidos
@@ -368,6 +372,16 @@ export function SiteHeader({
               onClick={() => setOpen(false)}
             >
               Inicio
+            </Link>
+
+            <Link
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"
+              }`}
+              href="/seguimiento"
+              onClick={() => setOpen(false)}
+            >
+              Seguimiento de Pedidos
             </Link>
 
             {/* Categorías en menú móvil */}
