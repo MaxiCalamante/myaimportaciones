@@ -27,6 +27,13 @@ import {
   Truck,
   Copy,
   MessageCircle,
+  ExternalLink,
+  Building2,
+  Boxes,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
 import {
@@ -36,6 +43,7 @@ import {
   createProductAction,
   updateProductAction,
   updateProductStockAction,
+  updateProductWholesaleAction,
   deleteProductAction,
   updateUserRoleAction,
   toggleWholesaleApprovalAction,
@@ -62,10 +70,19 @@ export function AdminDashboard({
   data: AdminDashboardData;
   supabaseReady: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "categories" | "orders" | "customers">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "suppliers" | "categories" | "orders" | "customers">("products");
   const [isPending, startTransition] = useTransition();
   const [stockState, setStockState] = useState<Record<string, number>>({});
   const [showStockAudit, setShowStockAudit] = useState(false);
+
+  // Suppliers & Cost Control tab states
+  const [supplierFilter, setSupplierFilter] = useState<"all" | "total_tools" | "atacado_usa" | "tech_apple">("all");
+  const [supplierStockFilter, setSupplierStockFilter] = useState<"all" | "in_stock" | "low_stock" | "out_of_stock">("all");
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [supplierPage, setSupplierPage] = useState(1);
+  const [supplierWholesaleInputs, setSupplierWholesaleInputs] = useState<Record<string, { price: number; minQty: number }>>({});
+  const [supplierStockInputs, setSupplierStockInputs] = useState<Record<string, number>>({});
+  const [supplierActionFeedback, setSupplierActionFeedback] = useState<Record<string, string>>({});
 
   // Product Search and Filter states
   const [productSearch, setProductSearch] = useState("");
@@ -364,6 +381,49 @@ export function AdminDashboard({
     });
   };
 
+  const handleSaveSupplierWholesale = (productId: string, defaultWholesalePrice: number, defaultMinQty: number) => {
+    const input = supplierWholesaleInputs[productId];
+    const wholesalePrice = input?.price !== undefined ? input.price : defaultWholesalePrice;
+    const minQty = input?.minQty !== undefined ? input.minQty : defaultMinQty;
+
+    startTransition(async () => {
+      try {
+        await updateProductWholesaleAction(productId, wholesalePrice, minQty);
+        setSupplierActionFeedback((prev) => ({ ...prev, [productId]: "✓ Guardado B2B" }));
+        setTimeout(() => {
+          setSupplierActionFeedback((prev) => {
+            const next = { ...prev };
+            delete next[productId];
+            return next;
+          });
+        }, 2500);
+      } catch (err: any) {
+        alert("Error al actualizar condición mayorista: " + err.message);
+      }
+    });
+  };
+
+  const handleSaveSupplierStock = (productId: string, fallbackStock: number) => {
+    const newStock = supplierStockInputs[productId] !== undefined ? supplierStockInputs[productId] : fallbackStock;
+
+    startTransition(async () => {
+      try {
+        await updateProductStockAction(productId, newStock);
+        setStockState((prev) => ({ ...prev, [productId]: newStock }));
+        setSupplierActionFeedback((prev) => ({ ...prev, [`stock_${productId}`]: "✓ Stock OK" }));
+        setTimeout(() => {
+          setSupplierActionFeedback((prev) => {
+            const next = { ...prev };
+            delete next[`stock_${productId}`];
+            return next;
+          });
+        }, 2500);
+      } catch (err: any) {
+        alert("Error al actualizar stock: " + err.message);
+      }
+    });
+  };
+
   // Filter products locally for search & select rubro
   const filteredProducts = useMemo(() => {
     return data.products.filter((product) => {
@@ -404,6 +464,170 @@ export function AdminDashboard({
       return true;
     });
   }, [data.customers, customerSearch, customerFilter]);
+
+  // Helper to categorize supplier and calculate cost basis
+  const getProductSupplier = (product: Product) => {
+    const titleUpper = product.title.toUpperCase();
+    const tagsUpper = product.tags.map((t) => t.toUpperCase());
+    const cat = data.categories.find((c) => c.id === product.categoryId);
+    const catSlug = (cat?.slug || "").toLowerCase();
+
+    const isCosmetic =
+      catSlug.includes("cosmet") ||
+      catSlug.includes("capilar") ||
+      catSlug.includes("tonico") ||
+      catSlug.includes("locion") ||
+      catSlug.includes("shampoo") ||
+      catSlug.includes("aceite") ||
+      tagsUpper.includes("COSMETICA COREANA") ||
+      tagsUpper.includes("CUIDADO CAPILAR") ||
+      tagsUpper.includes("ATACADO USA") ||
+      titleUpper.includes("MEDICUBE") ||
+      titleUpper.includes("KARSEELL") ||
+      titleUpper.includes("ANUA") ||
+      titleUpper.includes("SKIN1004") ||
+      titleUpper.includes("CELIMAX") ||
+      titleUpper.includes("DR. ALTHEA") ||
+      titleUpper.includes("REEDLE") ||
+      titleUpper.includes("NUMBUZIN") ||
+      titleUpper.includes("DEAR BODY") ||
+      titleUpper.includes("VICTORIA'S SECRET");
+
+    const isTool =
+      titleUpper.includes("TOTAL") ||
+      titleUpper.includes("WADFOW") ||
+      catSlug.includes("herramienta") ||
+      catSlug.includes("taladro") ||
+      catSlug.includes("amoladora") ||
+      catSlug.includes("soldador") ||
+      catSlug.includes("generador") ||
+      catSlug.includes("bateria") ||
+      tagsUpper.includes("HERRAMIENTAS");
+
+    const isTech =
+      titleUpper.includes("IPHONE") ||
+      titleUpper.includes("APPLE") ||
+      catSlug.includes("smartphone") ||
+      catSlug.includes("tecnologia");
+
+    if (isCosmetic) {
+      const costArs = Math.round(product.retailPrice / 2);
+      const costUsd = Number((costArs / 1300).toFixed(2));
+      return {
+        id: "atacado_usa" as const,
+        name: "Atacado USA",
+        categoryType: "Cosméticos & K-Beauty",
+        badgeColor: "bg-pink-50 text-pink-700 border-pink-200",
+        url: "https://atacadousa.com.py/20-cosmeticos",
+        costUsd,
+        costArs,
+      };
+    }
+
+    if (isTool) {
+      const costArs = Math.round(product.retailPrice / 2);
+      const costUsd = Number((costArs / 1300).toFixed(2));
+      return {
+        id: "total_tools" as const,
+        name: "Total Tools Paraguay",
+        categoryType: "Herramientas Industriales",
+        badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
+        url: "https://www.totalherramientasoficial.com.py/home",
+        costUsd,
+        costArs,
+      };
+    }
+
+    if (isTech) {
+      const costArs = Math.round(product.retailPrice * 0.78);
+      const costUsd = Number((costArs / 1300).toFixed(2));
+      return {
+        id: "tech_apple" as const,
+        name: "Importación Tech Directa",
+        categoryType: "Smartphones & Apple",
+        badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+        url: "#",
+        costUsd,
+        costArs,
+      };
+    }
+
+    const costArs = Math.round(product.retailPrice / 2);
+    const costUsd = Number((costArs / 1300).toFixed(2));
+    return {
+      id: "general" as const,
+      name: "Proveedor Mayorista",
+      categoryType: "General",
+      badgeColor: "bg-zinc-100 text-zinc-700 border-zinc-200",
+      url: "#",
+      costUsd,
+      costArs,
+    };
+  };
+
+  // Supplier metrics stats
+  const supplierMetrics = useMemo(() => {
+    let totalToolsCount = 0;
+    let atacadoUsaCount = 0;
+    let techCount = 0;
+    let outOfStockCount = 0;
+
+    data.products.forEach((p) => {
+      const sup = getProductSupplier(p);
+      const s = stockState[p.id] ?? p.stock;
+      if (s <= 0) outOfStockCount++;
+      if (sup.id === "total_tools") totalToolsCount++;
+      else if (sup.id === "atacado_usa") atacadoUsaCount++;
+      else if (sup.id === "tech_apple") techCount++;
+    });
+
+    return {
+      totalProducts: data.products.length,
+      totalToolsCount,
+      atacadoUsaCount,
+      techCount,
+      outOfStockCount,
+    };
+  }, [data.products, data.categories, stockState]);
+
+  // Filtered supplier products
+  const filteredSupplierProducts = useMemo(() => {
+    return data.products
+      .map((product) => {
+        const supplier = getProductSupplier(product);
+        const currentStock = stockState[product.id] ?? product.stock;
+        return { product, supplier, currentStock };
+      })
+      .filter(({ product, supplier, currentStock }) => {
+        // Supplier filter
+        if (supplierFilter !== "all" && supplier.id !== supplierFilter) return false;
+
+        // Stock filter
+        if (supplierStockFilter === "in_stock" && currentStock <= 0) return false;
+        if (supplierStockFilter === "low_stock" && (currentStock <= 0 || currentStock > 5)) return false;
+        if (supplierStockFilter === "out_of_stock" && currentStock > 0) return false;
+
+        // Search query
+        if (supplierSearch.trim()) {
+          const q = supplierSearch.toLowerCase().trim();
+          const matchTitle = product.title.toLowerCase().includes(q);
+          const matchDesc = product.description.toLowerCase().includes(q);
+          const matchTags = product.tags.some((t) => t.toLowerCase().includes(q));
+          const matchSupplier = supplier.name.toLowerCase().includes(q);
+          if (!matchTitle && !matchDesc && !matchTags && !matchSupplier) return false;
+        }
+
+        return true;
+      });
+  }, [data.products, data.categories, stockState, supplierFilter, supplierStockFilter, supplierSearch]);
+
+  // Pagination for suppliers
+  const SUPPLIERS_PER_PAGE = 30;
+  const totalSupplierPages = Math.max(1, Math.ceil(filteredSupplierProducts.length / SUPPLIERS_PER_PAGE));
+  const paginatedSupplierProducts = useMemo(() => {
+    const start = (supplierPage - 1) * SUPPLIERS_PER_PAGE;
+    return filteredSupplierProducts.slice(start, start + SUPPLIERS_PER_PAGE);
+  }, [filteredSupplierProducts, supplierPage]);
 
   const stats = [
     {
@@ -505,6 +729,7 @@ export function AdminDashboard({
         <nav className="flex space-x-8" aria-label="Tabs">
           {[
             { id: "products", name: "Productos & Stock", icon: Package },
+            { id: "suppliers", name: "Proveedores & Costos (B2B)", icon: Truck },
             { id: "categories", name: "Categorías & Rubros", icon: FolderOpen },
             { id: "orders", name: "Pedidos / Ventas", icon: ReceiptText },
             { id: "customers", name: "Clientes", icon: Users },
@@ -805,6 +1030,509 @@ export function AdminDashboard({
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: SUPPLIERS & COST CONTROL (B2B) */}
+      {activeTab === "suppliers" && (
+        <div className="space-y-6">
+          {/* Top Info Banner */}
+          <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 via-white to-cyan-50/60 p-6 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
+                    <Building2 className="h-3.5 w-3.5" /> B2B & Supply Chain Hub
+                  </span>
+                  <span className="text-xs text-zinc-500 font-medium">Cotización referencia: 1 USD = $1.300 ARS</span>
+                </div>
+                <h2 className="mt-2 text-2xl font-black text-zinc-900 tracking-tight">
+                  Control de Proveedores, Costos y Stock Mayorista
+                </h2>
+                <p className="mt-1 text-sm text-zinc-600 max-w-3xl">
+                  Monitoreá en tiempo real los costos de compra en origen (Paraguay / USA), márgenes brutos,
+                  condiciones para clientes mayoristas y enlaces directos a las plataformas oficiales de abastecimiento.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                <a
+                  href="https://www.totalherramientasoficial.com.py/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-3.5 py-2.5 text-xs font-bold text-cyan-900 hover:bg-cyan-50 hover:border-cyan-400 shadow-xs transition-all"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 text-cyan-600" />
+                  Total Tools PY Oficial
+                </a>
+                <a
+                  href="https://atacadousa.com.py/20-cosmeticos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-pink-300 bg-white px-3.5 py-2.5 text-xs font-bold text-pink-900 hover:bg-pink-50 hover:border-pink-400 shadow-xs transition-all"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 text-pink-600" />
+                  Atacado USA Cosméticos
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Metrics summary cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-cyan-100 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Total Tools Paraguay</span>
+                <span className="rounded-lg bg-cyan-50 p-2 text-cyan-700">
+                  <Truck className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-black text-zinc-900">
+                {supplierMetrics.totalToolsCount.toLocaleString("es-AR")}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Herramientas industriales (Margen PVP: 50% / 2.0x costo)
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-pink-100 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Atacado USA Cosméticos</span>
+                <span className="rounded-lg bg-pink-50 p-2 text-pink-700">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-black text-zinc-900">
+                {supplierMetrics.atacadoUsaCount.toLocaleString("es-AR")}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                K-Beauty & Cuidado Facial (Margen PVP: 50% / Mayorista: 15%)
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-purple-100 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Apple & Smartphones</span>
+                <span className="rounded-lg bg-purple-50 p-2 text-purple-700">
+                  <Package className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-black text-zinc-900">
+                {supplierMetrics.techCount.toLocaleString("es-AR")}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Línea iPhones Sellados CPO & Nuevos
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Control de Disponibilidad</span>
+                <span className="rounded-lg bg-amber-50 p-2 text-amber-700">
+                  <AlertTriangle className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-black text-amber-900">
+                {supplierMetrics.outOfStockCount.toLocaleString("es-AR")}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Artículos sin stock para reorden de compra
+              </p>
+            </div>
+          </div>
+
+          {/* Filters & Search Row */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+              {/* Search Bar */}
+              <div className="relative flex-1 max-w-lg">
+                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por producto, marca (TOTAL, Medicube, Karseell...), SKU o categoría..."
+                  value={supplierSearch}
+                  onChange={(e) => {
+                    setSupplierSearch(e.target.value);
+                    setSupplierPage(1);
+                  }}
+                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-zinc-300 outline-none focus:border-emerald-600 bg-white text-sm"
+                />
+              </div>
+
+              {/* Clear filters if active */}
+              {(supplierFilter !== "all" || supplierStockFilter !== "all" || supplierSearch.trim()) && (
+                <button
+                  onClick={() => {
+                    setSupplierFilter("all");
+                    setSupplierStockFilter("all");
+                    setSupplierSearch("");
+                    setSupplierPage(1);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Limpiar filtros
+                </button>
+              )}
+            </div>
+
+            {/* Supplier Filter Chips & Stock Chips */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-zinc-100">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mr-1">
+                Proveedor:
+              </span>
+              {[
+                { id: "all", label: `Todos (${supplierMetrics.totalProducts})` },
+                { id: "total_tools", label: `Total Tools PY (${supplierMetrics.totalToolsCount})` },
+                { id: "atacado_usa", label: `Atacado USA Cosméticos (${supplierMetrics.atacadoUsaCount})` },
+                { id: "tech_apple", label: `Apple / Tech (${supplierMetrics.techCount})` },
+              ].map((chip) => (
+                <button
+                  key={chip.id}
+                  onClick={() => {
+                    setSupplierFilter(chip.id as any);
+                    setSupplierPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    supplierFilter === chip.id
+                      ? "bg-zinc-900 text-white shadow-xs"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-4 mr-1">
+                Stock:
+              </span>
+              {[
+                { id: "all", label: "Cualquiera" },
+                { id: "in_stock", label: "En Stock (>0)" },
+                { id: "low_stock", label: "Stock Crítico (1 a 5)" },
+                { id: "out_of_stock", label: "Sin Stock (0)" },
+              ].map((chip) => (
+                <button
+                  key={chip.id}
+                  onClick={() => {
+                    setSupplierStockFilter(chip.id as any);
+                    setSupplierPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    supplierStockFilter === chip.id
+                      ? "bg-emerald-700 text-white shadow-xs"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Supplier Products Table */}
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1050px] text-left text-sm">
+                <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold w-72">Producto</th>
+                    <th className="px-4 py-4 font-semibold">Proveedor & Origen</th>
+                    <th className="px-4 py-4 font-semibold">Costo Proveedor</th>
+                    <th className="px-4 py-4 font-semibold">Precio Minorista (PVP)</th>
+                    <th className="px-4 py-4 font-semibold">Condición Mayorista (B2B)</th>
+                    <th className="px-4 py-4 font-semibold text-center w-48">Stock & Disponibilidad</th>
+                    <th className="px-4 py-4 font-semibold text-center w-28">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {paginatedSupplierProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
+                        <div className="flex flex-col items-center justify-center">
+                          <Inbox className="h-10 w-10 text-zinc-300 mb-2" />
+                          <p className="font-semibold text-zinc-700">No se encontraron productos con estos criterios</p>
+                          <p className="text-xs text-zinc-400 mt-1">
+                            Ajustá el término de búsqueda o seleccioná otro proveedor.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedSupplierProducts.map(({ product, supplier, currentStock }) => {
+                      const wholesaleInput = supplierWholesaleInputs[product.id];
+                      const wholesalePriceValue = wholesaleInput?.price !== undefined ? wholesaleInput.price : product.wholesalePrice;
+                      const wholesaleMinQtyValue = wholesaleInput?.minQty !== undefined ? wholesaleInput.minQty : product.wholesaleMinQuantity;
+
+                      const stockInputValue = supplierStockInputs[product.id] !== undefined ? supplierStockInputs[product.id] : currentStock;
+
+                      const isWholesaleModified = wholesaleInput !== undefined && (wholesaleInput.price !== product.wholesalePrice || wholesaleInput.minQty !== product.wholesaleMinQuantity);
+                      const isStockModified = supplierStockInputs[product.id] !== undefined && supplierStockInputs[product.id] !== currentStock;
+
+                      const wholesaleFeedback = supplierActionFeedback[product.id];
+                      const stockFeedback = supplierActionFeedback[`stock_${product.id}`];
+
+                      const grossProfitArs = product.retailPrice - supplier.costArs;
+
+                      let stockBadgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                      let stockText = `${currentStock} en stock`;
+                      if (currentStock <= 0) {
+                        stockBadgeClass = "bg-red-50 text-red-700 border-red-200";
+                        stockText = "Agotado / Sin stock";
+                      } else if (currentStock <= 5) {
+                        stockBadgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+                        stockText = `Stock bajo (${currentStock})`;
+                      }
+
+                      return (
+                        <tr key={product.id} className="hover:bg-zinc-50/80 transition-colors">
+                          {/* Product Info */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+                                <img
+                                  src={product.imageUrl || "/placeholder.png"}
+                                  alt={product.title}
+                                  className="h-full w-full object-contain p-1"
+                                  loading="lazy"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-zinc-900 truncate max-w-xs" title={product.title}>
+                                  {product.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[11px] font-mono text-zinc-400">
+                                    ID: {product.id.slice(0, 8)}
+                                  </span>
+                                  {product.tags.length > 0 && (
+                                    <span className="text-[10px] text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
+                                      {product.tags[0]}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Supplier & Origin */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="space-y-1">
+                              <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-bold border ${supplier.badgeColor}`}>
+                                {supplier.name}
+                              </span>
+                              <div>
+                                {supplier.url !== "#" ? (
+                                  <a
+                                    href={supplier.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    <ExternalLink className="h-3 w-3" /> Ver proveedor
+                                  </a>
+                                ) : (
+                                  <span className="text-[11px] text-zinc-400">Directo fábrica</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Cost Provider */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div>
+                              <p className="font-extrabold text-zinc-900">
+                                {formatCurrency(supplier.costArs)}
+                              </p>
+                              <p className="text-xs font-semibold text-zinc-500">
+                                ${supplier.costUsd.toFixed(2)} USD
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Retail Price (PVP) */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div>
+                              <p className="font-black text-emerald-700">
+                                {formatCurrency(product.retailPrice)}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                  +100% (2x)
+                                </span>
+                                <span className="text-[11px] text-zinc-500">
+                                  +{formatCurrency(grossProfitArs)}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Wholesale Conditions (B2B) */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="relative">
+                                  <span className="absolute left-2 top-2 text-xs text-zinc-400">$</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={100}
+                                    value={wholesalePriceValue}
+                                    onChange={(e) => {
+                                      const p = Number(e.target.value);
+                                      setSupplierWholesaleInputs((prev) => ({
+                                        ...prev,
+                                        [product.id]: {
+                                          price: p,
+                                          minQty: wholesaleMinQtyValue,
+                                        },
+                                      }));
+                                    }}
+                                    className="h-8 w-28 pl-5 pr-2 rounded-lg border border-zinc-300 text-xs font-bold text-zinc-900 focus:border-emerald-600 outline-none"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[11px] text-zinc-500 font-medium">Min:</span>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={wholesaleMinQtyValue}
+                                    onChange={(e) => {
+                                      const q = Number(e.target.value);
+                                      setSupplierWholesaleInputs((prev) => ({
+                                        ...prev,
+                                        [product.id]: {
+                                          price: wholesalePriceValue,
+                                          minQty: q,
+                                        },
+                                      }));
+                                    }}
+                                    className="h-8 w-14 px-2 rounded-lg border border-zinc-300 text-xs font-bold text-zinc-900 focus:border-emerald-600 outline-none text-center"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveSupplierWholesale(product.id, product.wholesalePrice, product.wholesaleMinQuantity)}
+                                  disabled={isPending}
+                                  className={`h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    isWholesaleModified
+                                      ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
+                                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                                  }`}
+                                  title="Guardar precio y mínimo mayorista"
+                                >
+                                  {wholesaleFeedback || "Guardar"}
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-zinc-400">
+                                Margen B2B aprox: {wholesalePriceValue > 0 ? Math.round(((wholesalePriceValue - supplier.costArs) / wholesalePriceValue) * 100) : 0}%
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Stock & Availability */}
+                          <td className="px-4 py-4 whitespace-nowrap text-center">
+                            <div className="flex flex-col items-center gap-1.5">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${stockBadgeClass}`}>
+                                {stockText}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={stockInputValue}
+                                  onChange={(e) => {
+                                    const s = Number(e.target.value);
+                                    setSupplierStockInputs((prev) => ({
+                                      ...prev,
+                                      [product.id]: s,
+                                    }));
+                                  }}
+                                  className="h-8 w-16 px-2 rounded-lg border border-zinc-300 text-xs font-bold text-zinc-900 focus:border-emerald-600 outline-none text-center"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveSupplierStock(product.id, currentStock)}
+                                  disabled={isPending}
+                                  className={`h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    isStockModified
+                                      ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
+                                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                                  }`}
+                                  title="Actualizar cantidad disponible"
+                                >
+                                  {stockFeedback || "Actualizar"}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-4 whitespace-nowrap text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <a
+                                href={`/producto/${product.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+                                title="Ver publicación en la tienda"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditProduct(product)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer"
+                                title="Editar detalles completos"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredSupplierProducts.length > SUPPLIERS_PER_PAGE && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-zinc-200 bg-zinc-50 px-6 py-4">
+                <p className="text-xs text-zinc-500 font-medium">
+                  Mostrando del{" "}
+                  <span className="font-bold text-zinc-900">
+                    {(supplierPage - 1) * SUPPLIERS_PER_PAGE + 1}
+                  </span>{" "}
+                  al{" "}
+                  <span className="font-bold text-zinc-900">
+                    {Math.min(supplierPage * SUPPLIERS_PER_PAGE, filteredSupplierProducts.length)}
+                  </span>{" "}
+                  de <span className="font-bold text-zinc-900">{filteredSupplierProducts.length}</span>{" "}
+                  artículos vinculados a proveedores
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSupplierPage((p) => Math.max(1, p - 1))}
+                    disabled={supplierPage === 1}
+                    className="inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-zinc-300 bg-white text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Anterior
+                  </button>
+                  <span className="text-xs font-bold text-zinc-700 px-2">
+                    Página {supplierPage} de {totalSupplierPages}
+                  </span>
+                  <button
+                    onClick={() => setSupplierPage((p) => Math.min(totalSupplierPages, p + 1))}
+                    disabled={supplierPage === totalSupplierPages}
+                    className="inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-zinc-300 bg-white text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-colors"
+                  >
+                    Siguiente <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

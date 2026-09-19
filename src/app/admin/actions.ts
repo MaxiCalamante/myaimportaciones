@@ -309,6 +309,30 @@ export async function updateProductStockAction(productId: string, stock: number)
   revalidatePath("/mayorista");
 }
 
+export async function updateProductWholesaleAction(
+  productId: string,
+  wholesalePrice: number,
+  wholesaleMinQty: number
+) {
+  const supabase = await getAdminClient();
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      wholesale_price: wholesalePrice,
+      wholesale_min_qty: wholesaleMinQty,
+    })
+    .eq("id", productId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/mayorista");
+}
+
 export async function deleteProductAction(productId: string) {
   const supabase = await getAdminClient();
 
