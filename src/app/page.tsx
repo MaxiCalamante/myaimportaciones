@@ -4,7 +4,6 @@ import {
   ProductSection,
   RetailHighlights,
   StoreHero,
-  WholesaleTeaser,
   TestimonialsSection,
 } from "@/components/commerce/storefront-sections";
 import { CatalogWithFilters } from "@/components/commerce/catalog-with-filters";
@@ -89,7 +88,6 @@ export default async function Home({
         products={offerProducts.length > 0 ? offerProducts : retailProducts.slice(0, 4)}
         title="Ofertas y Precios Especiales"
       />
-      <WholesaleTeaser products={products} />
       <TestimonialsSection />
     </>
   );

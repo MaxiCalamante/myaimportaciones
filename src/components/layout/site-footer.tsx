@@ -97,12 +97,12 @@ export function SiteFooter() {
 
         {/* Column 3: Navigation */}
         <div>
-          <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Navegación</h3>
+          <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Navegación & Ayuda</h3>
           <div className="mt-4 grid gap-2 text-sm">
             {isWholesale ? (
               <>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/mayorista">
-                  Portal Mayorista
+                  Catálogo Mayorista
                 </Link>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/">
                   Tienda Minorista
@@ -111,18 +111,28 @@ export function SiteFooter() {
             ) : (
               <>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/#catalogo">
-                  Catálogo Destacado
+                  Catálogo de Productos
                 </Link>
-                <Link className="text-zinc-400 hover:text-white transition-colors" href="/mayorista">
-                  Acceso Mayorista
+                <Link className="text-zinc-400 hover:text-white transition-colors" href="/#ofertas">
+                  Ofertas & Promociones
                 </Link>
+                <a
+                  className="text-amber-400/90 hover:text-amber-300 transition-colors"
+                  href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(
+                    "Hola MYA Importaciones! Quisiera consultar los requisitos para operar como cliente mayorista."
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Consultas Mayoristas B2B
+                </a>
               </>
             )}
             <Link className="text-zinc-400 hover:text-white transition-colors" href="/seguimiento">
               Seguimiento de Pedidos
             </Link>
-            <Link className="text-zinc-400 hover:text-white transition-colors" href="/admin">
-              Panel Administrativo
+            <Link className="text-zinc-400 hover:text-white transition-colors" href="/cuenta">
+              Mi Cuenta / Favoritos
             </Link>
           </div>
         </div>
@@ -143,17 +153,22 @@ export function SiteFooter() {
               <MapPin className="h-4 w-4 text-sky-400" />
               {siteConfig.location}
             </span>
-            <div className="border-t border-zinc-900 pt-2.5 mt-1 text-xs text-zinc-500 space-y-1">
-              <p>Despachos a todo el país (Correo / Expreso)</p>
-              <p>Atención: Lunes a Sábados</p>
+            <div className="border-t border-zinc-900 pt-2.5 mt-1 text-xs text-zinc-400 space-y-1">
+              <p>Despachos a todo el país (Correo Argentino / Andreani / Expresos)</p>
+              <p>Horario: Lunes a Sábados</p>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Copyright */}
-      <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 py-6 sm:px-6 lg:px-8 text-center text-xs text-zinc-500">
-        &copy; {new Date().getFullYear()} MYA Importaciones. Importación directa y distribución nacional. Todos los derechos reservados.
+      {/* Guarantees bar & Copyright */}
+      <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 py-6 sm:px-6 lg:px-8 text-center text-xs text-zinc-500 space-y-2">
+        <p className="text-zinc-400 font-medium">
+          Factura oficial A y B con IVA discriminado &bull; 10% OFF pagando con transferencia o efectivo &bull; Envíos asegurados a toda la Argentina
+        </p>
+        <p>
+          &copy; {new Date().getFullYear()} MYA Importaciones. Importación directa y distribución nacional. Todos los derechos reservados.
+        </p>
       </div>
     </footer>
   );

@@ -86,80 +86,90 @@ export function SiteHeader({
     ? "rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
     : "rounded-lg px-3 py-2 text-sm font-medium text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950 transition-colors";
 
+  const isWholesaleAllowed = Boolean(
+    profile?.isApprovedWholesale ||
+    profile?.customerTier === "wholesale" ||
+    profile?.role === "admin"
+  );
+
   const toggleChannelLink = isWholesale ? (
     <Link
-      className="rounded-lg px-3 py-2 text-sm font-medium bg-emerald-950/80 text-emerald-300 hover:bg-emerald-950 border border-emerald-800/30 transition-colors"
+      className="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700 transition-colors"
       href="/"
     >
       Ir a Minorista
     </Link>
-  ) : (
+  ) : isWholesaleAllowed ? (
     <Link
-      className="rounded-lg px-3 py-2 text-sm font-medium bg-amber-50 text-amber-700 hover:bg-amber-100/70 border border-amber-200/40 transition-colors"
+      className="rounded-lg px-2.5 py-1 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors inline-flex items-center gap-1.5 shadow-xs"
       href="/mayorista"
+      title="Acceso exclusivo al Catálogo Mayorista"
     >
-      Mayorista
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+      Canal B2B
     </Link>
-  );
+  ) : null;
 
   const iconButtonClass = isWholesale
-    ? "h-10 w-10 place-items-center rounded-lg text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors"
-    : "h-10 w-10 place-items-center rounded-lg text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors";
+    ? "h-10 w-10 place-items-center rounded-xl text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors"
+    : "h-10 w-10 place-items-center rounded-xl text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors";
 
   return (
     <header className={headerClass}>
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Link className="flex items-center gap-3 group" href={isWholesale ? "/mayorista" : "/"}>
-          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-sky-50 p-0.5 shadow-xs ring-1 ring-sky-200/60 transition group-hover:scale-105">
+        <Link className="flex items-center gap-2.5 sm:gap-3 group shrink-0" href={isWholesale ? "/mayorista" : "/"}>
+          <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-xl bg-white p-0.5 shadow-xs ring-1 ring-zinc-200 transition group-hover:scale-105">
             <img
               src="/logo.png"
               alt="MYA Importaciones Logo"
-              className="h-full w-full object-cover rounded-lg"
+              className="h-full w-full object-contain rounded-lg"
             />
           </div>
           <div className="flex flex-col">
-            <span className={`text-sm font-black uppercase tracking-tight sm:text-base flex items-center gap-1 ${
+            <span className={`text-sm sm:text-base font-black tracking-tight leading-none ${
               isWholesale ? "text-white" : "text-zinc-950"
             }`}>
-              MYA <span className="font-semibold text-sky-600 text-xs sm:text-sm">Importaciones</span>
+              MYA <span className="font-semibold text-sky-600">Importaciones</span>
             </span>
-            <span className={`text-[9px] font-bold tracking-wider uppercase ${
-              isWholesale ? "text-amber-400" : "text-zinc-500"
+            <span className={`text-[10px] font-medium tracking-wide mt-0.5 ${
+              isWholesale ? "text-amber-400 font-semibold uppercase text-[9px]" : "text-zinc-500"
             }`}>
-              {isWholesale ? "Canal Mayorista" : "Venta Directa"}
+              {isWholesale ? "Canal Mayorista Oficial" : "Distribución Oficial"}
             </span>
           </div>
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-1 md:flex">
-          {/* El enlace de Inicio siempre lleva al inicio del sitio minorista */}
+        <nav className="ml-4 hidden items-center gap-1 lg:flex">
           <Link className={linkClass} href="/">
             Inicio
           </Link>
 
-          {/* Categorías Link con Dropdown al pasar el cursor */}
+          {/* Categorías Link con Dropdown */}
           <div className="relative group">
             <Link
               href="/#categorias"
               className={`flex items-center gap-1 ${linkClass}`}
             >
               Categorías
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition" />
             </Link>
 
-            <div className={`absolute left-0 mt-2 w-56 rounded-xl border p-2 shadow-xl z-50 transition-all duration-150 transform scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 group-hover:pointer-events-auto ${
+            <div className={`absolute left-0 mt-1 w-60 rounded-2xl border p-2 shadow-2xl z-50 transition-all duration-150 transform scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 group-hover:pointer-events-auto ${
               isWholesale
-                ? "border-zinc-800 bg-zinc-900 text-zinc-100"
-                : "border-zinc-200 bg-white text-zinc-900"
+                ? "border-zinc-800 bg-zinc-900/95 text-zinc-100 backdrop-blur-md"
+                : "border-zinc-200 bg-white/95 text-zinc-900 backdrop-blur-md"
             }`}>
+              <div className="text-[10px] uppercase font-bold text-zinc-400 px-3 py-1.5 border-b border-zinc-100/10 mb-1">
+                Rubros Principales
+              </div>
               {categories.length === 0 ? (
                 <p className="px-3 py-2 text-xs text-zinc-500">No hay categorías</p>
               ) : (
                 categories.map((category) => (
                   <Link
                     key={category.id}
-                    href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}`}
-                    className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                    href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
+                    className={`block rounded-xl px-3 py-2 text-xs sm:text-sm font-medium transition-colors ${
                       isWholesale
                         ? "hover:bg-zinc-800 hover:text-white text-zinc-300"
                         : "hover:bg-zinc-100 hover:text-zinc-950 text-zinc-700"
@@ -172,13 +182,17 @@ export function SiteHeader({
             </div>
           </div>
 
+          <Link className={linkClass} href="/#ofertas">
+            Ofertas
+          </Link>
+
           <Link className={linkClass} href="/seguimiento">
             Seguimiento
           </Link>
 
           {profile && (
             <Link className={linkClass} href="/cuenta">
-              Mis pedidos
+              Mis Pedidos
             </Link>
           )}
 
@@ -461,25 +475,37 @@ export function SiteHeader({
               </Link>
             )}
 
-            <div className={`border-t my-2 pt-2 ${isWholesale ? "border-zinc-800" : "border-zinc-200"}`}>
-              {isWholesale ? (
+            <Link
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"
+              }`}
+              href="/#ofertas"
+              onClick={() => setOpen(false)}
+            >
+              Ofertas Especiales
+            </Link>
+
+            {isWholesale ? (
+              <div className="border-t border-zinc-800 my-2 pt-2">
                 <Link
-                  className="block text-center rounded-lg px-3 py-2 text-sm font-medium bg-emerald-950 text-emerald-300 border border-emerald-900"
+                  className="block text-center rounded-xl px-3 py-2.5 text-xs font-semibold bg-zinc-850 text-zinc-200 border border-zinc-700"
                   href="/"
                   onClick={() => setOpen(false)}
                 >
-                  Ir a Minorista
+                  Ir a Tienda Minorista
                 </Link>
-              ) : (
+              </div>
+            ) : isWholesaleAllowed ? (
+              <div className="border-t border-zinc-200 my-2 pt-2">
                 <Link
-                  className="block text-center rounded-lg px-3 py-2 text-sm font-medium bg-amber-50 text-amber-700 border border-amber-100"
+                  className="block text-center rounded-xl px-3 py-2.5 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200"
                   href="/mayorista"
                   onClick={() => setOpen(false)}
                 >
-                  Ir a Mayorista
+                  Acceder a mi Canal Mayorista B2B
                 </Link>
-              )}
-            </div>
+              </div>
+            ) : null}
           </nav>
         </div>
       )}

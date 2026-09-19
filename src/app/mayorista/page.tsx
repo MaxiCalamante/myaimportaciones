@@ -5,6 +5,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { getStorefrontData } from "@/lib/storefront";
 import { getWhatsAppUrl } from "@/lib/site";
 
+import { getCurrentProfile } from "@/lib/auth";
+
 export const metadata = {
   title: "Catálogo Mayorista | MYA Importaciones",
   description:
@@ -24,9 +26,15 @@ export default async function WholesalePage({
     ? initialData.categories.find((c) => c.slug === selectedCategorySlug)
     : null;
 
-  const { categories, products } = selectedCategory
-    ? await getStorefrontData({ categoryId: selectedCategory.id })
-    : initialData;
+  const [{ categories, products }, auth] = await Promise.all([
+    selectedCategory
+      ? getStorefrontData({ categoryId: selectedCategory.id })
+      : Promise.resolve(initialData),
+    getCurrentProfile(),
+  ]);
+
+  const profile = auth.profile;
+  const isApproved = profile?.isApprovedWholesale;
 
   const wholesaleProducts = products.filter(
     (product) => product.wholesalePrice > 0 || product.wholesaleOnly,
@@ -71,18 +79,104 @@ export default async function WholesalePage({
   return (
     <>
       <section className="bg-zinc-950 text-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
-          <div>
-            <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
-              <Sparkles className="h-3.5 w-3.5" /> Distribución Mayorista Oficial
-            </span>
-            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-5xl tracking-tight">
-              Precios por bulto cerrado para ferreterías, comercios y revendedores.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
-              Accedé a precios comerciales directos de importación en herramientas Total Tools, Wadfow y Cosmética Coreana (K-Beauty). 
-              Mínimo de compra general de <strong>$100.000</strong> combinable entre todos los rubros.
-            </p>
+        <div className="mx-auto max-w-7xl px-4 pt-10 pb-14 sm:px-6 lg:px-8">
+          
+          {/* User Status Notification Banner */}
+          {isApproved ? (
+            <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-400/10 border border-amber-400/30 p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-zinc-950 font-black text-sm">
+                  ★
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-amber-300">
+                    Cuenta Mayorista Habilitada: {profile?.fullName}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Operás con precios de costo por bulto cerrado y atención preferencial de importación directa.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={getWhatsAppUrl(`Hola Maxi! Soy ${profile?.fullName} y quisiera pasar un pedido mayorista.`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 text-xs transition"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> Enviar Pedido por WhatsApp
+                </a>
+              </div>
+            </div>
+          ) : profile ? (
+            <div className="mb-8 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/20 text-amber-400 font-black text-sm">
+                    !
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-white">
+                      Tu usuario ({profile.email}) está registrado en modo minorista
+                    </p>
+                    <p className="text-xs text-zinc-400">
+                      Si el administrador te compartió este link, avisale para que active tu condición mayorista en el sistema.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={getWhatsAppUrl(`Hola Maxi / MYA Importaciones! Creé mi cuenta con el email ${profile.email} y quisiera que me habilites el catálogo mayorista.`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 text-xs transition shrink-0"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> Solicitar Habilitación
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl bg-white/5 border border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400/20 text-amber-400 font-bold text-xs">
+                  B2B
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-white">
+                    Catálogo Exclusivo de Distribución B2B
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Visualizá los precios mayoristas por bulto. Contactá a tu asesor para procesar tu orden o registrate en la web.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link href="/login?next=/mayorista" className="text-xs font-semibold bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl transition">
+                  Iniciar Sesión
+                </Link>
+                <a
+                  href={getWhatsAppUrl("Hola MYA Importaciones! Recibí el link del catálogo mayorista y quisiera hacer una consulta comercial.")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl transition inline-flex items-center gap-1.5"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> Consultar por WhatsApp
+                </a>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+            <div>
+              <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                <Sparkles className="h-3.5 w-3.5" /> Distribución Mayorista Oficial
+              </span>
+              <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-5xl tracking-tight">
+                Precios por bulto cerrado para ferreterías, comercios y revendedores.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
+                Accedé a precios comerciales directos de importación en herramientas Total Tools, Wadfow y Cosmética Coreana (K-Beauty). 
+                Mínimo de compra general de <strong>$100.000</strong> combinable entre todos los rubros.
+              </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <ButtonLink href="#lista" icon={<Boxes className="h-4 w-4" />}>
                 Ver catálogo mayorista
@@ -122,7 +216,8 @@ export default async function WholesalePage({
             ))}
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
       {/* Main Catalog View with Filters */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" id="lista">

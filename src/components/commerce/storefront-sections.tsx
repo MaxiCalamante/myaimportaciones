@@ -36,11 +36,11 @@ const heroSlides = [
   },
   {
     image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Importación Directa & Distribución",
-    title: "Precios Mayoristas para Tu Negocio",
-    description: "Abastecé tu ferretería, comercio o emprendimiento con precios diferenciales por bulto cerrado en herramientas, cosmética y tecnología.",
-    btnText: "Portal Mayorista",
-    btnLink: "/mayorista",
+    eyebrow: "Envíos Seguros a Todo el País",
+    title: "Importación Directa & Garantía Total",
+    description: "Despachamos tu compra a cualquier punto de Argentina con seguro de carga, Factura A o B oficial y 10% de descuento por transferencia.",
+    btnText: "Ver Catálogo Completo",
+    btnLink: "/#catalogo",
   },
 ];
 

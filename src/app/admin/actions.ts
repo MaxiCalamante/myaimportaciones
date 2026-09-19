@@ -346,7 +346,10 @@ export async function toggleWholesaleApprovalAction(userId: string, isApproved: 
 
   const { error } = await supabase
     .from("profiles")
-    .update({ is_approved_wholesale: isApproved })
+    .update({ 
+      is_approved_wholesale: isApproved,
+      customer_tier: isApproved ? "wholesale" : "retail",
+    })
     .eq("id", userId);
 
   if (error) {
@@ -354,6 +357,47 @@ export async function toggleWholesaleApprovalAction(userId: string, isApproved: 
   }
 
   revalidatePath("/admin");
+  revalidatePath("/mayorista");
+  revalidatePath("/");
+}
+
+export async function setWholesaleByEmailAction(email: string, isApproved: boolean) {
+  const supabase = await getAdminClient();
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail) {
+    throw new Error("El email es obligatorio.");
+  }
+
+  const { data: profile, error: findError } = await supabase
+    .from("profiles")
+    .select("id, email")
+    .ilike("email", cleanEmail)
+    .maybeSingle();
+
+  if (findError) {
+    throw new Error(findError.message);
+  }
+
+  if (!profile) {
+    throw new Error(`No se encontró ningún usuario registrado con el email: ${cleanEmail}`);
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ 
+      is_approved_wholesale: isApproved,
+      customer_tier: isApproved ? "wholesale" : "retail",
+    })
+    .eq("id", profile.id);
+
+  if (error) {
+    throw new Error(`Error al actualizar estado mayorista: ${error.message}`);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/mayorista");
+  revalidatePath("/");
 }
 
 export async function updateOrderStatusAction(

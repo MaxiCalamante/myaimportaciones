@@ -66,7 +66,11 @@ export async function getCurrentProfile(): Promise<{
       customerTier: profile?.customer_tier ?? "retail",
       businessName: profile?.business_name ?? undefined,
       cuit: profile?.cuit ?? undefined,
-      isApprovedWholesale: profile?.is_approved_wholesale ?? true,
+      isApprovedWholesale: Boolean(
+        profile?.is_approved_wholesale ||
+          profile?.customer_tier === "wholesale" ||
+          profile?.role === "admin",
+      ),
     },
   };
 }

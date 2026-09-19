@@ -25,6 +25,8 @@ import {
   FileSpreadsheet,
   Check,
   Truck,
+  Copy,
+  MessageCircle,
 } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
 import {
@@ -37,10 +39,12 @@ import {
   deleteProductAction,
   updateUserRoleAction,
   toggleWholesaleApprovalAction,
+  setWholesaleByEmailAction,
   updateOrderStatusAction,
   bulkImportProductsAction,
 } from "@/app/admin/actions";
 import { formatCurrency, formatDate, formatOrderStatus, formatPaymentMethod } from "@/lib/format";
+import { getWhatsAppUrl } from "@/lib/site";
 import type { AdminDashboardData, PaymentMethod, Category, Product } from "@/lib/types";
 
 const paymentMethods: PaymentMethod[] = [
@@ -91,8 +95,33 @@ export function AdminDashboard({
   const [bulkCsvText, setBulkCsvText] = useState("");
   const [bulkMsg, setBulkMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Customer filter state
-  const [customerFilter, setCustomerFilter] = useState<"all" | "admin" | "customer">("all");
+  // Customer filter and search states
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerFilter, setCustomerFilter] = useState<"all" | "wholesale" | "retail" | "admin">("all");
+  const [quickWholesaleEmail, setQuickWholesaleEmail] = useState("");
+  const [copiedWholesaleLink, setCopiedWholesaleLink] = useState(false);
+
+  const handleCopyWholesaleLink = () => {
+    const url = `${window.location.origin}/mayorista`;
+    navigator.clipboard.writeText(url);
+    setCopiedWholesaleLink(true);
+    setTimeout(() => setCopiedWholesaleLink(false), 2500);
+  };
+
+  const handleQuickWholesaleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickWholesaleEmail.trim()) return;
+
+    startTransition(async () => {
+      try {
+        await setWholesaleByEmailAction(quickWholesaleEmail, true);
+        alert(`¡El usuario ${quickWholesaleEmail} fue habilitado como cliente Mayorista con éxito!`);
+        setQuickWholesaleEmail("");
+      } catch (err: any) {
+        alert(err.message);
+      }
+    });
+  };
 
   const handleUpdateRole = (userId: string, currentRole: string) => {
     const newRole = currentRole === "admin" ? "customer" : "admin";
@@ -355,6 +384,26 @@ export function AdminDashboard({
       return matchesSearch && matchesCategory;
     });
   }, [data.products, data.categories, productSearch, productCategoryFilter]);
+
+  // Filter customers for search & category filter
+  const filteredCustomers = useMemo(() => {
+    return data.customers.filter((customer) => {
+      const search = customerSearch.toLowerCase().trim();
+      const matchesSearch =
+        !search ||
+        customer.fullName.toLowerCase().includes(search) ||
+        customer.email.toLowerCase().includes(search) ||
+        Boolean(customer.businessName && customer.businessName.toLowerCase().includes(search)) ||
+        Boolean(customer.cuit && customer.cuit.toLowerCase().includes(search));
+
+      if (!matchesSearch) return false;
+
+      if (customerFilter === "wholesale") return customer.isApprovedWholesale;
+      if (customerFilter === "retail") return !customer.isApprovedWholesale && customer.role !== "admin";
+      if (customerFilter === "admin") return customer.role === "admin";
+      return true;
+    });
+  }, [data.customers, customerSearch, customerFilter]);
 
   const stats = [
     {
@@ -1087,14 +1136,112 @@ export function AdminDashboard({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-3">
             <div>
               <h2 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
-                <Users className="h-5 w-5 text-emerald-700" /> Cuentas de Usuario y Permisos
+                <Users className="h-5 w-5 text-emerald-700" /> Cuentas de Usuario y Clientes Mayoristas
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Gestioná los roles administrativos y autorizaciones para compras mayoristas.
+                Compartí enlaces privados a clientes comerciales y habilitá sus cuentas para ver el catálogo mayorista.
               </p>
             </div>
             <div className="text-xs text-zinc-500 font-semibold bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200">
               Total registrados: <span className="font-extrabold text-zinc-800">{data.stats.customers}</span>
+            </div>
+          </div>
+
+          {/* Quick Wholesale Actions & Sharing */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Box 1: Compartir enlace mayorista */}
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4.5 flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600" /> Enlace Privado del Catálogo Mayorista
+                </p>
+                <p className="mt-1 text-xs text-amber-800/80 leading-relaxed">
+                  Copiá el enlace para enviárselo directamente por WhatsApp a ferreterías, comercios o revendedores.
+                </p>
+              </div>
+              <div className="mt-3.5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyWholesaleLink}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold px-3.5 py-2 text-xs transition shadow-xs cursor-pointer"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {copiedWholesaleLink ? "¡Enlace Copiado!" : "Copiar Link Mayorista"}
+                </button>
+                <a
+                  href={getWhatsAppUrl("Hola! Acá te comparto el enlace exclusivo para acceder a nuestro catálogo mayorista de MYA Importaciones:")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 text-xs transition shadow-xs"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Enviar por WhatsApp
+                </a>
+              </div>
+            </div>
+
+            {/* Box 2: Habilitar por Email */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4.5 flex flex-col justify-between shadow-xs">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-zinc-700">
+                  Habilitar Cliente Mayorista por Email
+                </p>
+                <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
+                  Ingresá el email de un usuario ya registrado para otorgarle condición de cliente mayorista de inmediato.
+                </p>
+              </div>
+              <form onSubmit={handleQuickWholesaleSubmit} className="mt-3.5 flex gap-2">
+                <input
+                  type="email"
+                  placeholder="ejemplo@comercio.com"
+                  value={quickWholesaleEmail}
+                  onChange={(e) => setQuickWholesaleEmail(e.target.value)}
+                  className="flex-1 h-9.5 rounded-xl border border-zinc-300 px-3 text-xs outline-none focus:border-emerald-600 bg-white"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-3.5 py-2 text-xs transition cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  Habilitar Mayorista
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Search and Filters Bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-3.5 rounded-2xl border border-zinc-200 shadow-xs">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, email o empresa..."
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                className="w-full h-9.5 pl-9 pr-3 rounded-xl border border-zinc-300 outline-none focus:border-emerald-600 bg-white text-xs"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: "all", label: `Todos (${data.customers.length})` },
+                { id: "wholesale", label: `Mayoristas (${data.customers.filter(c => c.isApprovedWholesale).length})` },
+                { id: "retail", label: `Minoristas (${data.customers.filter(c => !c.isApprovedWholesale && c.role !== "admin").length})` },
+                { id: "admin", label: `Admins (${data.customers.filter(c => c.role === "admin").length})` },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setCustomerFilter(f.id as any)}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                    customerFilter === f.id
+                      ? "bg-zinc-900 text-white"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -1103,32 +1250,32 @@ export function AdminDashboard({
               <table className="w-full min-w-[700px] text-left text-sm">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
                   <tr>
-                    <th className="px-6 py-4 font-semibold">Usuario</th>
-                    <th className="px-6 py-4 font-semibold">Email</th>
-                    <th className="px-6 py-4 font-semibold">Rol</th>
-                    <th className="px-6 py-4 font-semibold">Canal Mayorista</th>
-                    <th className="px-6 py-4 font-semibold text-right">Acciones</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs">Usuario / Comercio</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs">Email</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs">Rol</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs">Estado Mayorista</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {data.customers.length === 0 ? (
+                  {filteredCustomers.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
                         <div className="flex flex-col items-center justify-center">
                           <Inbox className="h-10 w-10 text-zinc-300 mb-2" />
-                          <p className="font-semibold text-zinc-700">No hay usuarios registrados</p>
+                          <p className="font-semibold text-zinc-700">No se encontraron usuarios</p>
                         </div>
                       </td>
                     </tr>
                   ) : (
-                    data.customers.map((customer) => {
+                    filteredCustomers.map((customer) => {
                       const isAdmin = customer.role === "admin";
                       const isApproved = customer.isApprovedWholesale ?? false;
 
                       return (
                         <tr key={customer.id} className="hover:bg-zinc-50/40 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="font-bold text-zinc-900 flex items-center gap-1.5">
+                          <td className="px-6 py-3.5">
+                            <div className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs sm:text-sm">
                               {customer.fullName}
                               {isAdmin && (
                                 <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 ring-1 ring-inset ring-indigo-700/20">
@@ -1137,12 +1284,12 @@ export function AdminDashboard({
                               )}
                             </div>
                             {customer.businessName && (
-                              <p className="text-xs text-zinc-500">{customer.businessName} {customer.cuit ? `(${customer.cuit})` : ""}</p>
+                              <p className="text-[11px] text-zinc-500 font-medium">{customer.businessName} {customer.cuit ? `(CUIT: ${customer.cuit})` : ""}</p>
                             )}
                           </td>
-                          <td className="px-6 py-4 font-medium text-zinc-655 text-xs">{customer.email}</td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+                          <td className="px-6 py-3.5 font-medium text-zinc-650 text-xs">{customer.email}</td>
+                          <td className="px-6 py-3.5">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
                               isAdmin
                                 ? "bg-purple-50 text-purple-800 ring-purple-600/20"
                                 : "bg-zinc-100 text-zinc-700 ring-zinc-500/20"
@@ -1150,26 +1297,26 @@ export function AdminDashboard({
                               {isAdmin ? "Administrador" : "Cliente"}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-3.5">
                             <button
                               disabled={isPending}
                               onClick={() => handleToggleWholesale(customer.id, isApproved)}
-                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                                 isApproved
-                                  ? "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
+                                  ? "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
                                   : "bg-zinc-100 text-zinc-600 border border-zinc-200 hover:bg-zinc-200"
                               }`}
-                              title="Click para cambiar autorización mayorista"
+                              title="Hacé clic para cambiar la autorización mayorista"
                             >
-                              <Check className={`h-3 w-3 ${isApproved ? "text-amber-700" : "text-transparent"}`} />
+                              <Check className={`h-3.5 w-3.5 ${isApproved ? "text-amber-700" : "text-transparent"}`} />
                               {isApproved ? "Mayorista Habilitado" : "Solo Minorista"}
                             </button>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-3.5 text-right">
                             <button
                               disabled={isPending}
                               onClick={() => handleUpdateRole(customer.id, customer.role)}
-                              className={`rounded-lg px-3 py-1 text-xs font-semibold border transition cursor-pointer ${
+                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold border transition cursor-pointer ${
                                 isAdmin
                                   ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
                                   : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
