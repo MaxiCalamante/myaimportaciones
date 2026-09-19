@@ -32,7 +32,9 @@ interface DbProduct {
   categories: { name: string } | Array<{ name: string }> | null;
 }
 
-export async function getStorefrontData(): Promise<StorefrontData> {
+export async function getStorefrontData(options?: {
+  categoryId?: string;
+}): Promise<StorefrontData> {
   if (!hasSupabaseConfig()) {
     return {
       categories: demoCategories,
@@ -43,6 +45,21 @@ export async function getStorefrontData(): Promise<StorefrontData> {
 
   const supabase = await createServerSupabaseClient();
 
+  let productsQuery = supabase
+    .from("products")
+    .select(
+      "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
+    )
+    .eq("is_active", true);
+
+  if (options?.categoryId) {
+    productsQuery = productsQuery.eq("category_id", options.categoryId);
+  }
+
+  productsQuery = productsQuery
+    .order("is_featured", { ascending: false })
+    .order("created_at", { ascending: false });
+
   const [{ data: categoriesData }, { data: productsData }] = await Promise.all([
     supabase
       .from("categories")
@@ -50,13 +67,7 @@ export async function getStorefrontData(): Promise<StorefrontData> {
         "id, name, slug, parent_id, description, image_url, is_wholesale_only, display_order",
       )
       .order("display_order", { ascending: true }),
-    supabase
-      .from("products")
-      .select(
-        "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
-      )
-      .eq("is_active", true)
-      .order("created_at", { ascending: false }),
+    productsQuery,
   ]);
 
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(

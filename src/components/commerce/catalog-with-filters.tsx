@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { SlidersHorizontal, ArrowUpDown, CircleDollarSign, CheckSquare, Square, X } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import {
+  SlidersHorizontal,
+  ArrowUpDown,
+  CircleDollarSign,
+  CheckSquare,
+  Square,
+  X,
+  Search,
+} from "lucide-react";
 import type { Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
-import { formatCurrency } from "@/lib/format";
 
 export function CatalogWithFilters({
   products,
@@ -13,11 +20,18 @@ export function CatalogWithFilters({
   products: Product[];
   channel?: ProductChannel;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [minPrice, setMinPrice] = useState<string>("");
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
+  const [visibleCount, setVisibleCount] = useState(24);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Reset pagination when filter criteria change
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [searchQuery, minPrice, maxPrice, onlyInStock, sortBy]);
 
   // Compute pricing boundaries
   const prices = products.map((p) => (channel === "wholesale" ? p.wholesalePrice : p.retailPrice));
@@ -26,6 +40,18 @@ export function CatalogWithFilters({
   // Filter & Sort products on client side
   const filteredProducts = useMemo(() => {
     let result = [...products];
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.slug.toLowerCase().includes(q) ||
+          p.tags?.some((t) => t.toLowerCase().includes(q)) ||
+          p.description?.toLowerCase().includes(q),
+      );
+    }
 
     // Filter by stock
     if (onlyInStock) {
@@ -67,13 +93,19 @@ export function CatalogWithFilters({
     }
 
     return result;
-  }, [products, minPrice, maxPrice, onlyInStock, sortBy, channel]);
+  }, [products, searchQuery, minPrice, maxPrice, onlyInStock, sortBy, channel]);
+
+  const displayedProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
 
   const resetFilters = () => {
+    setSearchQuery("");
     setMinPrice("");
     setMaxPrice("");
     setOnlyInStock(false);
     setSortBy("featured");
+    setVisibleCount(24);
   };
 
   const isDark = channel === "wholesale";
@@ -85,15 +117,30 @@ export function CatalogWithFilters({
         <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">Filtros</h3>
         <button
           onClick={resetFilters}
-          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 cursor-pointer"
+          className="text-xs font-semibold text-sky-600 hover:text-sky-700 cursor-pointer"
         >
           Limpiar todos
         </button>
       </div>
 
+      {/* Search Input */}
+      <div>
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">
+          <Search className="h-4 w-4 text-zinc-400" />
+          Buscar en catálogo
+        </h4>
+        <input
+          type="text"
+          placeholder="Ej: Amoladora, Taladro, SKU..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-10 w-full rounded-lg border border-zinc-300 px-3 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400"
+        />
+      </div>
+
       {/* Price Range Filter */}
       <div>
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-750 uppercase tracking-wider mb-3">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-3">
           <CircleDollarSign className="h-4 w-4 text-zinc-400" />
           Rango de precio
         </h4>
@@ -105,7 +152,7 @@ export function CatalogWithFilters({
               placeholder="$0"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
-              className="h-9 w-full rounded-lg border border-zinc-300 px-2.5 text-xs bg-white outline-none focus:border-emerald-600 text-zinc-950"
+              className="h-9 w-full rounded-lg border border-zinc-300 px-2.5 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950"
             />
           </label>
           <label className="grid gap-1.5 text-xs text-zinc-500">
@@ -115,7 +162,7 @@ export function CatalogWithFilters({
               placeholder={`$${absoluteMaxPrice}`}
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              className="h-9 w-full rounded-lg border border-zinc-300 px-2.5 text-xs bg-white outline-none focus:border-emerald-600 text-zinc-950"
+              className="h-9 w-full rounded-lg border border-zinc-300 px-2.5 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950"
             />
           </label>
         </div>
@@ -123,13 +170,13 @@ export function CatalogWithFilters({
 
       {/* Stock availability */}
       <div>
-        <h4 className="text-xs font-semibold text-zinc-750 uppercase tracking-wider mb-3">Disponibilidad</h4>
+        <h4 className="text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-3">Disponibilidad</h4>
         <button
           onClick={() => setOnlyInStock(!onlyInStock)}
           className="flex items-center gap-2 text-sm text-zinc-700 hover:text-zinc-950 cursor-pointer"
         >
           {onlyInStock ? (
-            <CheckSquare className="h-4.5 w-4.5 text-emerald-600 fill-emerald-50" />
+            <CheckSquare className="h-4.5 w-4.5 text-sky-600 fill-sky-50" />
           ) : (
             <Square className="h-4.5 w-4.5 text-zinc-400" />
           )}
@@ -139,14 +186,14 @@ export function CatalogWithFilters({
 
       {/* Sorting */}
       <div>
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-750 uppercase tracking-wider mb-3">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-3">
           <ArrowUpDown className="h-4 w-4 text-zinc-400" />
           Ordenar por
         </h4>
         <select
           value={sortBy}
-          onChange={(e: any) => setSortBy(e.target.value)}
-          className="h-9 w-full rounded-lg border border-zinc-350 bg-white px-2.5 text-xs text-zinc-850 outline-none focus:border-emerald-600 cursor-pointer"
+          onChange={(e) => setSortBy(e.target.value as any)}
+          className="h-9 w-full rounded-lg border border-zinc-300 bg-white px-2.5 text-xs text-zinc-800 outline-none focus:border-sky-500 cursor-pointer"
         >
           <option value="featured">Destacados</option>
           <option value="price-asc">Menor precio</option>
@@ -158,22 +205,35 @@ export function CatalogWithFilters({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Mobile Filter Toggle */}
-      <div className="flex items-center justify-between gap-4 md:hidden mb-6">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-            isDark
-              ? "border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800"
-              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
-          }`}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          Filtros
-        </button>
-        <span className="text-xs font-medium text-zinc-500">
-          {filteredProducts.length} productos
-        </span>
+      {/* Search & Mobile Filter Toggle */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Buscar por producto, modelo o SKU..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 w-full rounded-xl border border-zinc-200 bg-white pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+          />
+        </div>
+
+        <div className="flex w-full sm:w-auto items-center justify-between gap-4">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className={`inline-flex md:hidden items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+              isDark
+                ? "border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros
+          </button>
+          <span className="text-xs font-semibold text-zinc-500">
+            {filteredProducts.length} productos
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-8 md:grid-cols-[240px_1fr]">
@@ -189,26 +249,44 @@ export function CatalogWithFilters({
           {/* Results count (Desktop) */}
           <div className="hidden items-center justify-between border-b border-zinc-200 pb-3 mb-6 md:flex">
             <span className="text-sm font-medium text-zinc-500">
-              Mostrando {filteredProducts.length} de {products.length} productos
+              Mostrando {displayedProducts.length} de {filteredProducts.length} productos
+              {filteredProducts.length !== products.length && ` (filtrado de ${products.length} totales)`}
             </span>
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <p className="text-base text-zinc-500">No hay productos que coincidan con los filtros aplicados.</p>
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-zinc-200 p-8">
+              <p className="text-base text-zinc-600 font-medium">No hay productos que coincidan con los filtros aplicados.</p>
               <button
                 onClick={resetFilters}
-                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 transition"
+                className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-sky-600 px-4 text-xs font-semibold text-white hover:bg-sky-700 transition"
               >
                 Restablecer filtros
               </button>
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredProducts.map((product) => (
-                <ProductCard channel={channel} key={product.id} product={product} />
-              ))}
-            </div>
+            <>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {displayedProducts.map((product) => (
+                  <ProductCard channel={channel} key={product.id} product={product} />
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {visibleCount < filteredProducts.length && (
+                <div className="mt-10 flex flex-col items-center justify-center gap-2">
+                  <button
+                    onClick={() => setVisibleCount((prev) => prev + 24)}
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-8 text-sm font-semibold text-white hover:bg-zinc-800 transition shadow-sm cursor-pointer"
+                  >
+                    Cargar más productos ({filteredProducts.length - visibleCount} restantes)
+                  </button>
+                  <p className="text-xs text-zinc-400">
+                    Mostrando {visibleCount} de {filteredProducts.length} productos
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -222,7 +300,7 @@ export function CatalogWithFilters({
               <h2 className="text-lg font-bold text-zinc-950">Filtros</h2>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded-lg text-zinc-650 hover:bg-zinc-100"
+                className="p-1.5 rounded-lg text-zinc-600 hover:bg-zinc-100"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -231,7 +309,7 @@ export function CatalogWithFilters({
             <div className="mt-6 border-t pt-4">
               <button
                 onClick={() => setMobileOpen(false)}
-                className="w-full inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 transition cursor-pointer"
+                className="w-full inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 text-sm font-semibold text-white hover:bg-sky-700 transition cursor-pointer"
               >
                 Ver {filteredProducts.length} productos
               </button>

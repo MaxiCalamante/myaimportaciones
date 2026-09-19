@@ -18,17 +18,19 @@ export default async function Home({
   const params = await searchParams;
   const selectedCategorySlug = params.category;
 
-  const { categories, products } = await getStorefrontData();
-  const retailProducts = products.filter((product) => !product.wholesaleOnly);
-
+  const initialData = await getStorefrontData();
   const selectedCategory = selectedCategorySlug
-    ? categories.find((c) => c.slug === selectedCategorySlug)
+    ? initialData.categories.find((c) => c.slug === selectedCategorySlug)
     : null;
 
+  const { categories, products } = selectedCategory
+    ? await getStorefrontData({ categoryId: selectedCategory.id })
+    : initialData;
+
+  const retailProducts = products.filter((product) => !product.wholesaleOnly);
+
   if (selectedCategory) {
-    const categoryProducts = retailProducts.filter(
-      (product) => product.categoryId === selectedCategory.id,
-    );
+    const categoryProducts = retailProducts;
 
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

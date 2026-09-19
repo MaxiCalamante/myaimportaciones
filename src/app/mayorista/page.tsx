@@ -19,19 +19,21 @@ export default async function WholesalePage({
   const params = await searchParams;
   const selectedCategorySlug = params.category;
 
-  const { categories, products } = await getStorefrontData();
+  const initialData = await getStorefrontData();
+  const selectedCategory = selectedCategorySlug
+    ? initialData.categories.find((c) => c.slug === selectedCategorySlug)
+    : null;
+
+  const { categories, products } = selectedCategory
+    ? await getStorefrontData({ categoryId: selectedCategory.id })
+    : initialData;
+
   const wholesaleProducts = products.filter(
     (product) => product.wholesalePrice > 0 || product.wholesaleOnly,
   );
 
-  const selectedCategory = selectedCategorySlug
-    ? categories.find((c) => c.slug === selectedCategorySlug)
-    : null;
-
   if (selectedCategory) {
-    const categoryProducts = wholesaleProducts.filter(
-      (product) => product.categoryId === selectedCategory.id,
-    );
+    const categoryProducts = wholesaleProducts;
 
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
