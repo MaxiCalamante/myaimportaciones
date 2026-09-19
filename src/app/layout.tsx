@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartDrawer } from "@/components/commerce/cart-drawer";
 import { CommerceProvider } from "@/components/commerce/commerce-provider";
@@ -10,6 +11,7 @@ import { getStorefrontData } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { WhatsAppFloatingButton } from "@/components/commerce/whatsapp-button";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { MarketingScripts } from "@/components/analytics/marketing-scripts";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -124,6 +126,9 @@ export default async function RootLayout({
           <ProductDetailsModal />
           <WhatsAppFloatingButton />
           <MobileBottomNav />
+          <Suspense fallback={null}>
+            <MarketingScripts />
+          </Suspense>
         </CommerceProvider>
       </body>
     </html>

@@ -16,6 +16,7 @@ import {
   type ShippingCalculation,
   type ShippingOption,
 } from "@/lib/shipping";
+import { trackAdsEvent } from "@/lib/analytics";
 
 export interface CartLine {
   product: Product;
@@ -148,6 +149,14 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         return [...current, { product, quantity, channel }];
       });
       setCartOpen(true);
+
+      // Track AddToCart conversion event
+      trackAdsEvent("AddToCart", {
+        content_name: product.title,
+        content_ids: [product.id],
+        value: (channel === "wholesale" ? product.wholesalePrice : product.retailPrice) * quantity,
+        quantity,
+      });
     },
     [],
   );

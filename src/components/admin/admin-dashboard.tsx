@@ -36,9 +36,12 @@ import {
   RefreshCw,
   Percent,
   Calculator,
+  Megaphone,
 } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
 import { PricingEngine } from "@/components/admin/pricing-engine";
+import { SupplierResaleSystem } from "@/components/admin/supplier-resale-system";
+import { MarketingHub } from "@/components/admin/marketing-hub";
 import {
   createCategoryAction,
   updateCategoryAction,
@@ -73,7 +76,9 @@ export function AdminDashboard({
   data: AdminDashboardData;
   supabaseReady: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "pricing_engine" | "suppliers" | "categories" | "orders" | "customers">("products");
+  const [activeTab, setActiveTab] = useState<
+    "products" | "pricing_engine" | "resale_system" | "marketing" | "suppliers" | "categories" | "orders" | "customers"
+  >("products");
   const [isPending, startTransition] = useTransition();
   const [stockState, setStockState] = useState<Record<string, number>>({});
   const [showStockAudit, setShowStockAudit] = useState(false);
@@ -854,6 +859,8 @@ Logística / Despacho: +${calcShippingPercent}%
           {[
             { id: "products", name: "Productos & Stock", icon: Package },
             { id: "pricing_engine", name: "Ajustador Masivo de Precios (%)", icon: Percent },
+            { id: "resale_system", name: "Cálculo & Reventa B2B", icon: Calculator },
+            { id: "marketing", name: "Marketing & Píxeles Ads", icon: Megaphone },
             { id: "suppliers", name: "Proveedores & Costos (B2B)", icon: Truck },
             { id: "categories", name: "Categorías & Rubros", icon: FolderOpen },
             { id: "orders", name: "Pedidos / Ventas", icon: ReceiptText },
@@ -1166,6 +1173,20 @@ Logística / Despacho: +${calcShippingPercent}%
           categories={data.categories}
           customSuppliers={customSuppliers}
         />
+      )}
+
+      {/* TAB CONTENT: RESALE SYSTEM & B2B PROFIT ENGINE */}
+      {activeTab === "resale_system" && (
+        <SupplierResaleSystem
+          products={data.products}
+          categories={data.categories}
+          customSuppliers={customSuppliers}
+        />
+      )}
+
+      {/* TAB CONTENT: MARKETING & ADS HUB */}
+      {activeTab === "marketing" && (
+        <MarketingHub />
       )}
 
       {/* TAB CONTENT: SUPPLIERS & COST CONTROL (B2B) */}

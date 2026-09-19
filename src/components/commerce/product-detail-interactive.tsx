@@ -23,6 +23,7 @@ import { useCommerce } from "@/components/commerce/commerce-provider";
 import { calculateShipping } from "@/lib/shipping";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Product } from "@/lib/types";
+import { trackAdsEvent } from "@/lib/analytics";
 
 export function ProductDetailInteractive({ product }: { product: Product }) {
   const {
@@ -47,6 +48,14 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   React.useEffect(() => {
     setQuantity(channel === "wholesale" ? Math.max(product.wholesaleMinQuantity, 1) : 1);
   }, [channel, product.wholesaleMinQuantity]);
+
+  React.useEffect(() => {
+    trackAdsEvent("ViewContent", {
+      content_name: product.title,
+      content_ids: [product.id],
+      value: product.retailPrice,
+    });
+  }, [product.id, product.title, product.retailPrice]);
 
   const price = channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
 

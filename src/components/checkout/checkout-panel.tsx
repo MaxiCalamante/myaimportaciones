@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useMemo, useState, useTransition, useEffect } from "react";
 import { CheckCircle2, CreditCard, Landmark, MessageCircle, Receipt, Wallet, Search, Sparkles, ShieldCheck, Truck } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
@@ -10,6 +10,7 @@ import { useCommerce } from "@/components/commerce/commerce-provider";
 import { createOrderAction } from "@/app/checkout/actions";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Profile } from "@/lib/auth";
+import { trackAdsEvent } from "@/lib/analytics";
 
 const paymentOptions: Array<{ value: PaymentMethod; icon: typeof CreditCard; badge?: string }> = [
   { value: "transferencia", icon: Landmark, badge: "10% OFF" },
@@ -38,6 +39,22 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const shipping = shippingCost;
+
+  // Track InitiateCheckout on panel mount
+  useEffect(() => {
+    if (cart.length > 0) {
+      trackAdsEvent("InitiateCheckout", {
+        value: cartTotal,
+        num_items: cart.length,
+        items: cart.map((l) => ({
+          id: l.product.id,
+          title: l.product.title,
+          quantity: l.quantity,
+          price: l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice,
+        })),
+      });
+    }
+  }, []); // Run once on mount
 
   // 10% discount for bank transfer / cash
   const transferDiscountPercentage = 10;
@@ -111,6 +128,20 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
           orderNotes
         );
         setOrderCode(result.trackingCode);
+
+        // Fire Purchase conversion event for Meta Pixel, Google Ads, TikTok
+        trackAdsEvent("Purchase", {
+          transaction_id: result.trackingCode,
+          value: total,
+          currency: "ARS",
+          items: cart.map((l) => ({
+            id: l.product.id,
+            title: l.product.title,
+            quantity: l.quantity,
+            price: l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice,
+          })),
+        });
+
         clearCart();
       } catch (err: any) {
         setErrorMsg(err.message || "Error al registrar el pedido.");

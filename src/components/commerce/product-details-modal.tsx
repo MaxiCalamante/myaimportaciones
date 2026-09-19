@@ -6,6 +6,7 @@ import { CreditCard, Heart, Landmark, Receipt, ShoppingCart, Wallet, X } from "l
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { Button } from "@/components/ui/button";
+import { trackAdsEvent } from "@/lib/analytics";
 
 export function ProductDetailsModal() {
   const {
@@ -32,7 +33,7 @@ export function ProductDetailsModal() {
     }
   }, [selectedProduct, channel]);
 
-  // Adjust default channel based on product settings
+  // Adjust default channel based on product settings and track ViewContent
   React.useEffect(() => {
     if (selectedProduct) {
       if (selectedProduct.wholesaleOnly) {
@@ -40,6 +41,11 @@ export function ProductDetailsModal() {
       } else {
         setChannel("retail");
       }
+      trackAdsEvent("ViewContent", {
+        content_name: selectedProduct.title,
+        content_ids: [selectedProduct.id],
+        value: selectedProduct.retailPrice,
+      });
     }
   }, [selectedProduct]);
 
