@@ -35,6 +35,65 @@ interface ZoneDefinition {
 }
 
 function resolveZone(cleanCp: string): ZoneDefinition | null {
+  const upper = cleanCp.toUpperCase();
+
+  // Fast city name detection
+  if (upper.includes("TANDIL")) {
+    return {
+      id: "local_tandil",
+      name: "Tandil (Local)",
+      location: "Tandil, Buenos Aires (Sede Central)",
+      baseBranchPrice: 0,
+      baseHomePrice: 2500,
+      branchDays: "Hoy mismo",
+      homeDays: "En el día / 24 hs",
+    };
+  }
+  if (upper.includes("CABA") || upper.includes("CAPITAL") || upper.includes("PALERMO") || upper.includes("BELGRANO") || upper.includes("RECOLETA")) {
+    return {
+      id: "caba",
+      name: "CABA",
+      location: "Ciudad Autónoma de Buenos Aires",
+      baseBranchPrice: 5400,
+      baseHomePrice: 6800,
+      branchDays: "2 a 3 días hábiles",
+      homeDays: "24 a 48 hs hábiles",
+    };
+  }
+  if (upper.includes("ROSARIO")) {
+    return {
+      id: "centro_litoral",
+      name: "Centro y Litoral",
+      location: "Rosario, Santa Fe",
+      baseBranchPrice: 6900,
+      baseHomePrice: 8600,
+      branchDays: "3 a 5 días hábiles",
+      homeDays: "2 a 4 días hábiles",
+    };
+  }
+  if (upper.includes("CORDOBA")) {
+    return {
+      id: "centro_litoral",
+      name: "Centro y Litoral",
+      location: "Córdoba Capital",
+      baseBranchPrice: 6900,
+      baseHomePrice: 8600,
+      branchDays: "3 a 5 días hábiles",
+      homeDays: "2 a 4 días hábiles",
+    };
+  }
+  if (upper.includes("MENDOZA")) {
+    return {
+      id: "cuyo_noa",
+      name: "Cuyo y NOA",
+      location: "Mendoza Capital",
+      baseBranchPrice: 7800,
+      baseHomePrice: 9800,
+      branchDays: "3 a 6 días hábiles",
+      homeDays: "3 a 5 días hábiles",
+    };
+  }
+
   // Extract numerical component
   const numMatch = cleanCp.match(/\d{4}/);
   const letterPrefix = cleanCp.match(/^[A-Z]/)?.[0];

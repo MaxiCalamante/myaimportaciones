@@ -268,11 +268,12 @@ Alias: MYA.IMPORTACIONES.TD
                 Datos para Pago por Transferencia
               </span>
               <div className="space-y-0.5 text-zinc-600 pt-1">
-                <p><strong>Titular:</strong> Máximo Calamante</p>
-                <p><strong>Cuenta:</strong> MYA Importaciones Oficial</p>
-                <p><strong>Alias:</strong> <span className="font-mono font-black text-zinc-900 bg-white px-1.5 py-0.5 rounded-sm border border-zinc-300">MYA.IMPORTACIONES.TD</span></p>
+                <p><strong>Titular:</strong> {siteConfig.bankTransfer.holder}</p>
+                <p><strong>Entidad:</strong> {siteConfig.bankTransfer.bank}</p>
+                <p><strong>CVU:</strong> <span className="font-mono font-bold text-zinc-900 bg-white px-1.5 py-0.5 rounded-sm border border-zinc-300">{siteConfig.bankTransfer.cvu}</span></p>
+                <p><strong>Alias:</strong> <span className="font-mono font-black text-zinc-900 bg-white px-1.5 py-0.5 rounded-sm border border-zinc-300">{siteConfig.bankTransfer.alias}</span></p>
                 <p className="text-[10px] text-zinc-500 pt-1">
-                  Enviar comprobante vía WhatsApp al 2494638919 indicando el N° #{quoteNumber}.
+                  Enviar comprobante vía WhatsApp al {siteConfig.phone} indicando el N° #{quoteNumber}.
                 </p>
               </div>
             </div>

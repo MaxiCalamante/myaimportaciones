@@ -1,7 +1,24 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition, useEffect } from "react";
-import { CheckCircle2, CreditCard, Landmark, MessageCircle, Receipt, Wallet, Search, Sparkles, ShieldCheck, Truck } from "lucide-react";
+import {
+  CheckCircle2,
+  CreditCard,
+  Landmark,
+  MessageCircle,
+  Receipt,
+  Wallet,
+  Search,
+  Sparkles,
+  ShieldCheck,
+  Truck,
+  Copy,
+  Check,
+  ExternalLink,
+  Lock,
+  Building2,
+  Calendar,
+} from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
@@ -12,12 +29,22 @@ import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Profile } from "@/lib/auth";
 import { trackAdsEvent } from "@/lib/analytics";
 
-const paymentOptions: Array<{ value: PaymentMethod; icon: typeof CreditCard; badge?: string }> = [
-  { value: "transferencia", icon: Landmark, badge: "10% OFF" },
-  { value: "efectivo", icon: Receipt, badge: "10% OFF" },
-  { value: "mercado_pago", icon: Wallet },
-  { value: "tarjeta", icon: CreditCard },
+const paymentOptions: Array<{ value: PaymentMethod; icon: typeof CreditCard; badge?: string; desc: string }> = [
+  { value: "transferencia", icon: Landmark, badge: "10% OFF", desc: "CVU Mercado Pago / Transferencia inmediata" },
+  { value: "tarjeta", icon: CreditCard, desc: "Crédito o Débito (Visa, Mastercard, Cabal, AMEX)" },
+  { value: "mercado_pago", icon: Wallet, desc: "Dinero en cuenta o Mercado Crédito" },
+  { value: "efectivo", icon: Receipt, badge: "10% OFF", desc: "Pago contra entrega o retiro en depósito" },
 ];
+
+function detectCardBrand(number: string): string {
+  const clean = number.replace(/\D/g, "");
+  if (/^4/.test(clean)) return "Visa";
+  if (/^(5[1-5]|2[2-7])/.test(clean)) return "Mastercard";
+  if (/^3[47]/.test(clean)) return "American Express";
+  if (/^(5896|6042|6043)/.test(clean)) return "Cabal";
+  if (/^(5895|5031)/.test(clean)) return "Naranja X";
+  return "Tarjeta";
+}
 
 export function CheckoutPanel({ profile }: { profile: Profile | null }) {
   const {
@@ -32,9 +59,24 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     setSelectedShippingOptionId,
     selectedShippingOption,
   } = useCommerce();
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transferencia");
   const [orderCode, setOrderCode] = useState<string | null>(null);
-  
+  const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
+  const [mpInitPoint, setMpInitPoint] = useState<string | null>(null);
+
+  // Card payment fields
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolder, setCardHolder] = useState(profile?.fullName || "");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [cardDni, setCardDni] = useState("");
+  const [installments, setInstallments] = useState("1");
+
+  // Copy feedback states
+  const [copiedCvu, setCopiedCvu] = useState(false);
+  const [copiedAlias, setCopiedAlias] = useState(false);
+
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -90,6 +132,34 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     [cart],
   );
 
+  const cardBrand = useMemo(() => detectCardBrand(cardNumber), [cardNumber]);
+
+  const handleCopyCvu = () => {
+    navigator.clipboard.writeText(siteConfig.bankTransfer.cvu);
+    setCopiedCvu(true);
+    setTimeout(() => setCopiedCvu(false), 2000);
+  };
+
+  const handleCopyAlias = () => {
+    navigator.clipboard.writeText(siteConfig.bankTransfer.alias);
+    setCopiedAlias(true);
+    setTimeout(() => setCopiedAlias(false), 2000);
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
+    const formatted = raw.replace(/(\d{4})(?=\d)/g, "$1 ");
+    setCardNumber(formatted);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, "").slice(0, 4);
+    if (raw.length >= 3) {
+      raw = `${raw.slice(0, 2)}/${raw.slice(2)}`;
+    }
+    setCardExpiry(raw);
+  };
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isWholesaleValid) return;
@@ -114,6 +184,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     setErrorMsg(null);
     startTransition(async () => {
       try {
+        const finalTotalSnapshot = total;
         const result = await createOrderAction(
           profile?.id ?? null,
           paymentMethod,
@@ -122,17 +193,25 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
           fullAddress,
           cartTotal,
           shipping,
-          total,
+          finalTotalSnapshot,
           lines,
           shippingEmail,
-          orderNotes
+          paymentMethod === "tarjeta"
+            ? `${orderNotes || ""}\n[Pago con Tarjeta: ${cardBrand} **** ${cardNumber.slice(-4)} | Cuotas: ${installments} | DNI: ${cardDni}]`
+            : orderNotes
         );
+
         setOrderCode(result.trackingCode);
+        setConfirmedTotal(finalTotalSnapshot);
+
+        if (result.initPoint && !result.isDemo) {
+          setMpInitPoint(result.initPoint);
+        }
 
         // Fire Purchase conversion event for Meta Pixel, Google Ads, TikTok
         trackAdsEvent("Purchase", {
           transaction_id: result.trackingCode,
-          value: total,
+          value: finalTotalSnapshot,
           currency: "ARS",
           items: cart.map((l) => ({
             id: l.product.id,
@@ -149,31 +228,126 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     });
   }
 
+  // Confirmation View
   if (orderCode) {
-    const whatsappOrderConfirmedText = `Hola MYA Importaciones! Acabo de registrar el pedido #${orderCode}. Les escribo para coordinar la entrega y enviar el comprobante de pago.`;
+    const isBankTransfer = paymentMethod === "transferencia";
+    const whatsappOrderConfirmedText = isBankTransfer
+      ? `Hola Máximo! Acabo de registrar el pedido #${orderCode} por ${formatCurrency(confirmedTotal)} en la tienda de MYA Importaciones. Te escribo para enviarte el comprobante de transferencia a tu CVU ${siteConfig.bankTransfer.cvu}.`
+      : `Hola Máximo! Acabo de registrar el pedido #${orderCode} por ${formatCurrency(confirmedTotal)} abonado con ${formatPaymentMethod(paymentMethod)}. Te escribo para coordinar el despacho.`;
 
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8 animate-in fade-in duration-300">
-        <div className="rounded-2xl border border-emerald-200 bg-white p-8 text-center shadow-lg">
-          <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
-          <h1 className="mt-4 text-3xl font-extrabold text-zinc-950">
-            ¡Pedido Confirmado en MYA Importaciones!
-          </h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            Tu código de pedido y seguimiento oficial es:
-          </p>
-          <p className="mt-3 inline-block rounded-xl bg-zinc-100 border border-zinc-200 px-6 py-3 font-mono text-2xl font-black text-zinc-950 shadow-inner">
-            {orderCode}
-          </p>
-
-          <div className="mt-6 rounded-xl bg-sky-50 border border-sky-200 p-5 max-w-md mx-auto text-left text-xs text-sky-950 space-y-1.5">
-            <p className="font-bold text-sm text-sky-900">Datos para la Transferencia Bancaria:</p>
-            <p><strong>Banco:</strong> {siteConfig.bankTransfer.bank}</p>
-            <p><strong>Alias:</strong> <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-sky-300">{siteConfig.bankTransfer.alias}</span></p>
-            <p><strong>CBU:</strong> <span className="font-mono">{siteConfig.bankTransfer.cbu}</span></p>
-            <p><strong>Titular:</strong> {siteConfig.bankTransfer.holder}</p>
+        <div className="rounded-3xl border border-emerald-200 bg-white p-8 sm:p-10 text-center shadow-xl">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
           </div>
 
+          <span className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            ¡Pedido Registrado con Éxito en MYA Importaciones!
+          </span>
+
+          <h1 className="mt-3 text-3xl font-black text-zinc-950 tracking-tight sm:text-4xl">
+            {isBankTransfer ? "Esperando tu Transferencia" : "¡Muchas Gracias por tu Compra!"}
+          </h1>
+          <p className="mt-2 text-sm text-zinc-600 max-w-lg mx-auto">
+            Hemos reservado tu stock en nuestro depósito central de Tandil. Tu código de pedido y seguimiento oficial es:
+          </p>
+
+          <div className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-zinc-100 border border-zinc-200 px-6 py-3 font-mono text-2xl font-black text-zinc-950 shadow-inner">
+            <span>{orderCode}</span>
+          </div>
+
+          {/* If Mercado Pago External Checkout is ready */}
+          {mpInitPoint && (
+            <div className="mt-6 rounded-2xl bg-sky-500 text-white p-6 max-w-md mx-auto shadow-lg space-y-3">
+              <p className="font-black text-lg">Pagar con Mercado Pago</p>
+              <p className="text-xs text-sky-100">
+                Hacé clic en el siguiente enlace seguro para abonar con tarjeta en hasta 12 cuotas:
+              </p>
+              <a
+                href={mpInitPoint}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sky-900 font-extrabold text-sm hover:bg-sky-50 transition shadow"
+              >
+                <CreditCard className="h-4 w-4 text-sky-600" />
+                Abrir Pasarela de Mercado Pago
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          )}
+
+          {/* Bank Transfer Details Card (Requested with Máximo's CVU) */}
+          {isBankTransfer && (
+            <div className="mt-8 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/70 to-teal-50/50 p-6 max-w-lg mx-auto text-left shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-emerald-700" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+                      Datos para Transferir (10% OFF Aplicado)
+                    </p>
+                    <p className="text-sm font-black text-zinc-950">
+                      Monto a transferir: <span className="text-emerald-700">{formatCurrency(confirmedTotal)}</span>
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black text-white">
+                  10% OFF
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {/* CVU Block */}
+                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200 shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-zinc-500 block">CVU Mercado Pago:</span>
+                    <span className="font-mono font-black text-base text-zinc-950 tracking-wider">
+                      {siteConfig.bankTransfer.cvu}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyCvu}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
+                  >
+                    {copiedCvu ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedCvu ? "¡Copiado!" : "Copiar"}
+                  </button>
+                </div>
+
+                {/* Alias Block */}
+                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200 shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-zinc-500 block">Alias:</span>
+                    <span className="font-mono font-black text-sm text-zinc-950">
+                      {siteConfig.bankTransfer.alias}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyAlias}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs transition cursor-pointer"
+                  >
+                    {copiedAlias ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedAlias ? "¡Copiado!" : "Copiar"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-600 pt-1">
+                  <p><strong>Titular:</strong> {siteConfig.bankTransfer.holder}</p>
+                  <p><strong>Entidad:</strong> {siteConfig.bankTransfer.bank}</p>
+                </div>
+
+                <p className="text-[11px] text-emerald-900 bg-emerald-100/70 p-2.5 rounded-lg leading-relaxed">
+                  💡 Una vez realizada la transferencia, enviá el comprobante al WhatsApp <strong>2494638919</strong> con tu código <strong>#{orderCode}</strong> para despachar tu pedido inmediatamente.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
               href={getWhatsAppUrl(whatsappOrderConfirmedText)}
@@ -182,7 +356,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               className="w-full sm:w-auto inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 text-sm font-bold text-white hover:bg-emerald-700 transition shadow-md cursor-pointer"
             >
               <MessageCircle className="h-5 w-5" />
-              Enviar Comprobante por WhatsApp
+              {isBankTransfer ? "Enviar Comprobante por WhatsApp" : "Coordinar Entrega por WhatsApp"}
             </a>
             <Link
               className="w-full sm:w-auto inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-6 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition"
@@ -202,13 +376,13 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
       <div className="mb-8">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
           <ShieldCheck className="h-4 w-4" />
-          Compra Protegida &bull; MYA Importaciones
+          Compra Protegida &bull; MYA Importaciones Tandil
         </div>
         <h1 className="mt-1 text-3xl font-black text-zinc-950 tracking-tight sm:text-4xl">
           Finalizar Compra
         </h1>
         <p className="text-xs text-zinc-500 mt-1">
-          Podés completar tus datos como invitado o con tu cuenta sin necesidad de contraseñas.
+          Completá tus datos de entrega y elegí tu medio de pago (Transferencia con 10% OFF o Tarjeta de Crédito/Débito).
         </p>
       </div>
 
@@ -216,7 +390,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
         <section className="space-y-6">
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs">
             {errorMsg && (
-              <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800">
+              <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800 font-medium">
                 {errorMsg}
               </div>
             )}
@@ -230,13 +404,13 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
             <h2 className="text-base font-bold text-zinc-950 flex items-center gap-2">
               <Truck className="h-5 w-5 text-zinc-500" />
-              Datos de entrega y contacto
+              1. Datos de Entrega y Contacto
             </h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
                 Nombre y Apellido *
                 <input
-                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white font-medium"
                   name="name"
                   required
                   placeholder="Ej: Juan Pérez"
@@ -248,20 +422,21 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
                 WhatsApp / Teléfono *
                 <input
-                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white font-medium"
                   name="phone"
                   required
-                  placeholder="Ej: 11 2345-6789"
+                  placeholder="Ej: 249 463-8919"
                   defaultValue=""
                   type="tel"
                 />
               </label>
 
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700 sm:col-span-2">
-                Email (para comprobante y seguimiento)
+                Email (para comprobante y seguimiento) *
                 <input
-                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white font-medium"
                   name="email"
+                  required
                   placeholder="ejemplo@correo.com"
                   defaultValue={profile?.email ?? ""}
                   type="email"
@@ -273,31 +448,42 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
             <div className="mt-5 pt-4 border-t border-zinc-200 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <label className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Truck className="h-4 w-4 text-sky-600" /> Código Postal de Envío *
+                  <Truck className="h-4 w-4 text-emerald-600" /> Código Postal de Destino *
                 </label>
                 {shippingCalculation.isValid && (
-                  <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                     📍 {shippingCalculation.locationName}
                   </span>
                 )}
               </div>
 
-              <div className="flex gap-2 max-w-sm">
+              <div className="flex items-center gap-2 max-w-sm">
                 <input
                   type="text"
                   name="postal_code"
                   required
-                  placeholder="Ingresá tu CP (ej: 7000, 1425 o B1640)"
+                  placeholder="Ingresá tu CP (ej: 7000, 1425, Tandil...)"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-zinc-300 px-3 text-sm bg-white outline-none focus:border-sky-500 font-medium"
+                  className="h-11 w-full rounded-xl border border-zinc-300 px-3 text-sm bg-white outline-none focus:border-emerald-500 font-medium"
                 />
               </div>
+              <p className="text-[11px] text-zinc-400">
+                ¿No sabés tu código postal?{" "}
+                <a
+                  href="https://www.correoargentino.com.ar/formularios/cpa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-700 font-semibold hover:underline"
+                >
+                  Consultalo en Correo Argentino
+                </a>
+              </p>
 
               {shippingCalculation.isValid && (
                 <div className="space-y-2 pt-2">
                   <span className="text-xs font-bold text-zinc-700 block">
-                    Seleccioná el método de transporte:
+                    Seleccioná tu método de envío o retiro:
                   </span>
                   <div className="grid gap-2.5 sm:grid-cols-2">
                     {shippingCalculation.options.map((opt) => {
@@ -309,7 +495,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                           onClick={() => setSelectedShippingOptionId(opt.id)}
                           className={`flex items-start justify-between p-3.5 rounded-xl border text-left transition cursor-pointer ${
                             isSelected
-                              ? "border-sky-500 bg-sky-50/70 ring-2 ring-sky-500/20 shadow-xs"
+                              ? "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 shadow-xs"
                               : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
                           }`}
                         >
@@ -360,20 +546,21 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700 sm:col-span-2">
                 Dirección de entrega (Calle y número) *
                 <input
-                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white font-medium"
                   name="address"
                   required
-                  placeholder="Calle, número, piso, depto (o retiro en sucursal si elegiste correo)"
+                  placeholder="Calle, número, piso, depto (o sucursal de correo elegida)"
                   defaultValue=""
                   type="text"
                 />
               </label>
 
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
-                Localidad y Provincia
+                Localidad y Provincia *
                 <input
-                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white font-medium"
                   name="city"
+                  required
                   placeholder="Ej: Tandil, Buenos Aires"
                   defaultValue={shippingCalculation.locationName || ""}
                   type="text"
@@ -381,11 +568,11 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               </label>
 
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
-                Notas adicionales para el repartidor (Opcional)
+                Notas para el repartidor (Opcional)
                 <input
-                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white"
                   name="notes"
-                  placeholder="Entre calles, timbre, color de reja..."
+                  placeholder="Entre calles, timbre, color de puerta..."
                   defaultValue=""
                   type="text"
                 />
@@ -394,24 +581,24 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
           </div>
 
           {/* Payment method selection */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-zinc-950 flex items-center gap-2">
                 <Landmark className="h-5 w-5 text-zinc-500" />
-                Medio de pago
+                2. Medio de Pago
               </h2>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                <Sparkles className="h-3 w-3" />
-                10% OFF en Transferencia / Efectivo
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                10% OFF en Transferencia
               </span>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {paymentOptions.map((option) => (
                 <button
-                  className={`flex items-center justify-between rounded-xl border p-4 text-left transition cursor-pointer ${
+                  className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition cursor-pointer ${
                     paymentMethod === option.value
-                      ? "border-sky-500 bg-sky-50/50 ring-2 ring-sky-500/20"
+                      ? "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-xs"
                       : "border-zinc-200 hover:border-zinc-300 bg-white"
                   }`}
                   key={option.value}
@@ -419,32 +606,188 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                   type="button"
                   disabled={isPending}
                 >
-                  <div className="flex items-center gap-3">
-                    <option.icon className={`h-5 w-5 ${paymentMethod === option.value ? "text-sky-600" : "text-zinc-500"}`} />
-                    <span className="text-sm font-semibold text-zinc-950">
-                      {formatPaymentMethod(option.value)}
-                    </span>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2.5">
+                      <option.icon className={`h-5 w-5 ${paymentMethod === option.value ? "text-emerald-600" : "text-zinc-500"}`} />
+                      <span className="text-sm font-black text-zinc-950">
+                        {formatPaymentMethod(option.value)}
+                      </span>
+                    </div>
+                    {option.badge && (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-extrabold text-white shadow-xs">
+                        {option.badge}
+                      </span>
+                    )}
                   </div>
-                  {option.badge && (
-                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                      {option.badge}
-                    </span>
-                  )}
+                  <p className="text-[11px] text-zinc-500 mt-2">
+                    {option.desc}
+                  </p>
                 </button>
               ))}
             </div>
             <input name="payment_method" type="hidden" value={paymentMethod} />
 
+            {/* Transfer Details Card */}
             {paymentMethod === "transferencia" && (
-              <div className="mt-5 rounded-xl bg-sky-50 border border-sky-200 p-4 text-xs text-sky-950 space-y-1.5 animate-in fade-in duration-200">
-                <p className="font-bold text-sm text-sky-900">Datos para la transferencia:</p>
-                <p><strong>Banco:</strong> {siteConfig.bankTransfer.bank}</p>
-                <p><strong>Alias:</strong> <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-sky-300">{siteConfig.bankTransfer.alias}</span></p>
-                <p><strong>CBU:</strong> <span className="font-mono">{siteConfig.bankTransfer.cbu}</span></p>
-                <p><strong>Titular:</strong> {siteConfig.bankTransfer.holder}</p>
-                <p className="text-[11px] text-zinc-500 pt-1">
-                  Al confirmar el pedido se reservará tu stock y podrás enviar el comprobante directamente por WhatsApp con tu número de orden.
-                </p>
+              <div className="mt-5 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-teal-50/40 border border-emerald-300/80 p-5 text-xs text-zinc-900 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-emerald-700" />
+                    <span className="font-bold text-sm text-emerald-950">
+                      Datos Oficiales para Transferir (CVU Mercado Pago):
+                    </span>
+                  </div>
+                  <span className="font-black text-xs text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                    Total: {formatCurrency(total)}
+                  </span>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="bg-white p-3 rounded-xl border border-emerald-200 flex items-center justify-between shadow-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase block">CVU Mercado Pago:</span>
+                      <span className="font-mono font-black text-sm text-zinc-950">{siteConfig.bankTransfer.cvu}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyCvu}
+                      className="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition cursor-pointer"
+                    >
+                      {copiedCvu ? "Copiado" : "Copiar"}
+                    </button>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-emerald-200 flex items-center justify-between shadow-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase block">Alias:</span>
+                      <span className="font-mono font-black text-sm text-zinc-950">{siteConfig.bankTransfer.alias}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyAlias}
+                      className="px-2.5 py-1 rounded-md border border-zinc-300 bg-zinc-50 text-zinc-800 font-bold text-xs hover:bg-zinc-100 transition cursor-pointer"
+                    >
+                      {copiedAlias ? "Copiado" : "Copiar"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-600 pt-1">
+                  <span>Titular: <strong>{siteConfig.bankTransfer.holder}</strong></span>
+                  <span>Billetera / Banco: <strong>{siteConfig.bankTransfer.bank}</strong></span>
+                  <span>WhatsApp: <strong>2494638919</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Credit / Debit Card Interactive Form */}
+            {paymentMethod === "tarjeta" && (
+              <div className="mt-5 rounded-2xl bg-zinc-50 border border-zinc-200 p-5 space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-emerald-600" />
+                    <div>
+                      <p className="text-xs font-bold text-zinc-950">Pago Seguro con Tarjeta</p>
+                      <p className="text-[11px] text-zinc-500">Aceptamos Visa, Mastercard, Cabal y American Express</p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    <Lock className="h-3 w-3" /> SSL 256-bit
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">
+                      Número de Tarjeta
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="4500 0000 0000 0000"
+                        maxLength={19}
+                        value={cardNumber}
+                        onChange={handleCardNumberChange}
+                        className="h-11 w-full rounded-xl border border-zinc-300 px-3.5 pr-20 text-sm font-mono font-bold text-zinc-900 bg-white outline-none focus:border-emerald-500"
+                      />
+                      <span className="absolute right-3 top-3 text-[11px] font-black uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        {cardBrand}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">
+                      Nombre y Apellido del Titular (como figura en el plástico)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="JUAN PEREZ"
+                      value={cardHolder}
+                      onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
+                      className="h-11 w-full rounded-xl border border-zinc-300 px-3.5 text-sm font-medium text-zinc-900 bg-white outline-none focus:border-emerald-500 uppercase"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1">
+                        Vencimiento
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="MM/AA"
+                        maxLength={5}
+                        value={cardExpiry}
+                        onChange={handleExpiryChange}
+                        className="h-11 w-full rounded-xl border border-zinc-300 px-3 text-sm font-mono text-center font-bold text-zinc-900 bg-white outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1">
+                        CVV / CVC
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="123"
+                        maxLength={4}
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="h-11 w-full rounded-xl border border-zinc-300 px-3 text-sm font-mono text-center font-bold text-zinc-900 bg-white outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1">
+                        DNI del Titular
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="38123456"
+                        maxLength={10}
+                        value={cardDni}
+                        onChange={(e) => setCardDni(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        className="h-11 w-full rounded-xl border border-zinc-300 px-3 text-sm font-mono text-center font-bold text-zinc-900 bg-white outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">
+                      Planes de Cuotas
+                    </label>
+                    <select
+                      value={installments}
+                      onChange={(e) => setInstallments(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-900 outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="1">1 cuota de {formatCurrency(total)} (Precio Contado)</option>
+                      <option value="3">3 cuotas de {formatCurrency(Math.round(total / 3))} con tarjeta de crédito</option>
+                      <option value="6">6 cuotas fijas de {formatCurrency(Math.round((total * 1.15) / 6))}</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -517,7 +860,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
             <div className="flex justify-between text-base font-black text-zinc-950 border-t border-zinc-200 pt-3">
               <span>Total Final</span>
-              <span className="text-xl text-zinc-950">{formatCurrency(total)}</span>
+              <span className="text-xl text-emerald-700">{formatCurrency(total)}</span>
             </div>
           </div>
 
@@ -527,7 +870,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
             type="submit"
           >
             {isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-            {isPending ? "Procesando pedido..." : "Confirmar Pedido"}
+            {isPending ? "Procesando pedido..." : paymentMethod === "tarjeta" ? "Pagar con Tarjeta" : "Confirmar Pedido"}
           </Button>
 
           <div className="mt-4 pt-4 border-t border-zinc-100 text-center">
@@ -545,7 +888,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               Pedir directo por WhatsApp
             </a>
             <p className="text-[10px] text-zinc-400 mt-2">
-              Atención personalizada de lunes a sábados.
+              Atención personalizada con Máximo Calamante (Tandil).
             </p>
           </div>
         </aside>

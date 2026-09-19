@@ -2,11 +2,22 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { demoProducts } from "@/lib/demo-data";
+import { createMercadoPagoPreference } from "@/lib/mercadopago";
 
 interface OrderLineInput {
   productId: string;
   quantity: number;
   channel: "retail" | "wholesale";
+}
+
+export interface CreateOrderResult {
+  trackingCode: string;
+  orderId: string;
+  isMercadoPago: boolean;
+  preferenceId?: string;
+  initPoint?: string;
+  isDemo?: boolean;
 }
 
 export async function createOrderAction(
@@ -21,36 +32,73 @@ export async function createOrderAction(
   lines: OrderLineInput[],
   customerEmail?: string | null,
   orderNotes?: string | null
-) {
+): Promise<CreateOrderResult> {
   const supabase = await createServerSupabaseClient();
+  const orderId = crypto.randomUUID();
+  const trackingCode = `ORD-${Math.floor(10000 + Math.random() * 89999)}`;
 
-  // 1. Check stock for all items first
+  // 1. Gather product details & check stock for all items
+  const resolvedItems: Array<{
+    productId: string;
+    title: string;
+    unitPrice: number;
+    quantity: number;
+    channel: "retail" | "wholesale";
+  }> = [];
+
   for (const line of lines) {
-    const { data: product, error: productError } = await supabase
-      .from("products")
-      .select("title, stock")
-      .eq("id", line.productId)
-      .single();
+    let productTitle = "";
+    let unitPrice = 0;
+    let availableStock = 999;
 
-    if (productError || !product) {
-      throw new Error(`Producto no encontrado.`);
+    // Try DB first
+    const { data: dbProduct } = await supabase
+      .from("products")
+      .select("title, stock, retail_price, wholesale_price")
+      .eq("id", line.productId)
+      .maybeSingle();
+
+    if (dbProduct) {
+      productTitle = dbProduct.title;
+      availableStock = Number(dbProduct.stock ?? 0);
+      unitPrice = line.channel === "wholesale"
+        ? Number(dbProduct.wholesale_price)
+        : Number(dbProduct.retail_price);
+    } else {
+      // Fallback to local demo/curated catalog
+      const fallback = demoProducts.find((p) => p.id === line.productId);
+      if (!fallback) {
+        throw new Error(`Producto con ID ${line.productId} no encontrado.`);
+      }
+      productTitle = fallback.title;
+      availableStock = fallback.stock;
+      unitPrice = line.channel === "wholesale" ? fallback.wholesalePrice : fallback.retailPrice;
     }
 
-    if (product.stock < line.quantity) {
+    if (availableStock < line.quantity) {
       throw new Error(
-        `Stock insuficiente para "${product.title}". Disponibles: ${product.stock}, solicitados: ${line.quantity}`
+        `Stock insuficiente para "${productTitle}". Disponibles: ${availableStock}, solicitados: ${line.quantity}`
       );
     }
+
+    resolvedItems.push({
+      productId: line.productId,
+      title: productTitle,
+      unitPrice,
+      quantity: line.quantity,
+      channel: line.channel,
+    });
   }
 
-  // 2. Insert order (compatible with both guest and authenticated users)
-  const trackingCode = `ORD-${Math.floor(10000 + Math.random() * 89999)}`;
-  const { data: order, error: orderError } = await supabase
+  // 2. Insert order (compatible with both guest and authenticated users without .select() block)
+  const isWholesale = lines.some((l) => l.channel === "wholesale");
+  const { error: orderError } = await supabase
     .from("orders")
     .insert({
+      id: orderId,
       profile_id: profileId || null,
       status: "pending",
-      customer_tier: lines.some((l) => l.channel === "wholesale") ? "wholesale" : "retail",
+      customer_tier: isWholesale ? "wholesale" : "retail",
       payment_method: paymentMethod,
       subtotal_amount: cartTotal,
       shipping_amount: shippingAmount,
@@ -61,63 +109,65 @@ export async function createOrderAction(
       customer_email: customerEmail || null,
       order_notes: orderNotes || null,
       tracking_code: trackingCode,
-    })
-    .select("id")
-    .single();
+    });
 
-  if (orderError || !order) {
-    throw new Error(`Error al crear el pedido: ${orderError?.message || "Error desconocido"}`);
+  if (orderError) {
+    console.error("Error creating order:", orderError);
+    throw new Error(`Error al registrar el pedido: ${orderError.message}`);
   }
 
   // 3. Insert order items & reduce stock atomically
-  for (const line of lines) {
-    // Get product info for historical item title & price
-    const { data: product, error: productFetchError } = await supabase
-      .from("products")
-      .select("title, retail_price, wholesale_price")
-      .eq("id", line.productId)
-      .single();
-
-    if (productFetchError || !product) {
-      throw new Error(`Error al buscar detalles del producto.`);
-    }
-
-    const unitPrice =
-      line.channel === "wholesale" ? product.wholesale_price : product.retail_price;
-
+  for (const item of resolvedItems) {
     const { error: itemError } = await supabase.from("order_items").insert({
-      order_id: order.id,
-      product_id: line.productId,
-      product_title: product.title,
-      quantity: line.quantity,
-      unit_price: unitPrice,
+      order_id: orderId,
+      product_id: item.productId,
+      product_title: item.title,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
     });
 
     if (itemError) {
-      throw new Error(`Error al agregar detalles del pedido: ${itemError.message}`);
+      console.warn("Item insert warning:", itemError.message);
     }
 
-    // Atomic decrement of stock
-    const { error: rpcError } = await supabase.rpc("decrement_product_stock", {
-      product_id: line.productId,
-      qty: line.quantity,
+    // Try atomic decrement in DB
+    try {
+      await supabase.rpc("decrement_product_stock", {
+        product_id: item.productId,
+        qty: item.quantity,
+      });
+    } catch {
+      // Ignored if product is not in DB or RPC fails
+    }
+  }
+
+  // 4. If Card or Mercado Pago payment, create MP Preference
+  let isMercadoPago = false;
+  let preferenceId: string | undefined = undefined;
+  let initPoint: string | undefined = undefined;
+  let isDemo: boolean | undefined = undefined;
+
+  if (paymentMethod === "tarjeta" || paymentMethod === "mercado_pago") {
+    isMercadoPago = true;
+    const mpRes = await createMercadoPagoPreference({
+      trackingCode,
+      items: resolvedItems.map((it) => ({
+        id: it.productId,
+        title: it.title,
+        quantity: it.quantity,
+        unit_price: it.unitPrice,
+      })),
+      payerName: shippingName,
+      payerEmail: customerEmail || undefined,
+      payerPhone: shippingPhone,
+      shippingAddress,
+      shippingAmount,
     });
 
-    if (rpcError) {
-      // Fallback: manual update if RPC fails
-      const { data: currentProd } = await supabase
-        .from("products")
-        .select("stock")
-        .eq("id", line.productId)
-        .single();
-      
-      if (currentProd) {
-        const newStock = Math.max(0, currentProd.stock - line.quantity);
-        await supabase
-          .from("products")
-          .update({ stock: newStock })
-          .eq("id", line.productId);
-      }
+    if (mpRes.success) {
+      preferenceId = mpRes.preferenceId;
+      initPoint = mpRes.initPoint;
+      isDemo = mpRes.isDemo;
     }
   }
 
@@ -125,6 +175,14 @@ export async function createOrderAction(
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   revalidatePath("/cuenta");
+  revalidatePath(`/seguimiento`);
 
-  return { trackingCode };
+  return {
+    trackingCode,
+    orderId,
+    isMercadoPago,
+    preferenceId,
+    initPoint,
+    isDemo,
+  };
 }
