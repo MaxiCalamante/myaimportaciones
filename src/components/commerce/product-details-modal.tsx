@@ -102,19 +102,19 @@ export function ProductDetailsModal() {
       <div className="absolute inset-0" onClick={() => setSelectedProduct(null)} />
 
       {/* Modal Content */}
-      <div className="relative flex flex-col md:flex-row w-full max-w-4xl max-h-[90vh] md:max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden border border-zinc-200 animate-in fade-in-50 zoom-in-95 duration-200">
+      <div className="relative flex flex-col md:flex-row w-full max-w-4xl max-h-[92dvh] md:max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-y-auto md:overflow-hidden border border-zinc-200 animate-in fade-in-50 zoom-in-95 duration-200">
         
         {/* Close Button */}
         <button
           aria-label="Cerrar modal"
-          className="absolute right-4 top-4 z-10 p-2 rounded-full bg-white/80 border border-zinc-200 text-zinc-700 hover:bg-zinc-150 transition-colors shadow-sm"
+          className="absolute right-3.5 top-3.5 z-20 p-2 rounded-full bg-white/90 border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-colors shadow-sm cursor-pointer"
           onClick={() => setSelectedProduct(null)}
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Left: Image with Zoom */}
-        <div className="relative w-full md:w-1/2 bg-white border-b md:border-b-0 md:border-r border-zinc-100 overflow-hidden min-h-[300px] md:min-h-[400px] p-4 sm:p-6 flex items-center justify-center">
+        <div className="relative w-full md:w-1/2 bg-white border-b md:border-b-0 md:border-r border-zinc-100 overflow-hidden min-h-[220px] sm:min-h-[280px] md:min-h-[400px] p-4 sm:p-6 flex items-center justify-center shrink-0">
           <div
             className="w-full h-full relative cursor-zoom-in"
             onMouseMove={handleMouseMove}
@@ -122,7 +122,7 @@ export function ProductDetailsModal() {
           >
             <Image
               alt={selectedProduct.title}
-              className="object-contain p-4 transition-transform duration-100 ease-out"
+              className="object-contain p-3 sm:p-4 transition-transform duration-100 ease-out"
               fill
               priority
               sizes="(min-width: 768px) 50vw, 100vw"
@@ -133,23 +133,23 @@ export function ProductDetailsModal() {
           </div>
           <button
             aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-            className={`absolute left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white shadow-sm transition hover:scale-105 ${
-              favorite ? "text-red-655" : "text-zinc-650 hover:text-red-655"
+            className={`absolute left-3.5 top-3.5 inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white/90 shadow-sm transition hover:scale-105 ${
+              favorite ? "text-red-600" : "text-zinc-600 hover:text-red-600"
             }`}
             onClick={() => toggleFavorite(selectedProduct.id)}
             type="button"
           >
-            <Heart className={favorite ? "h-5 w-5 fill-current" : "h-5 w-5"} />
+            <Heart className={favorite ? "h-4.5 w-4.5 sm:h-5 sm:w-5 fill-current" : "h-4.5 w-4.5 sm:h-5 sm:w-5"} />
           </button>
           {selectedProduct.tags[0] ? (
-            <span className="absolute left-4 bottom-4 rounded-md bg-zinc-950 px-2.5 py-1 text-xs font-semibold uppercase text-white">
+            <span className="absolute left-3.5 bottom-3.5 rounded-md bg-zinc-950/90 backdrop-blur-xs px-2.5 py-1 text-[10px] sm:text-xs font-semibold uppercase text-white">
               {selectedProduct.tags[0]}
             </span>
           ) : null}
         </div>
 
         {/* Right: Info and Pricing */}
-        <div className="flex-1 flex flex-col p-6 md:p-8 overflow-y-auto max-h-[50vh] md:max-h-[85vh]">
+        <div className="flex-1 flex flex-col p-5 sm:p-6 md:p-8 md:overflow-y-auto md:max-h-[85vh]">
           {/* Header */}
           <span className="text-xs font-semibold uppercase text-emerald-700">
             {selectedProduct.categoryName}

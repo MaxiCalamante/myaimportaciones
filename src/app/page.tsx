@@ -32,7 +32,7 @@ export default async function Home({
     const categoryProducts = retailProducts;
 
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div id="catalogo" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 scroll-mt-20">
         <div className="relative overflow-hidden rounded-2xl bg-zinc-950 text-white p-8 md:p-12 shadow-xl border border-zinc-800">
           <div className="relative z-10 max-w-2xl">
             <Link

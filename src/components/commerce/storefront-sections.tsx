@@ -253,7 +253,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                 <div>
                   {/* Image container */}
                   <Link
-                    href={`/?category=${category.slug}#catalogo`}
+                    href={`/?category=${category.slug}`}
                     className="relative aspect-[16/10] overflow-hidden bg-zinc-100 block cursor-pointer"
                   >
                     <Image
@@ -275,7 +275,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
 
                   {/* Body Info */}
                   <div className="p-5">
-                    <Link href={`/?category=${category.slug}#catalogo`}>
+                    <Link href={`/?category=${category.slug}`}>
                       <h3 className="text-lg font-extrabold text-zinc-950 group-hover:text-emerald-700 transition-colors">
                         {category.name}
                       </h3>
@@ -294,7 +294,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                           {subs.slice(0, 4).map((sub) => (
                             <Link
                               key={sub.id}
-                              href={`/?category=${sub.slug}#catalogo`}
+                              href={`/?category=${sub.slug}`}
                               className="inline-block rounded-md bg-zinc-100/90 hover:bg-zinc-200/80 px-2 py-0.5 text-[11px] font-medium text-zinc-700 transition"
                             >
                               {sub.name}
@@ -302,7 +302,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                           ))}
                           {subs.length > 4 && (
                             <Link
-                              href={`/?category=${category.slug}#catalogo`}
+                              href={`/?category=${category.slug}`}
                               className="inline-block rounded-md bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 transition"
                             >
                               +{subs.length - 4} más
@@ -317,7 +317,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                 {/* Footer Action Link */}
                 <div className="px-5 pb-5 pt-0">
                   <Link
-                    href={`/?category=${category.slug}#catalogo`}
+                    href={`/?category=${category.slug}`}
                     className="flex items-center justify-between w-full rounded-xl bg-zinc-50 hover:bg-zinc-900 px-3.5 py-2.5 text-xs font-bold text-zinc-800 hover:text-white border border-zinc-200 hover:border-zinc-900 transition-all duration-200 group/btn"
                   >
                     <span>Explorar catálogo</span>

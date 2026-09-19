@@ -270,7 +270,7 @@ export function SiteHeader({
                             }`}
                           >
                             <Link
-                              href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
+                              href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
                               onClick={() => setCategoriesMenuOpen(false)}
                               className="flex items-center gap-2.5 flex-1 min-w-0"
                             >
@@ -294,7 +294,7 @@ export function SiteHeader({
 
                     <div className="mt-3 pt-3 border-t border-zinc-200/60 dark:border-zinc-800">
                       <Link
-                        href="/#catalogo"
+                        href={isWholesale ? "/mayorista" : "/"}
                         onClick={() => setCategoriesMenuOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 transition"
                       >
@@ -326,7 +326,7 @@ export function SiteHeader({
                             </p>
                           </div>
                           <Link
-                            href={`${isWholesale ? "/mayorista" : ""}?category=${activeParentCategory.slug}#catalogo`}
+                            href={`${isWholesale ? "/mayorista" : "/"}?category=${activeParentCategory.slug}`}
                             onClick={() => setCategoriesMenuOpen(false)}
                             className="group/btn inline-flex items-center gap-1.5 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 px-3.5 py-1.5 text-xs font-semibold shadow-xs transition shrink-0"
                           >
@@ -340,7 +340,7 @@ export function SiteHeader({
                             {activeSubcategories.map((sub) => (
                               <Link
                                 key={sub.id}
-                                href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
+                                href={`${isWholesale ? "/mayorista" : "/"}?category=${sub.slug}`}
                                 onClick={() => setCategoriesMenuOpen(false)}
                                 className={`group/sub flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-all ${
                                   isWholesale
@@ -358,7 +358,7 @@ export function SiteHeader({
                           <div className="py-10 text-center text-xs text-zinc-400">
                             <p>Todos los modelos de {activeParentCategory.name} se encuentran unificados en esta sección.</p>
                             <Link
-                              href={`${isWholesale ? "/mayorista" : ""}?category=${activeParentCategory.slug}#catalogo`}
+                              href={`${isWholesale ? "/mayorista" : "/"}?category=${activeParentCategory.slug}`}
                               onClick={() => setCategoriesMenuOpen(false)}
                               className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-semibold rounded-xl transition"
                             >
@@ -440,9 +440,9 @@ export function SiteHeader({
                       }`}
                     >
                       <img
-                        src={product.imageUrl || "/window.svg"}
+                        src={product.imageUrl || "/placeholder-product.svg"}
                         alt={product.title}
-                        className="h-8 w-8 rounded object-cover bg-zinc-100"
+                        className="h-8 w-8 rounded object-contain p-0.5 bg-zinc-50 border border-zinc-100"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate text-xs">{product.title}</p>
@@ -457,7 +457,7 @@ export function SiteHeader({
               </div>
               <div className="pt-2 border-t border-zinc-100/50 text-center">
                 <Link
-                  href={`${isWholesale ? "/mayorista" : ""}?q=${encodeURIComponent(searchQuery)}`}
+                  href={`${isWholesale ? "/mayorista" : "/"}?q=${encodeURIComponent(searchQuery)}`}
                   onClick={() => setSearchQuery("")}
                   className="text-[11px] font-bold text-sky-600 hover:text-sky-700 block py-1"
                 >
@@ -524,7 +524,7 @@ export function SiteHeader({
           </button>
           <button
             aria-label="Abrir menu"
-            className={`md:hidden ${iconButtonClass}`}
+            className={`lg:hidden ${iconButtonClass}`}
             onClick={() => setOpen((value) => !value)}
             type="button"
           >
@@ -534,7 +534,7 @@ export function SiteHeader({
       </div>
 
       {open && (
-        <div className={`border-t px-4 py-3 md:hidden ${
+        <div className={`border-t px-4 py-3 lg:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-8 shadow-2xl ${
           isWholesale ? "border-zinc-800 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-900"
         }`}>
           <div className="relative mb-3">
@@ -580,9 +580,9 @@ export function SiteHeader({
                         }`}
                       >
                         <img
-                          src={product.imageUrl || "/window.svg"}
+                          src={product.imageUrl || "/placeholder-product.svg"}
                           alt={product.title}
-                          className="h-8 w-8 rounded object-cover bg-zinc-100"
+                          className="h-8 w-8 rounded object-contain p-0.5 bg-zinc-50 border border-zinc-100"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold truncate text-xs">{product.title}</p>
@@ -625,69 +625,113 @@ export function SiteHeader({
               Seguimiento de Pedidos
             </Link>
 
-            {/* Categorías en menú móvil: 4 Rubros Principales con subcategorías desplegables */}
+            {/* Categorías en menú móvil: 4 Rubros Principales con subcategorías desplegables al tocar */}
             {mainCategories.length > 0 && (
-              <div className={`py-2 pl-3 border-l my-1.5 ${isWholesale ? "border-zinc-800" : "border-zinc-200"}`}>
-                <p className="px-2 py-1 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                  Rubros Principales
-                </p>
-                <div className="space-y-1 mt-1">
+              <div className={`py-2 my-1.5 rounded-2xl border ${isWholesale ? "border-zinc-800 bg-zinc-900/40" : "border-zinc-200/80 bg-zinc-50/50"}`}>
+                <div className="px-3 py-1 flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Rubros Principales
+                  </p>
+                  <Link
+                    href={isWholesale ? "/mayorista" : "/"}
+                    onClick={() => setOpen(false)}
+                    className="text-[11px] font-bold text-sky-600 hover:text-sky-700"
+                  >
+                    Ver catálogo completo
+                  </Link>
+                </div>
+                <div className="space-y-1.5 p-2">
                   {mainCategories.map((category) => {
                     const subs = getSubcategories(category.id);
                     const isExpanded = expandedMobileCategory === category.id;
 
                     return (
-                      <div key={category.id} className="space-y-1">
-                        <div className="flex items-center justify-between rounded-xl pr-2">
-                          <Link
-                            href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
-                            onClick={() => setOpen(false)}
-                            className={`flex items-center gap-2 px-2.5 py-2 text-xs sm:text-sm font-semibold flex-1 ${
-                              isWholesale ? "text-zinc-300 hover:text-white" : "text-zinc-800 hover:text-zinc-950"
-                            }`}
+                      <div
+                        key={category.id}
+                        className={`rounded-xl border transition-all ${
+                          isExpanded
+                            ? isWholesale
+                              ? "border-zinc-700 bg-zinc-900"
+                              : "border-zinc-300 bg-white shadow-xs"
+                            : isWholesale
+                            ? "border-zinc-800/80 bg-zinc-950/60"
+                            : "border-zinc-200/60 bg-white"
+                        }`}
+                      >
+                        {/* Al tocar la fila completa del rubro se despliegan sus subcategorías */}
+                        {subs.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedMobileCategory(isExpanded ? null : category.id)}
+                            className="w-full flex items-center justify-between p-3 text-left cursor-pointer select-none active:scale-[0.99] transition-transform"
+                            aria-expanded={isExpanded}
                           >
-                            <span className="text-sky-600">
-                              {getCategoryIcon(category.slug, "h-4 w-4 shrink-0")}
-                            </span>
-                            <span>{category.name}</span>
-                          </Link>
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shrink-0">
+                                {getCategoryIcon(category.slug, "h-4 w-4")}
+                              </span>
+                              <span className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                                {category.name}
+                              </span>
+                            </div>
 
-                          {subs.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setExpandedMobileCategory(isExpanded ? null : category.id)}
-                              className="p-1.5 text-zinc-400 hover:text-zinc-600 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-                              aria-label={`Ver subcategorías de ${category.name}`}
-                            >
-                              <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180 text-sky-600" : ""}`} />
-                            </button>
-                          )}
-                        </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                {subs.length}
+                              </span>
+                              <ChevronDown
+                                className={`h-4 w-4 transition-transform duration-200 ${
+                                  isExpanded ? "rotate-180 text-sky-600" : "text-zinc-400"
+                                }`}
+                              />
+                            </div>
+                          </button>
+                        ) : (
+                          <Link
+                            href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
+                            onClick={() => setOpen(false)}
+                            className="flex items-center justify-between p-3 text-left active:scale-[0.99] transition-transform"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 shrink-0">
+                                {getCategoryIcon(category.slug, "h-4 w-4")}
+                              </span>
+                              <span className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                                {category.name}
+                              </span>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-zinc-400 shrink-0" />
+                          </Link>
+                        )}
 
                         {/* Accordion Subcategories */}
                         {isExpanded && subs.length > 0 && (
-                          <div className="pl-4 pr-1 py-2 space-y-1.5 border-l-2 border-sky-500/40 ml-4 mt-1">
+                          <div className="px-3 pb-3 pt-1 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2 mt-1">
+                            {/* Botón Ver todo el Rubro */}
                             <Link
-                              href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
+                              href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
                               onClick={() => setOpen(false)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-xs font-bold shadow-xs my-1"
+                              className="w-full flex items-center justify-between rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 px-3.5 py-2.5 text-xs font-bold shadow-xs active:scale-[0.99] transition"
                             >
-                              <span>Ver todo {category.name}</span>
+                              <span>Ver todo en {category.name}</span>
                               <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
-                            <div className="grid grid-cols-1 gap-1 pt-1">
+
+                            {/* Subcategorías individuales como tarjetas táctiles */}
+                            <div className="grid grid-cols-1 gap-1.5 pt-1">
                               {subs.map((sub) => (
                                 <Link
                                   key={sub.id}
-                                  href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
+                                  href={`${isWholesale ? "/mayorista" : "/"}?category=${sub.slug}`}
                                   onClick={() => setOpen(false)}
-                                  className={`block rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                                  className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-colors active:bg-zinc-200 dark:active:bg-zinc-700 ${
                                     isWholesale
-                                      ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
-                                      : "text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
+                                      ? "bg-zinc-950/50 hover:bg-zinc-800 border-zinc-800 text-zinc-300"
+                                      : "bg-zinc-50/80 hover:bg-zinc-100 border-zinc-200/60 text-zinc-800"
                                   }`}
                                 >
-                                  {sub.name}
+                                  <span className="truncate pr-2">{sub.name}</span>
+                                  <ChevronRight className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
                                 </Link>
                               ))}
                             </div>
