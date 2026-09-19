@@ -45,6 +45,13 @@ export async function getStorefrontData(options?: {
 
   const supabase = await createServerSupabaseClient();
 
+  const { data: categoriesData } = await supabase
+    .from("categories")
+    .select(
+      "id, name, slug, parent_id, description, image_url, is_wholesale_only, display_order",
+    )
+    .order("display_order", { ascending: true });
+
   let productsQuery = supabase
     .from("products")
     .select(
@@ -53,22 +60,22 @@ export async function getStorefrontData(options?: {
     .eq("is_active", true);
 
   if (options?.categoryId) {
-    productsQuery = productsQuery.eq("category_id", options.categoryId);
+    const childIds = ((categoriesData ?? []) as unknown as DbCategory[])
+      .filter((c) => c.parent_id === options.categoryId)
+      .map((c) => c.id);
+
+    if (childIds.length > 0) {
+      productsQuery = productsQuery.in("category_id", [options.categoryId, ...childIds]);
+    } else {
+      productsQuery = productsQuery.eq("category_id", options.categoryId);
+    }
   }
 
   productsQuery = productsQuery
     .order("is_featured", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const [{ data: categoriesData }, { data: productsData }] = await Promise.all([
-    supabase
-      .from("categories")
-      .select(
-        "id, name, slug, parent_id, description, image_url, is_wholesale_only, display_order",
-      )
-      .order("display_order", { ascending: true }),
-    productsQuery,
-  ]);
+  const { data: productsData } = await productsQuery;
 
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(
     mapCategory,
