@@ -1448,7 +1448,7 @@ export function AdminDashboard({
                       className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
                       name="name"
                       required
-                      placeholder="Ej. Ropa, Bebidas o Snacks"
+                      placeholder="Ej. Herramientas, K-Beauty o Tecnología"
                     />
                   </label>
                   <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">

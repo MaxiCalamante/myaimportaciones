@@ -3,7 +3,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export const metadata = {
-  title: "Cuenta | Mayorista Minorista",
+  title: "Iniciar Sesión o Registrarse | MYA Importaciones",
 };
 
 export default async function LoginPage({

@@ -118,7 +118,7 @@ export function SiteFooter() {
                 </Link>
               </>
             )}
-            <Link className="text-zinc-400 hover:text-white transition-colors" href="/cuenta">
+            <Link className="text-zinc-400 hover:text-white transition-colors" href="/seguimiento">
               Seguimiento de Pedidos
             </Link>
             <Link className="text-zinc-400 hover:text-white transition-colors" href="/admin">

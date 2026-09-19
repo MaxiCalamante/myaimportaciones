@@ -41,7 +41,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ...product.tags,
       "MYA Importaciones",
       "K-Beauty Argentina",
-      "Mayorista minorista",
+      "Distribución mayorista y minorista",
+      "Herramientas Total Tools Wadfow",
+      "Tecnología importada Argentina",
     ],
     openGraph: {
       title,

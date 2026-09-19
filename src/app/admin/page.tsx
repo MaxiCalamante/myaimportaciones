@@ -5,7 +5,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export const metadata = {
-  title: "Admin | Mayorista Minorista",
+  title: "Panel de Control | MYA Importaciones",
 };
 
 export default async function AdminPage() {

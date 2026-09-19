@@ -78,17 +78,18 @@ export default async function Home({
       <RetailHighlights />
       <CategoryStrip categories={categories} />
       <ProductSection
-        eyebrow="Destacados"
+        eyebrow="Selección Especial"
         id="catalogo"
         products={featuredProducts}
-        title="Para comprar por menor"
+        title="Productos Destacados de Importación"
       />
       <ProductSection
-        eyebrow="Oportunidades"
+        eyebrow="Oportunidades & Ahorro"
         id="ofertas"
         products={offerProducts.length > 0 ? offerProducts : retailProducts.slice(0, 4)}
-        title="Promos y packs"
+        title="Ofertas y Precios Especiales"
       />
+      <WholesaleTeaser products={products} />
       <TestimonialsSection />
     </>
   );

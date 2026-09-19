@@ -3,13 +3,21 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
 import { ButtonLink } from "@/components/ui/button";
 
 const heroSlides = [
+  {
+    image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1800&q=80",
+    eyebrow: "Distribución Oficial Total & Wadfow",
+    title: "Herramientas Industriales y Profesionales",
+    description: "Líderes en herramientas manuales, eléctricas, inalámbricas y neumáticas. Más de 3.400 ítems con stock permanente y garantía directa de importación.",
+    btnText: "Ver Herramientas",
+    btnLink: "/?category=herramientas",
+  },
   {
     image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1800&q=80",
     eyebrow: "Tendencia Mundial en Skincare",
@@ -30,7 +38,7 @@ const heroSlides = [
     image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
     eyebrow: "Importación Directa & Distribución",
     title: "Precios Mayoristas para Tu Negocio",
-    description: "Abastecé tu comercio o emprendimiento con precios diferenciales por bulto cerrado en cosmética, herramientas industriales y tecnología.",
+    description: "Abastecé tu ferretería, comercio o emprendimiento con precios diferenciales por bulto cerrado en herramientas, cosmética y tecnología.",
     btnText: "Portal Mayorista",
     btnLink: "/mayorista",
   },
@@ -126,21 +134,40 @@ export function StoreHero() {
 
 export function RetailHighlights() {
   const items = [
-    { icon: BadgePercent, label: "Importación directa con garantía y calidad certificada" },
-    { icon: Truck, label: "Envíos asegurados a todo el país (Correo y Expresos)" },
-    { icon: Warehouse, label: "Precios por menor y escala por bulto cerrado para revendedores" },
+    { 
+      icon: BadgePercent, 
+      title: "10% OFF Transferencia",
+      desc: "Descuento automático pagando por transferencia bancaria o efectivo"
+    },
+    { 
+      icon: Truck, 
+      title: "Envíos a Todo el País",
+      desc: "Despachos asegurados por Correo Argentino, Andreani y Expresos"
+    },
+    { 
+      icon: ShieldCheck, 
+      title: "Garantía & Factura A/B",
+      desc: "Productos 100% originales con factura oficial e IVA discriminado"
+    },
+    { 
+      icon: Warehouse, 
+      title: "Minorista & Mayorista",
+      desc: "Comprá por unidad o accedé a precios por bulto cerrado desde $100.000"
+    },
   ];
-
 
   return (
     <section className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:px-6 md:grid-cols-3 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
         {items.map((item) => (
-          <div className="flex items-center gap-3" key={item.label}>
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+          <div className="flex items-start gap-3.5" key={item.title}>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
               <item.icon className="h-5 w-5" />
             </span>
-            <p className="text-sm font-medium text-zinc-700">{item.label}</p>
+            <div>
+              <p className="text-sm font-bold text-zinc-950">{item.title}</p>
+              <p className="mt-0.5 text-xs text-zinc-500 leading-snug">{item.desc}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -153,29 +180,28 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
 
   return (
     <section id="categorias" className="bg-zinc-50 py-10 scroll-mt-16">
-
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase text-emerald-700">
-              Categorias
+              Categorías
             </p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">
-              Compra por rubro
+              Comprá por rubro
             </h2>
           </div>
           <Link
             className="hidden text-sm font-semibold text-zinc-700 hover:text-emerald-700 sm:block"
-            href="#catalogo"
+            href="/#catalogo"
           >
-            Ver todo
+            Ver todo el catálogo
           </Link>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {visibleCategories.map((category) => (
-            <a
+            <Link
               className="group overflow-hidden rounded-lg border border-zinc-200 bg-white"
-              href={`#${category.slug}`}
+              href={`/?category=${category.slug}#catalogo`}
               key={category.id}
             >
               <div className="relative aspect-[5/3] overflow-hidden bg-zinc-100">
@@ -195,7 +221,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                   {category.description}
                 </p>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -228,7 +254,7 @@ export function ProductSection({
           </div>
           {channel === "wholesale" ? (
             <p className="text-sm font-medium text-zinc-500">
-              Compra minima y precios por volumen
+              Compra mínima y precios por volumen
             </p>
           ) : null}
         </div>
@@ -253,49 +279,48 @@ export function WholesaleTeaser({
     .sort((a, b) => a.wholesalePrice - b.wholesalePrice)[0];
 
   return (
-    <section className="bg-zinc-950 py-12 text-white">
+    <section className="bg-zinc-950 py-14 text-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8">
         <div className="flex flex-col justify-center">
-          <p className="text-sm font-semibold uppercase text-amber-300">
-            Canal mayorista
-          </p>
-          <h2 className="mt-2 max-w-xl text-3xl font-bold">
-            Precios por volumen sin mezclar el recorrido minorista.
+          <span className="inline-flex w-fit items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+            Canal Mayorista B2B & Distribución
+          </span>
+          <h2 className="mt-3 max-w-xl text-3xl font-extrabold sm:text-4xl tracking-tight">
+            Precios directos de importación para revendedores y comercios.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-300">
-            El acceso mayorista queda disponible desde el navbar y permite comprar
-            por caja, minimo de unidades y metodos de pago comerciales.
+            Optimizá los costos de tu negocio. Comprá herramientas Total y Wadfow, cosmética coreana y tecnología por bulto cerrado con un mínimo accesible desde $100.000, Factura A oficial y envíos a toda la Argentina.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/mayorista" icon={<Boxes className="h-4 w-4" />}>
-              Entrar a mayorista
+              Explorar Catálogo Mayorista
             </ButtonLink>
             <ButtonLink href="/login" variant="secondary">
-              Crear cuenta
+              Crear Cuenta Comercial
             </ButtonLink>
           </div>
         </div>
-        <div className="rounded-lg border border-white/15 bg-white/10 p-5">
-          <p className="text-sm font-semibold text-zinc-200">Ejemplo de ahorro</p>
+        <div className="rounded-2xl border border-white/15 bg-white/5 p-6 backdrop-blur-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-amber-300">Ejemplo de Margen Mayorista</p>
           {bestPrice ? (
-            <div className="mt-5">
-              <p className="text-xl font-bold">{bestPrice.title}</p>
+            <div className="mt-4">
+              <p className="text-lg font-bold text-white line-clamp-2">{bestPrice.title}</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-white p-4 text-zinc-950">
-                  <p className="text-xs uppercase text-zinc-500">Minorista</p>
-                  <p className="mt-1 text-lg font-bold">
+                <div className="rounded-xl bg-zinc-900/80 border border-zinc-750 p-3.5 text-white">
+                  <p className="text-xs font-medium uppercase text-zinc-400">PVP Minorista</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold">
                     {formatCurrency(bestPrice.retailPrice)}
                   </p>
                 </div>
-                <div className="rounded-lg bg-emerald-500 p-4 text-zinc-950">
-                  <p className="text-xs uppercase">Mayorista</p>
-                  <p className="mt-1 text-lg font-bold">
+                <div className="rounded-xl bg-emerald-600/90 border border-emerald-500 p-3.5 text-white">
+                  <p className="text-xs font-medium uppercase text-emerald-100">Costo Mayorista</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold">
                     {formatCurrency(bestPrice.wholesalePrice)}
                   </p>
                 </div>
               </div>
-              <p className="mt-3 text-sm text-zinc-300">
-                Minimo {bestPrice.wholesaleMinQuantity} unidades
+              <p className="mt-3 text-xs text-zinc-400">
+                Lote mínimo: {bestPrice.wholesaleMinQuantity} unidades. Margen de ganancia directo de importación.
               </p>
             </div>
           ) : null}
@@ -308,47 +333,49 @@ export function WholesaleTeaser({
 export function TestimonialsSection() {
   const testimonials = [
     {
-      name: "María Clara Rodríguez",
-      role: "Consumidora Final",
+      name: "Florencia Benítez",
+      role: "Cliente K-Beauty & Skincare (Córdoba)",
       stars: 5,
-      comment: "Excelente atención y variedad de productos. Los precios minoristas son los mejores de la zona, y el envío a domicilio es súper rápido y confiable."
+      comment: "Compré sérums y cremas de Medicube y SKIN1004. Llegaron sellados en su empaque original con código de lote verificado. Pagué con el 10% de descuento por transferencia y el envío llegó en 48 horas.",
     },
     {
-      name: "Juan Manuel Gómez",
-      role: "Dueño de 'Almacén del Parque'",
+      name: "Ing. Martín Carrizo",
+      role: "Taller Metalúrgico & Obras (Rosario)",
       stars: 5,
-      comment: "Compro todo el stock de bebidas y limpieza para mi negocio acá. La compra mayorista con el mínimo de $100.000 me permite ahorrar muchísimo y el proceso es comodísimo."
+      comment: "Equipamos la cuadrilla con amoladoras y rotomartillos Total Tools y Wadfow. La durabilidad en obra es excelente y la atención mayorista con Factura A fue muy rápida y transparente.",
     },
     {
-      name: "Estela Maris Ferreyra",
-      role: "Consumidora Final",
+      name: "Lucas Peralta",
+      role: "Local de Telefonía & Tecnología (Buenos Aires)",
       stars: 5,
-      comment: "Me encanta la facilidad de comprar packs familiares. Las ofertas y promociones son reales, siempre ahorro en las compras del mes."
-    }
+      comment: "Compramos iPhones liberados y accesorios por volumen. Los equipos llegan impecables, testeados y con garantía real. Es nuestro distribuidor de confianza para revender con margen.",
+    },
   ];
 
   return (
-    <section className="bg-zinc-100/40 py-16 border-t border-zinc-200">
+    <section className="bg-zinc-100/60 py-16 border-t border-zinc-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <p className="text-sm font-semibold uppercase text-emerald-700 tracking-wider">Opiniones</p>
-          <h2 className="mt-2 text-3xl font-bold text-zinc-950">Qué dicen nuestros clientes</h2>
-          <p className="mt-3 text-sm text-zinc-650 leading-relaxed">Nuestra prioridad es brindar el mejor servicio y calidad tanto a consumidores finales como a comerciantes de la zona.</p>
+          <p className="text-sm font-semibold uppercase text-emerald-700 tracking-wider">Testimonios Reales</p>
+          <h2 className="mt-2 text-3xl font-extrabold text-zinc-950">Qué dicen quienes compran en MYA</h2>
+          <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
+            Garantizamos origen legítimo, atención dedicada y despachos rápidos para consumidores finales, profesionales y comercios en todo el país.
+          </p>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {testimonials.map((t, index) => (
             <div key={index} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition">
               <div>
-                <div className="flex items-center gap-1 mb-4">
+                <div className="flex items-center gap-1 mb-3">
                   {Array.from({ length: t.stars }).map((_, i) => (
-                    <span key={i} className="text-amber-400 text-lg">★</span>
+                    <span key={i} className="text-amber-400 text-base">★</span>
                   ))}
                 </div>
-                <p className="text-sm text-zinc-655 italic leading-relaxed">"{t.comment}"</p>
+                <p className="text-sm text-zinc-600 italic leading-relaxed">"{t.comment}"</p>
               </div>
               <div className="mt-6 border-t border-zinc-100 pt-4">
                 <p className="text-sm font-bold text-zinc-950">{t.name}</p>
-                <p className="text-xs text-zinc-550">{t.role}</p>
+                <p className="text-xs text-zinc-500">{t.role}</p>
               </div>
             </div>
           ))}

@@ -6,7 +6,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { getStorefrontData } from "@/lib/storefront";
 
 export const metadata = {
-  title: "Mi cuenta | Mayorista Minorista",
+  title: "Mi Cuenta | MYA Importaciones",
 };
 
 export default async function AccountPage() {
