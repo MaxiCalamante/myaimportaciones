@@ -188,15 +188,16 @@ export default async function ProductPage({ params }: Props) {
         {/* Product Grid */}
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Left Column: Image */}
-          <div className="relative aspect-square overflow-hidden rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm flex items-center justify-center">
+          <div className="relative aspect-square overflow-hidden rounded-3xl border border-zinc-200/90 bg-white p-6 sm:p-8 shadow-xs flex items-center justify-center">
             <div className="relative h-full w-full">
               <Image
-                src={product.imageUrl || "/window.svg"}
+                src={product.imageUrl || "/placeholder-product.svg"}
                 alt={product.title}
                 fill
                 priority
-                className="object-contain"
+                className="object-contain transition-transform duration-300 hover:scale-105"
                 sizes="(min-width: 1024px) 50vw, 100vw"
+                quality={95}
               />
             </div>
             {product.featured && (

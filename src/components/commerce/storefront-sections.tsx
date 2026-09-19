@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight, ShieldCheck, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -178,51 +178,155 @@ export function RetailHighlights() {
 export function CategoryStrip({ categories }: { categories: Category[] }) {
   const visibleCategories = categories.filter((category) => !category.parentId);
 
+  const getSubcategories = (parentId: string) =>
+    categories.filter((category) => category.parentId === parentId);
+
+  const getCategoryTheme = (slug: string) => {
+    if (slug.includes("herramienta")) {
+      return {
+        badge: "Total Tools & Wadfow",
+        tagClass: "bg-blue-600 text-white",
+        count: "+2.700 productos",
+        bgHover: "hover:border-blue-300 hover:shadow-blue-50/50",
+      };
+    }
+    if (slug.includes("cosmetica")) {
+      return {
+        badge: "K-Beauty 100% Original",
+        tagClass: "bg-pink-600 text-white",
+        count: "+75 productos virales",
+        bgHover: "hover:border-pink-300 hover:shadow-pink-50/50",
+      };
+    }
+    if (slug.includes("capilar")) {
+      return {
+        badge: "Karseell & Tratamientos",
+        tagClass: "bg-amber-600 text-white",
+        count: "Tratamientos intensivos",
+        bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
+      };
+    }
+    return {
+      badge: "Apple & Smartphones",
+      tagClass: "bg-purple-600 text-white",
+      count: "Garantía oficial",
+      bgHover: "hover:border-purple-300 hover:shadow-purple-50/50",
+    };
+  };
+
   return (
-    <section id="categorias" className="bg-zinc-50 py-10 scroll-mt-16">
+    <section id="categorias" className="bg-zinc-50/70 py-12 sm:py-16 scroll-mt-16 border-b border-zinc-200/60">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-200 pb-6 mb-8">
           <div>
-            <p className="text-sm font-semibold uppercase text-emerald-700">
-              Categorías
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-zinc-950">
-              Comprá por rubro
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200/60">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+              Departamentos Oficiales
+            </div>
+            <h2 className="mt-2 text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
+              Explorá por Rubro Comercial
             </h2>
+            <p className="mt-1 text-sm text-zinc-600 max-w-2xl">
+              Navegá nuestro catálogo completo con stock real, precios minoristas y condiciones especiales para compras mayoristas.
+            </p>
           </div>
           <Link
-            className="hidden text-sm font-semibold text-zinc-700 hover:text-emerald-700 sm:block"
+            className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-xs font-bold text-zinc-900 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white shadow-xs transition-all duration-200 group shrink-0"
             href="/#catalogo"
           >
-            Ver todo el catálogo
+            <span>Ver catálogo completo (+2.890)</span>
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {visibleCategories.map((category) => (
-            <Link
-              className="group overflow-hidden rounded-lg border border-zinc-200 bg-white"
-              href={`/?category=${category.slug}#catalogo`}
-              key={category.id}
-            >
-              <div className="relative aspect-[5/3] overflow-hidden bg-zinc-100">
-                <Image
-                  alt={category.name}
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                  fill
-                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                  src={category.imageUrl || "/globe.svg"}
-                />
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {visibleCategories.map((category) => {
+            const subs = getSubcategories(category.id);
+            const theme = getCategoryTheme(category.slug);
+            const initialImg = category.imageUrl || "/placeholder-product.svg";
+
+            return (
+              <div
+                key={category.id}
+                className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xs hover:shadow-xl transition-all duration-300 ${theme.bgHover}`}
+              >
+                <div>
+                  {/* Image container */}
+                  <Link
+                    href={`/?category=${category.slug}#catalogo`}
+                    className="relative aspect-[16/10] overflow-hidden bg-zinc-100 block cursor-pointer"
+                  >
+                    <Image
+                      alt={category.name}
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      fill
+                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                      src={initialImg}
+                      quality={90}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <span className={`absolute top-3 left-3 rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-sm ${theme.tagClass}`}>
+                      {theme.badge}
+                    </span>
+                    <span className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-white/90 drop-shadow-sm">
+                      {theme.count}
+                    </span>
+                  </Link>
+
+                  {/* Body Info */}
+                  <div className="p-5">
+                    <Link href={`/?category=${category.slug}#catalogo`}>
+                      <h3 className="text-lg font-extrabold text-zinc-950 group-hover:text-emerald-700 transition-colors">
+                        {category.name}
+                      </h3>
+                    </Link>
+                    <p className="mt-1.5 text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+                      {category.description || "Línea completa importada directamente con despacho garantizado."}
+                    </p>
+
+                    {/* Curated Subcategories Preview */}
+                    {subs.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-zinc-100">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                          Subcategorías destacadas:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {subs.slice(0, 4).map((sub) => (
+                            <Link
+                              key={sub.id}
+                              href={`/?category=${sub.slug}#catalogo`}
+                              className="inline-block rounded-md bg-zinc-100/90 hover:bg-zinc-200/80 px-2 py-0.5 text-[11px] font-medium text-zinc-700 transition"
+                            >
+                              {sub.name}
+                            </Link>
+                          ))}
+                          {subs.length > 4 && (
+                            <Link
+                              href={`/?category=${category.slug}#catalogo`}
+                              className="inline-block rounded-md bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 transition"
+                            >
+                              +{subs.length - 4} más
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Action Link */}
+                <div className="px-5 pb-5 pt-0">
+                  <Link
+                    href={`/?category=${category.slug}#catalogo`}
+                    className="flex items-center justify-between w-full rounded-xl bg-zinc-50 hover:bg-zinc-900 px-3.5 py-2.5 text-xs font-bold text-zinc-800 hover:text-white border border-zinc-200 hover:border-zinc-900 transition-all duration-200 group/btn"
+                  >
+                    <span>Explorar catálogo</span>
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
+                  </Link>
+                </div>
               </div>
-              <div className="p-4">
-                <h3 className="text-base font-semibold text-zinc-950">
-                  {category.name}
-                </h3>
-                <p className="mt-1 line-clamp-2 text-sm leading-6 text-zinc-600">
-                  {category.description}
-                </p>
-              </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

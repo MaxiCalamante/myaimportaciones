@@ -16,6 +16,7 @@ import {
   Smartphone,
   Droplets,
   LayoutGrid,
+  ArrowRight,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
@@ -233,7 +234,7 @@ export function SiteHeader({
               }`}
             >
               <div
-                className={`w-[660px] rounded-2xl border shadow-2xl overflow-hidden backdrop-blur-md transition-colors ${
+                className={`w-[760px] rounded-2xl border shadow-2xl overflow-hidden backdrop-blur-md transition-colors ${
                   isWholesale
                     ? "border-zinc-800 bg-zinc-900/98 text-zinc-100"
                     : "border-zinc-200/90 bg-white/98 text-zinc-900"
@@ -304,43 +305,52 @@ export function SiteHeader({
                   </div>
 
                   {/* Right Column: Subcategorías del Rubro Activo */}
-                  <div className="p-4 flex flex-col justify-between min-h-[300px] max-h-[420px] overflow-y-auto">
+                  <div className="p-4 flex flex-col justify-between min-h-[320px] max-h-[440px] overflow-y-auto">
                     {activeParentCategory && (
                       <div>
                         <div className="flex items-center justify-between border-b pb-3 mb-3 border-zinc-100 dark:border-zinc-800">
-                          <div>
-                            <h4 className="text-sm font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
-                              {getCategoryIcon(activeParentCategory.slug, "h-4 w-4 text-sky-600")}
-                              {activeParentCategory.name}
-                            </h4>
-                            <p className="text-[11px] text-zinc-500 line-clamp-1 mt-0.5">
-                              {activeParentCategory.description || "Línea completa disponible con stock inmediato"}
+                          <div className="min-w-0 pr-3">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shrink-0">
+                                {getCategoryIcon(activeParentCategory.slug, "h-3.5 w-3.5")}
+                              </span>
+                              <h4 className="text-sm font-bold text-zinc-950 dark:text-white truncate">
+                                {activeParentCategory.name}
+                              </h4>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 shrink-0">
+                                {activeSubcategories.length > 0 ? `${activeSubcategories.length} líneas` : "Línea directa"}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-1">
+                              {activeParentCategory.description || "Línea completa disponible con stock inmediato y garantía oficial"}
                             </p>
                           </div>
                           <Link
                             href={`${isWholesale ? "/mayorista" : ""}?category=${activeParentCategory.slug}#catalogo`}
                             onClick={() => setCategoriesMenuOpen(false)}
-                            className="text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 px-2.5 py-1.5 rounded-lg shrink-0 transition"
+                            className="group/btn inline-flex items-center gap-1.5 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 px-3.5 py-1.5 text-xs font-semibold shadow-xs transition shrink-0"
                           >
-                            Ver todo &rarr;
+                            <span>Ver todo</span>
+                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
                           </Link>
                         </div>
 
                         {activeSubcategories.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-1">
+                          <div className="grid grid-cols-2 gap-1.5 pr-1">
                             {activeSubcategories.map((sub) => (
                               <Link
                                 key={sub.id}
                                 href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
                                 onClick={() => setCategoriesMenuOpen(false)}
-                                className={`block rounded-lg px-2.5 py-1.5 text-xs transition truncate ${
+                                className={`group/sub flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-all ${
                                   isWholesale
-                                    ? "text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                                    : "text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950"
+                                    ? "bg-zinc-950/40 hover:bg-zinc-800/80 border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white"
+                                    : "bg-zinc-50/70 hover:bg-zinc-100/90 border-zinc-200/60 hover:border-zinc-300 text-zinc-700 hover:text-zinc-950 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                                 }`}
                                 title={sub.name}
                               >
-                                &bull; {sub.name}
+                                <span className="truncate pr-1">{sub.name}</span>
+                                <ChevronRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover/sub:opacity-100 group-hover/sub:translate-x-0 transition-all text-sky-500 shrink-0" />
                               </Link>
                             ))}
                           </div>
@@ -350,9 +360,10 @@ export function SiteHeader({
                             <Link
                               href={`${isWholesale ? "/mayorista" : ""}?category=${activeParentCategory.slug}#catalogo`}
                               onClick={() => setCategoriesMenuOpen(false)}
-                              className="inline-block mt-3 px-4 py-2 bg-zinc-900 text-white text-xs font-semibold rounded-xl"
+                              className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-semibold rounded-xl transition"
                             >
-                              Explorar {activeParentCategory.name} &rarr;
+                              <span>Explorar {activeParentCategory.name}</span>
+                              <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                           </div>
                         )}
@@ -655,26 +666,31 @@ export function SiteHeader({
 
                         {/* Accordion Subcategories */}
                         {isExpanded && subs.length > 0 && (
-                          <div className="pl-6 pr-2 py-1 space-y-1 border-l-2 border-zinc-200 dark:border-zinc-800 ml-3">
+                          <div className="pl-4 pr-1 py-2 space-y-1.5 border-l-2 border-sky-500/40 ml-4 mt-1">
                             <Link
                               href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
                               onClick={() => setOpen(false)}
-                              className="block py-1 text-xs font-bold text-sky-600 hover:underline"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-xs font-bold shadow-xs my-1"
                             >
-                              Ver todo {category.name} &rarr;
+                              <span>Ver todo {category.name}</span>
+                              <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
-                            {subs.map((sub) => (
-                              <Link
-                                key={sub.id}
-                                href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
-                                onClick={() => setOpen(false)}
-                                className={`block py-1 text-xs ${
-                                  isWholesale ? "text-zinc-400 hover:text-zinc-200" : "text-zinc-600 hover:text-zinc-900"
-                                }`}
-                              >
-                                &bull; {sub.name}
-                              </Link>
-                            ))}
+                            <div className="grid grid-cols-1 gap-1 pt-1">
+                              {subs.map((sub) => (
+                                <Link
+                                  key={sub.id}
+                                  href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
+                                  onClick={() => setOpen(false)}
+                                  className={`block rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                                    isWholesale
+                                      ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+                                      : "text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
+                                  }`}
+                                >
+                                  {sub.name}
+                                </Link>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>

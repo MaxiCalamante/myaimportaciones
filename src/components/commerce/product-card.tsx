@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, PackageCheck, ShoppingCart } from "lucide-react";
@@ -21,29 +22,35 @@ export function ProductCard({
     channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
   const addQuantity =
     channel === "wholesale" ? Math.max(product.wholesaleMinQuantity, 1) : 1;
-  const imageSrc = product.imageUrl || "/window.svg";
+
+  const initialImage = product.imageUrl || "/placeholder-product.svg";
+  const [imageSrc, setImageSrc] = useState(initialImage);
 
   const cartItem = cart.find(
     (line) => line.product.id === product.id && line.channel === channel
   );
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white hover:border-zinc-300 hover:shadow-lg transition-all duration-300">
       <Link
         href={`/producto/${product.slug}`}
-        className="relative aspect-[4/3] overflow-hidden bg-zinc-100 cursor-pointer block"
+        className="relative aspect-square overflow-hidden bg-white p-4 sm:p-5 cursor-pointer block border-b border-zinc-100"
       >
-        <Image
-          alt={product.title}
-          className="object-cover transition duration-500 group-hover:scale-105"
-          fill
-          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-          src={imageSrc}
-        />
+        <div className="relative h-full w-full">
+          <Image
+            alt={product.title}
+            className="object-contain transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            src={imageSrc}
+            onError={() => setImageSrc("/placeholder-product.svg")}
+            quality={95}
+          />
+        </div>
         <button
           aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-          className={`absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/70 bg-white/90 shadow-sm backdrop-blur transition ${
-            favorite ? "text-red-655" : "text-zinc-700 hover:text-red-655"
+          className={`absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 shadow-xs backdrop-blur transition hover:scale-110 active:scale-95 ${
+            favorite ? "text-red-500" : "text-zinc-500 hover:text-red-500"
           }`}
           onClick={(e) => {
             e.preventDefault();
@@ -52,10 +59,10 @@ export function ProductCard({
           }}
           type="button"
         >
-          <Heart className={favorite ? "h-5 w-5 fill-current" : "h-5 w-5"} />
+          <Heart className={favorite ? "h-4.5 w-4.5 fill-current" : "h-4.5 w-4.5"} />
         </button>
         {product.tags[0] ? (
-          <span className="absolute left-3 top-3 rounded-md bg-zinc-950 px-2.5 py-1 text-xs font-semibold uppercase text-white">
+          <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs">
             {product.tags[0]}
           </span>
         ) : null}

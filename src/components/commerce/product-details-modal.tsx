@@ -55,7 +55,7 @@ export function ProductDetailsModal() {
 
   if (!selectedProduct) return null;
 
-  const imageSrc = selectedProduct.imageUrl || "/window.svg";
+  const imageSrc = selectedProduct.imageUrl || "/placeholder-product.svg";
   const price = channel === "wholesale" ? selectedProduct.wholesalePrice : selectedProduct.retailPrice;
 
   // Zoom logic
@@ -114,7 +114,7 @@ export function ProductDetailsModal() {
         </button>
 
         {/* Left: Image with Zoom */}
-        <div className="relative w-full md:w-1/2 bg-zinc-50 border-b md:border-b-0 md:border-r border-zinc-200 overflow-hidden min-h-[300px] md:min-h-[400px]">
+        <div className="relative w-full md:w-1/2 bg-white border-b md:border-b-0 md:border-r border-zinc-100 overflow-hidden min-h-[300px] md:min-h-[400px] p-4 sm:p-6 flex items-center justify-center">
           <div
             className="w-full h-full relative cursor-zoom-in"
             onMouseMove={handleMouseMove}
@@ -122,12 +122,13 @@ export function ProductDetailsModal() {
           >
             <Image
               alt={selectedProduct.title}
-              className="object-contain p-6 transition-transform duration-100 ease-out"
+              className="object-contain p-4 transition-transform duration-100 ease-out"
               fill
               priority
               sizes="(min-width: 768px) 50vw, 100vw"
               src={imageSrc}
               style={zoomStyle}
+              quality={95}
             />
           </div>
           <button
