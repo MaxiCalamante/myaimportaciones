@@ -14,7 +14,7 @@ const heroSlides = [
     image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1800&q=80",
     eyebrow: "Distribución Oficial Total & Wadfow",
     title: "Herramientas Industriales y Profesionales",
-    description: "Líderes en herramientas manuales, eléctricas, inalámbricas y neumáticas. Más de 3.400 ítems con stock permanente y garantía directa de importación.",
+    description: "Líderes en herramientas Total Tools y Wadfow importadas directo del distribuidor oficial. Catálogo completo sin intermediarios con precios más baratos que en Mercado Libre.",
     btnText: "Ver Herramientas",
     btnLink: "/?category=herramientas-equipamiento",
   },

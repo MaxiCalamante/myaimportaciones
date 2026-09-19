@@ -166,6 +166,15 @@ export function ProductDetailsModal() {
               Tabla de Precios por Volumen
             </div>
             <div className="divide-y divide-zinc-200 text-sm">
+              {/* Ref Mercado Libre Row */}
+              {selectedProduct.retailPrice > 0 && (
+                <div className="flex items-center justify-between px-4 py-2 bg-zinc-50/70 text-xs">
+                  <span className="text-zinc-500">Ref. Mercado Libre (aprox.)</span>
+                  <span className="text-zinc-400 line-through font-medium">
+                    {formatCurrency(Math.round((selectedProduct.retailPrice * 1.38) / 100) * 100)}
+                  </span>
+                </div>
+              )}
               {/* Minorista Row */}
               <div className="flex items-center justify-between px-4 py-2.5">
                 <span className="text-zinc-700">1 - {selectedProduct.wholesaleMinQuantity - 1} u. (Minorista)</span>
