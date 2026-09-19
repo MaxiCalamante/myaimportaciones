@@ -8,6 +8,9 @@ import {
 } from "@/components/commerce/storefront-sections";
 import { CatalogWithFilters } from "@/components/commerce/catalog-with-filters";
 import { getStorefrontData } from "@/lib/storefront";
+import { SmartBuyerAdvisor } from "@/components/commerce/smart-buyer-advisor";
+import { ResellerStarterKits } from "@/components/commerce/reseller-starter-kits";
+import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 
 export default async function Home({
   searchParams,
@@ -76,18 +79,21 @@ export default async function Home({
       <StoreHero />
       <RetailHighlights />
       <CategoryStrip categories={categories} />
+      <SmartBuyerAdvisor products={products} />
       <ProductSection
         eyebrow="Selección Especial"
         id="catalogo"
         products={featuredProducts}
         title="Productos Destacados de Importación"
       />
+      <ResellerStarterKits products={products} />
       <ProductSection
         eyebrow="Oportunidades & Ahorro"
         id="ofertas"
         products={offerProducts.length > 0 ? offerProducts : retailProducts.slice(0, 4)}
         title="Ofertas y Precios Especiales"
       />
+      <TrustGuaranteeBadges />
       <TestimonialsSection />
     </>
   );

@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2, X, Truck } from "lucide-react";
+import { MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2, X, Truck, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { getWhatsAppUrl } from "@/lib/site";
+import { ProformaQuoteModal } from "@/components/commerce/proforma-quote-modal";
 
 export function CartDrawer() {
   const {
@@ -22,7 +24,12 @@ export function CartDrawer() {
     selectedShippingOptionId,
     setSelectedShippingOptionId,
     selectedShippingOption,
+    volumeDiscountPercentage,
+    volumeDiscountAmount,
+    retailUnitsCount,
   } = useCommerce();
+
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
 
   // Wholesale validation
   const wholesaleTotal = cart
@@ -298,6 +305,40 @@ export function CartDrawer() {
             )}
           </div>
 
+          {/* Progressive Volume Discount Incentive Banner */}
+          {retailUnitsCount > 0 && !hasWholesale && (
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-xs space-y-1.5">
+              <div className="flex items-center justify-between font-bold">
+                <span className="flex items-center gap-1.5 text-zinc-900">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                  {retailUnitsCount >= 3 ? (
+                    <span className="text-emerald-700">¡Destrabaste 8% OFF por volumen!</span>
+                  ) : retailUnitsCount === 2 ? (
+                    <span className="text-amber-800">¡Tenés 5% OFF! Agregá 1 más para 8% OFF</span>
+                  ) : (
+                    <span className="text-zinc-700">Llevá 2 unidades y destrabá 5% OFF extra</span>
+                  )}
+                </span>
+                <span className="font-extrabold text-emerald-700">
+                  {volumeDiscountPercentage > 0 ? `-${volumeDiscountPercentage}%` : "0%"}
+                </span>
+              </div>
+              <div className="w-full bg-zinc-200 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.min((retailUnitsCount / 3) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {volumeDiscountAmount > 0 && (
+            <div className="flex justify-between text-xs text-emerald-700 font-bold bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+              <span>Descuento por Volumen ({volumeDiscountPercentage}%):</span>
+              <span>-{formatCurrency(volumeDiscountAmount)}</span>
+            </div>
+          )}
+
           {/* Transfer discount badge */}
           {cart.length > 0 && (
             <div className="flex items-center justify-between text-xs text-emerald-800 bg-emerald-50/90 border border-emerald-200 p-2.5 rounded-xl">
@@ -306,14 +347,14 @@ export function CartDrawer() {
                 10% OFF pagando con Transferencia:
               </span>
               <span className="font-black text-sm text-emerald-700">
-                {formatCurrency(Math.round(cartTotal * 0.90) + shippingCost)}
+                {formatCurrency(Math.round((cartTotal - volumeDiscountAmount) * 0.90) + shippingCost)}
               </span>
             </div>
           )}
 
           <div className="border-t border-zinc-200 pt-3 flex items-center justify-between text-base font-bold text-zinc-950">
             <span>Total Regular</span>
-            <span>{formatCurrency(cartTotal + shippingCost)}</span>
+            <span>{formatCurrency(cartTotal - volumeDiscountAmount + shippingCost)}</span>
           </div>
 
           {!isWholesaleValid && (
@@ -348,21 +389,40 @@ export function CartDrawer() {
               >
                 Finalizar Compra en la Web
               </Link>
-              <a
-                href={getWhatsAppUrl(
-                  `Hola MYA Importaciones! Armé mi carrito y quisiera pedirlo por WhatsApp:\n\n${cart.map((c) => `• ${c.quantity}x ${c.product.title} (${formatCurrency(c.channel === 'wholesale' ? c.product.wholesalePrice : c.product.retailPrice)})`).join('\n')}\n\n*Total a pagar: ${formatCurrency(cartTotal + shippingCost)}*`
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 text-sm font-bold text-white transition-colors shadow-sm cursor-pointer"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Pedir por WhatsApp
-              </a>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsQuoteModalOpen(true)}
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 px-3 text-xs font-bold text-zinc-800 transition-colors shadow-xs cursor-pointer"
+                >
+                  <FileText className="h-4 w-4 text-emerald-600" />
+                  Presupuesto PDF
+                </button>
+                <a
+                  href={getWhatsAppUrl(
+                    `Hola MYA Importaciones! Armé mi carrito y quisiera pedirlo por WhatsApp:\n\n${cart.map((c) => `• ${c.quantity}x ${c.product.title} (${formatCurrency(c.channel === 'wholesale' ? c.product.wholesalePrice : c.product.retailPrice)})`).join('\n')}\n\n*Total a pagar: ${formatCurrency(cartTotal - volumeDiscountAmount + shippingCost)}*`
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 text-xs font-bold text-white transition-colors shadow-xs cursor-pointer"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Pedir WhatsApp
+                </a>
+              </div>
             </div>
           )}
         </div>
       </aside>
+
+      <ProformaQuoteModal
+        isOpen={isQuoteModalOpen}
+        onClose={() => setIsQuoteModalOpen(false)}
+        cart={cart}
+        cartTotal={cartTotal - volumeDiscountAmount}
+        shippingCost={shippingCost}
+        postalCode={postalCode}
+      />
     </div>
   );
 }

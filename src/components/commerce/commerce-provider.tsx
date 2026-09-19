@@ -47,6 +47,9 @@ interface CommerceContextValue {
   selectedShippingOptionId: string;
   setSelectedShippingOptionId: (id: string) => void;
   selectedShippingOption: ShippingOption | null;
+  volumeDiscountPercentage: number;
+  volumeDiscountAmount: number;
+  retailUnitsCount: number;
 }
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
@@ -222,6 +225,23 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
   const shippingCost = selectedShippingOption ? selectedShippingOption.price : 0;
 
+  // Progressive volume discount:
+  // 2 units: 5% OFF
+  // 3+ units: 8% OFF
+  const retailUnitsCount = useMemo(() => {
+    return cart
+      .filter((l) => l.channel === "retail")
+      .reduce((sum, l) => sum + l.quantity, 0);
+  }, [cart]);
+
+  const volumeDiscountPercentage = retailUnitsCount >= 3 ? 8 : retailUnitsCount >= 2 ? 5 : 0;
+  const volumeDiscountAmount = useMemo(() => {
+    const retailSubtotal = cart
+      .filter((l) => l.channel === "retail")
+      .reduce((sum, l) => sum + l.product.retailPrice * l.quantity, 0);
+    return Math.round(retailSubtotal * (volumeDiscountPercentage / 100));
+  }, [cart, volumeDiscountPercentage]);
+
   const value = useMemo(
     () => ({
       cart,
@@ -246,6 +266,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       selectedShippingOptionId,
       setSelectedShippingOptionId,
       selectedShippingOption,
+      volumeDiscountPercentage,
+      volumeDiscountAmount,
+      retailUnitsCount,
     }),
     [
       addToCart,
@@ -268,6 +291,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       selectedShippingOptionId,
       setSelectedShippingOptionId,
       selectedShippingOption,
+      volumeDiscountPercentage,
+      volumeDiscountAmount,
+      retailUnitsCount,
     ],
   );
 

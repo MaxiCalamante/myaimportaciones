@@ -24,6 +24,7 @@ import { calculateShipping } from "@/lib/shipping";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Product } from "@/lib/types";
 import { trackAdsEvent } from "@/lib/analytics";
+import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 
 export function ProductDetailInteractive({ product }: { product: Product }) {
   const {
@@ -185,6 +186,22 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             <span className="font-black text-sm text-emerald-700">
               {formatCurrency(Math.round(price * 0.90))}
             </span>
+          </div>
+        )}
+
+        {/* Wholesale Reseller Profit Demonstration */}
+        {channel === "wholesale" && product.retailPrice > product.wholesalePrice && (
+          <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-1.5">
+            <div className="flex items-center justify-between font-bold text-amber-950">
+              <span>PVP Sugerido de Reventa al Público:</span>
+              <span className="font-black text-sm">{formatCurrency(product.retailPrice)}</span>
+            </div>
+            <div className="flex items-center justify-between text-emerald-800 font-extrabold text-[11px] pt-1 border-t border-amber-200/60">
+              <span>Tu Ganancia Neta Revendiendo:</span>
+              <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md">
+                +{formatCurrency(product.retailPrice - product.wholesalePrice)} / un. ({Math.round(((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100)}% de margen)
+              </span>
+            </div>
           </div>
         )}
 
@@ -380,6 +397,9 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           ))}
         </div>
       </div>
+
+      {/* Trust & Guarantee Badges */}
+      <TrustGuaranteeBadges variant="compact" />
     </div>
   );
 }

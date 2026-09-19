@@ -4,8 +4,9 @@ import { CatalogWithFilters } from "@/components/commerce/catalog-with-filters";
 import { ButtonLink } from "@/components/ui/button";
 import { getStorefrontData } from "@/lib/storefront";
 import { getWhatsAppUrl } from "@/lib/site";
-
 import { getCurrentProfile } from "@/lib/auth";
+import { ResellerStarterKits } from "@/components/commerce/reseller-starter-kits";
+import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 
 export const metadata = {
   title: "Catálogo Mayorista | MYA Importaciones",
@@ -219,6 +220,9 @@ export default async function WholesalePage({
       </div>
     </section>
 
+      {/* Reseller Starter Kits */}
+      <ResellerStarterKits products={products} />
+
       {/* Main Catalog View with Filters */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" id="lista">
         <div className="border-b border-zinc-200 pb-4 mb-6">
@@ -233,6 +237,9 @@ export default async function WholesalePage({
 
         <CatalogWithFilters products={wholesaleProducts} channel="wholesale" />
       </div>
+
+      {/* Trust & Guarantee Badges */}
+      <TrustGuaranteeBadges />
     </>
   );
 }
