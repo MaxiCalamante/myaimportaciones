@@ -52,30 +52,45 @@ export async function getStorefrontData(options?: {
     )
     .order("display_order", { ascending: true });
 
-  let productsQuery = supabase
-    .from("products")
-    .select(
-      "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
-    )
-    .eq("is_active", true);
+  const buildProductsQuery = () => {
+    let query = supabase
+      .from("products")
+      .select(
+        "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
+      )
+      .eq("is_active", true);
 
-  if (options?.categoryId) {
-    const childIds = ((categoriesData ?? []) as unknown as DbCategory[])
-      .filter((c) => c.parent_id === options.categoryId)
-      .map((c) => c.id);
+    if (options?.categoryId) {
+      const childIds = ((categoriesData ?? []) as unknown as DbCategory[])
+        .filter((c) => c.parent_id === options.categoryId)
+        .map((c) => c.id);
 
-    if (childIds.length > 0) {
-      productsQuery = productsQuery.in("category_id", [options.categoryId, ...childIds]);
-    } else {
-      productsQuery = productsQuery.eq("category_id", options.categoryId);
+      if (childIds.length > 0) {
+        query = query.in("category_id", [options.categoryId, ...childIds]);
+      } else {
+        query = query.eq("category_id", options.categoryId);
+      }
     }
-  }
 
-  productsQuery = productsQuery
-    .order("is_featured", { ascending: false })
-    .order("created_at", { ascending: false });
+    return query
+      .order("is_featured", { ascending: false })
+      .order("created_at", { ascending: false });
+  };
 
-  const { data: productsData } = await productsQuery;
+  // Fetch up to 4,000 products concurrently in parallel ranges (bypasses PostgREST 1000 row cap)
+  const [b0, b1, b2, b3] = await Promise.all([
+    buildProductsQuery().range(0, 999),
+    buildProductsQuery().range(1000, 1999),
+    buildProductsQuery().range(2000, 2999),
+    buildProductsQuery().range(3000, 3999),
+  ]);
+
+  const productsData = [
+    ...(b0.data ?? []),
+    ...(b1.data ?? []),
+    ...(b2.data ?? []),
+    ...(b3.data ?? []),
+  ];
 
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(
     mapCategory,

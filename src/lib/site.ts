@@ -4,9 +4,9 @@ export const siteConfig = {
   tagline: "Importación Directa & Distribución Mayorista y Minorista",
   description:
     "Tienda oficial de MYA Importaciones en Argentina. Cosmética Coreana (K-Beauty), smartphones liberados, herramientas industriales y productos importados con envíos a todo el país.",
-  email: "ventas@myaimportaciones.com",
-  phone: "+54 9 11 3845-9821",
-  whatsappNumber: "5491138459821",
+  email: "maximocalamante14@gmail.com",
+  phone: "+54 9 249 463-8919",
+  whatsappNumber: "5492494638919",
   instagram: "https://www.instagram.com/_myaimportaciones/",
   instagramHandle: "@_myaimportaciones",
   location: "Buenos Aires, Argentina",
