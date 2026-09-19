@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2, X } from "lucide-react";
+import { MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2, X, Truck } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { getWhatsAppUrl } from "@/lib/site";
@@ -18,6 +18,10 @@ export function CartDrawer() {
     postalCode,
     setPostalCode,
     shippingCost,
+    shippingCalculation,
+    selectedShippingOptionId,
+    setSelectedShippingOptionId,
+    selectedShippingOption,
   } = useCommerce();
 
   // Wholesale validation
@@ -203,23 +207,66 @@ export function CartDrawer() {
         <div className="border-t border-zinc-200 p-5 bg-zinc-50/50 space-y-4">
           {/* Shipping Cost Simulator */}
           {cart.length > 0 && (
-            <div className="border-b border-zinc-200 pb-3">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Simular envío</span>
-              <div className="flex gap-2">
+            <div className="border-b border-zinc-200 pb-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5 text-sky-600" />
+                  Calcular envío
+                </span>
+                {shippingCalculation.isValid && (
+                  <span className="text-[11px] font-semibold text-zinc-500 truncate max-w-44">
+                    📍 {shippingCalculation.zoneName}
+                  </span>
+                )}
+              </div>
+              <div className="relative">
                 <input
                   type="text"
-                  placeholder="Código Postal (ej. 1425 o B1640)"
+                  placeholder="Código Postal (ej. 7000, 1425 o B1640)"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-zinc-300 px-3 text-xs bg-white outline-none focus:border-emerald-600 text-zinc-950"
+                  className="h-9 w-full rounded-lg border border-zinc-300 px-3 pr-7 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 font-medium"
                 />
+                {postalCode && (
+                  <button
+                    type="button"
+                    onClick={() => setPostalCode("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
-              {postalCode && (
-                <div className="mt-2 text-xs text-zinc-650 flex items-center justify-between bg-white border border-zinc-200 rounded-lg p-2">
-                  <span>Costo de envío estimado:</span>
-                  <span className="font-bold text-zinc-900">
-                    {shippingCost === 0 ? "Bonificado" : formatCurrency(shippingCost)}
-                  </span>
+
+              {shippingCalculation.isValid && (
+                <div className="space-y-1.5 pt-1">
+                  {shippingCalculation.options.map((opt) => {
+                    const isSelected = selectedShippingOptionId === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setSelectedShippingOptionId(opt.id)}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg border text-left text-xs transition cursor-pointer ${
+                          isSelected
+                            ? "border-sky-500 bg-sky-50/70 font-semibold"
+                            : "border-zinc-200 bg-white hover:bg-zinc-50"
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-zinc-900 truncate font-bold text-[11px]">{opt.name}</p>
+                          <p className="text-[10px] text-zinc-500">{opt.carrier} ({opt.estimatedDays})</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {opt.isFree ? (
+                            <span className="font-extrabold text-emerald-700">GRATIS</span>
+                          ) : (
+                            <span className="font-bold text-zinc-900">{formatCurrency(opt.price)}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

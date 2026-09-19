@@ -19,7 +19,18 @@ const paymentOptions: Array<{ value: PaymentMethod; icon: typeof CreditCard; bad
 ];
 
 export function CheckoutPanel({ profile }: { profile: Profile | null }) {
-  const { cart, cartTotal, clearCart, shippingCost } = useCommerce();
+  const {
+    cart,
+    cartTotal,
+    clearCart,
+    shippingCost,
+    postalCode,
+    setPostalCode,
+    shippingCalculation,
+    selectedShippingOptionId,
+    setSelectedShippingOptionId,
+    selectedShippingOption,
+  } = useCommerce();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transferencia");
   const [orderCode, setOrderCode] = useState<string | null>(null);
   
@@ -71,7 +82,11 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     const shippingEmail = formData.get("email") as string;
     const shippingPhone = formData.get("phone") as string;
     const shippingAddress = formData.get("address") as string;
+    const shippingCity = (formData.get("city") as string) || "";
+    const shippingCp = (formData.get("postal_code") as string) || postalCode || "";
     const orderNotes = formData.get("notes") as string;
+
+    const fullAddress = `${shippingAddress}${shippingCity ? `, ${shippingCity}` : ""}${shippingCp ? ` (CP: ${shippingCp})` : ""}${selectedShippingOption ? ` - [${selectedShippingOption.name} / ${selectedShippingOption.carrier}]` : ""}`;
 
     const lines = cart.map((line) => ({
       productId: line.product.id,
@@ -87,7 +102,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
           paymentMethod,
           shippingName,
           shippingPhone,
-          shippingAddress,
+          fullAddress,
           cartTotal,
           shipping,
           total,
@@ -211,8 +226,8 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                 />
               </label>
 
-              <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
-                Email (para comprobante)
+              <label className="grid gap-1.5 text-xs font-semibold text-zinc-700 sm:col-span-2">
+                Email (para comprobante y seguimiento)
                 <input
                   className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
                   name="email"
@@ -221,27 +236,125 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                   type="email"
                 />
               </label>
+            </div>
 
-              <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
-                Dirección completa (o expreso) *
+            {/* Postal Code & Carrier Selection */}
+            <div className="mt-5 pt-4 border-t border-zinc-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Truck className="h-4 w-4 text-sky-600" /> Código Postal de Envío *
+                </label>
+                {shippingCalculation.isValid && (
+                  <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                    📍 {shippingCalculation.locationName}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex gap-2 max-w-sm">
+                <input
+                  type="text"
+                  name="postal_code"
+                  required
+                  placeholder="Ingresá tu CP (ej: 7000, 1425 o B1640)"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-zinc-300 px-3 text-sm bg-white outline-none focus:border-sky-500 font-medium"
+                />
+              </div>
+
+              {shippingCalculation.isValid && (
+                <div className="space-y-2 pt-2">
+                  <span className="text-xs font-bold text-zinc-700 block">
+                    Seleccioná el método de transporte:
+                  </span>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {shippingCalculation.options.map((opt) => {
+                      const isSelected = selectedShippingOptionId === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSelectedShippingOptionId(opt.id)}
+                          className={`flex items-start justify-between p-3.5 rounded-xl border text-left transition cursor-pointer ${
+                            isSelected
+                              ? "border-sky-500 bg-sky-50/70 ring-2 ring-sky-500/20 shadow-xs"
+                              : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
+                          }`}
+                        >
+                          <div className="space-y-0.5 pr-2 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-xs text-zinc-950">{opt.name}</span>
+                              {opt.badge && (
+                                <span
+                                  className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                                    opt.isFree
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-blue-100 text-blue-800"
+                                  }`}
+                                >
+                                  {opt.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-500">{opt.carrier}</p>
+                            <p className="text-[10px] text-zinc-400">Plazo: {opt.estimatedDays}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {opt.isFree ? (
+                              <div className="flex flex-col items-end">
+                                {opt.originalPrice > 0 && (
+                                  <span className="text-[10px] line-through text-zinc-400">
+                                    {formatCurrency(opt.originalPrice)}
+                                  </span>
+                                )}
+                                <span className="font-black text-xs text-emerald-700">GRATIS</span>
+                              </div>
+                            ) : (
+                              <span className="font-black text-xs text-zinc-950">
+                                {formatCurrency(opt.price)}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Address fields */}
+            <div className="mt-5 pt-4 border-t border-zinc-200 grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-xs font-semibold text-zinc-700 sm:col-span-2">
+                Dirección de entrega (Calle y número) *
                 <input
                   className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
                   name="address"
                   required
-                  placeholder="Calle, número, localidad y provincia"
+                  placeholder="Calle, número, piso, depto (o retiro en sucursal si elegiste correo)"
                   defaultValue=""
                   type="text"
                 />
               </label>
-            </div>
 
-            <div className="mt-4">
               <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
-                Notas adicionales (Opcional)
+                Localidad y Provincia
+                <input
+                  className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
+                  name="city"
+                  placeholder="Ej: Tandil, Buenos Aires"
+                  defaultValue={shippingCalculation.locationName || ""}
+                  type="text"
+                />
+              </label>
+
+              <label className="grid gap-1.5 text-xs font-semibold text-zinc-700">
+                Notas adicionales para el repartidor (Opcional)
                 <input
                   className="h-11 rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 bg-white"
                   name="notes"
-                  placeholder="Piso, depto, timbre o transporte de preferencia (Andreani, Vía Cargo, etc.)"
+                  placeholder="Entre calles, timbre, color de reja..."
                   defaultValue=""
                   type="text"
                 />
@@ -353,10 +466,21 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               </div>
             )}
 
-            <div className="flex justify-between">
-              <span>Envío</span>
+            <div className="flex justify-between items-center">
+              <div>
+                <span>Envío</span>
+                {selectedShippingOption && (
+                  <p className="text-[10px] text-zinc-400 font-medium">
+                    {selectedShippingOption.name} ({selectedShippingOption.carrier})
+                  </p>
+                )}
+              </div>
               <span className="font-semibold text-zinc-900">
-                {shipping === 0 ? "Bonificado / A convenir" : formatCurrency(shipping)}
+                {shipping === 0 ? (
+                  <span className="text-emerald-700 font-bold">GRATIS</span>
+                ) : (
+                  formatCurrency(shipping)
+                )}
               </span>
             </div>
 

@@ -11,6 +11,11 @@ import {
   type ReactNode,
 } from "react";
 import type { Product, ProductChannel } from "@/lib/types";
+import {
+  calculateShipping,
+  type ShippingCalculation,
+  type ShippingOption,
+} from "@/lib/shipping";
 
 export interface CartLine {
   product: Product;
@@ -37,19 +42,25 @@ interface CommerceContextValue {
   postalCode: string;
   setPostalCode: (code: string) => void;
   shippingCost: number;
+  shippingCalculation: ShippingCalculation;
+  selectedShippingOptionId: string;
+  setSelectedShippingOptionId: (id: string) => void;
+  selectedShippingOption: ShippingOption | null;
 }
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
 const cartKey = "mm-cart";
 const favoritesKey = "mm-favorites";
+const postalCodeKey = "mya_postal_code";
+const shippingOptionKey = "mya_shipping_option";
 
 export function CommerceProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [postalCode, setPostalCode] = useState("");
-  const [shippingCost, setShippingCost] = useState(0);
+  const [postalCode, setPostalCodeState] = useState("");
+  const [selectedShippingOptionId, setSelectedShippingOptionIdState] = useState("correo_domicilio");
   const hydrated = useRef(false);
 
   useEffect(() => {
@@ -57,6 +68,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       try {
         const storedCart = window.localStorage.getItem(cartKey);
         const storedFavorites = window.localStorage.getItem(favoritesKey);
+        const storedPostalCode = window.localStorage.getItem(postalCodeKey);
+        const storedShippingOption = window.localStorage.getItem(shippingOptionKey);
 
         if (storedCart) {
           setCart(JSON.parse(storedCart) as CartLine[]);
@@ -65,12 +78,40 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         if (storedFavorites) {
           setFavoriteIds(JSON.parse(storedFavorites) as string[]);
         }
+
+        if (storedPostalCode) {
+          setPostalCodeState(storedPostalCode);
+        }
+
+        if (storedShippingOption) {
+          setSelectedShippingOptionIdState(storedShippingOption);
+        }
       } finally {
         hydrated.current = true;
       }
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  const setPostalCode = useCallback((code: string) => {
+    setPostalCodeState(code);
+    try {
+      if (code) {
+        window.localStorage.setItem(postalCodeKey, code);
+      } else {
+        window.localStorage.removeItem(postalCodeKey);
+      }
+    } catch {}
+  }, []);
+
+  const setSelectedShippingOptionId = useCallback((id: string) => {
+    setSelectedShippingOptionIdState(id);
+    try {
+      if (id) {
+        window.localStorage.setItem(shippingOptionKey, id);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -158,22 +199,19 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   }, 0);
 
   // Dynamic shipping calculation based on postalCode and cartTotal
-  useEffect(() => {
-    if (!postalCode) {
-      setShippingCost(0);
-      return;
-    }
-    if (cartTotal > 120000 || cart.length === 0) {
-      setShippingCost(0);
-      return;
-    }
-    const cleanCode = postalCode.trim().toUpperCase();
-    if (/^[1BC]/i.test(cleanCode)) {
-      setShippingCost(4500);
-    } else {
-      setShippingCost(8500);
-    }
-  }, [postalCode, cartTotal, cart.length]);
+  const shippingCalculation = useMemo(() => {
+    return calculateShipping(postalCode, cartTotal);
+  }, [postalCode, cartTotal]);
+
+  const selectedShippingOption = useMemo(() => {
+    if (!shippingCalculation.isValid || shippingCalculation.options.length === 0) return null;
+    return (
+      shippingCalculation.options.find((opt) => opt.id === selectedShippingOptionId) ||
+      shippingCalculation.options[0]
+    );
+  }, [shippingCalculation, selectedShippingOptionId]);
+
+  const shippingCost = selectedShippingOption ? selectedShippingOption.price : 0;
 
   const value = useMemo(
     () => ({
@@ -195,6 +233,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       postalCode,
       setPostalCode,
       shippingCost,
+      shippingCalculation,
+      selectedShippingOptionId,
+      setSelectedShippingOptionId,
+      selectedShippingOption,
     }),
     [
       addToCart,
@@ -213,6 +255,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       postalCode,
       setPostalCode,
       shippingCost,
+      shippingCalculation,
+      selectedShippingOptionId,
+      setSelectedShippingOptionId,
+      selectedShippingOption,
     ],
   );
 

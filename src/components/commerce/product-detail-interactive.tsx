@@ -20,19 +20,27 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
+import { calculateShipping } from "@/lib/shipping";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
 export function ProductDetailInteractive({ product }: { product: Product }) {
-  const { addToCart, toggleFavorite, isFavorite, setCartOpen } = useCommerce();
+  const {
+    addToCart,
+    toggleFavorite,
+    isFavorite,
+    setCartOpen,
+    postalCode,
+    setPostalCode,
+    selectedShippingOptionId,
+    setSelectedShippingOptionId,
+  } = useCommerce();
   const [quantity, setQuantity] = useState(1);
   const [channel, setChannel] = useState<"retail" | "wholesale">(
     product.wholesaleOnly ? "wholesale" : "retail"
   );
   const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [postalCode, setPostalCode] = useState("");
-  const [shippingResult, setShippingResult] = useState<{ zone: string; cost: string; time: string } | null>(null);
 
   const favorite = isFavorite(product.id);
 
@@ -41,6 +49,10 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   }, [channel, product.wholesaleMinQuantity]);
 
   const price = channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
+
+  const shippingCalculation = useMemo(() => {
+    return calculateShipping(postalCode, price * quantity);
+  }, [postalCode, price, quantity]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -70,23 +82,6 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleShippingCalc = (cp: string) => {
-    setPostalCode(cp);
-    const clean = cp.replace(/\D/g, "");
-    if (clean.length >= 4) {
-      const num = parseInt(clean, 10);
-      if (num >= 1000 && num <= 1499) {
-        setShippingResult({ zone: "CABA", cost: "$4.500 (o cadetería en 24hs)", time: "Llega en 24 a 48 hs hábiles" });
-      } else if (num >= 1500 && num <= 1999) {
-        setShippingResult({ zone: "Gran Buenos Aires (GBA)", cost: "$6.200 por Correo", time: "Llega en 48 a 72 hs hábiles" });
-      } else {
-        setShippingResult({ zone: "Interior del País", cost: "$8.500 por Andreani / Correo", time: "Llega en 3 a 5 días hábiles a sucursal o domicilio" });
-      }
-    } else {
-      setShippingResult(null);
     }
   };
 
@@ -266,28 +261,97 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       </div>
 
       {/* Shipping Cost Simulator */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2.5 text-xs">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3 text-xs shadow-xs">
         <div className="flex items-center justify-between">
           <span className="font-bold text-zinc-900 flex items-center gap-1.5">
             <Truck className="h-4 w-4 text-sky-600" />
             Calcular costo de envío:
           </span>
-          <span className="text-[10px] text-zinc-400">Todo el país</span>
+          <span className="text-[10px] text-zinc-400">Envíos a todo el país</span>
         </div>
-        <input
-          type="text"
-          placeholder="Ingresá tu Código Postal (ej: 1425 o B1640)"
-          value={postalCode}
-          onChange={(e) => handleShippingCalc(e.target.value)}
-          className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400"
-        />
-        {shippingResult && (
-          <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-800 space-y-0.5 animate-in fade-in duration-150">
-            <div className="flex justify-between font-bold">
-              <span>Zona: {shippingResult.zone}</span>
-              <span className="text-emerald-700">{shippingResult.cost}</span>
+
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Ingresá tu Código Postal (ej: 7000, 1425 o B1640)"
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            className="h-10 w-full rounded-xl border border-zinc-300 px-3 pr-8 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400 font-medium"
+          />
+          {postalCode && (
+            <button
+              type="button"
+              onClick={() => setPostalCode("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {shippingCalculation.isValid && (
+          <div className="space-y-2 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-1.5">
+              <span className="text-[11px] font-bold text-zinc-700">
+                📍 {shippingCalculation.locationName}
+              </span>
+              {shippingCalculation.freeShippingQualified && (
+                <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
+                  ¡Envío Gratis! 🎉
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-zinc-500">{shippingResult.time}</p>
+
+            <div className="space-y-1.5">
+              {shippingCalculation.options.map((opt) => {
+                const isSelected = selectedShippingOptionId === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSelectedShippingOptionId(opt.id)}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                      isSelected
+                        ? "border-sky-500 bg-sky-50/60 ring-1 ring-sky-500/30"
+                        : "border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/70"
+                    }`}
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-zinc-900 truncate">{opt.name}</span>
+                        {opt.badge && (
+                          <span
+                            className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                              opt.isFree
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {opt.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-500">{opt.carrier} • {opt.estimatedDays}</p>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      {opt.isFree ? (
+                        <div className="flex flex-col items-end">
+                          {opt.originalPrice > 0 && (
+                            <span className="text-[10px] line-through text-zinc-400">
+                              {formatCurrency(opt.originalPrice)}
+                            </span>
+                          )}
+                          <span className="font-black text-emerald-700">GRATIS</span>
+                        </div>
+                      ) : (
+                        <span className="font-black text-zinc-900">{formatCurrency(opt.price)}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
