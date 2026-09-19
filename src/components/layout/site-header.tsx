@@ -1,8 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Heart, Menu, Search, ShieldCheck, ShoppingBag, User, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Heart,
+  Menu,
+  Search,
+  ShieldCheck,
+  ShoppingBag,
+  User,
+  X,
+  Wrench,
+  Sparkles,
+  Smartphone,
+  Droplets,
+  LayoutGrid,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -75,6 +90,46 @@ export function SiteHeader({
     }
   });
 
+  // Main parent categories (rubros de primer nivel)
+  const mainCategories = categories.filter((cat) => !cat.parentId);
+  const getSubcategories = (parentId: string) => categories.filter((cat) => cat.parentId === parentId);
+
+  const [categoriesMenuOpen, setCategoriesMenuOpen] = useState(false);
+  const [hoveredParentId, setHoveredParentId] = useState<string | null>(null);
+  const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const activeParentCategory =
+    mainCategories.find((c) => c.id === hoveredParentId) || mainCategories[0];
+  const activeSubcategories = activeParentCategory
+    ? getSubcategories(activeParentCategory.id)
+    : [];
+
+  const handleMouseEnterMenu = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setCategoriesMenuOpen(true);
+    if (!hoveredParentId && mainCategories.length > 0) {
+      setHoveredParentId(mainCategories[0].id);
+    }
+  };
+
+  const handleMouseLeaveMenu = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setCategoriesMenuOpen(false);
+    }, 220);
+  };
+
+  const getCategoryIcon = (slug: string, className = "h-4 w-4") => {
+    if (slug.includes("herramienta")) return <Wrench className={className} />;
+    if (slug.includes("cosmetica")) return <Sparkles className={className} />;
+    if (slug.includes("smartphone") || slug.includes("tecnologia")) return <Smartphone className={className} />;
+    if (slug.includes("capilar")) return <Droplets className={className} />;
+    return <LayoutGrid className={className} />;
+  };
+
   const brandName = isWholesale ? "MYA Mayorista" : "MYA Importaciones";
 
   // Classes based on channel
@@ -144,41 +199,168 @@ export function SiteHeader({
             Inicio
           </Link>
 
-          {/* Categorías Link con Dropdown */}
-          <div className="relative group">
-            <Link
-              href="/#categorias"
-              className={`flex items-center gap-1 ${linkClass}`}
+          {/* Categorías Link con Dropdown estructurado y sin bug de cursor */}
+          <div
+            className="relative"
+            onMouseEnter={handleMouseEnterMenu}
+            onMouseLeave={handleMouseLeaveMenu}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setCategoriesMenuOpen((prev) => !prev);
+                if (!hoveredParentId && mainCategories.length > 0) {
+                  setHoveredParentId(mainCategories[0].id);
+                }
+              }}
+              className={`flex items-center gap-1.5 ${linkClass} cursor-pointer`}
+              aria-expanded={categoriesMenuOpen}
             >
               Categorías
-              <ChevronDown className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition" />
-            </Link>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-200 ${
+                  categoriesMenuOpen ? "rotate-180 text-sky-600" : "text-zinc-400"
+                }`}
+              />
+            </button>
 
-            <div className={`absolute left-0 mt-1 w-60 rounded-2xl border p-2 shadow-2xl z-50 transition-all duration-150 transform scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 group-hover:pointer-events-auto ${
-              isWholesale
-                ? "border-zinc-800 bg-zinc-900/95 text-zinc-100 backdrop-blur-md"
-                : "border-zinc-200 bg-white/95 text-zinc-900 backdrop-blur-md"
-            }`}>
-              <div className="text-[10px] uppercase font-bold text-zinc-400 px-3 py-1.5 border-b border-zinc-100/10 mb-1">
-                Rubros Principales
-              </div>
-              {categories.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-zinc-500">No hay categorías</p>
-              ) : (
-                categories.map((category) => (
-                  <Link
-                    key={category.id}
-                    href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
-                    className={`block rounded-xl px-3 py-2 text-xs sm:text-sm font-medium transition-colors ${
+            {/* Bridge container: anclado a top-full con pt-2 de padding continuo para que no se cierre */}
+            <div
+              className={`absolute left-0 top-full pt-2 z-50 transition-all duration-200 ease-out ${
+                categoriesMenuOpen
+                  ? "opacity-100 visible translate-y-0"
+                  : "opacity-0 invisible -translate-y-1 pointer-events-none"
+              }`}
+            >
+              <div
+                className={`w-[660px] rounded-2xl border shadow-2xl overflow-hidden backdrop-blur-md transition-colors ${
+                  isWholesale
+                    ? "border-zinc-800 bg-zinc-900/98 text-zinc-100"
+                    : "border-zinc-200/90 bg-white/98 text-zinc-900"
+                }`}
+              >
+                <div className="grid grid-cols-[250px_1fr]">
+                  {/* Left Column: Categorías Principales */}
+                  <div
+                    className={`p-3 border-r ${
                       isWholesale
-                        ? "hover:bg-zinc-800 hover:text-white text-zinc-300"
-                        : "hover:bg-zinc-100 hover:text-zinc-950 text-zinc-700"
+                        ? "border-zinc-800 bg-zinc-950/60"
+                        : "border-zinc-100 bg-zinc-50/80"
                     }`}
                   >
-                    {category.name}
-                  </Link>
-                ))
-              )}
+                    <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                      Rubros Principales
+                    </p>
+                    <div className="space-y-1 mt-1">
+                      {mainCategories.map((category) => {
+                        const isSelected = activeParentCategory?.id === category.id;
+                        return (
+                          <div
+                            key={category.id}
+                            onMouseEnter={() => setHoveredParentId(category.id)}
+                            className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? isWholesale
+                                  ? "bg-zinc-800 text-white shadow-xs"
+                                  : "bg-white text-zinc-950 shadow-xs border border-zinc-200/80"
+                                : isWholesale
+                                ? "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                                : "text-zinc-650 hover:text-zinc-950 hover:bg-zinc-100/80"
+                            }`}
+                          >
+                            <Link
+                              href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
+                              onClick={() => setCategoriesMenuOpen(false)}
+                              className="flex items-center gap-2.5 flex-1 min-w-0"
+                            >
+                              <span className={isSelected ? "text-sky-600" : "text-zinc-400"}>
+                                {getCategoryIcon(category.slug, "h-4 w-4 shrink-0")}
+                              </span>
+                              <span className="truncate">{category.name}</span>
+                            </Link>
+
+                            <ChevronRight
+                              className={`h-4 w-4 shrink-0 transition-transform ${
+                                isSelected
+                                  ? "text-sky-600 translate-x-0.5"
+                                  : "text-zinc-300 opacity-0 group-hover:opacity-100"
+                              }`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-zinc-200/60 dark:border-zinc-800">
+                      <Link
+                        href="/#catalogo"
+                        onClick={() => setCategoriesMenuOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 transition"
+                      >
+                        <LayoutGrid className="h-3.5 w-3.5" />
+                        Ver catálogo completo
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Subcategorías del Rubro Activo */}
+                  <div className="p-4 flex flex-col justify-between min-h-[300px] max-h-[420px] overflow-y-auto">
+                    {activeParentCategory && (
+                      <div>
+                        <div className="flex items-center justify-between border-b pb-3 mb-3 border-zinc-100 dark:border-zinc-800">
+                          <div>
+                            <h4 className="text-sm font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
+                              {getCategoryIcon(activeParentCategory.slug, "h-4 w-4 text-sky-600")}
+                              {activeParentCategory.name}
+                            </h4>
+                            <p className="text-[11px] text-zinc-500 line-clamp-1 mt-0.5">
+                              {activeParentCategory.description || "Línea completa disponible con stock inmediato"}
+                            </p>
+                          </div>
+                          <Link
+                            href={`${isWholesale ? "/mayorista" : ""}?category=${activeParentCategory.slug}#catalogo`}
+                            onClick={() => setCategoriesMenuOpen(false)}
+                            className="text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 px-2.5 py-1.5 rounded-lg shrink-0 transition"
+                          >
+                            Ver todo &rarr;
+                          </Link>
+                        </div>
+
+                        {activeSubcategories.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-1">
+                            {activeSubcategories.map((sub) => (
+                              <Link
+                                key={sub.id}
+                                href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
+                                onClick={() => setCategoriesMenuOpen(false)}
+                                className={`block rounded-lg px-2.5 py-1.5 text-xs transition truncate ${
+                                  isWholesale
+                                    ? "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                    : "text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950"
+                                }`}
+                                title={sub.name}
+                              >
+                                &bull; {sub.name}
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-10 text-center text-xs text-zinc-400">
+                            <p>Todos los modelos de {activeParentCategory.name} se encuentran unificados en esta sección.</p>
+                            <Link
+                              href={`${isWholesale ? "/mayorista" : ""}?category=${activeParentCategory.slug}#catalogo`}
+                              onClick={() => setCategoriesMenuOpen(false)}
+                              className="inline-block mt-3 px-4 py-2 bg-zinc-900 text-white text-xs font-semibold rounded-xl"
+                            >
+                              Explorar {activeParentCategory.name} &rarr;
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -432,22 +614,73 @@ export function SiteHeader({
               Seguimiento de Pedidos
             </Link>
 
-            {/* Categorías en menú móvil */}
-            {categories.length > 0 && (
-              <div className={`py-1 pl-3 border-l my-1 ${isWholesale ? "border-zinc-800" : "border-zinc-200"}`}>
-                <p className="px-3 py-1 text-xs font-semibold text-zinc-500 uppercase">Categorías</p>
-                {categories.map((category) => (
-                  <Link
-                    key={category.id}
-                    href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}`}
-                    onClick={() => setOpen(false)}
-                    className={`block rounded-lg px-3 py-2 text-sm ${
-                      isWholesale ? "text-zinc-400 hover:bg-zinc-850 hover:text-white" : "text-zinc-650 hover:bg-zinc-100"
-                    }`}
-                  >
-                    {category.name}
-                  </Link>
-                ))}
+            {/* Categorías en menú móvil: 4 Rubros Principales con subcategorías desplegables */}
+            {mainCategories.length > 0 && (
+              <div className={`py-2 pl-3 border-l my-1.5 ${isWholesale ? "border-zinc-800" : "border-zinc-200"}`}>
+                <p className="px-2 py-1 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                  Rubros Principales
+                </p>
+                <div className="space-y-1 mt-1">
+                  {mainCategories.map((category) => {
+                    const subs = getSubcategories(category.id);
+                    const isExpanded = expandedMobileCategory === category.id;
+
+                    return (
+                      <div key={category.id} className="space-y-1">
+                        <div className="flex items-center justify-between rounded-xl pr-2">
+                          <Link
+                            href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
+                            onClick={() => setOpen(false)}
+                            className={`flex items-center gap-2 px-2.5 py-2 text-xs sm:text-sm font-semibold flex-1 ${
+                              isWholesale ? "text-zinc-300 hover:text-white" : "text-zinc-800 hover:text-zinc-950"
+                            }`}
+                          >
+                            <span className="text-sky-600">
+                              {getCategoryIcon(category.slug, "h-4 w-4 shrink-0")}
+                            </span>
+                            <span>{category.name}</span>
+                          </Link>
+
+                          {subs.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMobileCategory(isExpanded ? null : category.id)}
+                              className="p-1.5 text-zinc-400 hover:text-zinc-600 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                              aria-label={`Ver subcategorías de ${category.name}`}
+                            >
+                              <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180 text-sky-600" : ""}`} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Accordion Subcategories */}
+                        {isExpanded && subs.length > 0 && (
+                          <div className="pl-6 pr-2 py-1 space-y-1 border-l-2 border-zinc-200 dark:border-zinc-800 ml-3">
+                            <Link
+                              href={`${isWholesale ? "/mayorista" : ""}?category=${category.slug}#catalogo`}
+                              onClick={() => setOpen(false)}
+                              className="block py-1 text-xs font-bold text-sky-600 hover:underline"
+                            >
+                              Ver todo {category.name} &rarr;
+                            </Link>
+                            {subs.map((sub) => (
+                              <Link
+                                key={sub.id}
+                                href={`${isWholesale ? "/mayorista" : ""}?category=${sub.slug}#catalogo`}
+                                onClick={() => setOpen(false)}
+                                className={`block py-1 text-xs ${
+                                  isWholesale ? "text-zinc-400 hover:text-zinc-200" : "text-zinc-600 hover:text-zinc-900"
+                                }`}
+                              >
+                                &bull; {sub.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

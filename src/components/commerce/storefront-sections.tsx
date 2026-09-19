@@ -16,7 +16,7 @@ const heroSlides = [
     title: "Herramientas Industriales y Profesionales",
     description: "Líderes en herramientas manuales, eléctricas, inalámbricas y neumáticas. Más de 3.400 ítems con stock permanente y garantía directa de importación.",
     btnText: "Ver Herramientas",
-    btnLink: "/?category=herramientas",
+    btnLink: "/?category=herramientas-equipamiento",
   },
   {
     image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1800&q=80",
