@@ -96,6 +96,50 @@ const orgJsonLd = {
   },
 };
 
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteConfig.brandName,
+  url: siteConfig.appUrl,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${siteConfig.appUrl}/api/search?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const storeJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Store",
+  name: siteConfig.brandName,
+  image: `${siteConfig.appUrl}/og-image.png`,
+  url: siteConfig.appUrl,
+  telephone: siteConfig.phone,
+  email: siteConfig.email,
+  priceRange: "$$",
+  currenciesAccepted: "ARS",
+  paymentAccepted: "Mercado Pago, Tarjeta de Crédito, Transferencia Bancaria, Efectivo",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Tandil Centro",
+    addressLocality: "Tandil",
+    addressRegion: "Buenos Aires",
+    postalCode: "7000",
+    addressCountry: "AR",
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "08:30",
+      closes: "19:30",
+    },
+  ],
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -114,8 +158,16 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }}
+        />
       </head>
-      <body className="min-h-full bg-zinc-50 text-zinc-950">
+      <body className="min-h-full bg-slate-50 text-zinc-950">
         <CommerceProvider>
           <div className="flex min-h-screen flex-col pb-16 md:pb-0">
             <SiteHeader initialCategories={categories} initialProducts={products} profile={profile} />

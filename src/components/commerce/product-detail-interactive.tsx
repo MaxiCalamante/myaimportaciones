@@ -230,7 +230,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           <button
             onClick={handleAddToCart}
             disabled={product.stock <= 0}
-            className="flex-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-6 text-sm font-bold text-white hover:bg-zinc-800 transition cursor-pointer shadow-md disabled:opacity-50"
+            className="flex-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-6 text-sm font-bold text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-md disabled:opacity-50"
             type="button"
           >
             <ShoppingCart className="h-4 w-4" />
@@ -400,6 +400,27 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
       {/* Trust & Guarantee Badges */}
       <TrustGuaranteeBadges variant="compact" />
+
+      {/* Mobile Sticky Add-to-Cart Bar */}
+      <div className="fixed bottom-16 left-0 right-0 z-30 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 px-4 py-2.5 shadow-lg">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase block">
+              {channel === "wholesale" ? "Mayorista" : "Minorista"}
+            </span>
+            <span className="text-base font-black text-zinc-950">{formatCurrency(price)}</span>
+          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={product.stock <= 0}
+            className="flex-1 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-md disabled:opacity-50"
+            type="button"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {added ? "¡Agregado!" : "Agregar al Carrito"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

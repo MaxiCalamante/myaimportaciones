@@ -18,6 +18,7 @@ import {
   Lock,
   Building2,
   Calendar,
+  Tag,
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
@@ -28,6 +29,7 @@ import { createOrderAction } from "@/app/checkout/actions";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Profile } from "@/lib/auth";
 import { trackAdsEvent } from "@/lib/analytics";
+import { validateCoupon } from "@/lib/coupons";
 
 const paymentOptions: Array<{ value: PaymentMethod; icon: typeof CreditCard; badge?: string; desc: string }> = [
   { value: "transferencia", icon: Landmark, badge: "10% OFF", desc: "CVU Mercado Pago / Transferencia inmediata" },
@@ -77,6 +79,18 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
   const [copiedCvu, setCopiedCvu] = useState(false);
   const [copiedAlias, setCopiedAlias] = useState(false);
 
+  // Coupon states
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+    description: string;
+  } | null>(null);
+  const [couponFeedback, setCouponFeedback] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -98,11 +112,36 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     }
   }, []); // Run once on mount
 
-  // 10% discount for bank transfer / cash
+  // Coupon and transfer discount logic
+  const couponDiscount = appliedCoupon ? appliedCoupon.discount : 0;
+  const subtotalAfterCoupon = Math.max(0, cartTotal - couponDiscount);
   const transferDiscountPercentage = 10;
   const isDiscountEligible = paymentMethod === "transferencia" || paymentMethod === "efectivo";
-  const discountAmount = isDiscountEligible ? Math.round(cartTotal * (transferDiscountPercentage / 100)) : 0;
-  const total = Math.max(0, cartTotal - discountAmount + shipping);
+  const discountAmount = isDiscountEligible ? Math.round(subtotalAfterCoupon * (transferDiscountPercentage / 100)) : 0;
+  const total = Math.max(0, subtotalAfterCoupon - discountAmount + shipping);
+
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponCode.trim()) return;
+    const channel = cart.some((l) => l.channel === "wholesale") ? "wholesale" : "retail";
+    const res = validateCoupon(couponCode, cartTotal, channel);
+    if (res.valid) {
+      setAppliedCoupon({
+        code: res.coupon?.code || couponCode.toUpperCase(),
+        discount: res.discountAmount,
+        description: res.coupon?.description || "Cupón aplicado",
+      });
+      setCouponFeedback({ type: "success", text: res.message });
+    } else {
+      setCouponFeedback({ type: "error", text: res.message });
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponFeedback(null);
+  };
 
   // Wholesale validation
   const wholesaleTotal = useMemo(() => {
@@ -185,6 +224,16 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     startTransition(async () => {
       try {
         const finalTotalSnapshot = total;
+        const combinedNotes = [
+          orderNotes || "",
+          appliedCoupon ? `[Cupón: ${appliedCoupon.code} (-${formatCurrency(appliedCoupon.discount)})]` : "",
+          paymentMethod === "tarjeta"
+            ? `[Pago Tarjeta: ${cardBrand} **** ${cardNumber.slice(-4)} | Cuotas: ${installments} | DNI: ${cardDni}]`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+
         const result = await createOrderAction(
           profile?.id ?? null,
           paymentMethod,
@@ -196,9 +245,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
           finalTotalSnapshot,
           lines,
           shippingEmail,
-          paymentMethod === "tarjeta"
-            ? `${orderNotes || ""}\n[Pago con Tarjeta: ${cardBrand} **** ${cardNumber.slice(-4)} | Cuotas: ${installments} | DNI: ${cardDni}]`
-            : orderNotes
+          combinedNotes
         );
 
         setOrderCode(result.trackingCode);
@@ -237,13 +284,13 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8 animate-in fade-in duration-300">
-        <div className="rounded-3xl border border-emerald-200 bg-white p-8 sm:p-10 text-center shadow-xl">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+        <div className="rounded-3xl border border-sky-200 bg-white p-8 sm:p-10 text-center shadow-xl">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-sky-100 ring-8 ring-sky-50">
+            <CheckCircle2 className="h-10 w-10 text-sky-600" />
           </div>
 
-          <span className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+          <span className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 border border-sky-200">
+            <ShieldCheck className="h-3.5 w-3.5 text-sky-600" />
             ¡Pedido Registrado con Éxito en MYA Importaciones!
           </span>
 
@@ -260,7 +307,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
           {/* If Mercado Pago External Checkout is ready */}
           {mpInitPoint && (
-            <div className="mt-6 rounded-2xl bg-sky-500 text-white p-6 max-w-md mx-auto shadow-lg space-y-3">
+            <div className="mt-6 rounded-2xl bg-sky-600 text-white p-6 max-w-md mx-auto shadow-lg space-y-3">
               <p className="font-black text-lg">Pagar con Mercado Pago</p>
               <p className="text-xs text-sky-100">
                 Hacé clic en el siguiente enlace seguro para abonar con tarjeta en hasta 12 cuotas:
@@ -280,27 +327,27 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
           {/* Bank Transfer Details Card (Requested with Máximo's CVU) */}
           {isBankTransfer && (
-            <div className="mt-8 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/70 to-teal-50/50 p-6 max-w-lg mx-auto text-left shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
+            <div className="mt-8 rounded-2xl border-2 border-sky-400/40 bg-gradient-to-br from-sky-50/70 to-blue-50/40 p-6 max-w-lg mx-auto text-left shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-sky-200 pb-3">
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-emerald-700" />
+                  <Building2 className="h-5 w-5 text-sky-700" />
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+                    <p className="text-xs font-bold uppercase tracking-wider text-sky-900">
                       Datos para Transferir (10% OFF Aplicado)
                     </p>
                     <p className="text-sm font-black text-zinc-950">
-                      Monto a transferir: <span className="text-emerald-700">{formatCurrency(confirmedTotal)}</span>
+                      Monto a transferir: <span className="text-sky-700">{formatCurrency(confirmedTotal)}</span>
                     </p>
                   </div>
                 </div>
-                <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black text-white">
+                <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-black text-white shadow-xs">
                   10% OFF
                 </span>
               </div>
 
               <div className="space-y-3 text-xs">
                 {/* CVU Block */}
-                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200 shadow-xs">
+                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-sky-200 shadow-xs">
                   <div>
                     <span className="text-[10px] font-bold uppercase text-zinc-500 block">CVU Mercado Pago:</span>
                     <span className="font-mono font-black text-base text-zinc-950 tracking-wider">
@@ -310,7 +357,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                   <button
                     type="button"
                     onClick={handleCopyCvu}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
                   >
                     {copiedCvu ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedCvu ? "¡Copiado!" : "Copiar"}
@@ -318,7 +365,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                 </div>
 
                 {/* Alias Block */}
-                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200 shadow-xs">
+                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-sky-200 shadow-xs">
                   <div>
                     <span className="text-[10px] font-bold uppercase text-zinc-500 block">Alias:</span>
                     <span className="font-mono font-black text-sm text-zinc-950">
@@ -328,7 +375,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                   <button
                     type="button"
                     onClick={handleCopyAlias}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900 font-bold text-xs transition cursor-pointer"
                   >
                     {copiedAlias ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedAlias ? "¡Copiado!" : "Copiar"}
@@ -340,7 +387,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                   <p><strong>Entidad:</strong> {siteConfig.bankTransfer.bank}</p>
                 </div>
 
-                <p className="text-[11px] text-emerald-900 bg-emerald-100/70 p-2.5 rounded-lg leading-relaxed">
+                <p className="text-[11px] text-sky-950 bg-sky-100/70 p-2.5 rounded-lg leading-relaxed border border-sky-200/50">
                   💡 Una vez realizada la transferencia, enviá el comprobante al WhatsApp <strong>2494638919</strong> con tu código <strong>#{orderCode}</strong> para despachar tu pedido inmediatamente.
                 </p>
               </div>
@@ -819,6 +866,52 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
             )}
           </div>
 
+          {/* Coupon Code Input */}
+          <div className="mt-4 border-t border-zinc-200 pt-3.5">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs">
+                <div className="flex items-center gap-1.5 text-amber-900 font-medium">
+                  <Tag className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <span>
+                    Cupón <strong>{appliedCoupon.code}</strong> (-{formatCurrency(appliedCoupon.discount)})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-amber-800 hover:text-red-600 px-1.5 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors"
+                >
+                  ✕ Quitar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleApplyCoupon} className="flex gap-1.5">
+                <input
+                  type="text"
+                  placeholder="Cupón de descuento (ej: BIENVENIDO10)"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  className="h-10 flex-1 rounded-xl border border-zinc-300 bg-white px-3 text-xs uppercase font-mono font-bold text-zinc-900 placeholder:normal-case placeholder:font-sans placeholder:text-zinc-400 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20"
+                />
+                <button
+                  type="submit"
+                  className="h-10 px-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs transition cursor-pointer shrink-0 shadow-xs"
+                >
+                  Aplicar
+                </button>
+              </form>
+            )}
+            {couponFeedback && (
+              <p
+                className={`mt-1.5 text-[11px] font-medium ${
+                  couponFeedback.type === "success" ? "text-sky-700" : "text-red-600"
+                }`}
+              >
+                {couponFeedback.text}
+              </p>
+            )}
+          </div>
+
           <div className="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-xs text-zinc-600">
             {hasWholesale && (
               <div className="flex justify-between text-zinc-500">
@@ -831,10 +924,19 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               <span className="font-semibold text-zinc-900">{formatCurrency(cartTotal)}</span>
             </div>
 
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200">
+            {appliedCoupon && (
+              <div className="flex justify-between text-amber-800 font-bold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
                 <span className="flex items-center gap-1">
-                  <Sparkles className="h-3.5 w-3.5" /> Descuento 10% Transferencia
+                  <Tag className="h-3.5 w-3.5 text-amber-600" /> Cupón ({appliedCoupon.code})
+                </span>
+                <span>-{formatCurrency(couponDiscount)}</span>
+              </div>
+            )}
+
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-sky-800 font-bold bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5 text-sky-600" /> Descuento 10% Transferencia
                 </span>
                 <span>-{formatCurrency(discountAmount)}</span>
               </div>
@@ -851,7 +953,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
               </div>
               <span className="font-semibold text-zinc-900">
                 {shipping === 0 ? (
-                  <span className="text-emerald-700 font-bold">GRATIS</span>
+                  <span className="text-sky-700 font-bold">GRATIS</span>
                 ) : (
                   formatCurrency(shipping)
                 )}
@@ -860,7 +962,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
             <div className="flex justify-between text-base font-black text-zinc-950 border-t border-zinc-200 pt-3">
               <span>Total Final</span>
-              <span className="text-xl text-emerald-700">{formatCurrency(total)}</span>
+              <span className="text-xl text-sky-800">{formatCurrency(total)}</span>
             </div>
           </div>
 

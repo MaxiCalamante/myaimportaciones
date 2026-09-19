@@ -43,7 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       "K-Beauty Argentina",
       "Distribución mayorista y minorista",
       "Herramientas Total Tools Wadfow",
-      "Tecnología importada Argentina",
+      "Importación directa Tandil",
+      "Envíos a todo el país",
     ],
     openGraph: {
       title,
@@ -124,6 +125,40 @@ export default async function ProductPage({ params }: Props) {
       priceValidUntil: "2027-12-31",
       availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "AR",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 30,
+        returnMethod: "https://schema.org/ReturnByMail",
+      },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: "0",
+          currency: "ARS",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "AR",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 1,
+            unitCode: "DAY",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 1,
+            maxValue: 4,
+            unitCode: "DAY",
+          },
+        },
+      },
       seller: {
         "@type": "Organization",
         name: siteConfig.brandName,

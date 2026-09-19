@@ -32,7 +32,7 @@ const heroSlides = [
     title: "Venta Mayorista para Comercios y Emprendedores",
     description: "Accedé a precios de importador directo por bulto cerrado en herramientas Total y cosmética coreana con márgenes del 40% al 100%.",
     btnText: "Ver Precios Mayoristas",
-    btnLink: "/mayoristas",
+    btnLink: "/mayorista",
   },
   {
     image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
@@ -80,7 +80,7 @@ export function StoreHero() {
           />
           <div className="relative mx-auto grid min-h-[520px] w-full max-w-7xl content-center gap-8 px-4 py-16 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase text-emerald-300 tracking-wider">
+              <p className="text-sm font-semibold uppercase text-sky-300 tracking-wider">
                 {slide.eyebrow}
               </p>
               <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
@@ -122,7 +122,7 @@ export function StoreHero() {
             key={idx}
             onClick={() => setCurrentSlide(idx)}
             className={`h-2.5 rounded-full transition-all duration-300 ${
-              idx === currentSlide ? "w-8 bg-emerald-400" : "w-2.5 bg-white/40 hover:bg-white/60"
+              idx === currentSlide ? "w-8 bg-sky-400" : "w-2.5 bg-white/40 hover:bg-white/60"
             }`}
             aria-label={`Ir al slide ${idx + 1}`}
           />
@@ -161,7 +161,7 @@ export function RetailHighlights() {
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
         {items.map((item) => (
           <div className="flex items-start gap-3.5" key={item.title}>
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
               <item.icon className="h-5 w-5" />
             </span>
             <div>
@@ -208,9 +208,9 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
     }
     return {
       badge: "Importación Directa",
-      tagClass: "bg-emerald-600 text-white",
+      tagClass: "bg-sky-600 text-white",
       count: "Garantía oficial",
-      bgHover: "hover:border-emerald-300 hover:shadow-emerald-50/50",
+      bgHover: "hover:border-sky-300 hover:shadow-sky-50/50",
     };
   };
 
@@ -219,8 +219,8 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-200 pb-6 mb-8">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200/60">
-              <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 border border-sky-200/60">
+              <Sparkles className="h-3.5 w-3.5 text-sky-600" />
               Departamentos Oficiales
             </div>
             <h2 className="mt-2 text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">

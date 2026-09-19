@@ -13,7 +13,6 @@ import {
   X,
   Wrench,
   Sparkles,
-  Smartphone,
   Droplets,
   LayoutGrid,
   ArrowRight,
@@ -126,7 +125,6 @@ export function SiteHeader({
   const getCategoryIcon = (slug: string, className = "h-4 w-4") => {
     if (slug.includes("herramienta")) return <Wrench className={className} />;
     if (slug.includes("cosmetica")) return <Sparkles className={className} />;
-    if (slug.includes("smartphone") || slug.includes("tecnologia")) return <Smartphone className={className} />;
     if (slug.includes("capilar")) return <Droplets className={className} />;
     return <LayoutGrid className={className} />;
   };
@@ -174,7 +172,7 @@ export function SiteHeader({
     <header className={headerClass}>
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link className="flex items-center gap-2.5 sm:gap-3 group shrink-0" href={isWholesale ? "/mayorista" : "/"}>
-          <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-xl bg-white p-0.5 shadow-xs ring-1 ring-zinc-200 transition group-hover:scale-105">
+          <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-xl bg-sky-50/80 p-0.5 shadow-xs ring-1 ring-sky-200/80 transition group-hover:scale-105">
             <img
               src="/logo.png"
               alt="MYA Importaciones Logo"
@@ -517,7 +515,7 @@ export function SiteHeader({
           >
             <ShoppingBag className="h-5 w-5" />
             {cartCount > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white">
+              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-sky-600 px-1 text-[10px] font-bold text-white">
                 {cartCount}
               </span>
             )}

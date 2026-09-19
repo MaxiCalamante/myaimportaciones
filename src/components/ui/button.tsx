@@ -1,11 +1,13 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "dark";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "dark" | "accent";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline-emerald-700",
+    "bg-sky-600 text-white shadow-sm hover:bg-sky-700 focus-visible:outline-sky-600 active:scale-[0.99]",
+  accent:
+    "bg-amber-500 text-white shadow-sm hover:bg-amber-600 focus-visible:outline-amber-500 active:scale-[0.99]",
   secondary:
     "border border-zinc-300 bg-white text-zinc-950 hover:bg-zinc-100 focus-visible:outline-zinc-500",
   ghost:

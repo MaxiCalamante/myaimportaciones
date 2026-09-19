@@ -134,7 +134,7 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
               </div>
               <div className="text-right">
                 <span className="text-xs text-zinc-400">Total</span>
-                <p className="text-2xl sm:text-3xl font-black text-emerald-400">
+                <p className="text-2xl sm:text-3xl font-black text-sky-400">
                   {formatCurrency(order.total_amount)}
                 </p>
                 <span className="text-[11px] text-zinc-400">
@@ -168,7 +168,7 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
                             isCurrent
                               ? "bg-sky-500 text-white ring-4 ring-sky-500/20"
                               : isCompleted
-                              ? "bg-emerald-600 text-white"
+                              ? "bg-sky-600 text-white"
                               : "bg-zinc-800 text-zinc-500"
                           }`}
                         >
@@ -192,6 +192,34 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
 
           {/* Details & Items */}
           <div className="p-6 sm:p-8 space-y-6">
+            {/* Courier quick tracking if shipped */}
+            {order.status === "shipped" && (
+              <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-sky-900">
+                  <Truck className="h-4 w-4 text-sky-600 shrink-0" />
+                  <span>Tu pedido ya fue despachado desde nuestro depósito central en Tandil.</span>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <a
+                    href="https://www.correoargentino.com.ar/formularios/e-commerce"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-sky-300 text-sky-900 font-bold hover:bg-sky-100 transition text-[11px]"
+                  >
+                    Rastreo Correo Arg
+                  </a>
+                  <a
+                    href="https://www.andreani.com/#!/personas"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-sky-300 text-sky-900 font-bold hover:bg-sky-100 transition text-[11px]"
+                  >
+                    Rastreo Andreani
+                  </a>
+                </div>
+              </div>
+            )}
+
             {/* Customer & Shipping Summary */}
             <div className="grid sm:grid-cols-2 gap-4 rounded-xl bg-zinc-50 p-4 border border-zinc-100 text-xs">
               <div>
@@ -202,8 +230,8 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
               <div>
                 <p className="font-semibold text-zinc-500 uppercase tracking-wider">Entrega</p>
                 <p className="text-zinc-800 font-medium mt-0.5">{order.shipping_address}</p>
-                <p className="text-emerald-700 font-semibold mt-0.5">
-                  Envío: {order.shipping_amount === 0 ? "Bonificado / A coordinar" : formatCurrency(order.shipping_amount)}
+                <p className="text-sky-700 font-semibold mt-0.5">
+                  Envío: {order.shipping_amount === 0 ? "Bonificado / Retiro en depósito" : formatCurrency(order.shipping_amount)}
                 </p>
               </div>
             </div>

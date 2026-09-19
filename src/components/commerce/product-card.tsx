@@ -69,12 +69,12 @@ export function ProductCard({
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-emerald-700">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-sky-700">
           <PackageCheck className="h-4 w-4" />
           {product.categoryName}
         </div>
         <Link href={`/producto/${product.slug}`}>
-          <h3 className="mt-2 text-base font-semibold text-zinc-950 hover:text-emerald-700 transition-colors hover:underline">
+          <h3 className="mt-2 text-base font-semibold text-zinc-950 hover:text-sky-600 transition-colors hover:underline">
             {product.title}
           </h3>
         </Link>
@@ -95,7 +95,7 @@ export function ProductCard({
                 <span className="text-[11px] text-zinc-400 line-through">
                   ML: {formatCurrency(Math.round((price * 1.08) / 100) * 100)}
                 </span>
-                <span className="rounded bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                <span className="rounded bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
                   -8% vs ML
                 </span>
               </div>

@@ -51,8 +51,8 @@ export function SiteFooter() {
           </div>
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
-              ? "Tu distribuidor directo de confianza. Abastecemos a comercios, revendedores y profesionales con Cosmética Coreana (K-Beauty), smartphones y herramientas industriales con precios diferenciales por bulto cerrado."
-              : "Importación directa sin intermediarios. Encontrá la mejor selección de Cosmética Coreana (K-Beauty original), smartphones liberados de fábrica y herramientas de equipamiento al mejor precio de Argentina."}
+              ? "Tu distribuidor directo de confianza. Abastecemos a comercios, ferreterías y revendedores con Cosmética Coreana (K-Beauty original), tratamientos capilares Karseell y herramientas industriales Total y Wadfow con precios diferenciales por bulto cerrado."
+              : "Importación directa sin intermediarios. Encontrá la mejor selección de Cosmética Coreana (K-Beauty original de Corea del Sur) y herramientas industriales Total Tools y Wadfow con despacho express a todo el país."}
           </p>
           <div className="flex items-center gap-3 pt-2">
             <a
@@ -83,14 +83,14 @@ export function SiteFooter() {
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/?category=cosmetica-coreana"}>
               Cosmética Coreana (K-Beauty)
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=smartphones-tecnologia" : "/?category=smartphones-tecnologia"}>
-              Smartphones & Tecnología
-            </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=herramientas-equipamiento" : "/?category=herramientas-equipamiento"}>
-              Herramientas & Equipamiento
+              Herramientas Total Tools & Wadfow
             </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cuidado-capilar" : "/?category=cuidado-capilar"}>
-              Cuidado Capilar & Personal
+              Tratamientos Capilares & Karseell
+            </Link>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/#ofertas"}>
+              Oportunidades & Ofertas B2B
             </Link>
           </div>
         </div>

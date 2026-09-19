@@ -760,20 +760,20 @@ Logística / Despacho: +${calcShippingPercent}%
       {/* Dashboard Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-6 mb-8">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
-            <Sparkles className="h-3.5 w-3.5" /> Dashboard de Control
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-inset ring-sky-600/20">
+            <Sparkles className="h-3.5 w-3.5 text-sky-600" /> Dashboard de Control Oficial
           </span>
           <h1 className="mt-2 text-3xl font-extrabold text-zinc-950 tracking-tight">
             Panel de Administración
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Gestioná el stock, los productos, las categorías y consultá pedidos comerciales.
+            Control de stock en tiempo real, márgenes de importación directa y métricas comerciales de MYA.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setActiveTab("pricing_engine")}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 text-sm font-semibold text-white hover:bg-amber-700 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 text-sm font-bold text-white hover:bg-amber-600 shadow-sm transition-colors cursor-pointer"
           >
             <Percent className="h-4 w-4" />
             Ajustar Precios (%)
@@ -783,14 +783,14 @@ Logística / Despacho: +${calcShippingPercent}%
               setBulkMsg(null);
               setIsBulkImportOpen(true);
             }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white hover:bg-sky-700 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-bold text-white hover:bg-sky-700 shadow-sm transition-colors cursor-pointer"
           >
             <FileSpreadsheet className="h-4 w-4" />
             Carga Masiva (CSV)
           </button>
           <button
             onClick={() => setIsCreateProductOpen(true)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-bold text-white hover:bg-zinc-800 shadow-sm transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Nuevo Producto
@@ -800,9 +800,9 @@ Logística / Despacho: +${calcShippingPercent}%
               setCreateCategoryParentId("");
               setIsCreateCategoryOpen(true);
             }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 text-sm font-semibold text-white hover:bg-zinc-800 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white border border-zinc-300 px-5 text-sm font-bold text-zinc-800 hover:bg-zinc-100 shadow-sm transition-colors cursor-pointer"
           >
-            <FolderPlus className="h-4 w-4" />
+            <FolderPlus className="h-4 w-4 text-zinc-600" />
             Nueva Categoría
           </button>
         </div>
@@ -850,13 +850,13 @@ Logística / Despacho: +${calcShippingPercent}%
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`group flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-semibold transition-colors cursor-pointer ${
                   isActive
-                    ? "border-emerald-600 text-emerald-700"
+                    ? "border-sky-600 text-sky-700"
                     : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
                 }`}
               >
                 <tab.icon
                   className={`h-4.5 w-4.5 transition-colors ${
-                    isActive ? "text-emerald-600" : "text-zinc-400 group-hover:text-zinc-500"
+                    isActive ? "text-sky-600" : "text-zinc-400 group-hover:text-zinc-500"
                   }`}
                 />
                 {tab.name}
