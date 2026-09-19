@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
-import { getStorefrontData } from "@/lib/storefront";
+import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { ProductDetailInteractive } from "@/components/commerce/product-detail-interactive";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -14,8 +14,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const { products } = await getStorefrontData();
-  const product = products.find((p) => p.slug === slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     return {
@@ -71,16 +70,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const { products, categories } = await getStorefrontData();
-
-  const product = products.find((p) => p.slug === slug);
+  const product = await getProductBySlug(slug);
   if (!product) {
     notFound();
   }
 
+  const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
   const category = categories.find((c) => c.id === product.categoryId);
   const relatedProducts = products
-    .filter((p) => p.id !== product.id && p.categoryId === product.categoryId)
+    .filter((p) => p.id !== product.id)
     .slice(0, 4);
 
   const productJsonLd = {

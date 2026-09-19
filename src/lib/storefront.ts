@@ -84,6 +84,28 @@ export async function getStorefrontData(options?: {
   };
 }
 
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  if (!hasSupabaseConfig()) {
+    return demoProducts.find((p) => p.slug === slug) ?? null;
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
+    )
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error || !data) {
+    return demoProducts.find((p) => p.slug === slug) ?? null;
+  }
+
+  return mapProduct(data as unknown as DbProduct);
+}
+
 function mapCategory(category: DbCategory): Category {
   return {
     id: category.id,
