@@ -28,14 +28,31 @@ async function getAdminClient() {
     throw new Error("Tenes que iniciar sesion.");
   }
 
+  const isMasterAdmin = (user.email ?? "").toLowerCase().trim() === "maximocalamante14@gmail.com";
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role !== "admin") {
+  if (profile?.role !== "admin" && !isMasterAdmin) {
     throw new Error("No tenes permisos de administrador.");
+  }
+
+  // Ensure master admin profile is saved in DB
+  if (isMasterAdmin && profile?.role !== "admin") {
+    await supabase.from("profiles").upsert(
+      {
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || "Máximo Calamante",
+        role: "admin",
+        customer_tier: "wholesale",
+        is_approved_wholesale: true,
+      },
+      { onConflict: "id" }
+    );
   }
 
   return supabase;
@@ -526,4 +543,270 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
   revalidatePath("/mayorista");
 
   return { importedCount: successCount };
+}
+
+export interface BulkPriceUpdateOptions {
+  scope: "all" | "supplier" | "category" | "brand";
+  scopeValue?: string;
+  target: "retail" | "wholesale" | "both";
+  mode: "percentage" | "cost_multiplier";
+  retailPercent?: number;
+  wholesalePercent?: number;
+  retailMultiplier?: number;
+  wholesaleMultiplier?: number;
+  rounding?: "none" | "50" | "100" | "1000";
+}
+
+export async function bulkUpdatePricesAction(options: BulkPriceUpdateOptions) {
+  const supabase = await getAdminClient();
+
+  const buildQuery = () =>
+    supabase
+      .from("products")
+      .select("id, title, category_id, tags, retail_price, wholesale_price");
+
+  const [b0, b1, b2, b3] = await Promise.all([
+    buildQuery().range(0, 999),
+    buildQuery().range(1000, 1999),
+    buildQuery().range(2000, 2999),
+    buildQuery().range(3000, 3999),
+  ]);
+
+  const allProducts = [
+    ...(b0.data ?? []),
+    ...(b1.data ?? []),
+    ...(b2.data ?? []),
+    ...(b3.data ?? []),
+  ];
+
+  const { data: categoriesData } = await supabase
+    .from("categories")
+    .select("id, slug, parent_id");
+
+  const categories = categoriesData ?? [];
+
+  const targetProducts = allProducts.filter((p) => {
+    if (options.scope === "all") return true;
+
+    if (options.scope === "category" && options.scopeValue) {
+      const isDirect = p.category_id === options.scopeValue;
+      const parentCat = categories.find((c) => c.id === p.category_id);
+      const isChild = parentCat?.parent_id === options.scopeValue;
+      return isDirect || isChild;
+    }
+
+    if (options.scope === "brand" && options.scopeValue) {
+      const b = options.scopeValue.toUpperCase();
+      const titleUpper = p.title.toUpperCase();
+      const tagsUpper = (p.tags || []).map((t: string) => t.toUpperCase());
+      return titleUpper.includes(b) || tagsUpper.some((t: string) => t.includes(b));
+    }
+
+    if (options.scope === "supplier" && options.scopeValue) {
+      const supVal = options.scopeValue.toLowerCase();
+      const titleUpper = p.title.toUpperCase();
+      const tagsUpper = (p.tags || []).map((t: string) => t.toUpperCase());
+      const cat = categories.find((c) => c.id === p.category_id);
+      const catSlug = (cat?.slug || "").toLowerCase();
+
+      if (supVal === "total_tools") {
+        return (
+          titleUpper.includes("TOTAL") ||
+          titleUpper.includes("WADFOW") ||
+          catSlug.includes("herramienta") ||
+          tagsUpper.includes("HERRAMIENTAS")
+        );
+      }
+      if (supVal === "atacado_usa") {
+        return (
+          catSlug.includes("cosmet") ||
+          catSlug.includes("capilar") ||
+          ["MEDICUBE", "SKIN1004", "CELIMAX", "DR. ALTHEA", "DR ALTHEA", "KARSEELL"].some((b) =>
+            titleUpper.includes(b)
+          )
+        );
+      }
+      if (supVal === "tech_apple") {
+        return (
+          titleUpper.includes("IPHONE") ||
+          titleUpper.includes("APPLE") ||
+          catSlug.includes("smartphone") ||
+          catSlug.includes("tecnologia")
+        );
+      }
+      return (
+        titleUpper.includes(supVal.toUpperCase()) ||
+        tagsUpper.some((t: string) => t.includes(supVal.toUpperCase()))
+      );
+    }
+
+    return true;
+  });
+
+  if (targetProducts.length === 0) {
+    throw new Error("No se encontraron productos que coincidan con el filtro seleccionado.");
+  }
+
+  const rounding = options.rounding || "100";
+  const applyRound = (val: number) => {
+    if (rounding === "100") return Math.round(val / 100) * 100;
+    if (rounding === "50") return Math.round(val / 50) * 50;
+    if (rounding === "1000") return Math.round(val / 1000) * 1000;
+    return Math.round(val);
+  };
+
+  const updates = targetProducts.map((p) => {
+    const currentRetail = Number(p.retail_price || 0);
+    const currentWholesale = Number(p.wholesale_price || Math.round(currentRetail * 0.75));
+
+    const titleUpper = p.title.toUpperCase();
+    const isTech = titleUpper.includes("IPHONE") || titleUpper.includes("APPLE");
+    const estimatedCost = isTech
+      ? Math.round(currentRetail * 0.78)
+      : Math.round(currentRetail / 2);
+
+    let newRetail = currentRetail;
+    let newWholesale = currentWholesale;
+
+    if (options.mode === "percentage") {
+      if (options.target === "retail" || options.target === "both") {
+        const pct = Number(options.retailPercent || 0);
+        newRetail = applyRound(currentRetail * (1 + pct / 100));
+      }
+      if (options.target === "wholesale" || options.target === "both") {
+        const pct = Number(options.wholesalePercent || 0);
+        newWholesale = applyRound(currentWholesale * (1 + pct / 100));
+      }
+    } else if (options.mode === "cost_multiplier") {
+      if (options.target === "retail" || options.target === "both") {
+        const mult = Number(options.retailMultiplier || 2.0);
+        newRetail = applyRound(estimatedCost * mult);
+      }
+      if (options.target === "wholesale" || options.target === "both") {
+        const mult = Number(options.wholesaleMultiplier || 1.15);
+        newWholesale = applyRound(estimatedCost * mult);
+      }
+    }
+
+    if (newWholesale > newRetail) {
+      newWholesale = Math.round(newRetail * 0.85);
+    }
+    newRetail = Math.max(100, newRetail);
+    newWholesale = Math.max(100, newWholesale);
+
+    return {
+      id: p.id,
+      retail_price: newRetail,
+      wholesale_price: newWholesale,
+    };
+  });
+
+  const chunkSize = 50;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map((item) =>
+        supabase
+          .from("products")
+          .update({
+            retail_price: item.retail_price,
+            wholesale_price: item.wholesale_price,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id)
+      )
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/mayorista");
+
+  return {
+    success: true,
+    updatedCount: updates.length,
+    message: `¡Se actualizaron exitosamente los precios de ${updates.length} productos!`,
+  };
+}
+
+export async function bulkUpdateStockAction(options: {
+  scope: "all" | "supplier" | "category" | "brand";
+  scopeValue?: string;
+  operation: "set" | "add";
+  amount: number;
+}) {
+  const supabase = await getAdminClient();
+
+  const buildQuery = () =>
+    supabase.from("products").select("id, title, category_id, tags, stock");
+
+  const [b0, b1, b2, b3] = await Promise.all([
+    buildQuery().range(0, 999),
+    buildQuery().range(1000, 1999),
+    buildQuery().range(2000, 2999),
+    buildQuery().range(3000, 3999),
+  ]);
+
+  const allProducts = [
+    ...(b0.data ?? []),
+    ...(b1.data ?? []),
+    ...(b2.data ?? []),
+    ...(b3.data ?? []),
+  ];
+
+  const targetProducts = allProducts.filter((p) => {
+    if (options.scope === "all") return true;
+
+    if (options.scope === "category" && options.scopeValue) {
+      return p.category_id === options.scopeValue;
+    }
+
+    if (options.scope === "brand" && options.scopeValue) {
+      const b = options.scopeValue.toUpperCase();
+      return p.title.toUpperCase().includes(b);
+    }
+
+    if (options.scope === "supplier" && options.scopeValue) {
+      const supVal = options.scopeValue.toLowerCase();
+      const titleUpper = p.title.toUpperCase();
+      if (supVal === "total_tools") return titleUpper.includes("TOTAL") || titleUpper.includes("WADFOW");
+      if (supVal === "atacado_usa") return ["MEDICUBE", "SKIN1004", "CELIMAX", "DR. ALTHEA", "KARSEELL"].some((b) => titleUpper.includes(b));
+      if (supVal === "tech_apple") return titleUpper.includes("IPHONE") || titleUpper.includes("APPLE");
+      return titleUpper.includes(supVal.toUpperCase());
+    }
+
+    return true;
+  });
+
+  const updates = targetProducts.map((p) => {
+    const currentStock = Number(p.stock || 0);
+    const newStock = options.operation === "set" ? Math.max(0, options.amount) : Math.max(0, currentStock + options.amount);
+    return { id: p.id, stock: newStock };
+  });
+
+  const chunkSize = 50;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map((item) =>
+        supabase
+          .from("products")
+          .update({
+            stock: item.stock,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id)
+      )
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/mayorista");
+
+  return {
+    success: true,
+    updatedCount: updates.length,
+    message: `¡Se actualizó exitosamente el stock de ${updates.length} productos!`,
+  };
 }

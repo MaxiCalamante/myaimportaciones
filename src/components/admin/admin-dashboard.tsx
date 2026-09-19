@@ -34,8 +34,11 @@ import {
   ChevronRight,
   AlertTriangle,
   RefreshCw,
+  Percent,
+  Calculator,
 } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
+import { PricingEngine } from "@/components/admin/pricing-engine";
 import {
   createCategoryAction,
   updateCategoryAction,
@@ -70,7 +73,7 @@ export function AdminDashboard({
   data: AdminDashboardData;
   supabaseReady: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "suppliers" | "categories" | "orders" | "customers">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "pricing_engine" | "suppliers" | "categories" | "orders" | "customers">("products");
   const [isPending, startTransition] = useTransition();
   const [stockState, setStockState] = useState<Record<string, number>>({});
   const [showStockAudit, setShowStockAudit] = useState(false);
@@ -83,6 +86,39 @@ export function AdminDashboard({
   const [supplierWholesaleInputs, setSupplierWholesaleInputs] = useState<Record<string, { price: number; minQty: number }>>({});
   const [supplierStockInputs, setSupplierStockInputs] = useState<Record<string, number>>({});
   const [supplierActionFeedback, setSupplierActionFeedback] = useState<Record<string, string>>({});
+
+  // Custom Suppliers & Commercial Tools state
+  const [customSuppliers, setCustomSuppliers] = useState<
+    Array<{ id: string; name: string; categoryType: string; url?: string; phone?: string; notes?: string }>
+  >(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("mya_custom_suppliers");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+
+  const [isNewSupplierModalOpen, setIsNewSupplierModalOpen] = useState(false);
+  const [newSupName, setNewSupName] = useState("");
+  const [newSupUrl, setNewSupUrl] = useState("");
+  const [newSupCategory, setNewSupCategory] = useState("Herramientas");
+  const [newSupPhone, setNewSupPhone] = useState("");
+  const [newSupNotes, setNewSupNotes] = useState("");
+
+  // Quick Import Calculator state
+  const [showImportCalc, setShowImportCalc] = useState(false);
+  const [calcCurrency, setCalcCurrency] = useState<"usd" | "pyg">("usd");
+  const [calcCost, setCalcCost] = useState<number>(25);
+  const [calcExchangeRate, setCalcExchangeRate] = useState<number>(1350);
+  const [calcShippingPercent, setCalcShippingPercent] = useState<number>(10);
+  const [calcWholesaleMarkup, setCalcWholesaleMarkup] = useState<number>(20);
+  const [calcRetailMarkup, setCalcRetailMarkup] = useState<number>(100);
+
+  // WhatsApp Wholesale List Generator state
+  const [copiedWhatsAppList, setCopiedWhatsAppList] = useState(false);
+  const [copiedCalcQuote, setCopiedCalcQuote] = useState(false);
 
   // Product Search and Filter states
   const [productSearch, setProductSearch] = useState("");
@@ -123,6 +159,56 @@ export function AdminDashboard({
     navigator.clipboard.writeText(url);
     setCopiedWholesaleLink(true);
     setTimeout(() => setCopiedWholesaleLink(false), 2500);
+  };
+
+  const handleSaveNewSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupName.trim()) return;
+
+    const newSupplier = {
+      id: `custom_${Date.now()}`,
+      name: newSupName.trim(),
+      categoryType: newSupCategory,
+      url: newSupUrl.trim() || "#",
+      phone: newSupPhone.trim(),
+      notes: newSupNotes.trim(),
+    };
+
+    const updated = [...customSuppliers, newSupplier];
+    setCustomSuppliers(updated);
+    try {
+      localStorage.setItem("mya_custom_suppliers", JSON.stringify(updated));
+    } catch {}
+
+    setNewSupName("");
+    setNewSupUrl("");
+    setNewSupPhone("");
+    setNewSupNotes("");
+    setIsNewSupplierModalOpen(false);
+    alert(`¡Proveedor "${newSupplier.name}" registrado con éxito! Ahora podés seleccionarlo en el Ajustador Masivo de Precios y en el Panel B2B.`);
+  };
+
+  const handleCopyCalcQuote = () => {
+    const baseArs = calcCost * calcExchangeRate;
+    const landedCost = baseArs * (1 + calcShippingPercent / 100);
+    const wholesalePrice = Math.round((landedCost * (1 + calcWholesaleMarkup / 100)) / 100) * 100;
+    const retailPrice = Math.round((landedCost * (1 + calcRetailMarkup / 100)) / 100) * 100;
+    const mlRefPrice = Math.round((retailPrice * 1.38) / 100) * 100;
+
+    const text = `📊 *COTIZACIÓN DE IMPORTACIÓN B2B - MYA IMPORTACIONES*
+Origen: ${calcCost} ${calcCurrency.toUpperCase()} (TC: $${calcExchangeRate} ARS)
+Logística / Despacho: +${calcShippingPercent}%
+────────────────────────────
+📦 Costo puesto en ARS: $${Math.round(landedCost).toLocaleString("es-AR")}
+💼 Precio Mayorista (+${calcWholesaleMarkup}%): $${wholesalePrice.toLocaleString("es-AR")}
+🏷️ Precio Minorista / PVP (+${calcRetailMarkup}%): $${retailPrice.toLocaleString("es-AR")}
+🛒 Referencia Mercado Libre: $${mlRefPrice.toLocaleString("es-AR")} (Ahorro cliente: -28%)
+💰 Ganancia Neta Minorista: $${(retailPrice - landedCost).toLocaleString("es-AR")}
+💰 Ganancia Neta Mayorista: $${(wholesalePrice - landedCost).toLocaleString("es-AR")}`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedCalcQuote(true);
+    setTimeout(() => setCopiedCalcQuote(false), 2500);
   };
 
   const handleQuickWholesaleSubmit = (e: React.FormEvent) => {
@@ -629,6 +715,37 @@ export function AdminDashboard({
     return filteredSupplierProducts.slice(start, start + SUPPLIERS_PER_PAGE);
   }, [filteredSupplierProducts, supplierPage]);
 
+  const handleGenerateWhatsAppList = () => {
+    const listToExport = filteredSupplierProducts.slice(0, 50);
+    if (listToExport.length === 0) {
+      alert("No hay productos filtrados para armar la lista.");
+      return;
+    }
+
+    let text = `📦 *CATÁLOGO MAYORISTA - MYA IMPORTACIONES*\n`;
+    text += `📍 *Precios Directos de Importación (Origen Paraguay / USA)*\n`;
+    text += `🗓️ Actualizado: ${new Date().toLocaleDateString("es-AR")}\n`;
+    text += `────────────────────────────\n\n`;
+
+    listToExport.forEach(({ product, supplier }) => {
+      const wholesale = product.wholesalePrice || Math.round(product.retailPrice * 0.75);
+      const minQty = product.wholesaleMinQuantity || 1;
+      text += `🔹 *${product.title}*\n`;
+      text += `   💲 Precio Mayorista: $${wholesale.toLocaleString("es-AR")} (Mín. ${minQty} un.)\n`;
+      text += `   🏷️ Precio Sugerido Venta Público: $${product.retailPrice.toLocaleString("es-AR")}\n`;
+      text += `   📦 Stock Disponible: ${product.stock > 0 ? `${product.stock} un.` : "A pedido"}\n\n`;
+    });
+
+    text += `────────────────────────────\n`;
+    text += `📲 *Para hacer tu pedido directo al WhatsApp:* +54 9 2494638919\n`;
+    text += `✉️ Email comercial: maximocalamante14@gmail.com\n`;
+    text += `🌐 Catálogo Completo Online: ${window.location.origin}/mayorista\n`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedWhatsAppList(true);
+    setTimeout(() => setCopiedWhatsAppList(false), 3000);
+  };
+
   const stats = [
     {
       label: "Ingresos totales",
@@ -672,6 +789,13 @@ export function AdminDashboard({
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setActiveTab("pricing_engine")}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 text-sm font-semibold text-white hover:bg-amber-700 shadow-sm transition-colors cursor-pointer"
+          >
+            <Percent className="h-4 w-4" />
+            Ajustar Precios (%)
+          </button>
           <button
             onClick={() => {
               setBulkMsg(null);
@@ -725,10 +849,11 @@ export function AdminDashboard({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-zinc-200 mb-6">
-        <nav className="flex space-x-8" aria-label="Tabs">
+      <div className="border-b border-zinc-200 mb-6 overflow-x-auto">
+        <nav className="flex space-x-8 min-w-max" aria-label="Tabs">
           {[
             { id: "products", name: "Productos & Stock", icon: Package },
+            { id: "pricing_engine", name: "Ajustador Masivo de Precios (%)", icon: Percent },
             { id: "suppliers", name: "Proveedores & Costos (B2B)", icon: Truck },
             { id: "categories", name: "Categorías & Rubros", icon: FolderOpen },
             { id: "orders", name: "Pedidos / Ventas", icon: ReceiptText },
@@ -1034,6 +1159,15 @@ export function AdminDashboard({
         </div>
       )}
 
+      {/* TAB CONTENT: PRICING ENGINE */}
+      {activeTab === "pricing_engine" && (
+        <PricingEngine
+          products={data.products}
+          categories={data.categories}
+          customSuppliers={customSuppliers}
+        />
+      )}
+
       {/* TAB CONTENT: SUPPLIERS & COST CONTROL (B2B) */}
       {activeTab === "suppliers" && (
         <div className="space-y-6">
@@ -1045,7 +1179,7 @@ export function AdminDashboard({
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
                     <Building2 className="h-3.5 w-3.5" /> B2B & Supply Chain Hub
                   </span>
-                  <span className="text-xs text-zinc-500 font-medium">Cotización referencia: 1 USD = $1.300 ARS</span>
+                  <span className="text-xs text-zinc-500 font-medium">Cotización referencia: 1 USD = $1.350 ARS</span>
                 </div>
                 <h2 className="mt-2 text-2xl font-black text-zinc-900 tracking-tight">
                   Control de Proveedores, Costos y Stock Mayorista
@@ -1055,7 +1189,44 @@ export function AdminDashboard({
                   condiciones para clientes mayoristas y enlaces directos a las plataformas oficiales de abastecimiento.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("pricing_engine")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-3.5 py-2.5 text-xs font-bold text-white hover:bg-amber-700 shadow-xs transition-all cursor-pointer"
+                >
+                  <Percent className="h-3.5 w-3.5" />
+                  Ajustar Precios Masivamente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowImportCalc(!showImportCalc)}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold shadow-xs transition-all cursor-pointer ${
+                    showImportCalc
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-blue-900 border-blue-300 hover:bg-blue-50"
+                  }`}
+                >
+                  <Calculator className="h-3.5 w-3.5" />
+                  {showImportCalc ? "Ocultar Calculadora" : "Calculadora de Importación"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateWhatsAppList}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-xs transition-all cursor-pointer"
+                  title="Copiar lista de precios mayorista filtrada formateada para WhatsApp"
+                >
+                  {copiedWhatsAppList ? <Check className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                  {copiedWhatsAppList ? "¡Lista Copiada!" : "Lista Mayorista WhatsApp"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewSupplierModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-3.5 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 shadow-xs transition-all cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Registrar Proveedor
+                </button>
                 <a
                   href="https://www.totalherramientasoficial.com.py/home"
                   target="_blank"
@@ -1063,7 +1234,7 @@ export function AdminDashboard({
                   className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-3.5 py-2.5 text-xs font-bold text-cyan-900 hover:bg-cyan-50 hover:border-cyan-400 shadow-xs transition-all"
                 >
                   <ExternalLink className="h-3.5 w-3.5 text-cyan-600" />
-                  Total Tools PY Oficial
+                  Total Tools PY
                 </a>
                 <a
                   href="https://atacadousa.com.py/20-cosmeticos"
@@ -1072,11 +1243,204 @@ export function AdminDashboard({
                   className="inline-flex items-center gap-2 rounded-xl border border-pink-300 bg-white px-3.5 py-2.5 text-xs font-bold text-pink-900 hover:bg-pink-50 hover:border-pink-400 shadow-xs transition-all"
                 >
                   <ExternalLink className="h-3.5 w-3.5 text-pink-600" />
-                  Atacado USA Cosméticos
+                  Atacado USA
                 </a>
               </div>
             </div>
           </div>
+
+          {/* Interactive B2B Import & Margin Calculator */}
+          {showImportCalc && (
+            <div className="rounded-3xl border border-blue-200 bg-white p-6 shadow-md animate-in fade-in slide-in-from-top-3 duration-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-zinc-100 pb-4 mb-5 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-blue-50 p-2.5 text-blue-700">
+                    <Calculator className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-zinc-950">
+                      Calculadora Rápida de Costo de Importación & Precios de Venta
+                    </h3>
+                    <p className="text-xs text-zinc-500">
+                      Calculá al instante el costo puesto en ARS, precio mayorista sugerido y precio minorista competitivo frente a Mercado Libre.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyCalcQuote}
+                    className="inline-flex items-center gap-2 rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 transition-all cursor-pointer"
+                  >
+                    {copiedCalcQuote ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedCalcQuote ? "¡Cotización Copiada!" : "Copiar Cotización"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowImportCalc(false)}
+                    className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Calculator Inputs */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-6">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1">
+                    Moneda Origen
+                  </label>
+                  <select
+                    value={calcCurrency}
+                    onChange={(e) => {
+                      const curr = e.target.value as "usd" | "pyg";
+                      setCalcCurrency(curr);
+                      if (curr === "pyg" && calcExchangeRate === 1350) setCalcExchangeRate(0.175);
+                      if (curr === "usd" && calcExchangeRate === 0.175) setCalcExchangeRate(1350);
+                    }}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-300 text-xs font-semibold bg-white outline-none focus:border-blue-600 cursor-pointer"
+                  >
+                    <option value="usd">Dólares (USD)</option>
+                    <option value="pyg">Guaraníes (PYG)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1">
+                    Costo en Origen ({calcCurrency.toUpperCase()})
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={calcCurrency === "usd" ? "0.5" : "1000"}
+                    value={calcCost}
+                    onChange={(e) => setCalcCost(Math.max(0, Number(e.target.value)))}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-300 text-xs font-bold bg-white outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1">
+                    Tipo de Cambio (ARS)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={calcCurrency === "usd" ? "10" : "0.01"}
+                    value={calcExchangeRate}
+                    onChange={(e) => setCalcExchangeRate(Math.max(0, Number(e.target.value)))}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-300 text-xs font-bold bg-white outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1">
+                    Logística & Aduana (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={calcShippingPercent}
+                    onChange={(e) => setCalcShippingPercent(Math.max(0, Number(e.target.value)))}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-300 text-xs font-bold bg-white outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1">
+                    Margen Mayorista (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={calcWholesaleMarkup}
+                    onChange={(e) => setCalcWholesaleMarkup(Math.max(0, Number(e.target.value)))}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-300 text-xs font-bold bg-white outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1">
+                    Margen Minorista (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={500}
+                    value={calcRetailMarkup}
+                    onChange={(e) => setCalcRetailMarkup(Math.max(0, Number(e.target.value)))}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-300 text-xs font-bold bg-white outline-none focus:border-blue-600"
+                  />
+                </div>
+              </div>
+
+              {/* Calculator Output KPI Cards */}
+              {(() => {
+                const baseArs = calcCost * calcExchangeRate;
+                const landedCost = baseArs * (1 + calcShippingPercent / 100);
+                const wholesalePrice = Math.round((landedCost * (1 + calcWholesaleMarkup / 100)) / 100) * 100;
+                const retailPrice = Math.round((landedCost * (1 + calcRetailMarkup / 100)) / 100) * 100;
+                const mlRefPrice = Math.round((retailPrice * 1.38) / 100) * 100;
+                const retailProfit = retailPrice - landedCost;
+                const wholesaleProfit = wholesalePrice - landedCost;
+
+                return (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 rounded-2xl bg-zinc-50 p-4 border border-zinc-200">
+                    <div className="rounded-xl bg-white p-4 border border-zinc-200 shadow-xs">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                        Costo Puesto en Argentina
+                      </span>
+                      <p className="mt-2 text-2xl font-black text-zinc-900">
+                        {formatCurrency(Math.round(landedCost))}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Base: {formatCurrency(Math.round(baseArs))} + {calcShippingPercent}% flete
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white p-4 border border-purple-200 shadow-xs">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700">
+                        Precio Mayorista Sugerido
+                      </span>
+                      <p className="mt-2 text-2xl font-black text-purple-800">
+                        {formatCurrency(wholesalePrice)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-purple-600">
+                        +{formatCurrency(wholesaleProfit)} neta (+{calcWholesaleMarkup}%)
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white p-4 border border-emerald-200 shadow-xs">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                        Precio Minorista / PVP (2x)
+                      </span>
+                      <p className="mt-2 text-2xl font-black text-emerald-800">
+                        {formatCurrency(retailPrice)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-emerald-600">
+                        +{formatCurrency(retailProfit)} neta (+{calcRetailMarkup}%)
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white p-4 border border-amber-200 shadow-xs">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                        Ref. Mercado Libre (-28% ahorro)
+                      </span>
+                      <p className="mt-2 text-2xl font-black text-amber-800">
+                        {formatCurrency(mlRefPrice)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-amber-600">
+                        Tu tienda es -{formatCurrency(mlRefPrice - retailPrice)} más barata
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {/* Metrics summary cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -2876,6 +3240,115 @@ export function AdminDashboard({
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   )}
                   Importar Productos
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REGISTRAR NUEVO PROVEEDOR */}
+      {isNewSupplierModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-5 border-b border-zinc-200 bg-zinc-50">
+              <h3 className="text-lg font-extrabold text-zinc-950 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-emerald-600" /> Registrar Nuevo Proveedor Comercial
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewSupplierModalOpen(false)}
+                className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewSupplier} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                  Nombre del Proveedor / Empresa *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Distribuidora Asunción Tools, Monalisa, etc."
+                  value={newSupName}
+                  onChange={(e) => setNewSupName(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                  Rubro / Categoría Principal
+                </label>
+                <select
+                  value={newSupCategory}
+                  onChange={(e) => setNewSupCategory(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium bg-white cursor-pointer"
+                >
+                  <option value="Herramientas">Herramientas & Maquinaria</option>
+                  <option value="Cosméticos">Cosméticos & K-Beauty</option>
+                  <option value="Tecnología">Smartphones & Tecnología</option>
+                  <option value="Calzado">Calzado & Indumentaria</option>
+                  <option value="General">Bazar & Varios</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                  Enlace Web / Catálogo Oficial
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={newSupUrl}
+                  onChange={(e) => setNewSupUrl(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                  Teléfono / WhatsApp de Contacto
+                </label>
+                <input
+                  type="text"
+                  placeholder="+595 981 ... o +54 9 ..."
+                  value={newSupPhone}
+                  onChange={(e) => setNewSupPhone(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                  Notas o Condiciones (Mínimos de compra, plazos, fletes)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Ej: Descuento 10% llevando más de 5 bultos. Despacho por encomienda..."
+                  value={newSupNotes}
+                  onChange={(e) => setNewSupNotes(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-zinc-300 text-xs outline-none focus:border-emerald-600"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsNewSupplierModalOpen(false)}
+                  className="px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newSupName.trim()}
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition cursor-pointer disabled:opacity-50"
+                >
+                  Guardar Proveedor
                 </button>
               </div>
             </form>

@@ -50,6 +50,17 @@ export async function getCurrentProfile(): Promise<{
     .maybeSingle();
 
   const profile = data as DbProfile | null;
+  const email = (profile?.email ?? user.email ?? "").toLowerCase().trim();
+  const isMasterAdmin = email === "maximocalamante14@gmail.com";
+
+  const role: AccountRole = isMasterAdmin ? "admin" : (profile?.role ?? "customer");
+  const customerTier: CustomerTier = isMasterAdmin ? "wholesale" : (profile?.customer_tier ?? "retail");
+  const isApprovedWholesale = Boolean(
+    isMasterAdmin ||
+      profile?.is_approved_wholesale ||
+      profile?.customer_tier === "wholesale" ||
+      profile?.role === "admin"
+  );
 
   return {
     user,
@@ -59,18 +70,13 @@ export async function getCurrentProfile(): Promise<{
       fullName:
         profile?.full_name ??
         user.user_metadata?.full_name ??
-        user.email ??
-        "Cliente",
+        (isMasterAdmin ? "Máximo Calamante" : (user.email ?? "Cliente")),
       email: profile?.email ?? user.email ?? "",
-      role: profile?.role ?? "customer",
-      customerTier: profile?.customer_tier ?? "retail",
-      businessName: profile?.business_name ?? undefined,
+      role,
+      customerTier,
+      businessName: profile?.business_name ?? (isMasterAdmin ? "MYA Importaciones" : undefined),
       cuit: profile?.cuit ?? undefined,
-      isApprovedWholesale: Boolean(
-        profile?.is_approved_wholesale ||
-          profile?.customer_tier === "wholesale" ||
-          profile?.role === "admin",
-      ),
+      isApprovedWholesale,
     },
   };
 }
