@@ -25,10 +25,16 @@ interface DbProfileSummary {
 
 interface DbOrderSummary {
   id: string;
+  tracking_code: string | null;
   status: OrderStatus | null;
   total_amount: number | null;
   customer_tier: ProductChannel | null;
   payment_method: PaymentMethod | null;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_address: string | null;
+  customer_email: string | null;
+  order_notes: string | null;
   created_at: string;
   profiles:
     | { full_name: string | null; email: string | null }
@@ -67,10 +73,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     supabase
       .from("orders")
       .select(
-        "id, status, total_amount, customer_tier, payment_method, created_at, profiles(full_name, email), order_items(product_title, quantity, unit_price)"
+        "id, tracking_code, status, total_amount, customer_tier, payment_method, shipping_name, shipping_phone, shipping_address, customer_email, order_notes, created_at, profiles(full_name, email), order_items(product_title, quantity, unit_price)"
       )
       .order("created_at", { ascending: false })
-      .limit(8),
+      .limit(50),
     supabase
       .from("stock_logs")
       .select("id, product_id, change_amount, previous_stock, new_stock, reason, created_at, products(title)")
@@ -108,8 +114,12 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
       return {
         id: order.id,
-        customerName: profile?.full_name ?? "Cliente",
-        customerEmail: profile?.email ?? "",
+        trackingCode: order.tracking_code ?? undefined,
+        customerName: order.shipping_name || profile?.full_name || "Cliente",
+        customerEmail: order.customer_email || profile?.email || "",
+        shippingPhone: order.shipping_phone ?? undefined,
+        shippingAddress: order.shipping_address ?? undefined,
+        orderNotes: order.order_notes ?? undefined,
         channel: order.customer_tier ?? "retail",
         status: order.status ?? "pending",
         total: Number(order.total_amount ?? 0),

@@ -78,8 +78,12 @@ export interface OrderItemSummary {
 
 export interface OrderSummary {
   id: string;
+  trackingCode?: string;
   customerName: string;
   customerEmail: string;
+  shippingPhone?: string;
+  shippingAddress?: string;
+  orderNotes?: string;
   channel: ProductChannel;
   status: OrderStatus;
   total: number;

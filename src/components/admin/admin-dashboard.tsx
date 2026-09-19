@@ -982,8 +982,8 @@ export function AdminDashboard({
                     data.orders.map((order) => (
                       <tr key={order.id} className="hover:bg-zinc-50/40 transition-colors">
                         <td className="px-6 py-4 align-top">
-                          <span className="font-mono text-xs font-bold text-zinc-800 bg-zinc-100 border border-zinc-200 px-2 py-1 rounded inline-block mb-1.5">
-                            {order.id.slice(0, 8)}...
+                          <span className="font-mono text-xs font-black text-sky-900 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-lg inline-block mb-1.5 shadow-xs">
+                            {order.trackingCode || `ORD-${order.id.slice(0, 6).toUpperCase()}`}
                           </span>
                           <p className="text-xs text-zinc-500 font-medium">
                             {formatDate(order.createdAt)}
@@ -991,7 +991,24 @@ export function AdminDashboard({
                         </td>
                         <td className="px-6 py-4 align-top">
                           <div className="font-bold text-zinc-900">{order.customerName}</div>
-                          <div className="text-xs text-zinc-500 font-medium mt-0.5">{order.customerEmail}</div>
+                          {order.shippingPhone && (
+                            <p className="text-xs text-emerald-700 font-semibold mt-0.5">
+                              📞 {order.shippingPhone}
+                            </p>
+                          )}
+                          {order.customerEmail && (
+                            <p className="text-xs text-zinc-500 font-medium mt-0.5">{order.customerEmail}</p>
+                          )}
+                          {order.shippingAddress && (
+                            <p className="text-[11px] text-zinc-600 mt-1 line-clamp-2">
+                              📍 {order.shippingAddress}
+                            </p>
+                          )}
+                          {order.orderNotes && (
+                            <div className="text-[10px] text-amber-900 bg-amber-50 rounded p-1.5 mt-1 border border-amber-200">
+                              💬 {order.orderNotes}
+                            </div>
+                          )}
                           <span className={`inline-block mt-2 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
                             order.channel === "wholesale"
                               ? "bg-amber-50 text-amber-700 border-amber-200/50"

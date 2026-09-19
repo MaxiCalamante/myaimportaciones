@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronDown, Heart, Menu, Search, ShieldCheck, ShoppingBag, User, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -23,21 +23,48 @@ export function SiteHeader({
   const isWholesale = pathname?.startsWith("/mayorista");
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [apiResults, setApiResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const { cartCount, favoritesCount, setCartOpen, setSelectedProduct } = useCommerce();
 
-  // Filter search results dynamically
-  const searchResults = searchQuery.trim() === ""
+  // Debounced server search across all 3,506 products
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) {
+      setApiResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&channel=${isWholesale ? "wholesale" : "retail"}`);
+        if (res.ok) {
+          const json = await res.json();
+          setApiResults(json.results || []);
+        }
+      } catch {
+        // Fallback to local
+      } finally {
+        setIsSearching(false);
+      }
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isWholesale]);
+
+  // Combine server results or client fallback
+  const searchResults = apiResults.length > 0
+    ? apiResults
+    : searchQuery.trim() === ""
     ? []
     : initialProducts.filter((p) => {
         const matchesText =
           p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase());
-        if (isWholesale) {
-          return matchesText && (p.wholesalePrice > 0 || p.wholesaleOnly);
-        } else {
-          return matchesText && !p.wholesaleOnly;
-        }
-      }).slice(0, 5);
+          p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        return isWholesale ? matchesText && (p.wholesalePrice > 0 || p.wholesaleOnly) : matchesText && !p.wholesaleOnly;
+      }).slice(0, 8);
 
   // Filter categories based on channel
   const categories = initialCategories.filter((cat) => {
@@ -195,12 +222,10 @@ export function SiteHeader({
                 {searchResults.map((product) => {
                   const price = isWholesale ? product.wholesalePrice : product.retailPrice;
                   return (
-                    <button
+                    <Link
                       key={product.id}
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setSearchQuery("");
-                      }}
+                      href={`/producto/${product.slug}`}
+                      onClick={() => setSearchQuery("")}
                       className={`w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors cursor-pointer ${
                         isWholesale
                           ? "hover:bg-zinc-800 text-zinc-200"
@@ -216,21 +241,30 @@ export function SiteHeader({
                         <p className="font-semibold truncate text-xs">{product.title}</p>
                         <p className="text-[10px] text-zinc-500">{product.categoryName}</p>
                       </div>
-                      <span className="font-bold text-xs">
+                      <span className="font-bold text-xs text-emerald-600">
                         {formatCurrency(price)}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })}
+              </div>
+              <div className="pt-2 border-t border-zinc-100/50 text-center">
+                <Link
+                  href={`${isWholesale ? "/mayorista" : ""}?q=${encodeURIComponent(searchQuery)}`}
+                  onClick={() => setSearchQuery("")}
+                  className="text-[11px] font-bold text-sky-600 hover:text-sky-700 block py-1"
+                >
+                  Ver todos los resultados en el catálogo &rarr;
+                </Link>
               </div>
             </div>
           )}
 
-          {searchQuery.trim() !== "" && searchResults.length === 0 && (
-            <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-505 ${
+          {searchQuery.trim() !== "" && searchResults.length === 0 && !isSearching && (
+            <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-500 ${
               isWholesale ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
             }`}>
-              No se encontraron productos.
+              No se encontraron productos para "{searchQuery}".
             </div>
           )}
         </div>

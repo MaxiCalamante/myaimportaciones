@@ -1,7 +1,23 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { CreditCard, Heart, Landmark, MessageCircle, PackageCheck, Receipt, ShoppingCart, Truck, Wallet } from "lucide-react";
+import {
+  CreditCard,
+  Heart,
+  Landmark,
+  MessageCircle,
+  PackageCheck,
+  Receipt,
+  ShoppingCart,
+  Truck,
+  Wallet,
+  Sparkles,
+  Share2,
+  Copy,
+  Check,
+  ReceiptText,
+  ShieldCheck,
+} from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
@@ -14,6 +30,9 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     product.wholesaleOnly ? "wholesale" : "retail"
   );
   const [added, setAdded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [postalCode, setPostalCode] = useState("");
+  const [shippingResult, setShippingResult] = useState<{ zone: string; cost: string; time: string } | null>(null);
 
   const favorite = isFavorite(product.id);
 
@@ -44,6 +63,31 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   const handleDecrement = () => {
     const min = channel === "wholesale" ? product.wholesaleMinQuantity : 1;
     setQuantity((q) => Math.max(min, q - 1));
+  };
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleShippingCalc = (cp: string) => {
+    setPostalCode(cp);
+    const clean = cp.replace(/\D/g, "");
+    if (clean.length >= 4) {
+      const num = parseInt(clean, 10);
+      if (num >= 1000 && num <= 1499) {
+        setShippingResult({ zone: "CABA", cost: "$4.500 (o cadetería en 24hs)", time: "Llega en 24 a 48 hs hábiles" });
+      } else if (num >= 1500 && num <= 1999) {
+        setShippingResult({ zone: "Gran Buenos Aires (GBA)", cost: "$6.200 por Correo", time: "Llega en 48 a 72 hs hábiles" });
+      } else {
+        setShippingResult({ zone: "Interior del País", cost: "$8.500 por Andreani / Correo", time: "Llega en 3 a 5 días hábiles a sucursal o domicilio" });
+      }
+    } else {
+      setShippingResult(null);
+    }
   };
 
   const whatsappMessage = `Hola MYA Importaciones! Me interesa el producto "${product.title}" (${channel === "wholesale" ? "precio mayorista" : "precio minorista"}). ¿Tienen disponibilidad para envío?`;
@@ -83,11 +127,11 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       </div>
 
       {/* Price Section */}
-      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-5">
+      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-5 space-y-4">
         <div className="flex items-baseline justify-between">
           <div>
             <p className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">
-              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio unitario contado / transf."}
+              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio de contado / transferencia"}
             </p>
             <div className="mt-1 flex items-baseline gap-3">
               <span className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
@@ -117,8 +161,21 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
         </div>
 
+        {/* 10% Transfer Discount Highlight */}
+        {channel === "retail" && (
+          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-xs text-emerald-900">
+            <span className="flex items-center gap-1.5 font-bold">
+              <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+              10% OFF en Transferencia / Efectivo:
+            </span>
+            <span className="font-black text-sm text-emerald-700">
+              {formatCurrency(Math.round(price * 0.90))}
+            </span>
+          </div>
+        )}
+
         {/* Quantity and Actions */}
-        <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="flex items-center rounded-xl border border-zinc-300 bg-white h-12 self-start sm:self-auto">
             <button
               onClick={handleDecrement}
@@ -164,7 +221,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         </div>
 
         {/* WhatsApp Direct Order Button */}
-        <div className="mt-3">
+        <div>
           <a
             href={getWhatsAppUrl(whatsappMessage)}
             target="_blank"
@@ -175,18 +232,66 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             Consultar o Pedir por WhatsApp
           </a>
         </div>
+
+        {/* Share & Copy Link */}
+        <div className="flex items-center gap-2 pt-2 border-t border-zinc-200/60">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition cursor-pointer"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
+            {copied ? "¡Copiado!" : "Copiar enlace"}
+          </button>
+          <a
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Mirá este producto en MYA Importaciones: ${product.title} - ${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+          >
+            <Share2 className="h-3.5 w-3.5 text-emerald-600" />
+            Compartir por WhatsApp
+          </a>
+        </div>
       </div>
 
-      {/* Payment methods & Shipping perks */}
-      <div className="rounded-xl border border-zinc-200 p-4 space-y-3 text-xs text-zinc-600">
-        <div className="flex items-center gap-2 font-semibold text-zinc-800">
-          <Truck className="h-4 w-4 text-sky-600" />
-          <span>Envíos a todo el país por Correo y Expreso</span>
+      {/* Shipping Cost Simulator */}
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2.5 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-zinc-900 flex items-center gap-1.5">
+            <Truck className="h-4 w-4 text-sky-600" />
+            Calcular costo de envío:
+          </span>
+          <span className="text-[10px] text-zinc-400">Todo el país</span>
         </div>
-        <div className="flex flex-wrap gap-2 pt-1 border-t border-zinc-100">
+        <input
+          type="text"
+          placeholder="Ingresá tu Código Postal (ej: 1425 o B1640)"
+          value={postalCode}
+          onChange={(e) => handleShippingCalc(e.target.value)}
+          className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400"
+        />
+        {shippingResult && (
+          <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-800 space-y-0.5 animate-in fade-in duration-150">
+            <div className="flex justify-between font-bold">
+              <span>Zona: {shippingResult.zone}</span>
+              <span className="text-emerald-700">{shippingResult.cost}</span>
+            </div>
+            <p className="text-[11px] text-zinc-500">{shippingResult.time}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Payment methods & Invoicing perks */}
+      <div className="rounded-2xl border border-zinc-200 p-4 space-y-2.5 text-xs text-zinc-600 bg-white">
+        <div className="flex items-center gap-2 font-semibold text-zinc-800">
+          <ReceiptText className="h-4 w-4 text-zinc-500" />
+          <span>Facturación: Hacemos Factura A y B oficial con IVA discriminado</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-100">
           <span className="font-semibold text-zinc-500">Medios de pago:</span>
           {product.paymentMethods.map((m) => (
-            <span key={m} className="rounded bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-700 uppercase">
+            <span key={m} className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-700 uppercase">
               {formatPaymentMethod(m)}
             </span>
           ))}

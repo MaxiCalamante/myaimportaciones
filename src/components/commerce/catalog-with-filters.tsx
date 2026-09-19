@@ -34,6 +34,7 @@ export function CatalogWithFilters({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<BrandFilter>("all");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
   const [minPrice, setMinPrice] = useState<string>("");
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [onlyInStock, setOnlyInStock] = useState(false);
@@ -41,10 +42,19 @@ export function CatalogWithFilters({
   const [visibleCount, setVisibleCount] = useState(24);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Available categories in the current set of products
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    products.forEach((p) => {
+      if (p.categoryName) cats.add(p.categoryName);
+    });
+    return Array.from(cats).sort();
+  }, [products]);
+
   // Reset pagination when filter criteria change
   useEffect(() => {
     setVisibleCount(24);
-  }, [searchQuery, selectedBrand, minPrice, maxPrice, onlyInStock, sortBy]);
+  }, [searchQuery, selectedBrand, selectedSubcategory, minPrice, maxPrice, onlyInStock, sortBy]);
 
   // Compute pricing boundaries
   const prices = products.map((p) => (channel === "wholesale" ? p.wholesalePrice : p.retailPrice));
@@ -92,6 +102,11 @@ export function CatalogWithFilters({
       }
     }
 
+    // Subcategory filter
+    if (selectedSubcategory) {
+      result = result.filter((p) => p.categoryName === selectedSubcategory);
+    }
+
     // Filter by stock
     if (onlyInStock) {
       result = result.filter((p) => p.stock > 0);
@@ -132,7 +147,7 @@ export function CatalogWithFilters({
     }
 
     return result;
-  }, [products, searchQuery, selectedBrand, minPrice, maxPrice, onlyInStock, sortBy, channel]);
+  }, [products, searchQuery, selectedBrand, selectedSubcategory, minPrice, maxPrice, onlyInStock, sortBy, channel]);
 
   const displayedProducts = useMemo(() => {
     return filteredProducts.slice(0, visibleCount);
@@ -141,6 +156,7 @@ export function CatalogWithFilters({
   const resetFilters = () => {
     setSearchQuery("");
     setSelectedBrand("all");
+    setSelectedSubcategory("");
     setMinPrice("");
     setMaxPrice("");
     setOnlyInStock(false);
@@ -201,6 +217,27 @@ export function CatalogWithFilters({
           ))}
         </div>
       </div>
+
+      {/* Subcategory Filter (when multiple categories are present) */}
+      {availableCategories.length > 1 && (
+        <div>
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">
+            Rubro / Subcategoría
+          </h4>
+          <select
+            value={selectedSubcategory}
+            onChange={(e) => setSelectedSubcategory(e.target.value)}
+            className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 cursor-pointer truncate"
+          >
+            <option value="">Todas las secciones ({availableCategories.length})</option>
+            {availableCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Price Range Filter */}
       <div>
@@ -300,8 +337,25 @@ export function CatalogWithFilters({
             )}
           </div>
 
-          {/* Sort & Mobile Filter Button */}
-          <div className="flex items-center gap-2">
+          {/* Sort, Subcategory & Mobile Filter Button */}
+          <div className="flex flex-wrap items-center gap-2">
+            {availableCategories.length > 1 && (
+              <div className="relative flex items-center">
+                <select
+                  value={selectedSubcategory}
+                  onChange={(e) => setSelectedSubcategory(e.target.value)}
+                  className="h-10 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs font-semibold text-zinc-800 outline-none focus:border-sky-500 cursor-pointer max-w-40 sm:max-w-56 truncate"
+                >
+                  <option value="">Todas las secciones ({availableCategories.length})</option>
+                  {availableCategories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="relative flex items-center">
               <ArrowUpDown className="absolute left-3 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
               <select
@@ -344,7 +398,20 @@ export function CatalogWithFilters({
               {brand.label}
             </button>
           ))}
-          {(selectedBrand !== "all" || searchQuery || minPrice || maxPrice || onlyInStock) && (
+
+          {selectedSubcategory && (
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-xs font-bold text-sky-800">
+              {selectedSubcategory}
+              <button
+                onClick={() => setSelectedSubcategory("")}
+                className="hover:text-sky-950 cursor-pointer ml-1"
+              >
+                ×
+              </button>
+            </span>
+          )}
+
+          {(selectedBrand !== "all" || selectedSubcategory || searchQuery || minPrice || maxPrice || onlyInStock) && (
             <button
               onClick={resetFilters}
               className="shrink-0 text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 cursor-pointer"
