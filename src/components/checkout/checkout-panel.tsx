@@ -19,6 +19,8 @@ import {
   Building2,
   Calendar,
   Tag,
+  Zap,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
@@ -30,6 +32,7 @@ import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Profile } from "@/lib/auth";
 import { trackAdsEvent } from "@/lib/analytics";
 import { validateCoupon } from "@/lib/coupons";
+import { isProductImmediateStock } from "@/lib/shipping";
 
 const paymentOptions: Array<{ value: PaymentMethod; icon: typeof CreditCard; badge?: string; desc: string }> = [
   { value: "transferencia", icon: Landmark, badge: "10% OFF", desc: "CVU Mercado Pago / Transferencia inmediata" },
@@ -57,6 +60,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
     postalCode,
     setPostalCode,
     shippingCalculation,
+    isAllImmediateStock,
     selectedShippingOptionId,
     setSelectedShippingOptionId,
     selectedShippingOption,
@@ -163,6 +167,7 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
         title: line.product.title,
         quantity: line.quantity,
         channel: line.channel,
+        isImmediate: isProductImmediateStock(line.product),
         subtotal:
           (line.channel === "wholesale"
             ? line.product.wholesalePrice
@@ -493,7 +498,47 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
 
             {/* Postal Code & Carrier Selection */}
             <div className="mt-5 pt-4 border-t border-zinc-200 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Delivery Time Policy Alert */}
+              <div
+                className={`rounded-xl border p-3.5 text-xs transition-all ${
+                  isAllImmediateStock
+                    ? "bg-emerald-50/90 border-emerald-200 text-emerald-950"
+                    : "bg-sky-50/90 border-sky-200 text-sky-950"
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  {isAllImmediateStock ? (
+                    <Zap className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+                      <span>
+                        {isAllImmediateStock
+                          ? "Despacho Prioritario 24 hs"
+                          : "Plazo de Entrega: 3 a 7 días hábiles"}
+                      </span>
+                      <span
+                        className={`text-[10px] px-2 py-0.2 rounded-full font-extrabold uppercase tracking-wide border ${
+                          isAllImmediateStock
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            : "bg-sky-100 text-sky-800 border-sky-300"
+                        }`}
+                      >
+                        {isAllImmediateStock ? "Stock Inmediato" : "Importación Directa"}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed opacity-90">
+                      {isAllImmediateStock
+                        ? "Todos los productos de tu pedido cuentan con stock físico en nuestro depósito central de Tandil. Se despachan de forma inmediata en 24 hs hábiles."
+                        : "Tu pedido incluye artículos bajo importación directa. El plazo total estimado de entrega es de 3 a 7 días hábiles hasta tu puerta o sucursal seleccionada."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
                 <label className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
                   <Truck className="h-4 w-4 text-emerald-600" /> Código Postal de Destino *
                 </label>
@@ -852,13 +897,26 @@ export function CheckoutPanel({ profile }: { profile: Profile | null }) {
                   className="flex items-start justify-between gap-3 text-xs py-2.5"
                   key={`${line.title}-${line.channel}`}
                 >
-                  <span className="text-zinc-650 flex-1">
-                    {line.quantity} × {line.title}
-                    <span className="ml-1 text-[9px] uppercase px-1 py-0.2 rounded bg-zinc-100 text-zinc-600 font-bold">
-                      {line.channel === "wholesale" ? "May" : "Min"}
+                  <div className="flex-1 min-w-0 pr-1">
+                    <span className="text-zinc-700 font-medium block truncate">
+                      {line.quantity} × {line.title}
                     </span>
-                  </span>
-                  <span className="font-bold text-zinc-950">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-zinc-100 text-zinc-600 font-bold">
+                        {line.channel === "wholesale" ? "Mayorista" : "Minorista"}
+                      </span>
+                      {line.isImmediate ? (
+                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                          Stock 24hs
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-bold text-sky-800 bg-sky-50 px-1.5 py-0.2 rounded border border-sky-200">
+                          Envío 3-7 días
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="font-bold text-zinc-950 flex-shrink-0">
                     {formatCurrency(line.subtotal)}
                   </span>
                 </div>

@@ -109,12 +109,22 @@ El catálogo comercial proviene exclusivamente de 2 proveedores oficiales direct
 
 Implementado en `src/lib/shipping.ts`:
 * **Sede de Despacho**: Tandil, Buenos Aires.
+* **Política de Plazos de Entrega (Regla Fundamental de Negocio)**:
+  * **Importación Directa (Regla por Defecto)**: Salvo que un producto se marque explícitamente al subirlo como "En Stock Inmediato", todas las compras tienen un plazo de entrega de **3 a 7 días hábiles** (tiempo de importación y nacionalización segura).
+  * **Stock Inmediato (Tandil)**: Los productos marcados con la casilla de stock inmediato (etiqueta `en_stock`) cuentan con unidades físicas listas en el depósito central de Tandil y se despachan en **24 hs hábiles** (o en el día en Tandil).
+  * **Lógica a Nivel Carrito**: Si el pedido contiene al menos 1 producto de importación directa, el plazo total de entrega de la orden es de **3 a 7 días hábiles**. Solo si **todos** los artículos son de stock inmediato se activa el despacho prioritario de 24 hs.
+  * **Integración UI/UX y Transparencia**:
+    * **Product Card**: Badge dinámico `⚡ Stock 24hs` vs `✈️ Envío 3-7d`.
+    * **Detalle del Producto**: Banner informativo y selector de CP sincronizado con los plazos reales (3 a 7 días o 24 hs).
+    * **Checkout**: Cartel explicativo de entrega y badges individuales por producto en el resumen de compra.
+    * **Admin Panel**: Checkbox `⚡ En Stock Inmediato (Despacho 24hs Tandil)` al crear o editar productos, además de badges visuales en la tabla de productos.
+    * **SEO Schema.org**: `transitTime` ajustado dinámicamente (`1-2` días para stock inmediato, `3-7` días para importación).
 * **Opciones Disponibles**:
-  1. **Retiro en Depósito Central Tandil**: Gratis ($0).
-  2. **Moto Express Tandil**: \$2.500 (Entrega en el día / 24 hs).
-  3. **Correo Argentino a Sucursal**: Calculado por código postal o localidad.
-  4. **Correo Argentino a Domicilio**: Entrega puerta a puerta.
-  5. **Andreani Express**: Logística prioritaria nacional.
+  1. **Retiro en Depósito Central Tandil**: Gratis ($0) - Inmediato o coordinación al arribo.
+  2. **Moto Express Tandil**: \$2.500 - En el día o al arribar la importación.
+  3. **Correo Argentino a Sucursal**: Calculado por código postal o localidad (3 a 7 días hábiles).
+  4. **Correo Argentino a Domicilio**: Entrega puerta a puerta nacional (3 a 7 días hábiles).
+  5. **Andreani Express**: Logística prioritaria nacional (3 a 5 días hábiles).
 * **Envío Bonificado (Gratis)**: Automático a partir de **\$120.000**.
 * **Detección Rápida de Ciudades**: Reconoce códigos postales numéricos de 4 dígitos (ej: `7000`, `1425`), códigos CPA (`B7000ABC`) o nombres directos (`Tandil`, `CABA`, `Rosario`, `Córdoba`, `Mendoza`).
 * **Seguimiento (`/seguimiento`)**: Timeline interactivo de 5 pasos (`pending` ➔ `paid` ➔ `processing` ➔ `shipped` ➔ `delivered`) con accesos directos al rastreador web de Correo Argentino y Andreani cuando la orden ya cuenta con guía.

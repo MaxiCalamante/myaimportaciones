@@ -60,6 +60,7 @@ import {
 import { formatCurrency, formatDate, formatOrderStatus, formatPaymentMethod } from "@/lib/format";
 import { getWhatsAppUrl } from "@/lib/site";
 import type { AdminDashboardData, PaymentMethod, Category, Product } from "@/lib/types";
+import { isProductImmediateStock } from "@/lib/shipping";
 
 const paymentMethods: PaymentMethod[] = [
   "transferencia",
@@ -1053,6 +1054,15 @@ Logística / Despacho: +${calcShippingPercent}%
                                 {product.title}
                               </span>
                               <div className="flex flex-wrap gap-1.5 mt-1">
+                                {isProductImmediateStock(product) ? (
+                                  <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
+                                    ⚡ Stock Inmediato (24hs)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20">
+                                    ✈️ Importación (3-7d)
+                                  </span>
+                                )}
                                 {product.featured && (
                                   <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/10">
                                     Destacado
@@ -1063,7 +1073,9 @@ Logística / Despacho: +${calcShippingPercent}%
                                     Solo Mayorista
                                   </span>
                                 )}
-                                {product.tags.map((tag) => (
+                                {product.tags
+                                  .filter((tag) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(tag.toLowerCase()))
+                                  .map((tag) => (
                                   <span
                                     key={tag}
                                     className="inline-flex items-center rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600"
@@ -2589,6 +2601,21 @@ Logística / Despacho: +${calcShippingPercent}%
                   </div>
                 </fieldset>
 
+                {/* Immediate Stock Checkbox */}
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 space-y-1">
+                  <label className="flex items-center gap-2 text-sm font-bold text-emerald-950 cursor-pointer">
+                    <input
+                      name="is_in_stock_immediate"
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span>⚡ En Stock Inmediato (Despacho 24hs Tandil)</span>
+                  </label>
+                  <p className="text-[11px] text-emerald-850 leading-relaxed pl-6">
+                    Dejar desmarcado para productos de importación directa (plazo de entrega al cliente de 3 a 7 días hábiles). Marcar únicamente si tenés unidades físicas en depósito listas para despachar en el día.
+                  </p>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="grid gap-1.5 text-sm font-semibold text-zinc-700 sm:col-span-2">
                     Etiquetas / Tags (Separados por coma)
@@ -2955,6 +2982,22 @@ Logística / Despacho: +${calcShippingPercent}%
                   </div>
                 </fieldset>
 
+                {/* Immediate Stock Checkbox */}
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 space-y-1">
+                  <label className="flex items-center gap-2 text-sm font-bold text-emerald-950 cursor-pointer">
+                    <input 
+                      name="is_in_stock_immediate" 
+                      type="checkbox" 
+                      defaultChecked={isProductImmediateStock(editingProduct)}
+                      className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                    />
+                    <span>⚡ En Stock Inmediato (Despacho 24hs Tandil)</span>
+                  </label>
+                  <p className="text-[11px] text-emerald-850 leading-relaxed pl-6">
+                    Dejar desmarcado para productos de importación directa (plazo de entrega al cliente de 3 a 7 días hábiles). Marcar únicamente si tenés unidades físicas en depósito listas para despachar en el día.
+                  </p>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="grid gap-1.5 text-sm font-semibold text-zinc-700 sm:col-span-2">
                     Etiquetas / Tags (Separados por coma)
@@ -2962,7 +3005,11 @@ Logística / Despacho: +${calcShippingPercent}%
                       className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
                       name="tags"
                       placeholder="oferta, nuevo, pack"
-                      defaultValue={editingProduct.tags?.join(", ")}
+                      defaultValue={editingProduct.tags
+                        ?.filter(
+                          (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
+                        )
+                        .join(", ")}
                     />
                   </label>
                   <div className="flex flex-wrap items-end gap-4 pb-2.5">

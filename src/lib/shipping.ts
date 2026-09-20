@@ -20,9 +20,47 @@ export interface ShippingCalculation {
   freeShippingQualified: boolean;
   freeShippingThreshold: number;
   remainingForFreeShipping: number;
+  hasImmediateStockOnly: boolean;
 }
 
 export const FREE_SHIPPING_THRESHOLD = 120000;
+
+export function isProductImmediateStock(product?: { tags?: string[] } | null): boolean {
+  if (!product || !product.tags) return false;
+  return product.tags.some((t) => {
+    const lower = t.toLowerCase().trim();
+    return (
+      lower === "en_stock" ||
+      lower === "en stock" ||
+      lower === "stock inmediato" ||
+      lower === "stock_inmediato"
+    );
+  });
+}
+
+export function getProductShippingTimeInfo(product?: { tags?: string[] } | null) {
+  const isImmediate = isProductImmediateStock(product);
+  if (isImmediate) {
+    return {
+      isImmediate: true,
+      badgeText: "Stock Inmediato",
+      deliveryText: "Despacho en 24 hs (Tandil)",
+      shippingTimeDescription: "Stock físico disponible en depósito central Tandil. Despacho prioritario en 24 hs hábiles.",
+      badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
+      pillClass: "bg-emerald-600 text-white",
+      estimatedDays: "En el día / 24 hs",
+    };
+  }
+  return {
+    isImmediate: false,
+    badgeText: "Importación Directa",
+    deliveryText: "Envío en 3 a 7 días hábiles",
+    shippingTimeDescription: "Producto bajo pedido de importación directa. Plazo de envío estimado de 3 a 7 días hábiles.",
+    badgeClass: "bg-sky-50 text-sky-800 border-sky-200",
+    pillClass: "bg-sky-600 text-white",
+    estimatedDays: "3 a 7 días hábiles",
+  };
+}
 
 interface ZoneDefinition {
   id: string;
@@ -247,7 +285,8 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
 
 export function calculateShipping(
   rawPostalCode: string,
-  cartTotal: number = 0
+  cartTotal: number = 0,
+  isAllImmediateStock: boolean = false
 ): ShippingCalculation {
   const cleanCp = rawPostalCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 
@@ -262,6 +301,7 @@ export function calculateShipping(
       freeShippingQualified: false,
       freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
       remainingForFreeShipping: Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal),
+      hasImmediateStockOnly: isAllImmediateStock,
     };
   }
 
@@ -277,6 +317,7 @@ export function calculateShipping(
       freeShippingQualified: false,
       freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
       remainingForFreeShipping: Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal),
+      hasImmediateStockOnly: isAllImmediateStock,
     };
   }
 
@@ -292,7 +333,9 @@ export function calculateShipping(
       price: 0,
       originalPrice: 0,
       isFree: true,
-      estimatedDays: "Hoy mismo coordinando por WhatsApp",
+      estimatedDays: isAllImmediateStock
+        ? "Hoy mismo coordinando por WhatsApp"
+        : "3 a 7 días hábiles (coordinación al arribo)",
       badge: "Gratis",
       type: "pickup",
     });
@@ -304,8 +347,10 @@ export function calculateShipping(
       price: zone.baseHomePrice,
       originalPrice: zone.baseHomePrice,
       isFree: false,
-      estimatedDays: "Entrega en el día",
-      badge: "En el día",
+      estimatedDays: isAllImmediateStock
+        ? "Entrega en el día"
+        : "3 a 7 días hábiles (entrega al arribar)",
+      badge: isAllImmediateStock ? "En el día" : "Importación",
       type: "domicilio",
     });
 
@@ -316,7 +361,9 @@ export function calculateShipping(
       price: freeShippingQualified ? 0 : 5200,
       originalPrice: 5200,
       isFree: freeShippingQualified,
-      estimatedDays: "24 a 48 hs hábiles",
+      estimatedDays: isAllImmediateStock
+        ? "24 a 48 hs hábiles"
+        : "3 a 7 días hábiles (importación directa)",
       badge: freeShippingQualified ? "Envío Gratis 🎉" : undefined,
       type: "domicilio",
     });
@@ -330,7 +377,9 @@ export function calculateShipping(
       price: branchPrice,
       originalPrice: zone.baseBranchPrice,
       isFree: freeShippingQualified,
-      estimatedDays: zone.branchDays,
+      estimatedDays: isAllImmediateStock
+        ? zone.branchDays
+        : "3 a 7 días hábiles (sucursal)",
       badge: freeShippingQualified ? "Envío Gratis 🎉" : "Económico",
       type: "sucursal",
     });
@@ -344,7 +393,9 @@ export function calculateShipping(
       price: homePrice,
       originalPrice: zone.baseHomePrice,
       isFree: freeShippingQualified,
-      estimatedDays: zone.homeDays,
+      estimatedDays: isAllImmediateStock
+        ? zone.homeDays
+        : "3 a 7 días hábiles (a domicilio)",
       badge: freeShippingQualified ? "Envío Gratis 🎉" : "Más elegido",
       type: "domicilio",
     });
@@ -358,7 +409,11 @@ export function calculateShipping(
       price: expressPrice,
       originalPrice: expressPrice,
       isFree: false,
-      estimatedDays: zone.id === "caba" || zone.id === "gba" ? "24 hs hábiles" : "24 a 48 hs hábiles",
+      estimatedDays: isAllImmediateStock
+        ? zone.id === "caba" || zone.id === "gba"
+          ? "24 hs hábiles"
+          : "24 a 48 hs hábiles"
+        : "3 a 5 días hábiles (prioritario)",
       badge: "Rápido",
       type: "domicilio",
     });
@@ -374,5 +429,6 @@ export function calculateShipping(
     freeShippingQualified,
     freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
     remainingForFreeShipping: Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal),
+    hasImmediateStockOnly: isAllImmediateStock,
   };
 }

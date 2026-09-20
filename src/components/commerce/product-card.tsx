@@ -8,6 +8,7 @@ import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import type { Product, ProductChannel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useCommerce } from "@/components/commerce/commerce-provider";
+import { getProductShippingTimeInfo } from "@/lib/shipping";
 
 export function ProductCard({
   product,
@@ -29,6 +30,8 @@ export function ProductCard({
   const cartItem = cart.find(
     (line) => line.product.id === product.id && line.channel === channel
   );
+
+  const shippingInfo = getProductShippingTimeInfo(product);
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white hover:border-zinc-300 hover:shadow-lg transition-all duration-300">
@@ -61,7 +64,7 @@ export function ProductCard({
         >
           <Heart className={favorite ? "h-4.5 w-4.5 fill-current" : "h-4.5 w-4.5"} />
         </button>
-        {product.tags[0] ? (
+        {product.tags[0] && !["en_stock", "en stock"].includes(product.tags[0].toLowerCase()) ? (
           <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs">
             {product.tags[0]}
           </span>
@@ -69,9 +72,17 @@ export function ProductCard({
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-sky-700">
-          <PackageCheck className="h-4 w-4" />
-          {product.categoryName}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-sky-700 truncate">
+            <PackageCheck className="h-4 w-4 shrink-0" />
+            <span className="truncate">{product.categoryName}</span>
+          </div>
+          <span
+            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${shippingInfo.badgeClass}`}
+            title={shippingInfo.shippingTimeDescription}
+          >
+            {shippingInfo.isImmediate ? "⚡ Stock 24hs" : "✈️ Envío 3-7d"}
+          </span>
         </div>
         <Link href={`/producto/${product.slug}`}>
           <h3 className="mt-2 text-base font-semibold text-zinc-950 hover:text-sky-600 transition-colors hover:underline">

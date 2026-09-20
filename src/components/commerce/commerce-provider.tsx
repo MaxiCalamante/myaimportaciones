@@ -13,6 +13,7 @@ import {
 import type { Product, ProductChannel } from "@/lib/types";
 import {
   calculateShipping,
+  isProductImmediateStock,
   type ShippingCalculation,
   type ShippingOption,
 } from "@/lib/shipping";
@@ -44,6 +45,7 @@ interface CommerceContextValue {
   setPostalCode: (code: string) => void;
   shippingCost: number;
   shippingCalculation: ShippingCalculation;
+  isAllImmediateStock: boolean;
   selectedShippingOptionId: string;
   setSelectedShippingOptionId: (id: string) => void;
   selectedShippingOption: ShippingOption | null;
@@ -210,10 +212,15 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     return sum + price * line.quantity;
   }, 0);
 
-  // Dynamic shipping calculation based on postalCode and cartTotal
+  // Check if all items in cart are in physical immediate stock in Tandil
+  const isAllImmediateStock = useMemo(() => {
+    return cart.length > 0 && cart.every((line) => isProductImmediateStock(line.product));
+  }, [cart]);
+
+  // Dynamic shipping calculation based on postalCode, cartTotal, and isAllImmediateStock
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, cartTotal);
-  }, [postalCode, cartTotal]);
+    return calculateShipping(postalCode, cartTotal, isAllImmediateStock);
+  }, [postalCode, cartTotal, isAllImmediateStock]);
 
   const selectedShippingOption = useMemo(() => {
     if (!shippingCalculation.isValid || shippingCalculation.options.length === 0) return null;
@@ -263,6 +270,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setPostalCode,
       shippingCost,
       shippingCalculation,
+      isAllImmediateStock,
       selectedShippingOptionId,
       setSelectedShippingOptionId,
       selectedShippingOption,
@@ -288,6 +296,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setPostalCode,
       shippingCost,
       shippingCalculation,
+      isAllImmediateStock,
       selectedShippingOptionId,
       setSelectedShippingOptionId,
       selectedShippingOption,

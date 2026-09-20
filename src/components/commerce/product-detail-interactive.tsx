@@ -17,10 +17,16 @@ import {
   Check,
   ReceiptText,
   ShieldCheck,
+  Zap,
+  Clock,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
-import { calculateShipping } from "@/lib/shipping";
+import {
+  calculateShipping,
+  isProductImmediateStock,
+  getProductShippingTimeInfo,
+} from "@/lib/shipping";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Product } from "@/lib/types";
 import { trackAdsEvent } from "@/lib/analytics";
@@ -60,9 +66,12 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
   const price = channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
 
+  const isImmediate = useMemo(() => isProductImmediateStock(product), [product]);
+  const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(product), [product]);
+
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, price * quantity);
-  }, [postalCode, price, quantity]);
+    return calculateShipping(postalCode, price * quantity, isImmediate);
+  }, [postalCode, price, quantity, isImmediate]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -167,6 +176,12 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
                 product.stock > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"
               }`} />
               {product.stock > 0 ? `${product.stock} disponibles` : "Sin stock momentáneo"}
+            </span>
+            <span
+              className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border mt-1 ${shippingTimeInfo.badgeClass}`}
+              title={shippingTimeInfo.shippingTimeDescription}
+            >
+              {isImmediate ? "⚡ Stock Inmediato 24hs" : "✈️ Envío 3 a 7 días"}
             </span>
             {channel === "wholesale" && (
               <p className="text-[11px] font-semibold text-amber-700 mt-1">
@@ -288,7 +303,39 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
       {/* Shipping Cost Simulator */}
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3 text-xs shadow-xs">
-        <div className="flex items-center justify-between">
+        {/* Delivery Time Info Alert */}
+        <div
+          className={`flex items-start gap-2.5 p-3 rounded-xl border ${
+            isImmediate
+              ? "bg-emerald-50/90 border-emerald-200 text-emerald-950"
+              : "bg-sky-50/90 border-sky-200 text-sky-950"
+          }`}
+        >
+          {isImmediate ? (
+            <Zap className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <Clock className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-xs">{shippingTimeInfo.deliveryText}</span>
+              <span
+                className={`text-[10px] px-2 py-0.2 rounded-full font-extrabold uppercase tracking-wide border ${
+                  isImmediate
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                    : "bg-sky-100 text-sky-800 border-sky-300"
+                }`}
+              >
+                {shippingTimeInfo.badgeText}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed opacity-90">
+              {shippingTimeInfo.shippingTimeDescription}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
           <span className="font-bold text-zinc-900 flex items-center gap-1.5">
             <Truck className="h-4 w-4 text-sky-600" />
             Calcular costo de envío:

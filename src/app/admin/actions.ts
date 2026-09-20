@@ -211,6 +211,22 @@ export async function createProductAction(formData: FormData) {
 
   const finalCategoryId = subcategoryId || categoryId;
 
+  const isInStockImmediate = formData.get("is_in_stock_immediate") === "on";
+  let tags = getString(formData, "tags")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  if (isInStockImmediate) {
+    if (!tags.some((t) => t.toLowerCase() === "en_stock")) {
+      tags.push("en_stock");
+    }
+  } else {
+    tags = tags.filter(
+      (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
+    );
+  }
+
   const { error } = await supabase.from("products").insert({
     title,
     slug: slugify(title),
@@ -222,10 +238,7 @@ export async function createProductAction(formData: FormData) {
     wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
     stock: Number(getString(formData, "stock") || 0),
     payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
-    tags: getString(formData, "tags")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
+    tags,
     is_featured: formData.get("is_featured") === "on",
     is_wholesale_only: formData.get("is_wholesale_only") === "on",
     is_active: true,
@@ -277,6 +290,22 @@ export async function updateProductAction(formData: FormData) {
 
   const finalCategoryId = subcategoryId || categoryId;
 
+  const isInStockImmediate = formData.get("is_in_stock_immediate") === "on";
+  let tags = getString(formData, "tags")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  if (isInStockImmediate) {
+    if (!tags.some((t) => t.toLowerCase() === "en_stock")) {
+      tags.push("en_stock");
+    }
+  } else {
+    tags = tags.filter(
+      (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
+    );
+  }
+
   const { error } = await supabase
     .from("products")
     .update({
@@ -290,10 +319,7 @@ export async function updateProductAction(formData: FormData) {
       wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
       stock: Number(getString(formData, "stock") || 0),
       payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
-      tags: getString(formData, "tags")
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+      tags,
       is_featured: formData.get("is_featured") === "on",
       is_wholesale_only: formData.get("is_wholesale_only") === "on",
     })

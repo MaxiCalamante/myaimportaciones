@@ -7,6 +7,7 @@ import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { ProductDetailInteractive } from "@/components/commerce/product-detail-interactive";
 import { ProductCard } from "@/components/commerce/product-card";
+import { isProductImmediateStock } from "@/lib/shipping";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -153,8 +154,8 @@ export default async function ProductPage({ params }: Props) {
           },
           transitTime: {
             "@type": "QuantitativeValue",
-            minValue: 1,
-            maxValue: 4,
+            minValue: isProductImmediateStock(product) ? 1 : 3,
+            maxValue: isProductImmediateStock(product) ? 2 : 7,
             unitCode: "DAY",
           },
         },
