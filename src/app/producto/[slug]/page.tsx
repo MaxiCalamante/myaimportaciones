@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
+import { ProductGallery } from "@/components/commerce/product-gallery";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
@@ -85,19 +85,7 @@ export default async function ProductPage({ params }: Props) {
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
 
-  const detectBrand = (title: string): string => {
-    const t = title.toUpperCase();
-    if (t.includes("TOTAL")) return "Total Tools";
-    if (t.includes("WADFOW")) return "Wadfow Industrial";
-    if (t.includes("MEDICUBE")) return "Medicube";
-    if (t.includes("SKIN1004")) return "SKIN1004";
-    if (t.includes("DR. ALTHEA") || t.includes("DR ALTHEA")) return "Dr. Althea";
-    if (t.includes("CELIMAX")) return "Celimax";
-    if (t.includes("KARSEELL")) return "Karseell";
-    return "MYA Importaciones";
-  };
-
-  const brandName = detectBrand(product.title);
+  const brandName = product.brand;
 
   const productJsonLd = {
     "@context": "https://schema.org/",
@@ -105,12 +93,10 @@ export default async function ProductPage({ params }: Props) {
     name: product.title,
     image: [product.imageUrl?.startsWith("http") ? product.imageUrl : `${siteConfig.appUrl}${product.imageUrl}`],
     description: product.description,
-    sku: product.id,
+    sku: product.sku || product.id,
+    ...(product.model ? { mpn: product.model } : {}),
     itemCondition: "https://schema.org/NewCondition",
-    brand: {
-      "@type": "Brand",
-      name: brandName,
-    },
+    ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
     offers: {
       "@type": "Offer",
       url: `${siteConfig.appUrl}/producto/${product.slug}`,
@@ -182,24 +168,7 @@ export default async function ProductPage({ params }: Props) {
         {/* Product Grid */}
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Left Column: Image */}
-          <div className="relative aspect-square overflow-hidden rounded-3xl border border-zinc-200/90 bg-white p-6 sm:p-8 shadow-xs flex items-center justify-center">
-            <div className="relative h-full w-full">
-              <Image
-                src={product.imageUrl || "/placeholder-product.svg"}
-                alt={product.title}
-                fill
-                priority
-                className="object-contain transition-transform duration-300 hover:scale-105"
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                quality={95}
-              />
-            </div>
-            {product.featured && (
-              <span className="absolute left-6 top-6 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
-                <Sparkles className="h-3 w-3" /> Destacado
-              </span>
-            )}
-          </div>
+          <ProductGallery title={product.title} image={product.imageUrl} images={product.imageUrls} />
 
           {/* Right Column: Info & Actions */}
           <div className="flex flex-col justify-center space-y-6">
@@ -210,6 +179,7 @@ export default async function ProductPage({ params }: Props) {
               <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight">
                 {product.title}
               </h1>
+              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">{[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]].filter(([, value]) => value).map(([label, value]) => <div key={label}><dt className="inline font-semibold">{label}: </dt><dd className="inline">{value}</dd></div>)}</dl>
               {product.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {product.tags.map((tag) => (
@@ -224,7 +194,7 @@ export default async function ProductPage({ params }: Props) {
               )}
             </div>
 
-            <p className="text-sm sm:text-base leading-relaxed text-zinc-650">
+            <p className="whitespace-pre-line text-sm sm:text-base leading-relaxed text-zinc-650">
               {product.description}
             </p>
 

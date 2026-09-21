@@ -49,14 +49,10 @@ export function ProductCard({
             sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             src={imageSrc}
             onError={() => setImageSrc("/placeholder-product.svg")}
-            quality={95}
+            quality={90}
           />
         </div>
-        {product.tags[0] && !["en_stock", "en stock"].includes(product.tags[0].toLowerCase()) ? (
-          <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs">
-            {product.tags[0]}
-          </span>
-        ) : null}
+        {product.brand && <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">{product.brand}</span>}
       </Link>
         <button
           aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}

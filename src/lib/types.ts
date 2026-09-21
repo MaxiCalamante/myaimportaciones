@@ -33,6 +33,10 @@ export interface Category {
 }
 
 export interface Product {
+  brand?: string;
+  model?: string;
+  sku?: string;
+  imageUrls?: string[];
   stockVerifiedAt?: string | null;
   specifications?: Record<string, string>;
   warrantyTerms?: string | null;

@@ -18,6 +18,10 @@ interface DbCategory {
 }
 
 interface DbProduct {
+  brand?: string | null;
+  model?: string | null;
+  sku?: string | null;
+  image_urls?: string[] | null;
   id: string;
   slug: string;
   title: string;
@@ -146,6 +150,10 @@ export function mapProduct(product: DbProduct, admin = false): Product {
     id: product.id,
     slug: product.slug,
     title: cleanProductTitle(product.title),
+    brand: product.brand ?? undefined,
+    model: product.model ?? undefined,
+    sku: product.sku ?? undefined,
+    imageUrls: product.image_urls ?? [],
     stockVerifiedAt: product.stock_verified_at ?? null,
     specifications: product.specifications ?? {},
     warrantyTerms: product.warranty_terms ?? null,
