@@ -1,3 +1,7 @@
+// Historical importer: inferred margins and supplier stock are not valid operating data.
+if (process.env.ALLOW_LEGACY_PRICE_ESTIMATES !== "true") {
+  throw new Error("Importador legado pausado. Usar /admin/costos y docs/costos-proveedores-pendientes.csv con costos reales; no importar estos precios estimados.");
+}
 const fs = require('fs');
 
 const tools = JSON.parse(fs.readFileSync('c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/scratch/tools_products.json', 'utf8'));
@@ -230,7 +234,7 @@ for (const p of tools) {
     retail_price: retailPrice,
     wholesale_price: wholesalePrice,
     wholesale_min_qty: 2,
-    stock: 35,
+    stock: 0, // Supplier catalog is not physical inventory.
     payment_methods: p.payment_methods,
     tags: p.tags,
     is_featured: p.is_featured || false,

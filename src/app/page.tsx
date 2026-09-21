@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   CategoryStrip,
@@ -19,6 +20,7 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const selectedCategorySlug = params.category;
+  if (selectedCategorySlug) redirect(`/catalogo?category=${encodeURIComponent(selectedCategorySlug)}`);
 
   const initialData = await getStorefrontData();
   const selectedCategory = selectedCategorySlug
@@ -79,22 +81,22 @@ export default async function Home({
       <StoreHero />
       <RetailHighlights />
       <CategoryStrip categories={categories} />
-      <SmartBuyerAdvisor products={products} />
+
       <ProductSection
         eyebrow="Selección Especial"
         id="catalogo"
         products={featuredProducts}
         title="Productos Destacados de Importación"
       />
-      <ResellerStarterKits products={products} />
+
       <ProductSection
-        eyebrow="Oportunidades & Ahorro"
+        eyebrow="Explorá la tienda"
         id="ofertas"
         products={offerProducts.length > 0 ? offerProducts : retailProducts.slice(0, 4)}
-        title="Ofertas y Precios Especiales"
+        title="Más para descubrir"
       />
       <TrustGuaranteeBadges />
-      <TestimonialsSection />
+
     </>
   );
 }

@@ -6,6 +6,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { getStorefrontData } from "@/lib/storefront";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Mi Cuenta | MYA Importaciones",
 };
 

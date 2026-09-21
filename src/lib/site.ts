@@ -1,7 +1,7 @@
 export const siteConfig = {
   brandName: "MYA Importaciones",
   shortName: "MYA",
-  tagline: "Importación Directa & Distribución Mayorista y Minorista",
+  tagline: "Belleza y herramientas desde Tandil",
   description:
     "Tienda oficial de MYA Importaciones en Argentina. Cosmética Coreana (K-Beauty), herramientas industriales Total y Wadfow con envíos a todo el país.",
   email: "maximocalamante14@gmail.com",
@@ -19,7 +19,7 @@ export const siteConfig = {
     cbu: "0000003100045616945389",
     holder: "Máximo Calamante",
     email: "maximocalamante14@gmail.com",
-    cuit: "20-4638919-0",
+    cuit: process.env.NEXT_PUBLIC_BUSINESS_CUIT ?? "",
   },
 };
 

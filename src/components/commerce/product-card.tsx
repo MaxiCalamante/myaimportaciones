@@ -1,4 +1,5 @@
 "use client";
+import { isVerifiedStock } from "@/lib/commerce-policy";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -17,7 +18,7 @@ export function ProductCard({
   product: Product;
   channel?: ProductChannel;
 }) {
-  const { cart, addToCart, updateQuantity, toggleFavorite, isFavorite, setSelectedProduct } = useCommerce();
+  const { cart, addToCart, updateQuantity, toggleFavorite, isFavorite } = useCommerce();
   const favorite = isFavorite(product.id);
   const price =
     channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
@@ -35,6 +36,7 @@ export function ProductCard({
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white hover:border-zinc-300 hover:shadow-lg transition-all duration-300">
+      <div className="relative">
       <Link
         href={`/producto/${product.slug}`}
         className="relative aspect-square overflow-hidden bg-white p-4 sm:p-5 cursor-pointer block border-b border-zinc-100"
@@ -50,6 +52,12 @@ export function ProductCard({
             quality={95}
           />
         </div>
+        {product.tags[0] && !["en_stock", "en stock"].includes(product.tags[0].toLowerCase()) ? (
+          <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs">
+            {product.tags[0]}
+          </span>
+        ) : null}
+      </Link>
         <button
           aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
           className={`absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 shadow-xs backdrop-blur transition hover:scale-110 active:scale-95 ${
@@ -64,12 +72,7 @@ export function ProductCard({
         >
           <Heart className={favorite ? "h-4.5 w-4.5 fill-current" : "h-4.5 w-4.5"} />
         </button>
-        {product.tags[0] && !["en_stock", "en stock"].includes(product.tags[0].toLowerCase()) ? (
-          <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs">
-            {product.tags[0]}
-          </span>
-        ) : null}
-      </Link>
+      </div>
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-center justify-between gap-2">
@@ -81,7 +84,7 @@ export function ProductCard({
             className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${shippingInfo.badgeClass}`}
             title={shippingInfo.shippingTimeDescription}
           >
-            {shippingInfo.isImmediate ? "⚡ Stock 24hs" : "✈️ Envío 3-7d"}
+            {shippingInfo.isImmediate ? "Stock en Tandil" : "Consultar"}
           </span>
         </div>
         <Link href={`/producto/${product.slug}`}>
@@ -101,23 +104,14 @@ export function ProductCard({
             <p className="text-xl font-bold text-zinc-950">
               {formatCurrency(price)}
             </p>
-            {channel === "retail" && price > 0 ? (
-              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                <span className="text-[11px] text-zinc-400 line-through">
-                  ML: {formatCurrency(Math.round((price * 1.08) / 100) * 100)}
-                </span>
-                <span className="rounded bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                  -8% vs ML
-                </span>
-              </div>
-            ) : null}
+
             {channel === "wholesale" ? (
               <p className="mt-1 text-xs text-zinc-500">
                 Minimo {product.wholesaleMinQuantity} unidades
               </p>
             ) : null}
           </div>
-          <p className="text-xs text-zinc-500">{product.stock} disp.</p>
+          <p className="text-xs text-zinc-500">{isVerifiedStock(product) ? `${product.stock} disp.` : "A confirmar"}</p>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -157,14 +151,15 @@ export function ProductCard({
               +
             </button>
           </div>
-        ) : (
+        ) : !isVerifiedStock(product) ? <Link href={`/producto/${product.slug}`} className="mt-4 rounded-xl bg-zinc-950 p-3 text-center text-sm font-semibold text-white">Consultar disponibilidad</Link> : (
           <Button
+            disabled={!isVerifiedStock(product)}
             className="mt-4 w-full cursor-pointer"
             icon={<ShoppingCart className="h-4 w-4" />}
             onClick={() => addToCart(product, channel, addQuantity)}
             type="button"
           >
-            Agregar
+            {isVerifiedStock(product) ? "Agregar" : "Ver disponibilidad en la ficha"}
           </Button>
         )}
       </div>

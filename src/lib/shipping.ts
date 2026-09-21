@@ -23,43 +23,14 @@ export interface ShippingCalculation {
   hasImmediateStockOnly: boolean;
 }
 
-export const FREE_SHIPPING_THRESHOLD = 120000;
+export const FREE_SHIPPING_THRESHOLD = Number.POSITIVE_INFINITY; // No uncosted free shipping campaign.
 
-export function isProductImmediateStock(product?: { tags?: string[] } | null): boolean {
-  if (!product || !product.tags) return false;
-  return product.tags.some((t) => {
-    const lower = t.toLowerCase().trim();
-    return (
-      lower === "en_stock" ||
-      lower === "en stock" ||
-      lower === "stock inmediato" ||
-      lower === "stock_inmediato"
-    );
-  });
+export function isProductImmediateStock(product?: { stock?: number; stockVerifiedAt?: string | null; tags?: string[] } | null): boolean {
+  return Boolean(product?.stockVerifiedAt && Number(product.stock) > 0);
 }
-
-export function getProductShippingTimeInfo(product?: { tags?: string[] } | null) {
+export function getProductShippingTimeInfo(product?: { stock?: number; stockVerifiedAt?: string | null; tags?: string[] } | null) {
   const isImmediate = isProductImmediateStock(product);
-  if (isImmediate) {
-    return {
-      isImmediate: true,
-      badgeText: "Stock Inmediato",
-      deliveryText: "Despacho en 24 hs (Tandil)",
-      shippingTimeDescription: "Stock físico disponible en depósito central Tandil. Despacho prioritario en 24 hs hábiles.",
-      badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
-      pillClass: "bg-emerald-600 text-white",
-      estimatedDays: "En el día / 24 hs",
-    };
-  }
-  return {
-    isImmediate: false,
-    badgeText: "Importación Directa",
-    deliveryText: "Envío en 3 a 7 días hábiles",
-    shippingTimeDescription: "Producto bajo pedido de importación directa. Plazo de envío estimado de 3 a 7 días hábiles.",
-    badgeClass: "bg-sky-50 text-sky-800 border-sky-200",
-    pillClass: "bg-sky-600 text-white",
-    estimatedDays: "3 a 7 días hábiles",
-  };
+  return { isImmediate, badgeText: isImmediate ? "Stock confirmado" : "Consultar disponibilidad", deliveryText: "Entrega a coordinar", shippingTimeDescription: isImmediate ? "Coordinamos retiro o despacho desde Tandil." : "Consulta disponibilidad y plazo antes de comprar.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "A coordinar" };
 }
 
 interface ZoneDefinition {
@@ -138,6 +109,9 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
 
   const cpNum = numMatch ? parseInt(numMatch[0], 10) : null;
 
+  if (cpNum && cpNum >= 5300 && cpNum <= 5799 && (!letterPrefix || ["M", "J", "F", "D"].includes(letterPrefix))) return resolveZone("MENDOZA");
+  if (cpNum === 8000 && !letterPrefix) return resolveZone("B8000");
+
   // 1. Local Tandil (Headquarters of MYA Importaciones)
   if (cpNum === 7000 || (letterPrefix === "B" && cpNum === 7000)) {
     return {
@@ -200,7 +174,7 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 5. Centro & Litoral (Santa Fe, Córdoba, Entre Ríos, etc.)
+  // 5. Centro & Litoral (Santa Fe, CÃ³rdoba, Entre RÃ­os, etc.)
   if (
     ["S", "X", "E", "W", "N", "H", "P"].includes(letterPrefix || "") ||
     (cpNum && ((cpNum >= 2000 && cpNum <= 2699) || (cpNum >= 3000 && cpNum <= 3999) || (cpNum >= 5000 && cpNum <= 5999)))
@@ -222,7 +196,7 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 6. Cuyo & NOA (Mendoza, San Juan, Tucumán, Salta, etc.)
+  // 6. Cuyo & NOA (Mendoza, San Juan, TucumÃ¡n, Salta, etc.)
   if (
     ["M", "J", "D", "T", "A", "Y", "G", "K", "F"].includes(letterPrefix || "") ||
     (cpNum && (cpNum >= 4000 && cpNum <= 4999)) ||
@@ -245,7 +219,7 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 7. Patagonia (Neuquén, Río Negro, Chubut, Santa Cruz, Tierra del Fuego)
+  // 7. Patagonia (NeuquÃ©n, RÃ­o Negro, Chubut, Santa Cruz, Tierra del Fuego)
   if (
     ["Q", "R", "U", "Z", "V"].includes(letterPrefix || "") ||
     (cpNum && cpNum >= 8000 && cpNum <= 9999)
@@ -288,7 +262,7 @@ export function calculateShipping(
   cartTotal: number = 0,
   isAllImmediateStock: boolean = false
 ): ShippingCalculation {
-  const cleanCp = rawPostalCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const cleanCp = rawPostalCode.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
   if (!cleanCp || cleanCp.length < 4) {
     return {
@@ -321,7 +295,7 @@ export function calculateShipping(
     };
   }
 
-  const freeShippingQualified = cartTotal >= FREE_SHIPPING_THRESHOLD;
+  const freeShippingQualified = false;
   const options: ShippingOption[] = [];
 
   // Special options for Tandil headquarters
@@ -368,7 +342,7 @@ export function calculateShipping(
       type: "domicilio",
     });
   } else {
-    // 1. Correo Argentino a Sucursal (opción económica)
+    // 1. Correo Argentino a Sucursal (opciÃ³n econÃ³mica)
     const branchPrice = freeShippingQualified ? 0 : zone.baseBranchPrice;
     options.push({
       id: "correo_sucursal",
@@ -400,7 +374,7 @@ export function calculateShipping(
       type: "domicilio",
     });
 
-    // 3. Andreani Exprés Prioritario (para mayor velocidad)
+    // 3. Andreani ExprÃ©s Prioritario (para mayor velocidad)
     const expressPrice = Math.round((zone.baseHomePrice * 1.25) / 100) * 100;
     options.push({
       id: "andreani_express",
@@ -425,7 +399,7 @@ export function calculateShipping(
     zoneId: zone.id,
     zoneName: zone.name,
     locationName: zone.location,
-    options,
+    options: options.map(option => ({ ...option, estimatedDays: option.type === "pickup" ? "A coordinar" : "Estimado sujeto a confirmacion del transportista", badge: undefined })),
     freeShippingQualified,
     freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
     remainingForFreeShipping: Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal),

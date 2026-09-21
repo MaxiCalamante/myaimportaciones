@@ -24,10 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = `${product.title} | MYA Importaciones`;
+  const title = product.title;
   const description =
     product.description ||
-    `Comprá ${product.title} al mejor precio minorista y mayorista en MYA Importaciones. Envíos a todo el país.`;
+    `Comprá ${product.title} en nuestra tienda minorista en MYA Importaciones. Envíos a todo el país.`;
 
   const imageUrl = product.imageUrl?.startsWith("http")
     ? product.imageUrl
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ...product.tags,
       "MYA Importaciones",
       "K-Beauty Argentina",
-      "Distribución mayorista y minorista",
+      "Venta minorista",
       "Herramientas Total Tools Wadfow",
       "Importación directa Tandil",
       "Envíos a todo el país",
@@ -111,55 +111,14 @@ export default async function ProductPage({ params }: Props) {
       "@type": "Brand",
       name: brandName,
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      reviewCount: "38",
-      bestRating: "5",
-      worstRating: "1",
-    },
     offers: {
       "@type": "Offer",
       url: `${siteConfig.appUrl}/producto/${product.slug}`,
       priceCurrency: "ARS",
       price: product.retailPrice,
-      priceValidUntil: "2027-12-31",
-      availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+
+      availability: product.stockVerifiedAt && product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "AR",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 30,
-        returnMethod: "https://schema.org/ReturnByMail",
-      },
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        shippingRate: {
-          "@type": "MonetaryAmount",
-          value: "0",
-          currency: "ARS",
-        },
-        shippingDestination: {
-          "@type": "DefinedRegion",
-          addressCountry: "AR",
-        },
-        deliveryTime: {
-          "@type": "ShippingDeliveryTime",
-          handlingTime: {
-            "@type": "QuantitativeValue",
-            minValue: 0,
-            maxValue: 1,
-            unitCode: "DAY",
-          },
-          transitTime: {
-            "@type": "QuantitativeValue",
-            minValue: isProductImmediateStock(product) ? 1 : 3,
-            maxValue: isProductImmediateStock(product) ? 2 : 7,
-            unitCode: "DAY",
-          },
-        },
-      },
       seller: {
         "@type": "Organization",
         name: siteConfig.brandName,
@@ -196,7 +155,7 @@ export default async function ProductPage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }}
       />
       <script
         type="application/ld+json"
@@ -270,15 +229,17 @@ export default async function ProductPage({ params }: Props) {
             </p>
 
             <ProductDetailInteractive product={product} />
+          {Object.entries(product.specifications ?? {}).filter(([,v]) => v).length > 0 && <dl className="mt-6 space-y-3">{Object.entries(product.specifications ?? {}).filter(([,v]) => v).map(([k,v]) => <div key={k}><dt className="font-semibold">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line text-sm">{v}</dd></div>)}</dl>}
+          {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
 
             <div className="pt-4 border-t border-zinc-200 grid grid-cols-2 gap-4 text-xs text-zinc-500">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Garantía Oficial de Importación</span>
+                <span>Condiciones de garantía en la ficha</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="h-4 w-4 text-sky-600" />
-                <span>Despacho Rápido Asegurado</span>
+                <span>Entrega y despacho a coordinar</span>
               </div>
             </div>
           </div>

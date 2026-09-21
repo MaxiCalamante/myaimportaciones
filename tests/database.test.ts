@@ -1,0 +1,43 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { PGlite } from "@electric-sql/pglite";
+test("Postgres transactional stock, idempotency, expiry and payment reconciliation", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql as $$ select null::uuid $$;`);
+    let schema = readFileSync("supabase/schema.sql", "utf8");
+    schema = schema.slice(schema.indexOf("do $$"), schema.indexOf("create or replace function public.handle_new_user"));
+    await db.exec(schema);
+    await db.exec(`create function public.is_admin() returns boolean language sql as $$ select true $$;`);
+    await db.exec(readFileSync("supabase/migrations/20260921134833_retail_integrity.sql", "utf8"));
+    const category = randomUUID(), product = randomUUID();
+    await db.query("insert into categories(id,name,slug) values($1,'Test','test')", [category]);
+    await db.query("insert into products(id,category_id,title,slug,retail_price,stock,stock_verified_at) values($1,$2,'Test','test',1000,2,now())", [product, category]);
+    const payload = { request_id: randomUUID(), request_hash: "hash", payment: "mercado_pago", name: "Test Customer", email: "test@example.test", phone: "12345678", address: "Test", items: [{ id: product, quantity: 1, price: 1000 }], subtotal: 1000, discount: 0, shipping: 0, total: 1000 };
+    const create = async (p = payload) => (await db.query<{ o: { id: string } }>("select create_retail_order_v2($1::jsonb) o", [JSON.stringify(p)])).rows[0].o;
+    const stock = async () => (await db.query<{ stock: number }>("select stock from products where id=$1", [product])).rows[0].stock;
+    const first = await create(); assert.equal(await stock(), 1);
+    assert.equal((await create()).id, first.id); assert.equal(await stock(), 1);
+    await assert.rejects(create({ ...payload, request_hash: "changed" }));
+    await assert.rejects(create({ ...payload, request_id: randomUUID(), total: 1 }));
+    await assert.rejects(create({ ...payload, request_id: randomUUID(), items: [{ id: product, quantity: -1, price: 1000 }] }));
+    assert.equal(await stock(), 1);
+    await db.query("select reconcile_retail_payment_v2($1,'pay1',1000,'approved')", [first.id]);
+    await db.query("select set_retail_order_status_v2($1,'preparing')", [first.id]);
+    await db.query("select set_retail_order_status_v2($1,'shipped')", [first.id]);
+    await db.query("select reconcile_retail_payment_v2($1,'pay1',1000,'approved')", [first.id]);
+    assert.equal((await db.query<{ status: string }>("select status from orders where id=$1", [first.id])).rows[0].status, "shipped");
+    await assert.rejects(db.query("select reconcile_retail_payment_v2($1,'wrong',1,'approved')", [first.id]));
+    const second = await create({ ...payload, request_id: randomUUID() }); assert.equal(await stock(), 0);
+    await assert.rejects(create({ ...payload, request_id: randomUUID() }));
+    await db.query("update orders set reservation_expires_at=now()-interval '1 minute' where id=$1", [second.id]);
+    await db.exec("select expire_retail_reservations_v2(); select expire_retail_reservations_v2();"); assert.equal(await stock(), 1);
+    await db.query("select reconcile_retail_payment_v2($1,'late',1000,'approved')", [second.id]);
+    const late = (await db.query<{ status: string; payment_review: boolean }>("select status,payment_review from orders where id=$1", [second.id])).rows[0];
+    assert.equal(late.status, "cancelled"); assert.equal(late.payment_review, true);
+    await db.exec("set role anon"); await assert.rejects(create({ ...payload, request_id: randomUUID() }));
+    await db.exec("reset role");
+  } finally { await db.close(); }
+});

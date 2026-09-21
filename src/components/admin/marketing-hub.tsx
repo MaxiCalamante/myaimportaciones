@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Megaphone,
   Share2,
@@ -31,10 +31,6 @@ export function MarketingHub() {
   const [copiedMetaFeed, setCopiedMetaFeed] = useState(false);
   const [copiedGoogleFeed, setCopiedGoogleFeed] = useState(false);
   const [testEventFeedback, setTestEventFeedback] = useState<string | null>(null);
-
-  useEffect(() => {
-    setConfig(getMarketingConfig());
-  }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

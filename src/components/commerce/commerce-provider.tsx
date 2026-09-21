@@ -1,4 +1,5 @@
 "use client";
+import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
 
 import {
   createContext,
@@ -78,7 +79,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         const storedShippingOption = window.localStorage.getItem(shippingOptionKey);
 
         if (storedCart) {
-          setCart(JSON.parse(storedCart) as CartLine[]);
+          const parsed: unknown = JSON.parse(storedCart);
+          if (Array.isArray(parsed)) setCart(parsed.filter((l: CartLine) => l?.product?.id && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail")));
         }
 
         if (storedFavorites) {
@@ -92,7 +94,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         if (storedShippingOption) {
           setSelectedShippingOptionIdState(storedShippingOption);
         }
-      } finally {
+      } catch { /* Ignore malformed or unavailable browser storage. */ } finally {
         hydrated.current = true;
       }
     }, 0);
@@ -125,7 +127,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    window.localStorage.setItem(cartKey, JSON.stringify(cart));
+    try { window.localStorage.setItem(cartKey, JSON.stringify(cart)); } catch {}
   }, [cart]);
 
   useEffect(() => {
@@ -133,11 +135,12 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    window.localStorage.setItem(favoritesKey, JSON.stringify(favoriteIds));
+    try { window.localStorage.setItem(favoritesKey, JSON.stringify(favoriteIds)); } catch {}
   }, [favoriteIds]);
 
   const addToCart = useCallback(
     (product: Product, channel: ProductChannel, quantity = 1) => {
+      if ((!WHOLESALE_ENABLED && channel === "wholesale") || !isVerifiedStock(product) || !Number.isInteger(quantity) || quantity < 1) return;
       setCart((current) => {
         const existing = current.find(
           (line) => line.product.id === product.id && line.channel === channel,
@@ -146,12 +149,12 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         if (existing) {
           return current.map((line) =>
             line.product.id === product.id && line.channel === channel
-              ? { ...line, quantity: line.quantity + quantity }
+              ? { ...line, quantity: Math.min(product.stock, 100, line.quantity + quantity) }
               : line,
           );
         }
 
-        return [...current, { product, quantity, channel }];
+        return [...current, { product, quantity: Math.min(product.stock, 100, quantity), channel }];
       });
       setCartOpen(true);
 
@@ -172,7 +175,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         current
           .map((line) =>
             line.product.id === productId && line.channel === channel
-              ? { ...line, quantity }
+              ? { ...line, quantity: Number.isInteger(quantity) ? Math.min(line.product.stock, 100, Math.max(0, quantity)) : line.quantity }
               : line,
           )
           .filter((line) => line.quantity > 0),
@@ -241,7 +244,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       .reduce((sum, l) => sum + l.quantity, 0);
   }, [cart]);
 
-  const volumeDiscountPercentage = retailUnitsCount >= 3 ? 8 : retailUnitsCount >= 2 ? 5 : 0;
+  const volumeDiscountPercentage = 0; // Final eligible promotion is quoted on the server.
   const volumeDiscountAmount = useMemo(() => {
     const retailSubtotal = cart
       .filter((l) => l.channel === "retail")

@@ -1,5 +1,6 @@
 "use client";
 
+import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -38,36 +39,26 @@ export function SiteHeader({
   const isWholesale = pathname?.startsWith("/mayorista");
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [apiResults, setApiResults] = useState<any[]>([]);
+  const [apiResults, setApiResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const { cartCount, favoritesCount, setCartOpen, setSelectedProduct } = useCommerce();
 
-  // Debounced server search across all 3,506 products
+  // Cancel stale searches so a slower previous response cannot replace the current query.
   useEffect(() => {
-    const trimmed = searchQuery.trim();
-    if (trimmed.length < 2) {
-      setApiResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
+      const trimmed = searchQuery.trim();
+      if (trimmed.length < 2) { setApiResults([]); setIsSearching(false); return; }
+      setIsSearching(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&channel=${isWholesale ? "wholesale" : "retail"}`);
-        if (res.ok) {
-          const json = await res.json();
-          setApiResults(json.results || []);
-        }
-      } catch {
-        // Fallback to local
-      } finally {
-        setIsSearching(false);
-      }
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal });
+        const json = res.ok ? await res.json() : { results: [] };
+        if (!controller.signal.aborted) setApiResults(json.results || []);
+      } catch { if (!controller.signal.aborted) setApiResults([]); }
+      finally { if (!controller.signal.aborted) setIsSearching(false); }
     }, 180);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, isWholesale]);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [searchQuery]);
 
   // Combine server results or client fallback
   const searchResults = apiResults.length > 0
@@ -138,9 +129,9 @@ export function SiteHeader({
 
   const linkClass = isWholesale
     ? "rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
-    : "rounded-lg px-3 py-2 text-sm font-medium text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950 transition-colors";
+    : "rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors";
 
-  const isWholesaleAllowed = Boolean(
+  const isWholesaleAllowed = WHOLESALE_ENABLED && Boolean(
     profile?.isApprovedWholesale ||
     profile?.customerTier === "wholesale" ||
     profile?.role === "admin"
@@ -166,7 +157,7 @@ export function SiteHeader({
 
   const iconButtonClass = isWholesale
     ? "h-10 w-10 place-items-center rounded-xl text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors"
-    : "h-10 w-10 place-items-center rounded-xl text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors";
+    : "h-10 w-10 place-items-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors";
 
   return (
     <header className={headerClass}>
@@ -188,7 +179,7 @@ export function SiteHeader({
             <span className={`text-[10px] font-medium tracking-wide mt-0.5 ${
               isWholesale ? "text-amber-400 font-semibold uppercase text-[9px]" : "text-zinc-500"
             }`}>
-              {isWholesale ? "Canal Mayorista Oficial" : "Distribución Oficial"}
+              {isWholesale ? "Canal Mayorista Oficial" : "Belleza y herramientas"}
             </span>
           </div>
         </Link>
@@ -264,7 +255,7 @@ export function SiteHeader({
                                   : "bg-white text-zinc-950 shadow-xs border border-zinc-200/80"
                                 : isWholesale
                                 ? "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-                                : "text-zinc-650 hover:text-zinc-950 hover:bg-zinc-100/80"
+                                : "text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100/80"
                             }`}
                           >
                             <Link
@@ -275,7 +266,9 @@ export function SiteHeader({
                               <span className={isSelected ? "text-sky-600" : "text-zinc-400"}>
                                 {getCategoryIcon(category.slug, "h-4 w-4 shrink-0")}
                               </span>
-                              <span className="truncate">{category.name}</span>
+                              <span className={`truncate font-semibold ${isWholesale ? (isSelected ? "text-white" : "text-zinc-300") : (isSelected ? "text-black font-bold" : "text-zinc-900")}`}>
+                                {category.name}
+                              </span>
                             </Link>
 
                             <ChevronRight
@@ -290,7 +283,7 @@ export function SiteHeader({
                       })}
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-zinc-200/60 dark:border-zinc-800">
+                    <div className={`mt-3 pt-3 border-t ${isWholesale ? "border-zinc-800" : "border-zinc-200/60"}`}>
                       <Link
                         href={isWholesale ? "/mayorista" : "/"}
                         onClick={() => setCategoriesMenuOpen(false)}
@@ -306,27 +299,37 @@ export function SiteHeader({
                   <div className="p-4 flex flex-col justify-between min-h-[320px] max-h-[440px] overflow-y-auto">
                     {activeParentCategory && (
                       <div>
-                        <div className="flex items-center justify-between border-b pb-3 mb-3 border-zinc-100 dark:border-zinc-800">
+                        <div className={`flex items-center justify-between border-b pb-3 mb-3 ${isWholesale ? "border-zinc-800" : "border-zinc-100"}`}>
                           <div className="min-w-0 pr-3">
                             <div className="flex items-center gap-2">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shrink-0">
+                              <span className={`flex h-6 w-6 items-center justify-center rounded-lg shrink-0 ${
+                                isWholesale ? "bg-sky-950/60 text-sky-400" : "bg-sky-50 text-sky-600"
+                              }`}>
                                 {getCategoryIcon(activeParentCategory.slug, "h-3.5 w-3.5")}
                               </span>
-                              <h4 className="text-sm font-bold text-zinc-950 dark:text-white truncate">
+                              <h4 className={`text-sm font-bold truncate ${isWholesale ? "text-white" : "text-black"}`}>
                                 {activeParentCategory.name}
                               </h4>
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 shrink-0">
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                                isWholesale
+                                  ? "bg-zinc-800 text-zinc-400 border-zinc-700/60"
+                                  : "bg-zinc-100 text-zinc-700 border-zinc-200/60"
+                              }`}>
                                 {activeSubcategories.length > 0 ? `${activeSubcategories.length} líneas` : "Línea directa"}
                               </span>
                             </div>
-                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-1">
-                              {activeParentCategory.description || "Línea completa disponible con stock inmediato y garantía oficial"}
+                            <p className={`text-[11px] line-clamp-1 mt-1 ${isWholesale ? "text-zinc-400" : "text-zinc-600"}`}>
+                              {activeParentCategory.description || "Consultá disponibilidad y condiciones de cada producto."}
                             </p>
                           </div>
                           <Link
                             href={`${isWholesale ? "/mayorista" : "/"}?category=${activeParentCategory.slug}`}
                             onClick={() => setCategoriesMenuOpen(false)}
-                            className="group/btn inline-flex items-center gap-1.5 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 px-3.5 py-1.5 text-xs font-semibold shadow-xs transition shrink-0"
+                            className={`group/btn inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-xs transition shrink-0 ${
+                              isWholesale
+                                ? "bg-white text-zinc-950 hover:bg-zinc-200"
+                                : "bg-zinc-950 text-white hover:bg-zinc-800"
+                            }`}
                           >
                             <span>Ver todo</span>
                             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
@@ -343,17 +346,17 @@ export function SiteHeader({
                                 className={`group/sub flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-all ${
                                   isWholesale
                                     ? "bg-zinc-950/40 hover:bg-zinc-800/80 border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white"
-                                    : "bg-zinc-50/70 hover:bg-zinc-100/90 border-zinc-200/60 hover:border-zinc-300 text-zinc-700 hover:text-zinc-950 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                                    : "bg-zinc-50/70 hover:bg-zinc-100/90 border-zinc-200/60 hover:border-zinc-300 text-zinc-700 hover:text-black shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                                 }`}
                                 title={sub.name}
                               >
-                                <span className="truncate pr-1">{sub.name}</span>
+                                <span className={`truncate pr-1 font-medium ${isWholesale ? "text-zinc-200" : "text-zinc-900"}`}>{sub.name}</span>
                                 <ChevronRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover/sub:opacity-100 group-hover/sub:translate-x-0 transition-all text-sky-500 shrink-0" />
                               </Link>
                             ))}
                           </div>
                         ) : (
-                          <div className="py-10 text-center text-xs text-zinc-400">
+                          <div className={`py-10 text-center text-xs ${isWholesale ? "text-zinc-400" : "text-zinc-500"}`}>
                             <p>Todos los modelos de {activeParentCategory.name} se encuentran unificados en esta sección.</p>
                             <Link
                               href={`${isWholesale ? "/mayorista" : "/"}?category=${activeParentCategory.slug}`}
@@ -455,7 +458,7 @@ export function SiteHeader({
               </div>
               <div className="pt-2 border-t border-zinc-100/50 text-center">
                 <Link
-                  href={`${isWholesale ? "/mayorista" : "/"}?q=${encodeURIComponent(searchQuery)}`}
+                  href={`${isWholesale ? "/mayorista" : "/catalogo"}?q=${encodeURIComponent(searchQuery)}`}
                   onClick={() => setSearchQuery("")}
                   className="text-[11px] font-bold text-sky-600 hover:text-sky-700 block py-1"
                 >
@@ -469,7 +472,7 @@ export function SiteHeader({
             <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-500 ${
               isWholesale ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
             }`}>
-              No se encontraron productos para "{searchQuery}".
+              No se encontraron productos para &quot;{searchQuery}&quot;.
             </div>
           )}
         </div>
@@ -665,16 +668,22 @@ export function SiteHeader({
                             aria-expanded={isExpanded}
                           >
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shrink-0">
+                              <span className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 ${
+                                isWholesale ? "bg-sky-950/60 text-sky-400" : "bg-sky-50 text-sky-600"
+                              }`}>
                                 {getCategoryIcon(category.slug, "h-4 w-4")}
                               </span>
-                              <span className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                              <span className={`font-bold text-sm truncate ${
+                                isWholesale ? "text-white" : "text-black"
+                              }`}>
                                 {category.name}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                isWholesale ? "bg-zinc-800 text-zinc-400" : "bg-zinc-100 text-zinc-700"
+                              }`}>
                                 {subs.length}
                               </span>
                               <ChevronDown
@@ -691,10 +700,14 @@ export function SiteHeader({
                             className="flex items-center justify-between p-3 text-left active:scale-[0.99] transition-transform"
                           >
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 shrink-0">
+                              <span className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 ${
+                                isWholesale ? "bg-sky-950/60 text-sky-400" : "bg-sky-50 text-sky-600"
+                              }`}>
                                 {getCategoryIcon(category.slug, "h-4 w-4")}
                               </span>
-                              <span className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                              <span className={`font-bold text-sm truncate ${
+                                isWholesale ? "text-white" : "text-black"
+                              }`}>
                                 {category.name}
                               </span>
                             </div>
@@ -704,12 +717,16 @@ export function SiteHeader({
 
                         {/* Accordion Subcategories */}
                         {isExpanded && subs.length > 0 && (
-                          <div className="px-3 pb-3 pt-1 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2 mt-1">
+                          <div className={`px-3 pb-3 pt-1 border-t space-y-2 mt-1 ${
+                            isWholesale ? "border-zinc-800/80" : "border-zinc-100"
+                          }`}>
                             {/* Botón Ver todo el Rubro */}
                             <Link
                               href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
                               onClick={() => setOpen(false)}
-                              className="w-full flex items-center justify-between rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 px-3.5 py-2.5 text-xs font-bold shadow-xs active:scale-[0.99] transition"
+                              className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold shadow-xs active:scale-[0.99] transition ${
+                                isWholesale ? "bg-white text-zinc-950" : "bg-zinc-950 text-white"
+                              }`}
                             >
                               <span>Ver todo en {category.name}</span>
                               <ArrowRight className="h-3.5 w-3.5" />
@@ -722,10 +739,10 @@ export function SiteHeader({
                                   key={sub.id}
                                   href={`${isWholesale ? "/mayorista" : "/"}?category=${sub.slug}`}
                                   onClick={() => setOpen(false)}
-                                  className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-colors active:bg-zinc-200 dark:active:bg-zinc-700 ${
+                                  className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-colors ${
                                     isWholesale
                                       ? "bg-zinc-950/50 hover:bg-zinc-800 border-zinc-800 text-zinc-300"
-                                      : "bg-zinc-50/80 hover:bg-zinc-100 border-zinc-200/60 text-zinc-800"
+                                      : "bg-zinc-50/80 hover:bg-zinc-100 border-zinc-200/60 text-zinc-800 hover:text-black font-medium"
                                   }`}
                                 >
                                   <span className="truncate pr-2">{sub.name}</span>

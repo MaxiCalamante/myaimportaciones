@@ -28,12 +28,12 @@ export function AuthForms({
     startSignInTransition(async () => {
       try {
         await signInAction(formData);
-      } catch (err: any) {
-        if (err.message === "NEXT_REDIRECT" || err.digest?.startsWith("NEXT_REDIRECT")) {
+      } catch (err: unknown) {
+        if ((err instanceof Error ? err.message : "Error inesperado") === "NEXT_REDIRECT" || (err instanceof Error && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT"))) {
           // Success (Next.js redirect)
           return;
         }
-        setSignInError(err.message || "Error al iniciar sesión.");
+        setSignInError((err instanceof Error ? err.message : "Error inesperado") || "Error al iniciar sesión.");
       }
     });
   };
@@ -48,12 +48,12 @@ export function AuthForms({
       try {
         await signUpAction(formData);
         setSignUpSuccess(true);
-      } catch (err: any) {
-        if (err.message === "NEXT_REDIRECT" || err.digest?.startsWith("NEXT_REDIRECT")) {
+      } catch (err: unknown) {
+        if ((err instanceof Error ? err.message : "Error inesperado") === "NEXT_REDIRECT" || (err instanceof Error && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT"))) {
           // Success (Next.js redirect)
           return;
         }
-        setSignUpError(err.message || "Error al registrar la cuenta.");
+        setSignUpError((err instanceof Error ? err.message : "Error inesperado") || "Error al registrar la cuenta.");
       }
     });
   };

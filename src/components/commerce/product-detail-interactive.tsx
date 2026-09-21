@@ -1,4 +1,5 @@
 "use client";
+import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -53,10 +54,6 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   const favorite = isFavorite(product.id);
 
   React.useEffect(() => {
-    setQuantity(channel === "wholesale" ? Math.max(product.wholesaleMinQuantity, 1) : 1);
-  }, [channel, product.wholesaleMinQuantity]);
-
-  React.useEffect(() => {
     trackAdsEvent("ViewContent", {
       content_name: product.title,
       content_ids: [product.id],
@@ -88,7 +85,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   };
 
   const handleIncrement = () => {
-    setQuantity((q) => q + 1);
+    setQuantity((q) => Math.max(1, Math.min(q + 1, product.stock, 100)));
   };
 
   const handleDecrement = () => {
@@ -98,7 +95,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(`${siteConfig.appUrl}/producto/${product.slug}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -109,11 +106,11 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   return (
     <div className="space-y-6">
       {/* Channel Switcher */}
-      <div className="flex rounded-xl bg-zinc-100 p-1 border border-zinc-200">
+      {WHOLESALE_ENABLED && <div className="flex rounded-xl bg-zinc-100 p-1 border border-zinc-200">
         <button
           type="button"
           disabled={product.wholesaleOnly}
-          onClick={() => setChannel("retail")}
+          onClick={() => { setChannel("retail"); setQuantity(1); }}
           className={`flex-1 rounded-lg py-2 text-xs sm:text-sm font-semibold transition cursor-pointer ${
             channel === "retail"
               ? "bg-white text-zinc-950 shadow-xs"
@@ -124,7 +121,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         </button>
         <button
           type="button"
-          onClick={() => setChannel("wholesale")}
+          onClick={() => { setChannel("wholesale"); setQuantity(product.wholesaleMinQuantity); }}
           className={`flex-1 rounded-lg py-2 text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
             channel === "wholesale"
               ? "bg-amber-400 text-zinc-950 shadow-xs"
@@ -140,12 +137,13 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         </button>
       </div>
 
+      }
       {/* Price Section */}
       <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-5 space-y-4">
         <div className="flex items-baseline justify-between">
           <div>
             <p className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">
-              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio de contado / transferencia"}
+              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio del producto"}
             </p>
             <div className="mt-1 flex items-baseline gap-3">
               <span className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
@@ -157,16 +155,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
                 </span>
               )}
             </div>
-            {channel === "retail" && price > 0 && (
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-zinc-500 line-through">
-                  Precio Ref. Mercado Libre: {formatCurrency(Math.round((price * 1.08) / 100) * 100)}
-                </span>
-                <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-xs font-bold">
-                  ¡Ahorrás {formatCurrency(Math.round(((price * 1.08) - price) / 100) * 100)} (-8% vs Mercado Libre)!
-                </span>
-              </div>
-            )}
+
           </div>
           <div className="text-right">
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
@@ -175,13 +164,13 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
               <span className={`h-2 w-2 rounded-full ${
                 product.stock > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"
               }`} />
-              {product.stock > 0 ? `${product.stock} disponibles` : "Sin stock momentáneo"}
+              {product.stock > 0 ? isVerifiedStock(product) ? `${product.stock} disponibles` : "Consultar disponibilidad" : "Sin stock momentáneo"}
             </span>
             <span
               className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border mt-1 ${shippingTimeInfo.badgeClass}`}
               title={shippingTimeInfo.shippingTimeDescription}
             >
-              {isImmediate ? "⚡ Stock Inmediato 24hs" : "✈️ Envío 3 a 7 días"}
+              {isImmediate ? "Stock en Tandil" : "Disponibilidad a confirmar"}
             </span>
             {channel === "wholesale" && (
               <p className="text-[11px] font-semibold text-amber-700 mt-1">
@@ -192,7 +181,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         </div>
 
         {/* 10% Transfer Discount Highlight */}
-        {channel === "retail" && (
+        {false && channel === "retail" && (
           <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-xs text-emerald-900">
             <span className="flex items-center gap-1.5 font-bold">
               <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -212,7 +201,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
               <span className="font-black text-sm">{formatCurrency(product.retailPrice)}</span>
             </div>
             <div className="flex items-center justify-between text-emerald-800 font-extrabold text-[11px] pt-1 border-t border-amber-200/60">
-              <span>Tu Ganancia Neta Revendiendo:</span>
+              <span>Diferencia bruta antes de gastos:</span>
               <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md">
                 +{formatCurrency(product.retailPrice - product.wholesalePrice)} / un. ({Math.round(((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100)}% de margen)
               </span>
@@ -244,7 +233,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
           <button
             onClick={handleAddToCart}
-            disabled={product.stock <= 0}
+            disabled={!isVerifiedStock(product)}
             className="flex-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-6 text-sm font-bold text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-md disabled:opacity-50"
             type="button"
           >
@@ -290,7 +279,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             {copied ? "¡Copiado!" : "Copiar enlace"}
           </button>
           <a
-            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Mirá este producto en MYA Importaciones: ${product.title} - ${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Mirá este producto en MYA Importaciones: ${product.title} - ${siteConfig.appUrl}/producto/${product.slug}`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
@@ -433,7 +422,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       <div className="rounded-2xl border border-zinc-200 p-4 space-y-2.5 text-xs text-zinc-600 bg-white">
         <div className="flex items-center gap-2 font-semibold text-zinc-800">
           <ReceiptText className="h-4 w-4 text-zinc-500" />
-          <span>Facturación: Hacemos Factura A y B oficial con IVA discriminado</span>
+          <span>Facturación: consultá el comprobante correspondiente a tu compra</span>
         </div>
         <div className="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-100">
           <span className="font-semibold text-zinc-500">Medios de pago:</span>
@@ -459,7 +448,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
           <button
             onClick={handleAddToCart}
-            disabled={product.stock <= 0}
+            disabled={!isVerifiedStock(product)}
             className="flex-1 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-md disabled:opacity-50"
             type="button"
           >

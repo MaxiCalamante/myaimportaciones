@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import Link from "next/link";
+import type { PaymentMethod } from "@/lib/types";
+import { useState, useTransition } from "react";
 import { Search, CheckCircle2, Clock, Package, Truck, Check, AlertCircle, MessageCircle, ArrowRight } from "lucide-react";
+import { trackAdsEvent } from "@/lib/analytics";
 import { lookupOrderAction, type TrackingOrder } from "./actions";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
@@ -9,7 +12,7 @@ import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 const statusSteps = [
   { id: "pending", label: "Registrado", desc: "Esperando confirmación", icon: Clock },
   { id: "paid", label: "Pago Acreditado", desc: "Transferencia validada", icon: CheckCircle2 },
-  { id: "processing", label: "En Preparación", desc: "Armando el paquete", icon: Package },
+  { id: "preparing", label: "En Preparación", desc: "Armando el paquete", icon: Package },
   { id: "shipped", label: "En Camino", desc: "Despachado con guía", icon: Truck },
   { id: "delivered", label: "Entregado", desc: "Pedido completado", icon: Check },
 ];
@@ -18,7 +21,7 @@ function getStepIndex(status: string): number {
   switch (status) {
     case "pending": return 0;
     case "paid": return 1;
-    case "processing": return 2;
+    case "preparing": return 2;
     case "shipped": return 3;
     case "delivered": return 4;
     default: return 0;
@@ -27,15 +30,10 @@ function getStepIndex(status: string): number {
 
 export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string }) {
   const [code, setCode] = useState(initialCode);
+  const [email, setEmail] = useState("");
   const [order, setOrder] = useState<TrackingOrder | null>(null);
   const [searched, setSearched] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (initialCode) {
-      handleSearch(initialCode);
-    }
-  }, [initialCode]);
 
   const handleSearch = (searchCode: string) => {
     const trimmed = searchCode.trim();
@@ -43,8 +41,17 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
 
     setSearched(true);
     startTransition(async () => {
-      const res = await lookupOrderAction(trimmed);
+      const res = await lookupOrderAction(trimmed, email);
       setOrder(res);
+      if (res && ["paid", "preparing", "shipped", "delivered"].includes(res.status)) {
+        try {
+          const key = `mya_paid_${res.id}`;
+          if (localStorage.getItem("mya_analytics_consent") === "granted" && !localStorage.getItem(key)) {
+            trackAdsEvent("Purchase", { transaction_id: res.id, value: res.total_amount, currency: "ARS", items: res.items.map(i => ({ id: i.product_id, title: i.product_title, quantity: i.quantity, price: i.unit_price })) });
+            localStorage.setItem(key, "1");
+          }
+        } catch {}
+      }
     });
   };
 
@@ -65,18 +72,19 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
           e.preventDefault();
           handleSearch(code);
         }}
-        className="flex gap-2 max-w-xl mx-auto"
+        className="flex flex-col gap-2 max-w-xl mx-auto"
       >
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
           <input
-            type="text"
+            aria-label="Codigo de pedido" required type="text"
             placeholder="Ej: ORD-49521"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             className="h-12 w-full rounded-xl border border-zinc-300 bg-white pl-11 pr-4 text-sm font-mono font-medium text-zinc-950 placeholder:font-sans placeholder:text-zinc-400 shadow-xs outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
           />
         </div>
+        <input aria-label="Email de la compra" required type="email" placeholder="Email de la compra" value={email} onChange={e => setEmail(e.target.value)} className="h-12 rounded-xl border p-3" />
         <button
           type="submit"
           disabled={isPending || !code.trim()}
@@ -92,7 +100,7 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
         <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-6 text-center max-w-xl mx-auto">
           <AlertCircle className="mx-auto h-8 w-8 text-amber-600" />
           <h3 className="mt-2 text-base font-bold text-amber-950">
-            No encontramos el pedido "{code}"
+            No encontramos el pedido &quot;{code}&quot;
           </h3>
           <p className="mt-1 text-xs text-amber-800 leading-relaxed">
             Asegurate de incluir el prefijo completo (ejemplo: <strong>ORD-12345</strong>).
@@ -112,6 +120,7 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
 
       {order && (
         <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden animate-in fade-in duration-300">
+          {order.carrier_tracking_code && <p className="p-4">Guía del transporte: <strong>{order.carrier_tracking_code}</strong></p>}
           {/* Header */}
           <div className="bg-zinc-950 text-white p-6 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -138,7 +147,7 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
                   {formatCurrency(order.total_amount)}
                 </p>
                 <span className="text-[11px] text-zinc-400">
-                  {formatPaymentMethod(order.payment_method as any)}
+                  {formatPaymentMethod(order.payment_method as PaymentMethod)}
                 </span>
               </div>
             </div>
@@ -270,12 +279,12 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
                 Consultar a MYA por WhatsApp
               </a>
 
-              <a
+              <Link
                 href="/"
                 className="text-xs font-semibold text-zinc-600 hover:text-zinc-950 transition"
               >
                 ← Seguir navegando la tienda
-              </a>
+              </Link>
             </div>
           </div>
         </div>

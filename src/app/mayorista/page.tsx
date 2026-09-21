@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import Link from "next/link";
 import { Boxes, LockKeyhole, Truck, FileSpreadsheet, MessageCircle, Sparkles } from "lucide-react";
 import { CatalogWithFilters } from "@/components/commerce/catalog-with-filters";
@@ -19,6 +21,7 @@ export default async function WholesalePage({
 }: {
   searchParams: Promise<{ category?: string }>;
 }) {
+  if (!WHOLESALE_ENABLED) redirect("/catalogo");
   const params = await searchParams;
   const selectedCategorySlug = params.category;
 

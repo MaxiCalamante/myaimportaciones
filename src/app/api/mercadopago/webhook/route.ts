@@ -1,46 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMercadoPagoPaymentDetails } from "@/lib/mercadopago";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-
+import { verifyPaymentSignature } from "@/lib/payment-signature";
+import { createCommerceService } from "@/lib/supabase/service";
 export async function POST(req: NextRequest) {
+  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+  const collector = process.env.MERCADOPAGO_COLLECTOR_ID;
+  if (!secret || !collector) return NextResponse.json({ error: "Unavailable" }, { status: 503 });
+  const id = req.nextUrl.searchParams.get("data.id") ?? "";
+  if (!verifyPaymentSignature(req.headers.get("x-signature"), req.headers.get("x-request-id"), id, secret)) return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   try {
-    const url = new URL(req.url);
-    const topic = url.searchParams.get("topic") || url.searchParams.get("type");
-    const id = url.searchParams.get("id") || url.searchParams.get("data.id");
-
-    const body = await req.json().catch(() => ({}));
-    const paymentId = id || body?.data?.id || body?.id;
-
-    if (!paymentId || (topic && topic !== "payment")) {
-      return NextResponse.json({ received: true });
-    }
-
-    const payment = await getMercadoPagoPaymentDetails(String(paymentId));
-    if (!payment) {
-      return NextResponse.json({ received: true, note: "No payment found" });
-    }
-
-    const trackingCode = payment.external_reference;
-    const status = payment.status; // 'approved', 'pending', 'rejected'
-
-    if (trackingCode && status === "approved") {
-      const supabase = await createServerSupabaseClient();
-      await supabase
-        .from("orders")
-        .update({
-          status: "paid",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("tracking_code", trackingCode);
-    }
-
-    return NextResponse.json({ received: true, status });
-  } catch (error: any) {
-    console.error("Mercado Pago Webhook error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  return NextResponse.json({ status: "Mercado Pago Webhook Active" });
+    const body = await req.json();
+    if (body.type !== "payment" || String(body.data?.id) !== id) return NextResponse.json({ received: true });
+    const payment = await getMercadoPagoPaymentDetails(id);
+    if (!payment) return NextResponse.json({ error: "Payment lookup failed" }, { status: 503 });
+    if (String(payment.collector_id) !== collector || payment.currency_id !== "ARS" || (process.env.NODE_ENV === "production" && !payment.live_mode)) return NextResponse.json({ error: "Payment mismatch" }, { status: 400 });
+    const db = createCommerceService();
+    const { error } = await db.rpc("reconcile_retail_payment_v2", { order_id_input: payment.external_reference, payment_id_input: String(payment.id), amount_input: payment.transaction_amount, status_input: payment.status });
+    if (error) return NextResponse.json({ error: "Reconciliation failed" }, { status: 503 });
+    return NextResponse.json({ received: true });
+  } catch { return NextResponse.json({ error: "Processing failed" }, { status: 503 }); }
 }

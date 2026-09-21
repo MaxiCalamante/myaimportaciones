@@ -1,6 +1,7 @@
 "use server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { limitCommerceRequest } from "@/lib/request-limit";
+import { createCommerceService, hasCommerceService } from "@/lib/supabase/service";
 
 export interface TrackingItem {
   id: string;
@@ -12,7 +13,7 @@ export interface TrackingItem {
 
 export interface TrackingOrder {
   id: string;
-  status: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "paid" | "preparing" | "shipped" | "delivered" | "cancelled";
   customer_tier: "retail" | "wholesale";
   payment_method: string;
   subtotal_amount: number;
@@ -22,22 +23,15 @@ export interface TrackingOrder {
   shipping_phone: string;
   shipping_address: string;
   tracking_code: string;
+  carrier_tracking_code?: string | null;
   created_at: string;
   items: TrackingItem[];
 }
 
-export async function lookupOrderAction(code: string): Promise<TrackingOrder | null> {
-  const cleanCode = code.trim().toUpperCase();
-  if (!cleanCode) return null;
-
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.rpc("get_order_by_tracking", {
-    tracking_code_input: cleanCode,
-  });
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data as unknown as TrackingOrder;
+export async function lookupOrderAction(code: string, email: string): Promise<TrackingOrder | null> {
+  if (!hasCommerceService() || !code || code.length > 80 || !email || email.length > 254) return null;
+  try { await limitCommerceRequest("tracking"); } catch { return null; }
+  const db = createCommerceService();
+  const { data, error } = await db.from("orders").select("id,status,customer_tier,payment_method,subtotal_amount,shipping_amount,total_amount,shipping_name,shipping_phone,shipping_address,tracking_code,carrier_tracking_code,created_at,items:order_items(id,product_title,quantity,unit_price,product_id)").eq("tracking_code", code.trim().toUpperCase()).eq("customer_email", email.trim().toLowerCase()).maybeSingle();
+  return error || !data ? null : data as unknown as TrackingOrder;
 }

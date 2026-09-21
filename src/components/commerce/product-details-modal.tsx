@@ -1,4 +1,5 @@
 "use client";
+import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
@@ -9,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { trackAdsEvent } from "@/lib/analytics";
 
 export function ProductDetailsModal() {
+  const { selectedProduct } = useCommerce();
+  return selectedProduct ? <ProductDetailsModalContent key={selectedProduct.id} /> : null;
+}
+function ProductDetailsModalContent() {
   const {
     selectedProduct,
     setSelectedProduct,
@@ -26,21 +31,8 @@ export function ProductDetailsModal() {
 
   const favorite = selectedProduct ? isFavorite(selectedProduct.id) : false;
 
-  // Reset local state when product changes
   React.useEffect(() => {
     if (selectedProduct) {
-      setQuantity(channel === "wholesale" ? Math.max(selectedProduct.wholesaleMinQuantity, 1) : 1);
-    }
-  }, [selectedProduct, channel]);
-
-  // Adjust default channel based on product settings and track ViewContent
-  React.useEffect(() => {
-    if (selectedProduct) {
-      if (selectedProduct.wholesaleOnly) {
-        setChannel("wholesale");
-      } else {
-        setChannel("retail");
-      }
       trackAdsEvent("ViewContent", {
         content_name: selectedProduct.title,
         content_ids: [selectedProduct.id],
@@ -88,7 +80,7 @@ export function ProductDetailsModal() {
   };
 
   const handleIncrement = () => {
-    setQuantity((q) => q + 1);
+    setQuantity((q) => Math.max(1, Math.min(q + 1, selectedProduct.stock, 100)));
   };
 
   const handleDecrement = () => {
@@ -96,7 +88,7 @@ export function ProductDetailsModal() {
     setQuantity((q) => Math.max(min, q - 1));
   };
 
-  const isWholesaleAllowed = selectedProduct.wholesalePrice > 0;
+  const isWholesaleAllowed = WHOLESALE_ENABLED && selectedProduct.wholesalePrice > 0;
 
   return (
     <div
@@ -170,26 +162,14 @@ export function ProductDetailsModal() {
           {/* Pricing Comparison Table */}
           <div className="mt-6 border border-zinc-200 rounded-xl overflow-hidden">
             <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Tabla de Precios por Volumen
+              Precio del producto
             </div>
             <div className="divide-y divide-zinc-200 text-sm">
               {/* Ref Mercado Libre Row */}
-              {selectedProduct.retailPrice > 0 && (
-                <div className="flex items-center justify-between px-4 py-2 bg-zinc-50/70 text-xs">
-                  <span className="text-zinc-500">Ref. Mercado Libre (aprox.)</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-zinc-400 line-through font-medium">
-                      {formatCurrency(Math.round((selectedProduct.retailPrice * 1.08) / 100) * 100)}
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded">
-                      -8% vs ML
-                    </span>
-                  </div>
-                </div>
-              )}
+
               {/* Minorista Row */}
               <div className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-zinc-700">1 - {selectedProduct.wholesaleMinQuantity - 1} u. (Minorista)</span>
+                <span className="text-zinc-700">Precio por unidad</span>
                 <span className="font-bold text-zinc-900">{formatCurrency(selectedProduct.retailPrice)}</span>
               </div>
               {/* Mayorista Row */}
@@ -220,7 +200,7 @@ export function ProductDetailsModal() {
                   className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     channel === "retail" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-650 hover:text-zinc-950"
                   }`}
-                  onClick={() => setChannel("retail")}
+                  onClick={() => { setChannel("retail"); setQuantity(1); }}
                 >
                   Minorista
                 </button>
@@ -228,7 +208,7 @@ export function ProductDetailsModal() {
                   className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     channel === "wholesale" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-650 hover:text-zinc-950"
                   }`}
-                  onClick={() => setChannel("wholesale")}
+                  onClick={() => { setChannel("wholesale"); setQuantity(selectedProduct.wholesaleMinQuantity); }}
                 >
                   Mayorista
                 </button>
@@ -275,7 +255,7 @@ export function ProductDetailsModal() {
             <Button
               className="flex-1 h-11 cursor-pointer flex items-center justify-center gap-2"
               onClick={handleAddToCart}
-              disabled={selectedProduct.stock <= 0}
+              disabled={!isVerifiedStock(selectedProduct)}
               icon={<ShoppingCart className="h-4 w-4" />}
             >
               Agregar ({formatCurrency(price * quantity)})

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import {
   Printer,
   Copy,
@@ -40,9 +40,10 @@ export function ProformaQuoteModal({
   const [clientCuit, setClientCuit] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const quoteId = useId();
   if (!isOpen) return null;
 
-  const quoteNumber = `COT-${Date.now().toString().slice(-6)}`;
+  const quoteNumber = `BORRADOR-${quoteId}`;
   const issueDate = new Date().toLocaleDateString("es-AR", {
     year: "numeric",
     month: "long",

@@ -1,9 +1,13 @@
+import { readAllPages } from "@/lib/read-all-pages";
+import { getCurrentProfile } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { siteConfig } from "@/lib/site";
 
 export async function GET(request: Request) {
+  const { profile } = await getCurrentProfile();
+  if (profile?.role !== "admin") return new NextResponse("No autorizado", { status: 403 });
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "wholesale"; // 'wholesale' | 'retail' | 'full'
 
@@ -13,14 +17,14 @@ export async function GET(request: Request) {
 
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: products, error } = await supabase
+    const products = await readAllPages((from, to) => supabase
       .from("products")
       .select("id, title, slug, retail_price, wholesale_price, wholesale_min_qty, stock, categories(name)")
       .eq("is_active", true)
       .order("title", { ascending: true })
-      .range(0, 5000);
+      .order("id").range(from, to));
 
-    if (error || !products) {
+    if (!products) {
       return new NextResponse("Error al generar catálogo.", { status: 500 });
     }
 
@@ -37,12 +41,14 @@ export async function GET(request: Request) {
     ];
 
     const escapeCsv = (val: string | number | null | undefined) => {
-      const str = String(val ?? "").replace(/"/g, '""');
+      const raw = String(val ?? "");
+      const str = (/^[=+@-]/.test(raw) ? "'" + raw : raw).replace(/"/g, '""');
       return `"${str}"`;
     };
 
-    const rows = products.map((p: any) => {
-      const categoryName = Array.isArray(p.categories) ? p.categories[0]?.name : p.categories?.name ?? "General";
+    const rows = products.map((p) => {
+      const category = p.categories as unknown as { name: string } | { name: string }[] | null;
+      const categoryName = (Array.isArray(category) ? category[0]?.name : category?.name) ?? "General";
       return [
         escapeCsv(p.id.slice(0, 8).toUpperCase()),
         escapeCsv(p.title),
@@ -68,10 +74,10 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": "private, no-store",
       },
     });
-  } catch (err: any) {
-    return new NextResponse(`Error: ${err.message}`, { status: 500 });
+  } catch (err: unknown) {
+    return new NextResponse(`Error: ${(err instanceof Error ? err.message : "Error inesperado")}`, { status: 500 });
   }
 }

@@ -1,3 +1,7 @@
+// Historical importer: inferred margins and supplier stock are not valid operating data.
+if (process.env.ALLOW_LEGACY_PRICE_ESTIMATES !== "true") {
+  throw new Error("Importador legado pausado. Usar /admin/costos y docs/costos-proveedores-pendientes.csv con costos reales; no importar estos precios estimados.");
+}
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
@@ -116,7 +120,7 @@ for (const item of rawCosmetics) {
     retail_price: retailPrice,
     wholesale_price: wholesalePrice,
     wholesale_min_qty: 3,
-    stock: item.stock || 15,
+    stock: 0,
     payment_methods: ['transferencia', 'tarjeta', 'mercado_pago', 'efectivo'],
     tags: ['cosmetica', 'skincare', slugify(brand), isViral ? 'viral' : 'importado'],
     is_featured: isViral,

@@ -1,9 +1,11 @@
+import { hasCommerceService } from "@/lib/supabase/service";
 import type { Metadata } from "next";
 import { OrderTrackerClient } from "./order-tracker-client";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Seguimiento de Pedidos | MYA Importaciones",
-  description: "Consultá el estado en tiempo real de tu pedido minorista o mayorista con tu código ORD-.",
+  description: "Consultá el estado en tiempo real de tu pedido minorista con tu código ORD-.",
 };
 
 export default async function SeguimientoPage({
@@ -29,7 +31,7 @@ export default async function SeguimientoPage({
           </p>
         </div>
 
-        <OrderTrackerClient initialCode={initialCode} />
+        {hasCommerceService() ? <OrderTrackerClient initialCode={initialCode} /> : <p className="mt-6 rounded-xl bg-amber-50 p-4">La consulta automática no está disponible. Contactanos por WhatsApp con la referencia de tu compra.</p>}
       </div>
     </div>
   );

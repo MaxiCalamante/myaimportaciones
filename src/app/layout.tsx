@@ -11,6 +11,7 @@ import { getStorefrontData } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { WhatsAppFloatingButton } from "@/components/commerce/whatsapp-button";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { AnalyticsConsent } from "@/components/analytics/consent";
 import { MarketingScripts } from "@/components/analytics/marketing-scripts";
 import "./globals.css";
 
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
     "Karseell colágeno",
     "Herramientas Total Tools",
     "Herramientas Wadfow",
-    "Precios Mayoristas Argentina",
+
     "Distribución mayorista y minorista",
   ],
   icons: {
@@ -105,39 +106,10 @@ const websiteJsonLd = {
     "@type": "SearchAction",
     target: {
       "@type": "EntryPoint",
-      urlTemplate: `${siteConfig.appUrl}/api/search?q={search_term_string}`,
+      urlTemplate: `${siteConfig.appUrl}/catalogo?q={search_term_string}`,
     },
     "query-input": "required name=search_term_string",
   },
-};
-
-const storeJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Store",
-  name: siteConfig.brandName,
-  image: `${siteConfig.appUrl}/og-image.png`,
-  url: siteConfig.appUrl,
-  telephone: siteConfig.phone,
-  email: siteConfig.email,
-  priceRange: "$$",
-  currenciesAccepted: "ARS",
-  paymentAccepted: "Mercado Pago, Tarjeta de Crédito, Transferencia Bancaria, Efectivo",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "Tandil Centro",
-    addressLocality: "Tandil",
-    addressRegion: "Buenos Aires",
-    postalCode: "7000",
-    addressCountry: "AR",
-  },
-  openingHoursSpecification: [
-    {
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-      opens: "08:30",
-      closes: "19:30",
-    },
-  ],
 };
 
 export default async function RootLayout({
@@ -146,7 +118,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const { profile } = await getCurrentProfile();
-  const { categories, products } = await getStorefrontData();
+  const { categories, products } = await getStorefrontData({ limit: 0 });
 
   return (
     <html
@@ -162,17 +134,15 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }}
-        />
+
       </head>
       <body className="min-h-full bg-slate-50 text-zinc-950">
         <CommerceProvider>
           <div className="flex min-h-screen flex-col pb-16 md:pb-0">
             <SiteHeader initialCategories={categories} initialProducts={products} profile={profile} />
-            <main className="flex-1">{children}</main>
+            <div className="bg-zinc-100 px-4 py-2 text-center text-xs"><a href="/arrepentimiento" className="underline">Botón de arrepentimiento</a></div><main className="flex-1">{children}</main>
             <SiteFooter />
+            <AnalyticsConsent />
           </div>
           <CartDrawer />
           <ProductDetailsModal />

@@ -265,8 +265,8 @@ export function PricingEngine({
         });
         setSuccessMessage(res.message);
         setTimeout(() => setSuccessMessage(null), 8000);
-      } catch (err: any) {
-        setErrorMessage(err.message || "Error al actualizar precios");
+      } catch (err: unknown) {
+        setErrorMessage((err instanceof Error ? err.message : "Error inesperado") || "Error al actualizar precios");
       }
     });
   };
@@ -367,7 +367,7 @@ export function PricingEngine({
                   key={opt.id}
                   type="button"
                   onClick={() => {
-                    setScope(opt.id as any);
+                    setScope(opt.id as typeof scope);
                     if (opt.id === "all") setScopeValue("");
                     else if (opt.id === "supplier") setScopeValue("total_tools");
                     else if (opt.id === "category" && mainCategories[0]) setScopeValue(mainCategories[0].id);
@@ -469,7 +469,7 @@ export function PricingEngine({
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setTarget(t.id as any)}
+                    onClick={() => setTarget(t.id as typeof target)}
                     className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       target === t.id
                         ? "bg-white text-zinc-950 shadow-xs"
@@ -715,7 +715,7 @@ export function PricingEngine({
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => setRounding(r.id as any)}
+                  onClick={() => setRounding(r.id as typeof rounding)}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                     rounding === r.id
                       ? "border-zinc-900 bg-zinc-900 text-white font-bold"

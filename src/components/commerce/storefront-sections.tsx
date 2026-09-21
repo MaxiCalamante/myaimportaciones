@@ -12,47 +12,41 @@ import { ButtonLink } from "@/components/ui/button";
 const heroSlides = [
   {
     image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Distribución Oficial Total & Wadfow",
+    eyebrow: "Total Tools & Wadfow",
     title: "Herramientas Industriales y Profesionales",
-    description: "Líderes en herramientas Total Tools y Wadfow importadas directo del distribuidor oficial. Catálogo completo sin intermediarios con precios más baratos que en Mercado Libre.",
+    description: "Herramientas para tu casa, taller y trabajo. Encontrá tu modelo y consultá disponibilidad y entrega desde Tandil.",
     btnText: "Ver Herramientas",
     btnLink: "/?category=herramientas-equipamiento",
   },
   {
     image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1800&q=80",
     eyebrow: "Tendencia Mundial en Skincare",
-    title: "Cosmética Coreana 100% Original",
+    title: "Tu próximo cuidado de la piel",
     description: "Sérums virales, cremas reparadoras y protectores de SKIN1004, Medicube, Dr. Althea y Celimax importados directamente para vos.",
     btnText: "Ver K-Beauty",
     btnLink: "/?category=cosmetica-coreana",
   },
   {
-    image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Negocio & Reventa Mayorista",
-    title: "Venta Mayorista para Comercios y Emprendedores",
-    description: "Accedé a precios de importador directo por bulto cerrado en herramientas Total y cosmética coreana con márgenes del 40% al 100%.",
-    btnText: "Ver Precios Mayoristas",
-    btnLink: "/mayorista",
-  },
-  {
     image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
     eyebrow: "Envíos Seguros a Todo el País",
-    title: "Importación Directa & Garantía Total",
-    description: "Despachamos tu compra a cualquier punto de Argentina con seguro de carga, Factura A o B oficial y 10% de descuento por transferencia.",
+    title: "Comprá con atención cercana",
+    description: "Elegí tus productos y revisá disponibilidad, entrega y condiciones antes de confirmar tu pedido.",
     btnText: "Ver Catálogo Completo",
-    btnLink: "/#catalogo",
+    btnLink: "/catalogo",
   },
 ];
 
 export function StoreHero() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [paused]);
 
   const handlePrev = () => {
     setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
@@ -64,10 +58,14 @@ export function StoreHero() {
 
   return (
     <section className="relative overflow-hidden bg-zinc-950 text-white min-h-[520px]">
+      <h1 className="sr-only">MYA Importaciones: belleza y herramientas</h1>
+      <button className="absolute bottom-4 left-4 z-20 rounded-lg bg-black/80 px-3 py-2 text-xs text-white" onClick={() => setPaused(!paused)}>{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>
       {/* Slides */}
       {heroSlides.map((slide, idx) => (
         <div
           key={idx}
+          aria-hidden={idx !== currentSlide}
+          inert={idx !== currentSlide}
           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
             idx === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
           }`}
@@ -83,9 +81,9 @@ export function StoreHero() {
               <p className="text-sm font-semibold uppercase text-sky-300 tracking-wider">
                 {slide.eyebrow}
               </p>
-              <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
+              <h2 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
                 {slide.title}
-              </h1>
+              </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-zinc-150 sm:text-lg">
                 {slide.description}
               </p>
@@ -120,6 +118,8 @@ export function StoreHero() {
         {heroSlides.map((_, idx) => (
           <button
             key={idx}
+          aria-hidden={idx !== currentSlide}
+          inert={idx !== currentSlide}
             onClick={() => setCurrentSlide(idx)}
             className={`h-2.5 rounded-full transition-all duration-300 ${
               idx === currentSlide ? "w-8 bg-sky-400" : "w-2.5 bg-white/40 hover:bg-white/60"
@@ -136,29 +136,29 @@ export function RetailHighlights() {
   const items = [
     { 
       icon: BadgePercent, 
-      title: "10% OFF Transferencia",
-      desc: "Descuento automático pagando por transferencia bancaria o efectivo"
+      title: "Precio claro",
+      desc: "El total y las promociones disponibles se confirman antes de comprar"
     },
     { 
       icon: Truck, 
       title: "Envíos a Todo el País",
-      desc: "Despachos asegurados por Correo Argentino, Andreani y Expresos"
+      desc: "Opciones de entrega según destino y producto"
     },
     { 
       icon: ShieldCheck, 
-      title: "Garantía & Factura A/B",
-      desc: "Productos 100% originales con factura oficial e IVA discriminado"
+      title: "Atención posventa",
+      desc: "Consultá condiciones de garantía y cambios de cada producto"
     },
     { 
       icon: Warehouse, 
-      title: "Minorista & Mayorista",
-      desc: "Comprá por unidad o accedé a precios por bulto cerrado desde $100.000"
+      title: "Comprá por unidad",
+      desc: "Belleza y herramientas para uso personal o profesional"
     },
   ];
 
   return (
     <section className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:grid-cols-2 lg:grid-cols-3 lg:px-8">
         {items.map((item) => (
           <div className="flex items-start gap-3.5" key={item.title}>
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
@@ -186,15 +186,15 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
       return {
         badge: "Total Tools & Wadfow",
         tagClass: "bg-blue-600 text-white",
-        count: "+2.700 productos",
+        count: "Para casa y taller",
         bgHover: "hover:border-blue-300 hover:shadow-blue-50/50",
       };
     }
     if (slug.includes("cosmetica")) {
       return {
-        badge: "K-Beauty 100% Original",
+        badge: "K-Beauty",
         tagClass: "bg-pink-600 text-white",
-        count: "+75 productos virales",
+        count: "Cuidado de la piel",
         bgHover: "hover:border-pink-300 hover:shadow-pink-50/50",
       };
     }
@@ -209,7 +209,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
     return {
       badge: "Importación Directa",
       tagClass: "bg-sky-600 text-white",
-      count: "Garantía oficial",
+      count: "Consultá disponibilidad",
       bgHover: "hover:border-sky-300 hover:shadow-sky-50/50",
     };
   };
@@ -221,25 +221,25 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 border border-sky-200/60">
               <Sparkles className="h-3.5 w-3.5 text-sky-600" />
-              Departamentos Oficiales
+              Nuestros rubros
             </div>
             <h2 className="mt-2 text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
-              Explorá por Rubro Comercial
+              ¿Qué estás buscando?
             </h2>
             <p className="mt-1 text-sm text-zinc-600 max-w-2xl">
-              Navegá nuestro catálogo completo con stock real, precios minoristas y condiciones especiales para compras mayoristas.
+              Elegí tu rubro y encontrá productos, precios y disponibilidad.
             </p>
           </div>
           <Link
             className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-xs font-bold text-zinc-900 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white shadow-xs transition-all duration-200 group shrink-0"
-            href="/#catalogo"
+            href="/catalogo"
           >
-            <span>Ver catálogo completo (+2.890)</span>
+            <span>Ver catálogo completo</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {visibleCategories.map((category) => {
             const subs = getSubcategories(category.id);
             const theme = getCategoryTheme(category.slug);
@@ -276,7 +276,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                   {/* Body Info */}
                   <div className="p-5">
                     <Link href={`/?category=${category.slug}`}>
-                      <h3 className="text-lg font-extrabold text-zinc-950 group-hover:text-emerald-700 transition-colors">
+                      <h3 className="text-lg font-black text-black group-hover:text-emerald-700 transition-colors">
                         {category.name}
                       </h3>
                     </Link>
@@ -363,7 +363,7 @@ export function ProductSection({
           ) : null}
         </div>
 
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <ProductCard channel={channel} key={product.id} product={product} />
           ))}
@@ -475,7 +475,7 @@ export function TestimonialsSection() {
                     <span key={i} className="text-amber-400 text-base">★</span>
                   ))}
                 </div>
-                <p className="text-sm text-zinc-600 italic leading-relaxed">"{t.comment}"</p>
+                <p className="text-sm text-zinc-600 italic leading-relaxed">&quot;{t.comment}&quot;</p>
               </div>
               <div className="mt-6 border-t border-zinc-100 pt-4">
                 <p className="text-sm font-bold text-zinc-950">{t.name}</p>

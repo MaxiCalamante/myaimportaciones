@@ -1,4 +1,5 @@
 "use client";
+import { isVerifiedStock } from "@/lib/commerce-policy";
 
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -109,9 +110,10 @@ export function CatalogWithFilters({
     }
 
     const step = range > 100000 ? 5000 : 1000;
-    const p1 = Math.round((min + range * 0.25) / step) * step;
-    const p2 = Math.round((min + range * 0.50) / step) * step;
-    const p3 = Math.round((min + range * 0.75) / step) * step;
+    prices.sort((a,b) => a-b);
+    const p1 = prices[Math.floor((prices.length-1)*0.25)];
+    const p2 = prices[Math.floor((prices.length-1)*0.50)];
+    const p3 = prices[Math.floor((prices.length-1)*0.75)];
 
     const presets = [
       { label: `Hasta ${formatCurrency(p1)}`, min: "", max: String(p1) },
@@ -123,10 +125,9 @@ export function CatalogWithFilters({
     return { minCatalogPrice: min, maxCatalogPrice: max, smartPresets: presets };
   }, [products, channel]);
 
-  // Reset pagination when filter criteria change
-  useEffect(() => {
-    setVisibleCount(24);
-  }, [searchQuery, selectedBrand, selectedSubcategory, minPrice, maxPrice, onlyInStock, sortBy]);
+  const filterKey = JSON.stringify([searchQuery, selectedBrand, selectedSubcategory, minPrice, maxPrice, onlyInStock, sortBy]);
+  const [previousFilter, setPreviousFilter] = useState(filterKey);
+  if (filterKey !== previousFilter) { setPreviousFilter(filterKey); setVisibleCount(24); }
 
   // Filter & Sort products on client side
   const filteredProducts = useMemo(() => {
@@ -165,7 +166,7 @@ export function CatalogWithFilters({
 
     // Filter by stock
     if (onlyInStock) {
-      result = result.filter((p) => p.stock > 0);
+      result = result.filter((p) => isVerifiedStock(p));
     }
 
     // Filter by price range
@@ -510,13 +511,13 @@ export function CatalogWithFilters({
               <ArrowUpDown className="absolute left-3 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="h-10 rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-7 text-xs font-semibold text-zinc-800 outline-none focus:border-sky-500 cursor-pointer"
               >
                 <option value="featured">Destacados</option>
                 <option value="price-asc">Menor precio</option>
                 <option value="price-desc">Mayor precio</option>
-                <option value="saving-desc">Mayor ahorro vs ML</option>
+
                 <option value="name-asc">Nombre A - Z</option>
               </select>
             </div>
@@ -672,7 +673,7 @@ export function CatalogWithFilters({
               {filteredProducts.length !== products.length && ` (de ${products.length} totales)`}
             </span>
             <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-              {channel === "wholesale" ? "Condiciones de compra mayorista" : "10% OFF en Transferencia / Efectivo"}
+              {channel === "wholesale" ? "Condiciones de compra mayorista" : "Precios en pesos argentinos"}
             </span>
           </div>
 

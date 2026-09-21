@@ -26,6 +26,7 @@ interface DbProfileSummary {
 interface DbOrderSummary {
   id: string;
   tracking_code: string | null;
+  carrier_tracking_code?: string | null;
   status: OrderStatus | null;
   total_amount: number | null;
   customer_tier: ProductChannel | null;
@@ -52,7 +53,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   }
 
   const supabase = await createServerSupabaseClient();
-  const storefront = await getStorefrontData();
+  const storefront = await getStorefrontData({ admin: true });
 
   const [
     { count: customersCount },
@@ -73,7 +74,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     supabase
       .from("orders")
       .select(
-        "id, tracking_code, status, total_amount, customer_tier, payment_method, shipping_name, shipping_phone, shipping_address, customer_email, order_notes, created_at, profiles(full_name, email), order_items(product_title, quantity, unit_price)"
+        "*, profiles(full_name, email), order_items(product_title, quantity, unit_price)"
       )
       .order("created_at", { ascending: false })
       .limit(50),
@@ -115,6 +116,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       return {
         id: order.id,
         trackingCode: order.tracking_code ?? undefined,
+        carrierTrackingCode: order.carrier_tracking_code ?? undefined,
         customerName: order.shipping_name || profile?.full_name || "Cliente",
         customerEmail: order.customer_email || profile?.email || "",
         shippingPhone: order.shipping_phone ?? undefined,
@@ -134,9 +136,9 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     },
   );
 
-  const revenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const revenue = orders.filter(order => ["paid", "preparing", "shipped", "delivered"].includes(order.status)).reduce((sum, order) => sum + order.total, 0);
 
-  const stockLogs = ((stockLogsData ?? []) as any[]).map((log) => {
+  const stockLogs = (stockLogsData ?? []).map((log) => {
     const product = Array.isArray(log.products) ? log.products[0] : log.products;
     return {
       id: log.id,

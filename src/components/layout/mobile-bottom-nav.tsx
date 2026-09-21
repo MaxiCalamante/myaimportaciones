@@ -35,7 +35,7 @@ export function MobileBottomNav() {
 
         {/* Catalog */}
         <Link
-          href="/#catalogo"
+          href="/catalogo"
           className="flex flex-col items-center justify-center flex-1 h-full text-zinc-600 hover:text-zinc-950 transition"
         >
           <LayoutGrid className="h-5 w-5" />

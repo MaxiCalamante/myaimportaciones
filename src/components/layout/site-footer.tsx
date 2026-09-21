@@ -46,13 +46,13 @@ export function SiteFooter() {
               <span className="text-sm font-black uppercase tracking-tight block">
                 MYA <span className="font-semibold text-sky-400">Importaciones</span>
               </span>
-              <span className="text-[10px] text-zinc-400 font-medium">Distribución Oficial</span>
+              <span className="text-[10px] text-zinc-400 font-medium">Belleza y herramientas</span>
             </div>
           </div>
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
               ? "Tu distribuidor directo de confianza. Abastecemos a comercios, ferreterías y revendedores con Cosmética Coreana (K-Beauty original), tratamientos capilares Karseell y herramientas industriales Total y Wadfow con precios diferenciales por bulto cerrado."
-              : "Importación directa sin intermediarios. Encontrá la mejor selección de Cosmética Coreana (K-Beauty original de Corea del Sur) y herramientas industriales Total Tools y Wadfow con despacho express a todo el país."}
+              : "Cosmética coreana, cuidado capilar y herramientas. Atención desde Tandil y opciones de entrega según tu compra."}
           </p>
           <div className="flex items-center gap-3 pt-2">
             <a
@@ -90,7 +90,7 @@ export function SiteFooter() {
               Tratamientos Capilares & Karseell
             </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/#ofertas"}>
-              Oportunidades & Ofertas B2B
+              Explorar productos
             </Link>
           </div>
         </div>
@@ -110,7 +110,7 @@ export function SiteFooter() {
               </>
             ) : (
               <>
-                <Link className="text-zinc-400 hover:text-white transition-colors" href="/#catalogo">
+                <Link className="text-zinc-400 hover:text-white transition-colors" href="/catalogo">
                   Catálogo de Productos
                 </Link>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/#ofertas">
@@ -119,15 +119,18 @@ export function SiteFooter() {
                 <a
                   className="text-amber-400/90 hover:text-amber-300 transition-colors"
                   href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(
-                    "Hola MYA Importaciones! Quisiera consultar los requisitos para operar como cliente mayorista."
+                    "Hola MYA Importaciones! Quisiera consultar por un producto."
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Consultas Mayoristas B2B
+                  Consultas sobre productos
                 </a>
               </>
             )}
+            <Link className="text-zinc-400 hover:text-white" href="/condiciones">Condiciones, envíos y devoluciones</Link>
+            <Link className="text-zinc-400 hover:text-white" href="/privacidad">Privacidad</Link>
+            <Link className="text-amber-300 hover:text-white" href="/arrepentimiento">Botón de arrepentimiento</Link>
             <Link className="text-zinc-400 hover:text-white transition-colors" href="/seguimiento">
               Seguimiento de Pedidos
             </Link>
@@ -164,10 +167,10 @@ export function SiteFooter() {
       {/* Guarantees bar & Copyright */}
       <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 py-6 sm:px-6 lg:px-8 text-center text-xs text-zinc-500 space-y-2">
         <p className="text-zinc-400 font-medium">
-          Factura oficial A y B con IVA discriminado &bull; 10% OFF pagando con transferencia o efectivo &bull; Envíos asegurados a toda la Argentina
+          Precios en pesos argentinos · Consultá entrega y condiciones de compra
         </p>
         <p>
-          &copy; {new Date().getFullYear()} MYA Importaciones. Importación directa y distribución nacional. Todos los derechos reservados.
+          &copy; {new Date().getFullYear()} MYA Importaciones. Belleza y herramientas. Todos los derechos reservados.
         </p>
       </div>
     </footer>

@@ -5,6 +5,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Panel de Control | MYA Importaciones",
 };
 
@@ -21,5 +22,5 @@ export default async function AdminPage() {
 
   const data = await getAdminDashboardData();
 
-  return <AdminDashboard data={data} supabaseReady={hasSupabaseConfig()} />;
+  return <><nav className="flex flex-wrap gap-5 px-5 pt-5"><a href="/admin/estado" className="underline">Estado de la tienda</a><a href="/admin/costos" className="underline">Costos reales</a><a href="/admin/operaciones" className="underline">Inventario, fichas y reclamos</a></nav><AdminDashboard data={data} supabaseReady={hasSupabaseConfig()} /></>;
 }

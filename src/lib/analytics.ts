@@ -77,7 +77,7 @@ export interface AdsEventPayload {
     price?: number;
   }>;
   search_string?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -86,6 +86,7 @@ export interface AdsEventPayload {
  */
 export function trackAdsEvent(eventType: AdsEventType, payload: AdsEventPayload = {}): void {
   if (typeof window === "undefined") return;
+  try { if (localStorage.getItem("mya_analytics_consent") !== "granted") return; } catch { return; }
 
   const eventDetail = {
     eventType,

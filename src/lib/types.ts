@@ -33,6 +33,9 @@ export interface Category {
 }
 
 export interface Product {
+  stockVerifiedAt?: string | null;
+  specifications?: Record<string, string>;
+  warrantyTerms?: string | null;
   id: string;
   slug: string;
   title: string;
@@ -79,6 +82,7 @@ export interface OrderItemSummary {
 export interface OrderSummary {
   id: string;
   trackingCode?: string;
+  carrierTrackingCode?: string;
   customerName: string;
   customerEmail: string;
   shippingPhone?: string;
@@ -117,4 +121,3 @@ export interface AdminDashboardData {
   categories: Category[];
   stockLogs: StockLog[];
 }
-

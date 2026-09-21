@@ -1,3 +1,6 @@
+import { readAllPages } from "@/lib/read-all-pages";
+import { cache } from "react";
+import { WHOLESALE_ENABLED, isExcludedCategory, cleanProductTitle } from "@/lib/commerce-policy";
 import { demoCategories, demoProducts } from "@/lib/demo-data";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -25,6 +28,9 @@ interface DbProduct {
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number | null;
+  stock_verified_at?: string | null;
+  specifications?: Record<string, string>;
+  warranty_terms?: string | null;
   payment_methods: PaymentMethod[] | null;
   tags: string[] | null;
   is_featured: boolean | null;
@@ -32,13 +38,15 @@ interface DbProduct {
   categories: { name: string } | Array<{ name: string }> | null;
 }
 
-export async function getStorefrontData(options?: {
+export const getStorefrontData = cache(async function getStorefrontData(options?: {
   categoryId?: string;
+  admin?: boolean;
+  limit?: number;
 }): Promise<StorefrontData> {
   if (!hasSupabaseConfig()) {
     return {
-      categories: demoCategories,
-      products: demoProducts,
+      categories: demoCategories.filter(c => !isExcludedCategory(c.slug)),
+      products: demoProducts.filter(p => !p.wholesaleOnly && !/iphone|smartphone|celular/i.test(p.title)),
       source: "demo",
     };
   }
@@ -56,10 +64,11 @@ export async function getStorefrontData(options?: {
     let query = supabase
       .from("products")
       .select(
-        "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
+        "*, categories(name)",
       )
       .eq("is_active", true);
 
+    if (!WHOLESALE_ENABLED && !options?.admin) query = query.eq("is_wholesale_only", false);
     if (options?.categoryId) {
       const childIds = ((categoriesData ?? []) as unknown as DbCategory[])
         .filter((c) => c.parent_id === options.categoryId)
@@ -74,37 +83,26 @@ export async function getStorefrontData(options?: {
 
     return query
       .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }).order("id");
   };
 
-  // Fetch up to 4,000 products concurrently in parallel ranges (bypasses PostgREST 1000 row cap)
-  const [b0, b1, b2, b3] = await Promise.all([
-    buildProductsQuery().range(0, 999),
-    buildProductsQuery().range(1000, 1999),
-    buildProductsQuery().range(2000, 2999),
-    buildProductsQuery().range(3000, 3999),
-  ]);
+  const productsData = options?.admin
+    ? await readAllPages((from, to) => buildProductsQuery().range(from, to))
+    : (await buildProductsQuery().limit(options?.limit ?? 24)).data ?? [];
 
-  const productsData = [
-    ...(b0.data ?? []),
-    ...(b1.data ?? []),
-    ...(b2.data ?? []),
-    ...(b3.data ?? []),
-  ];
 
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(
     mapCategory,
   );
-  const products = ((productsData ?? []) as unknown as DbProduct[]).map(
-    mapProduct,
-  );
+  const excluded = new Set(categories.filter(c => isExcludedCategory(c.slug)).map(c => c.id));
+  const products = ((productsData ?? []) as unknown as DbProduct[]).map(p => mapProduct(p, options?.admin)).filter(p => !excluded.has(p.categoryId) && !/iphone|smartphone|celular/i.test(p.title));
 
   return {
-    categories,
+    categories: categories.filter(c => !isExcludedCategory(c.slug) && !excluded.has(c.parentId ?? "")),
     products,
     source: "supabase",
   };
-}
+});
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (!hasSupabaseConfig()) {
@@ -115,33 +113,31 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, categories(name)",
+      "*, categories(name)",
     )
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error || !data) {
-    return demoProducts.find((p) => p.slug === slug) ?? null;
-  }
+  if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || /iphone|smartphone|celular/i.test(data.title)) return null;
 
   return mapProduct(data as unknown as DbProduct);
 }
 
-function mapCategory(category: DbCategory): Category {
+export function mapCategory(category: DbCategory): Category {
   return {
     id: category.id,
     name: category.name,
     slug: category.slug,
     parentId: category.parent_id,
-    description: category.description ?? "",
+    description: /garant[ií]a oficial|stock inmediato|24\s*h|100%/i.test(category.description ?? "") ? "Consultá productos, disponibilidad y condiciones de compra." : (category.description ?? ""),
     imageUrl: category.image_url ?? "",
     wholesaleOnly: Boolean(category.is_wholesale_only),
     displayOrder: category.display_order ?? 0,
   };
 }
 
-function mapProduct(product: DbProduct): Product {
+export function mapProduct(product: DbProduct, admin = false): Product {
   const category = Array.isArray(product.categories)
     ? product.categories[0]
     : product.categories;
@@ -149,13 +145,16 @@ function mapProduct(product: DbProduct): Product {
   return {
     id: product.id,
     slug: product.slug,
-    title: product.title,
-    description: product.description ?? "",
+    title: cleanProductTitle(product.title),
+    stockVerifiedAt: product.stock_verified_at ?? null,
+    specifications: product.specifications ?? {},
+    warrantyTerms: product.warranty_terms ?? null,
+    description: /Catálogo Oficial 2026|Formulación: Tratamiento dermatológico|100% Original Garantizado|Factura A o B/i.test(product.description ?? "") ? "Consultá la presentación, especificaciones y condiciones de este producto antes de comprar." : (product.description ?? ""),
     categoryId: product.category_id,
     categoryName: category?.name ?? "Catalogo",
     imageUrl: product.image_url ?? "",
     retailPrice: Number(product.retail_price ?? 0),
-    wholesalePrice: Number(product.wholesale_price ?? product.retail_price ?? 0),
+    wholesalePrice: (WHOLESALE_ENABLED || admin) ? Number(product.wholesale_price ?? 0) : 0,
     wholesaleMinQuantity: Number(product.wholesale_min_qty ?? 1),
     stock: Number(product.stock ?? 0),
     paymentMethods: product.payment_methods ?? ["transferencia"],

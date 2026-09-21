@@ -39,7 +39,8 @@ function extractBrand(title: string, categoryName: string, tags: string[] = []):
 }
 
 export async function GET() {
-  const { products } = await getStorefrontData();
+  const { products: loaded } = await getStorefrontData({ admin: true });
+  const products = loaded.filter(p => !p.wholesaleOnly && p.stockVerifiedAt && p.stock > 0);
   const baseUrl = siteConfig.appUrl.replace(/\/$/, "");
 
   const itemsXml = products
@@ -64,11 +65,6 @@ export async function GET() {
       <g:brand>${escapeXml(brand)}</g:brand>
       <g:google_product_category>${escapeXml(p.categoryName)}</g:google_product_category>
       <g:identifier_exists>no</g:identifier_exists>
-      <g:shipping>
-        <g:country>AR</g:country>
-        <g:service>Correo Argentino / Andreani</g:service>
-        <g:price>5900.00 ARS</g:price>
-      </g:shipping>
     </item>`;
     })
     .join("\n");

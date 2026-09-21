@@ -39,6 +39,8 @@ import {
   Megaphone,
 } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
+import { RealCosts } from "@/components/admin/real-costs";
+import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import { PricingEngine } from "@/components/admin/pricing-engine";
 import { SupplierResaleSystem } from "@/components/admin/supplier-resale-system";
 import { MarketingHub } from "@/components/admin/marketing-hub";
@@ -209,8 +211,8 @@ Logística / Despacho: +${calcShippingPercent}%
 💼 Precio Mayorista (+${calcWholesaleMarkup}%): $${wholesalePrice.toLocaleString("es-AR")}
 🏷️ Precio Minorista / PVP (+${calcRetailMarkup}%): $${retailPrice.toLocaleString("es-AR")}
 🛒 Referencia Mercado Libre: $${mlRefPrice.toLocaleString("es-AR")} (Ahorro cliente: -8%)
-💰 Ganancia Neta Minorista: $${(retailPrice - landedCost).toLocaleString("es-AR")}
-💰 Ganancia Neta Mayorista: $${(wholesalePrice - landedCost).toLocaleString("es-AR")}`;
+💰 Contribución estimada Minorista: $${(retailPrice - landedCost).toLocaleString("es-AR")}
+💰 Contribución estimada Mayorista: $${(wholesalePrice - landedCost).toLocaleString("es-AR")}`;
 
     navigator.clipboard.writeText(text);
     setCopiedCalcQuote(true);
@@ -226,8 +228,8 @@ Logística / Despacho: +${calcShippingPercent}%
         await setWholesaleByEmailAction(quickWholesaleEmail, true);
         alert(`¡El usuario ${quickWholesaleEmail} fue habilitado como cliente Mayorista con éxito!`);
         setQuickWholesaleEmail("");
-      } catch (err: any) {
-        alert(err.message);
+      } catch (err: unknown) {
+        alert((err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -243,8 +245,8 @@ Logística / Despacho: +${calcShippingPercent}%
     startTransition(async () => {
       try {
         await updateUserRoleAction(userId, newRole);
-      } catch (err: any) {
-        alert("Error al actualizar rol: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al actualizar rol: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -253,18 +255,18 @@ Logística / Despacho: +${calcShippingPercent}%
     startTransition(async () => {
       try {
         await toggleWholesaleApprovalAction(userId, !currentApproved);
-      } catch (err: any) {
-        alert("Error al cambiar estado mayorista: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al cambiar estado mayorista: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
 
-  const handleUpdateOrderStatus = (orderId: string, status: any) => {
+  const handleUpdateOrderStatus = (orderId: string, status: Parameters<typeof updateOrderStatusAction>[1]) => {
     startTransition(async () => {
       try {
         await updateOrderStatusAction(orderId, status);
-      } catch (err: any) {
-        alert("Error al actualizar estado del pedido: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al actualizar estado del pedido: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -275,9 +277,9 @@ Logística / Despacho: +${calcShippingPercent}%
     startTransition(async () => {
       try {
         const order = data.orders.find((o) => o.id === orderId);
-        await updateOrderStatusAction(orderId, (order?.status as any) || "shipped", code);
-      } catch (err: any) {
-        alert("Error al actualizar código de seguimiento: " + err.message);
+        await updateOrderStatusAction(orderId, order?.status || "shipped", code);
+      } catch (err: unknown) {
+        alert("Error al actualizar código de seguimiento: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -308,7 +310,7 @@ Logística / Despacho: +${calcShippingPercent}%
           retailPrice: Number(retailStr) || 0,
           wholesalePrice: Number(wholesaleStr) || Math.round((Number(retailStr) || 0) * 0.75),
           wholesaleMinQuantity: Number(minStr) || 1,
-          stock: Number(stockStr) || 10,
+          stock: Number(stockStr) || 0,
           description: desc || "",
         });
       }
@@ -323,12 +325,12 @@ Logística / Despacho: +${calcShippingPercent}%
           const res = await bulkImportProductsAction(items);
           setBulkMsg({ type: "success", text: `Se importaron/actualizaron ${res.importedCount} productos con éxito.` });
           setBulkCsvText("");
-        } catch (err: any) {
-          setBulkMsg({ type: "error", text: "Error: " + err.message });
+        } catch (err: unknown) {
+          setBulkMsg({ type: "error", text: "Error: " + (err instanceof Error ? err.message : "Error inesperado") });
         }
       });
-    } catch (err: any) {
-      setBulkMsg({ type: "error", text: "Error de parseo: " + err.message });
+    } catch (err: unknown) {
+      setBulkMsg({ type: "error", text: "Error de parseo: " + (err instanceof Error ? err.message : "Error inesperado") });
     }
   };
 
@@ -354,8 +356,8 @@ Logística / Despacho: +${calcShippingPercent}%
     startTransition(async () => {
       try {
         await updateProductStockAction(productId, newStock);
-      } catch (err: any) {
-        alert("Error al actualizar el stock: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al actualizar el stock: " + (err instanceof Error ? err.message : "Error inesperado"));
         setStockState((prev) => ({ ...prev, [productId]: currentStock }));
       }
     });
@@ -368,8 +370,8 @@ Logística / Despacho: +${calcShippingPercent}%
     startTransition(async () => {
       try {
         await deleteProductAction(productId);
-      } catch (err: any) {
-        alert("Error al eliminar el producto: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al eliminar el producto: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -385,8 +387,8 @@ Logística / Despacho: +${calcShippingPercent}%
     startTransition(async () => {
       try {
         await deleteCategoryAction(categoryId);
-      } catch (err: any) {
-        alert("Error al eliminar la categoría: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al eliminar la categoría: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -422,8 +424,8 @@ Logística / Despacho: +${calcShippingPercent}%
         form.reset();
         setSelectedParentId("");
         setSelectedSubcategoryId("");
-      } catch (err: any) {
-        alert("Error al crear el producto: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al crear el producto: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -439,8 +441,8 @@ Logística / Despacho: +${calcShippingPercent}%
         setIsCreateCategoryOpen(false);
         form.reset();
         setCreateCategoryParentId("");
-      } catch (err: any) {
-        alert("Error al crear la categoría: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al crear la categoría: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -453,8 +455,8 @@ Logística / Despacho: +${calcShippingPercent}%
       try {
         await updateProductAction(formData);
         setEditingProduct(null);
-      } catch (err: any) {
-        alert("Error al guardar el producto: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al guardar el producto: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -467,8 +469,8 @@ Logística / Despacho: +${calcShippingPercent}%
       try {
         await updateCategoryAction(formData);
         setEditingCategory(null);
-      } catch (err: any) {
-        alert("Error al guardar la categoría: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al guardar la categoría: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -489,8 +491,8 @@ Logística / Despacho: +${calcShippingPercent}%
             return next;
           });
         }, 2500);
-      } catch (err: any) {
-        alert("Error al actualizar condición mayorista: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al actualizar condición mayorista: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -510,8 +512,8 @@ Logística / Despacho: +${calcShippingPercent}%
             return next;
           });
         }, 2500);
-      } catch (err: any) {
-        alert("Error al actualizar stock: " + err.message);
+      } catch (err: unknown) {
+        alert("Error al actualizar stock: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -731,7 +733,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
   const stats = [
     {
-      label: "Ingresos totales",
+      label: "Cobrado (últimos 50 pedidos)",
       value: formatCurrency(data.stats.revenue),
       icon: DollarSign,
       color: "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -836,10 +838,10 @@ Logística / Despacho: +${calcShippingPercent}%
         <nav className="flex space-x-8 min-w-max" aria-label="Tabs">
           {[
             { id: "products", name: "Productos & Stock", icon: Package },
-            { id: "pricing_engine", name: "Ajustador Masivo de Precios (%)", icon: Percent },
+            { id: "pricing_engine", name: "Costos y precios reales", icon: Percent },
             { id: "resale_system", name: "Cálculo & Reventa B2B", icon: Calculator },
             { id: "marketing", name: "Marketing & Píxeles Ads", icon: Megaphone },
-            { id: "suppliers", name: "Proveedores & Costos (B2B)", icon: Truck },
+            { id: "suppliers", name: "Costos de proveedores", icon: Truck },
             { id: "categories", name: "Categorías & Rubros", icon: FolderOpen },
             { id: "orders", name: "Pedidos / Ventas", icon: ReceiptText },
             { id: "customers", name: "Clientes", icon: Users },
@@ -848,7 +850,7 @@ Logística / Despacho: +${calcShippingPercent}%
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`group flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-semibold transition-colors cursor-pointer ${
                   isActive
                     ? "border-sky-600 text-sky-700"
@@ -1157,20 +1159,12 @@ Logística / Despacho: +${calcShippingPercent}%
 
       {/* TAB CONTENT: PRICING ENGINE */}
       {activeTab === "pricing_engine" && (
-        <PricingEngine
-          products={data.products}
-          categories={data.categories}
-          customSuppliers={customSuppliers}
-        />
+        <RealCosts products={data.products} />
       )}
 
       {/* TAB CONTENT: RESALE SYSTEM & B2B PROFIT ENGINE */}
       {activeTab === "resale_system" && (
-        <SupplierResaleSystem
-          products={data.products}
-          categories={data.categories}
-          customSuppliers={customSuppliers}
-        />
+        <RealCosts products={data.products} />
       )}
 
       {/* TAB CONTENT: MARKETING & ADS HUB */}
@@ -1179,7 +1173,8 @@ Logística / Despacho: +${calcShippingPercent}%
       )}
 
       {/* TAB CONTENT: SUPPLIERS & COST CONTROL (B2B) */}
-      {activeTab === "suppliers" && (
+      {activeTab === "suppliers" && !WHOLESALE_ENABLED && <RealCosts products={data.products} />}
+      {activeTab === "suppliers" && WHOLESALE_ENABLED && (
         <div className="space-y-6">
           {/* Top Info Banner */}
           <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 via-white to-cyan-50/60 p-6 shadow-xs">
@@ -1562,7 +1557,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 <button
                   key={chip.id}
                   onClick={() => {
-                    setSupplierFilter(chip.id as any);
+                    setSupplierFilter(chip.id as typeof supplierFilter);
                     setSupplierPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -1587,7 +1582,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 <button
                   key={chip.id}
                   onClick={() => {
-                    setSupplierStockFilter(chip.id as any);
+                    setSupplierStockFilter(chip.id as typeof supplierStockFilter);
                     setSupplierPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -1964,7 +1959,7 @@ Logística / Despacho: +${calcShippingPercent}%
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-base font-bold text-zinc-905 truncate">
+                          <h3 className="text-base font-bold text-zinc-950 truncate">
                             {parent.name}
                           </h3>
                           {parent.wholesaleOnly && (
@@ -1976,7 +1971,7 @@ Logística / Despacho: +${calcShippingPercent}%
                         <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">
                           {parent.description || "Sin descripción."}
                         </p>
-                        <span className="text-[10px] text-zinc-455 block mt-0.5">
+                        <span className="text-[10px] text-zinc-500 block mt-0.5">
                           Prioridad de orden: {parent.displayOrder}
                         </span>
                       </div>
@@ -2022,7 +2017,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
                       {subcategories.length === 0 ? (
                         <p className="text-xs text-zinc-400 italic py-2">
-                          No tiene subcategorías asociadas. Hacé clic en "Agregar Subcategoría" arriba para crear una.
+                          No tiene subcategorías asociadas. Hacé clic en &quot;Agregar Subcategoría&quot; arriba para crear una.
                         </p>
                       ) : (
                         <div className="space-y-3 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
@@ -2099,7 +2094,7 @@ Logística / Despacho: +${calcShippingPercent}%
               <ReceiptText className="h-5 w-5 text-emerald-700" /> Registro de Pedidos Comerciales
             </h2>
             <div className="text-xs text-zinc-500 font-semibold bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-250">
-              Total facturado local: <span className="font-extrabold text-emerald-750">{formatCurrency(data.stats.revenue)}</span>
+              Cobrado en últimos 50 pedidos: <span className="font-extrabold text-emerald-750">{formatCurrency(data.stats.revenue)}</span>
             </div>
           </div>
 
@@ -2137,6 +2132,7 @@ Logística / Despacho: +${calcShippingPercent}%
                           </span>
                           <p className="text-xs text-zinc-500 font-medium">
                             {formatDate(order.createdAt)}
+                            {order.carrierTrackingCode && <span className="block">Guía: {order.carrierTrackingCode}</span>}
                           </p>
                         </td>
                         <td className="px-6 py-4 align-top">
@@ -2196,7 +2192,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             <select
                               disabled={isPending}
                               value={order.status}
-                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as Parameters<typeof updateOrderStatusAction>[1])}
                               className={`rounded-lg px-2.5 py-1 text-xs font-bold border shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer ${
                                 order.status === "paid" || order.status === "delivered"
                                   ? "bg-emerald-50 text-emerald-850 border-emerald-300"
@@ -2213,7 +2209,7 @@ Logística / Despacho: +${calcShippingPercent}%
                               <option value="cancelled">Cancelado</option>
                             </select>
                             <button
-                              onClick={() => handleUpdateTrackingCode(order.id)}
+                              onClick={() => handleUpdateTrackingCode(order.id, order.carrierTrackingCode)}
                               className="text-[10px] text-zinc-500 hover:text-emerald-700 flex items-center gap-1 cursor-pointer font-medium"
                               title="Asignar o editar código de seguimiento"
                             >
@@ -2333,7 +2329,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setCustomerFilter(f.id as any)}
+                  onClick={() => setCustomerFilter(f.id as typeof customerFilter)}
                   className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
                     customerFilter === f.id
                       ? "bg-zinc-900 text-white"

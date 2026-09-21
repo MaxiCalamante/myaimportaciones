@@ -229,8 +229,8 @@ En Mercado Libre este producto ronda los *${formatCurrency(calculations.estimate
             setActionSuccess(`¡Precios de "${selectedProduct.title}" actualizados exitosamente en la tienda!`);
             setTimeout(() => setActionSuccess(null), 4000);
           }
-        } catch (err: any) {
-          alert(err.message || "Error al actualizar.");
+        } catch (err: unknown) {
+          alert((err instanceof Error ? err.message : "Error inesperado") || "Error al actualizar.");
         }
       });
     } else {
