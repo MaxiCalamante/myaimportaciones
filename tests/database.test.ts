@@ -13,6 +13,7 @@ test("Postgres transactional stock, idempotency, expiry and payment reconciliati
     await db.exec(`create function public.is_admin() returns boolean language sql as $$ select true $$;`);
     await db.exec(readFileSync("supabase/migrations/20260921134833_retail_integrity.sql", "utf8"));
     await db.exec(readFileSync("supabase/migrations/20260921185112_catalog_identity.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/20260922140934_supplier_fulfillment.sql", "utf8"));
     const category = randomUUID(), product = randomUUID();
     await db.query("insert into categories(id,name,slug) values($1,'Test','test')", [category]);
     await db.query("insert into products(id,category_id,title,slug,retail_price,stock,stock_verified_at) values($1,$2,'Test','test',1000,2,now())", [product, category]);
@@ -45,6 +46,20 @@ test("Postgres transactional stock, idempotency, expiry and payment reconciliati
     await db.query("select reconcile_retail_payment_v2($1,'late',1000,'approved')", [second.id]);
     const late = (await db.query<{ status: string; payment_review: boolean }>("select status,payment_review from orders where id=$1", [second.id])).rows[0];
     assert.equal(late.status, "cancelled"); assert.equal(late.payment_review, true);
+    const supplied = randomUUID();
+    await db.query("insert into products(id,category_id,title,slug,retail_price,stock,fulfillment_mode,supplier_available) values($1,$2,'Supplier','supplier',1000,0,'supplier',true)",[supplied,category]);
+    const supplierPayload = {...payload, request_id: randomUUID(), items:[{id:supplied,quantity:1,price:1000}]};
+    const supplierOrder = await create(supplierPayload);
+    assert.equal((await db.query<{stock:number}>("select stock from products where id=$1",[supplied])).rows[0].stock,0);
+    await assert.rejects(db.query("select set_product_fulfillment_v1($1,'own_stock',false)",[supplied]));
+    await db.query("select set_retail_order_status_v2($1,'cancelled')",[supplierOrder.id]);
+    assert.equal((await db.query<{stock:number}>("select stock from products where id=$1",[supplied])).rows[0].stock,0);
+    const expiring = await create({...supplierPayload,request_id:randomUUID()});
+    await db.query("update orders set reservation_expires_at=now()-interval '1 minute' where id=$1",[expiring.id]);
+    await db.exec("select expire_retail_reservations_v2()");
+    assert.equal((await db.query<{stock:number}>("select stock from products where id=$1",[supplied])).rows[0].stock,0);
+    await db.query("select set_product_fulfillment_v1($1,'supplier',false)",[supplied]);
+    await assert.rejects(create({...supplierPayload,request_id:randomUUID()}));
     await db.exec("set role anon"); await assert.rejects(create({ ...payload, request_id: randomUUID() }));
     await db.exec("reset role");
     await db.exec("create or replace function public.is_admin() returns boolean language sql as $$ select false $$;");

@@ -34,19 +34,22 @@ async function resolveQuote(input: CheckoutInput) {
   const items: PricedItem[] = input.lines.map(line => {
     const p = products.find(p => p.id === line.productId)!;
     const category = Array.isArray(p.categories) ? p.categories[0] : p.categories;
-    if (!p.is_active || p.is_wholesale_only || /smartphone|telefon|tecnologia|celular/i.test(category?.slug ?? "") || !p.stock_verified_at || p.stock < line.quantity) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+    if (!p.is_active || p.is_wholesale_only || /smartphone|telefon|tecnologia|celular/i.test(category?.slug ?? "") || (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity))) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
     const cost = costs?.find(c => c.product_id === p.id);
     const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
     return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: fresh ? Number(cost.landed_cost) : null, variableCost: Number(cost?.variable_cost ?? 0) + Number(p.retail_price) * Number(cost?.payment_fee_percent ?? 0) / 100, minimumContribution: Number(cost?.minimum_contribution ?? 0), beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
   });
-  const shipping = calculateShipping(input.postalCode, 0, true);
+  const supplierDelivery = products.some(p => p.fulfillment_mode === "supplier");
+  if (supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
+  const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery);
   const option = shipping.options.find(o => o.id === input.shippingOptionId);
+  if (option?.requiresQuote) throw new Error("Confirmemos la tarifa y el plazo de envío para tu destino antes del pago. Envianos el carrito por WhatsApp.");
   if (!shipping.isValid || !option) throw new Error("Elegí un destino y una opción de entrega válidos.");
   if (input.paymentMethod === "efectivo" && option.id !== "pickup_tandil") throw new Error("El efectivo está disponible al retirar en Tandil.");
   if (option.type !== "pickup") {
-    if (process.env.COMMERCE_SHIPPING_ENABLED !== "true") throw new Error("El envío necesita confirmación de tarifa. Consultanos por WhatsApp o elegí retiro en Tandil.");
+    if (process.env.COMMERCE_SHIPPING_ENABLED !== "true") throw new Error("El envío necesita confirmación de tarifa. Consultanos por WhatsApp para coordinar la entrega.");
     const weight = products.reduce((sum, p) => sum + Number(p.specifications?.peso_kg ?? 0) * input.lines.find(l => l.productId === p.id)!.quantity, 0);
-    if (products.some(p => !(Number(p.specifications?.peso_kg) > 0)) || weight > 2) throw new Error("Este pedido necesita cotización de envío por peso o volumen. Consultanos por WhatsApp o elegí retiro en Tandil.");
+    if (products.some(p => !(Number(p.specifications?.peso_kg) > 0)) || weight > 2) throw new Error("Este pedido necesita cotización de envío por peso o volumen. Consultanos por WhatsApp para coordinar la entrega.");
   }
   return { db, items, quote: priceOrder(items, input.paymentMethod, input.coupon, option.price, input.postalCode), option };
 }

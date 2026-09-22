@@ -18,6 +18,8 @@ interface DbCategory {
 }
 
 interface DbProduct {
+  fulfillment_mode?: "own_stock" | "supplier";
+  supplier_available?: boolean;
   is_active?: boolean;
   brand?: string | null;
   model?: string | null;
@@ -149,6 +151,8 @@ export function mapProduct(product: DbProduct, admin = false): Product {
 
   return {
     id: product.id,
+    fulfillmentMode: product.fulfillment_mode ?? "own_stock",
+    supplierAvailable: Boolean(product.supplier_available),
     active: product.is_active ?? true,
     slug: product.slug,
     title: cleanProductTitle(product.title),

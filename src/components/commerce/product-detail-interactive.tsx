@@ -1,5 +1,5 @@
 "use client";
-import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
+import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -67,8 +67,8 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(product), [product]);
 
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, price * quantity, isImmediate);
-  }, [postalCode, price, quantity, isImmediate]);
+    return calculateShipping(postalCode, price * quantity, isImmediate, product.fulfillmentMode === "supplier");
+  }, [postalCode, price, quantity, isImmediate, product.fulfillmentMode]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -85,7 +85,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   };
 
   const handleIncrement = () => {
-    setQuantity((q) => Math.max(1, Math.min(q + 1, product.stock, 100)));
+    setQuantity((q) => Math.max(1, Math.min(q + 1, purchasableQuantity(product))));
   };
 
   const handleDecrement = () => {
@@ -159,12 +159,12 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
           <div className="text-right">
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
-              product.stock > 0 ? "text-emerald-700" : "text-red-600"
+              isVerifiedStock(product) ? "text-emerald-700" : "text-red-600"
             }`}>
               <span className={`h-2 w-2 rounded-full ${
-                product.stock > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+                isVerifiedStock(product) ? "bg-emerald-500 animate-pulse" : "bg-red-500"
               }`} />
-              {product.stock > 0 ? isVerifiedStock(product) ? `${product.stock} disponibles` : "Consultar disponibilidad" : "Sin stock momentáneo"}
+              {isVerifiedStock(product) ? "Disponible" : "Consultar disponibilidad"}
             </span>
             <span
               className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border mt-1 ${shippingTimeInfo.badgeClass}`}
@@ -238,7 +238,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             type="button"
           >
             <ShoppingCart className="h-4 w-4" />
-            {added ? "¡Agregado al carrito!" : "Agregar al Carrito"}
+            {!isVerifiedStock(product) ? "Disponibilidad a confirmar" : added ? "¡Agregado al carrito!" : "Agregar al carrito"}
           </button>
 
           <button
@@ -407,7 +407,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
                           <span className="font-black text-emerald-700">GRATIS</span>
                         </div>
                       ) : (
-                        <span className="font-black text-zinc-900">{formatCurrency(opt.price)}</span>
+                        <span className="font-black text-zinc-900">{opt.requiresQuote ? "A cotizar" : formatCurrency(opt.price)}</span>
                       )}
                     </div>
                   </button>

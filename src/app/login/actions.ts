@@ -1,5 +1,6 @@
 "use server";
 
+import { safeAuthNext } from "@/lib/auth-navigation";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -10,13 +11,13 @@ function getString(formData: FormData, key: string) {
 
 function getNext(formData: FormData) {
   const next = getString(formData, "next");
-  return next.startsWith("/") ? next : "/cuenta";
+  return safeAuthNext(next);
 }
 
 export async function signInAction(formData: FormData) {
   const supabase = await createServerSupabaseClient();
-  const email = getString(formData, "email");
-  const password = getString(formData, "password");
+  const email = getString(formData, "email").toLowerCase();
+  const password = String(formData.get("password") ?? "");
   const next = getNext(formData);
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -26,28 +27,29 @@ export async function signInAction(formData: FormData) {
 
   if (error) {
     if (error.message === "Invalid login credentials") {
-      throw new Error("El email o la contraseña son incorrectos.");
+      return { error: "El email o la contraseña son incorrectos." };
     }
-    throw new Error(error.message);
+    return { error: error.code === "email_not_confirmed" ? "Confirmá tu email antes de ingresar." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
   }
 
-  redirect(next);
+  return { redirectTo: next };
 }
 
 export async function signUpAction(formData: FormData) {
   const supabase = await createServerSupabaseClient();
-  const email = getString(formData, "email");
-  const password = getString(formData, "password");
+  const email = getString(formData, "email").toLowerCase();
+  const password = String(formData.get("password") ?? "");
   const fullName = getString(formData, "full_name");
-  // Default customer tier to retail, user can purchase wholesale based on cart minimum
+  // Public registration always creates a retail customer.
   const customerTier = "retail";
   const next = getNext(formData);
 
-  const { error } = await supabase.auth.signUp({
+  if (fullName.length < 2 || password.length < 8 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Completá nombre, email válido y una contraseña de al menos 8 caracteres." };
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback?next=${next}`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback?next=${encodeURIComponent(next)}`,
       data: {
         full_name: fullName,
         customer_tier: customerTier,
@@ -56,10 +58,10 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    return { error: error.code === "email_not_confirmed" ? "Confirmá tu email antes de ingresar." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
   }
 
-  redirect(next);
+  return data.session ? { redirectTo: next } : { confirmation: true };
 }
 
 export async function signOutAction() {

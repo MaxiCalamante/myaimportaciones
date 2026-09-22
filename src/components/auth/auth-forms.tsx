@@ -8,15 +8,17 @@ export function AuthForms({
   next,
   supabaseReady,
   signedIn,
+  confirmationError = false,
 }: {
   next: string;
   supabaseReady: boolean;
   signedIn: boolean;
+  confirmationError?: boolean;
 }) {
   const [isSignInPending, startSignInTransition] = useTransition();
   const [isSignUpPending, startSignUpTransition] = useTransition();
   
-  const [signInError, setSignInError] = useState<string | null>(null);
+  const [signInError, setSignInError] = useState<string | null>(confirmationError ? "El enlace de confirmación no es válido o venció. Solicitá uno nuevo o ingresá si ya confirmaste tu email." : null);
   const [signUpError, setSignUpError] = useState<string | null>(null);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
 
@@ -27,7 +29,9 @@ export function AuthForms({
 
     startSignInTransition(async () => {
       try {
-        await signInAction(formData);
+        const result = await signInAction(formData);
+        if (result.error) setSignInError(result.error);
+        else if (result.redirectTo) window.location.assign(result.redirectTo);
       } catch (err: unknown) {
         if ((err instanceof Error ? err.message : "Error inesperado") === "NEXT_REDIRECT" || (err instanceof Error && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT"))) {
           // Success (Next.js redirect)
@@ -46,8 +50,10 @@ export function AuthForms({
 
     startSignUpTransition(async () => {
       try {
-        await signUpAction(formData);
-        setSignUpSuccess(true);
+        const result = await signUpAction(formData);
+        if (result.error) setSignUpError(result.error);
+        else if (result.redirectTo) window.location.assign(result.redirectTo);
+        else setSignUpSuccess(true);
       } catch (err: unknown) {
         if ((err instanceof Error ? err.message : "Error inesperado") === "NEXT_REDIRECT" || (err instanceof Error && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT"))) {
           // Success (Next.js redirect)
@@ -71,7 +77,7 @@ export function AuthForms({
           <input name="next" type="hidden" value={next} />
           
           {signInError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
               {signInError}
             </div>
           )}
@@ -80,6 +86,7 @@ export function AuthForms({
             Email
             <input
               className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
+              autoComplete="email"
               name="email"
               required
               type="email"
@@ -89,7 +96,7 @@ export function AuthForms({
             Contraseña
             <input
               className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              minLength={6}
+              autoComplete="current-password"
               name="password"
               required
               type="password"
@@ -133,14 +140,14 @@ export function AuthForms({
           <input name="next" type="hidden" value={next} />
 
           {signUpError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
               {signUpError}
             </div>
           )}
 
           {signUpSuccess && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
-              Cuenta registrada con éxito. Verifica tu correo si es necesario.
+              Revisá tu email para confirmar la cuenta. Si ya estabas registrado, ingresá con tu contraseña.
             </div>
           )}
 
@@ -148,6 +155,8 @@ export function AuthForms({
             Nombre
             <input
               className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
+              autoComplete="name"
+              minLength={2}
               name="full_name"
               required
             />
@@ -157,6 +166,7 @@ export function AuthForms({
             Email
             <input
               className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
+              autoComplete="email"
               name="email"
               required
               type="email"
@@ -166,7 +176,8 @@ export function AuthForms({
             Contraseña
             <input
               className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              minLength={6}
+              autoComplete="new-password"
+              minLength={8}
               name="password"
               required
               type="password"

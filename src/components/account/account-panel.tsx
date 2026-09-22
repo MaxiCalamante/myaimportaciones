@@ -3,28 +3,19 @@
 import Link from "next/link";
 import { Heart, PackageCheck, ShoppingBag, Truck, UserRound } from "lucide-react";
 import { formatCurrency, formatDate, formatOrderStatus } from "@/lib/format";
-import type { OrderSummary, Product } from "@/lib/types";
-import { ProductCard } from "@/components/commerce/product-card";
-import { useCommerce } from "@/components/commerce/commerce-provider";
+import type { OrderSummary } from "@/lib/types";
+import { FavoritesList } from "@/components/commerce/favorites-list";
+
 
 export function AccountPanel({
   fullName,
   email,
   orders,
-  products,
 }: {
   fullName: string;
   email: string;
   orders: OrderSummary[];
-  products: Product[];
 }) {
-  const { favoriteIds } = useCommerce();
-  const favoriteProducts = products.filter((product) =>
-    favoriteIds.includes(product.id),
-  );
-  const shownFavorites =
-    favoriteProducts.length > 0 ? favoriteProducts : products.slice(0, 4);
-
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -133,11 +124,7 @@ export function AccountPanel({
                 </h2>
               </div>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              {shownFavorites.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <FavoritesList />
           </section>
         </div>
       </div>

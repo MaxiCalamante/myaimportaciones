@@ -1,5 +1,6 @@
 "use client";
-import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
+import { useFavorites } from "./use-favorites";
+import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import {
   createContext,
@@ -57,13 +58,13 @@ interface CommerceContextValue {
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
 const cartKey = "mm-cart";
-const favoritesKey = "mm-favorites";
+
 const postalCodeKey = "mya_postal_code";
 const shippingOptionKey = "mya_shipping_option";
 
 export function CommerceProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const { favoriteIds, toggleFavorite, favoriteError } = useFavorites();
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [postalCode, setPostalCodeState] = useState("");
@@ -74,17 +75,13 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     const timer = window.setTimeout(() => {
       try {
         const storedCart = window.localStorage.getItem(cartKey);
-        const storedFavorites = window.localStorage.getItem(favoritesKey);
+
         const storedPostalCode = window.localStorage.getItem(postalCodeKey);
         const storedShippingOption = window.localStorage.getItem(shippingOptionKey);
 
         if (storedCart) {
           const parsed: unknown = JSON.parse(storedCart);
-          if (Array.isArray(parsed)) setCart(parsed.filter((l: CartLine) => l?.product?.id && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail")));
-        }
-
-        if (storedFavorites) {
-          setFavoriteIds(JSON.parse(storedFavorites) as string[]);
+          if (Array.isArray(parsed)) setCart(parsed.filter((l: CartLine) => l?.product?.id && typeof l.product.title === "string" && Number.isFinite(l.product.retailPrice) && l.product.retailPrice > 0 && Number.isFinite(l.product.stock) && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail")));
         }
 
         if (storedPostalCode) {
@@ -130,14 +127,6 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     try { window.localStorage.setItem(cartKey, JSON.stringify(cart)); } catch {}
   }, [cart]);
 
-  useEffect(() => {
-    if (!hydrated.current) {
-      return;
-    }
-
-    try { window.localStorage.setItem(favoritesKey, JSON.stringify(favoriteIds)); } catch {}
-  }, [favoriteIds]);
-
   const addToCart = useCallback(
     (product: Product, channel: ProductChannel, quantity = 1) => {
       if ((!WHOLESALE_ENABLED && channel === "wholesale") || !isVerifiedStock(product) || !Number.isInteger(quantity) || quantity < 1) return;
@@ -149,12 +138,12 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         if (existing) {
           return current.map((line) =>
             line.product.id === product.id && line.channel === channel
-              ? { ...line, quantity: Math.min(product.stock, 100, line.quantity + quantity) }
+              ? { ...line, quantity: Math.min(purchasableQuantity(product), line.quantity + quantity) }
               : line,
           );
         }
 
-        return [...current, { product, quantity: Math.min(product.stock, 100, quantity), channel }];
+        return [...current, { product, quantity: Math.min(purchasableQuantity(product), quantity), channel }];
       });
       setCartOpen(true);
 
@@ -175,7 +164,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         current
           .map((line) =>
             line.product.id === productId && line.channel === channel
-              ? { ...line, quantity: Number.isInteger(quantity) ? Math.min(line.product.stock, 100, Math.max(0, quantity)) : line.quantity }
+              ? { ...line, quantity: Number.isInteger(quantity) ? Math.min(purchasableQuantity(line.product), Math.max(0, quantity)) : line.quantity }
               : line,
           )
           .filter((line) => line.quantity > 0),
@@ -189,14 +178,6 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       current.filter(
         (line) => !(line.product.id === productId && line.channel === channel),
       ),
-    );
-  }, []);
-
-  const toggleFavorite = useCallback((productId: string) => {
-    setFavoriteIds((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId],
     );
   }, []);
 
@@ -222,8 +203,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
   // Dynamic shipping calculation based on postalCode, cartTotal, and isAllImmediateStock
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, cartTotal, isAllImmediateStock);
-  }, [postalCode, cartTotal, isAllImmediateStock]);
+    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, cart.some(line => line.product.fulfillmentMode === "supplier"));
+  }, [postalCode, cartTotal, isAllImmediateStock, cart]);
 
   const selectedShippingOption = useMemo(() => {
     if (!shippingCalculation.isValid || shippingCalculation.options.length === 0) return null;
@@ -310,7 +291,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CommerceContext.Provider value={value}>{children}</CommerceContext.Provider>
+    <CommerceContext.Provider value={value}>{favoriteError && <div role="alert" className="fixed bottom-20 left-4 right-4 z-[100] rounded-xl bg-amber-100 p-3 text-sm">{favoriteError}</div>}{children}</CommerceContext.Provider>
   );
 }
 

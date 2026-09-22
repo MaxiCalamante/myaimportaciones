@@ -33,6 +33,8 @@ export interface Category {
 }
 
 export interface Product {
+  fulfillmentMode?: "own_stock" | "supplier";
+  supplierAvailable?: boolean;
   active?: boolean;
   brand?: string;
   model?: string;

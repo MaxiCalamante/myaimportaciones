@@ -1,6 +1,19 @@
 "use server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+export async function saveFulfillmentControl(form: FormData) {
+  const db = await createServerSupabaseClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) throw new Error("Iniciá sesión.");
+  const { data: profile } = await db.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin") throw new Error("Sin permisos.");
+  const mode = String(form.get("mode"));
+  if (!["own_stock", "supplier"].includes(mode)) throw new Error("Modalidad inválida.");
+  const { error } = await db.rpc("set_product_fulfillment_v1", { product_id_input: String(form.get("product_id")), mode_input: mode, available_input: form.get("available") === "on" });
+  if (error) throw new Error("No se pudo cambiar la modalidad. Resolvé reservas pendientes antes de cambiarla.");
+  revalidatePath("/", "layout");
+  return "Modalidad de entrega guardada.";
+}
 export async function saveFinancialControl(form: FormData) {
   const db = await createServerSupabaseClient();
   const { data: { user } } = await db.auth.getUser();

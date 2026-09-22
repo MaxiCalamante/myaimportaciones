@@ -1,4 +1,5 @@
 export interface ShippingOption {
+  requiresQuote?: boolean;
   id: string;
   name: string;
   carrier: string;
@@ -25,11 +26,12 @@ export interface ShippingCalculation {
 
 export const FREE_SHIPPING_THRESHOLD = Number.POSITIVE_INFINITY; // No uncosted free shipping campaign.
 
-export function isProductImmediateStock(product?: { stock?: number; stockVerifiedAt?: string | null; tags?: string[] } | null): boolean {
-  return Boolean(product?.stockVerifiedAt && Number(product.stock) > 0);
+export function isProductImmediateStock(product?: { stock?: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean; tags?: string[] } | null): boolean {
+  return Boolean(product?.fulfillmentMode !== "supplier" && product?.stockVerifiedAt && Number(product.stock) > 0);
 }
-export function getProductShippingTimeInfo(product?: { stock?: number; stockVerifiedAt?: string | null; tags?: string[] } | null) {
+export function getProductShippingTimeInfo(product?: { stock?: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean; tags?: string[] } | null) {
   const isImmediate = isProductImmediateStock(product);
+  if (product?.fulfillmentMode === "supplier") return { isImmediate: false, badgeText: product.supplierAvailable ? "Disponible" : "Consultar disponibilidad", deliveryText: "Envío a domicilio", shippingTimeDescription: "Confirmamos tarifa y plazo de entrega según tu destino antes del pago.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "Según destino" };
   return { isImmediate, badgeText: isImmediate ? "Stock confirmado" : "Consultar disponibilidad", deliveryText: "Entrega a coordinar", shippingTimeDescription: isImmediate ? "Coordinamos retiro o despacho desde Tandil." : "Consulta disponibilidad y plazo antes de comprar.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "A coordinar" };
 }
 
@@ -260,7 +262,8 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
 export function calculateShipping(
   rawPostalCode: string,
   cartTotal: number = 0,
-  isAllImmediateStock: boolean = false
+  isAllImmediateStock: boolean = false,
+  supplierDelivery: boolean = false
 ): ShippingCalculation {
   const cleanCp = rawPostalCode.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
@@ -297,6 +300,17 @@ export function calculateShipping(
 
   const freeShippingQualified = false;
   const options: ShippingOption[] = [];
+
+  if (supplierDelivery) {
+    let amount: unknown;
+    try { amount = JSON.parse(process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON ?? "{}")[zone.id]; } catch {}
+    const confirmed = typeof amount === "number" && Number.isFinite(amount) && amount >= 0 && amount <= 1000000;
+    return {
+      isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
+      freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: false,
+      options: [{ id: "supplier_delivery", name: "Envío a domicilio", carrier: "Transporte a coordinar", type: "domicilio", price: confirmed ? amount as number : 0, originalPrice: confirmed ? amount as number : 0, isFree: confirmed && amount === 0, requiresQuote: !confirmed, estimatedDays: "Plazo según destino, a confirmar antes del pago" }],
+    };
+  }
 
   // Special options for Tandil headquarters
   if (zone.id === "local_tandil") {

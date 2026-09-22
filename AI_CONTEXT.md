@@ -1,6 +1,6 @@
 # MYA Importaciones — contexto vigente
 
-Actualizado el 20/09/2026. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+Actualizado el 22/09/2026. La sección del 22/09 prevalece sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
 
 ## Decisiones del dueño
 
@@ -61,3 +61,16 @@ El dueño realizará commit y push para publicar en Vercel. No se hizo commit, p
 Aplicada `20260921185112_catalog_identity.sql`: identidad, galerías, procedencia privada de costos y guardado transaccional de costos/precio/stock. Importados 2.789 costos ARS por SKU del PDF mayorista; gastos sin confirmar. Actualizadas 2.789 herramientas y 97 cosméticos. Tres herramientas sin modelo inequívoco quedan como borradores conservados. 2.886 fichas públicas con foto; 2.847 fotos >=800 px y 39 de menor resolución original. No se alteraron precios, pedidos ni cantidades históricas.
 
 Panel `/admin/costos`: stock, compra, venta y contribución, con alertas por gastos incompletos y fichas similares con precios diferentes. No confundir contribución con ganancia neta. No hay PDF de costos de cosméticos; no se verificó individualmente el objetivo de precio 5–10% debajo de Mercado Libre. Ver `docs/CATALOGO-COSTOS-2026-09-21.md`, `docs/auditoria-precios.csv` y `docs/precios-fichas-a-revisar.csv`. Los archivos locales de imágenes y el panel requieren el push del dueño para publicarse.
+
+
+## Estado vigente al 22/09/2026: envío directo del proveedor
+
+El dueño confirmó que la mayoría del catálogo se compra al mayorista al recibir una venta y el proveedor despacha desde Misiones al cliente. Declaró disponibilidad habitual del proveedor; un despacho anterior demoró aproximadamente dos días, sin garantía general. No confundir disponibilidad comercial con tenencia física, ni prometer entrega en dos días.
+
+Migración aplicada `20260922140934_supplier_fulfillment.sql`: 2.886 productos activos configurados como `supplier` / disponibles; unidades históricas conservadas como referencia, no se descuentan ni reponen para estas ventas. Pedidos guardan el modo de abastecimiento al comprarse. Se conservan dos pedidos previos. El panel de costos permite elegir stock propio o proveedor y pausar disponibilidad. Stock propio sigue requiriendo verificación.
+
+Login y registro devuelven errores controlados, respetan el destino interno y mantienen sesión mediante proxy. Cuenta admin existente configurada y acceso verificado; no guardar contraseñas en documentos. Favoritos de invitados se incorporan a la cuenta y persisten en Supabase; ruta /favoritos para todos los roles. Carrito conserva contenido al ingresar.
+
+El envío del proveedor muestra tarifa a cotizar salvo configuración explícita `NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON` por zona; no ofrece retiro en Tandil. Envíos automáticos requieren peso registrado hasta 2 kg y COMMERCE_SHIPPING_ENABLED. Carritos con distintos orígenes requieren cotización. No asumir tarifa cero cuando falta una tarifa.
+
+Validación: 12 pruebas automatizadas (incluye SQL real aislado), tipos y compilación correctos; navegador verificó login admin, persistencia de sesión, carrito, alta y eliminación de favoritos, y checkout bloqueado por configuración local faltante. No se hizo un cobro real ni se completó una nueva alta con email. Credenciales privadas de pedidos y Mercado Pago ausentes localmente; configuración de producción no verificada en esta intervención. Todavía no certificar el lanzamiento de pagos. Cambios de aplicación sin publicar en esta intervención.

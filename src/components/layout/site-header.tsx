@@ -499,7 +499,7 @@ export function SiteHeader({
           <Link
             aria-label="Favoritos"
             className={`relative ${iconButtonClass}`}
-            href="/cuenta"
+            href="/favoritos"
             title="Favoritos"
           >
             <Heart className="h-5 w-5" />

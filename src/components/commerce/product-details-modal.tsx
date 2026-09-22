@@ -1,5 +1,5 @@
 "use client";
-import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
+import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
@@ -80,7 +80,7 @@ function ProductDetailsModalContent() {
   };
 
   const handleIncrement = () => {
-    setQuantity((q) => Math.max(1, Math.min(q + 1, selectedProduct.stock, 100)));
+    setQuantity((q) => Math.max(1, Math.min(q + 1, purchasableQuantity(selectedProduct))));
   };
 
   const handleDecrement = () => {
@@ -219,8 +219,8 @@ function ProductDetailsModalContent() {
           {/* Stock & Minimums */}
           <div className="mt-6 flex flex-wrap gap-4 text-xs font-medium text-zinc-500">
             <div>
-              Estado: <span className={selectedProduct.stock > 0 ? "text-emerald-700" : "text-red-650"}>
-                {selectedProduct.stock > 0 ? `En Stock (${selectedProduct.stock} disp.)` : "Sin Stock"}
+              Estado: <span className={isVerifiedStock(selectedProduct) ? "text-emerald-700" : "text-red-650"}>
+                {isVerifiedStock(selectedProduct) ? "Disponible" : "Consultar disponibilidad"}
               </span>
             </div>
             {channel === "wholesale" && (

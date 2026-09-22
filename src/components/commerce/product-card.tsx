@@ -107,7 +107,7 @@ export function ProductCard({
               </p>
             ) : null}
           </div>
-          <p className="text-xs text-zinc-500">{isVerifiedStock(product) ? `${product.stock} disp.` : "A confirmar"}</p>
+          <p className="text-xs text-zinc-500">{isVerifiedStock(product) ? "Disponible" : "A confirmar"}</p>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">

@@ -1058,7 +1058,7 @@ Logística / Despacho: +${calcShippingPercent}%
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 {isProductImmediateStock(product) ? (
                                   <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
-                                    ⚡ Stock Inmediato (24hs)
+                                    Stock propio verificado
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20">
@@ -1103,7 +1103,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            {/* Premium circular stock control buttons */}
+                            {product.fulfillmentMode === "supplier" ? <a href="/admin/costos" className="text-sm text-sky-700 underline">Proveedor: {product.supplierAvailable ? "disponible" : "pausado"}</a> : (
                             <div className="flex items-center justify-center gap-2.5">
                               <button
                                 onClick={() => handleStockChange(product.id, product.stock, -1)}
@@ -1125,6 +1125,7 @@ Logística / Despacho: +${calcShippingPercent}%
                                 +
                               </button>
                             </div>
+                            )}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
