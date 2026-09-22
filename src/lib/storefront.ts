@@ -18,6 +18,7 @@ interface DbCategory {
 }
 
 interface DbProduct {
+  is_active?: boolean;
   brand?: string | null;
   model?: string | null;
   sku?: string | null;
@@ -69,8 +70,8 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
       .from("products")
       .select(
         "*, categories(name)",
-      )
-      .eq("is_active", true);
+      );
+    if (!options?.admin) query = query.eq("is_active", true);
 
     if (!WHOLESALE_ENABLED && !options?.admin) query = query.eq("is_wholesale_only", false);
     if (options?.categoryId) {
@@ -148,6 +149,7 @@ export function mapProduct(product: DbProduct, admin = false): Product {
 
   return {
     id: product.id,
+    active: product.is_active ?? true,
     slug: product.slug,
     title: cleanProductTitle(product.title),
     brand: product.brand ?? undefined,

@@ -12,6 +12,7 @@ test("Postgres transactional stock, idempotency, expiry and payment reconciliati
     await db.exec(schema);
     await db.exec(`create function public.is_admin() returns boolean language sql as $$ select true $$;`);
     await db.exec(readFileSync("supabase/migrations/20260921134833_retail_integrity.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/20260921185112_catalog_identity.sql", "utf8"));
     const category = randomUUID(), product = randomUUID();
     await db.query("insert into categories(id,name,slug) values($1,'Test','test')", [category]);
     await db.query("insert into products(id,category_id,title,slug,retail_price,stock,stock_verified_at) values($1,$2,'Test','test',1000,2,now())", [product, category]);
@@ -19,6 +20,13 @@ test("Postgres transactional stock, idempotency, expiry and payment reconciliati
     const create = async (p = payload) => (await db.query<{ o: { id: string } }>("select create_retail_order_v2($1::jsonb) o", [JSON.stringify(p)])).rows[0].o;
     const stock = async () => (await db.query<{ stock: number }>("select stock from products where id=$1", [product])).rows[0].stock;
     const first = await create(); assert.equal(await stock(), 1);
+    const financial = { product_id: product, purchase: 500, exchange: 1, freight: 100, other: 0, variable: 10, fee: 5, sale: 1000, minimum: 0, currency: "ARS", expenses_confirmed: true };
+    await db.query("select save_retail_financials_v1($1::jsonb)", [JSON.stringify(financial)]);
+    await assert.rejects(db.query("select save_retail_financials_v1($1::jsonb)", [JSON.stringify({...financial, sale: 400})]));
+    await assert.rejects(db.query("select save_retail_financials_v1($1::jsonb)", [JSON.stringify({...financial, stock: 10, stock_confirmed: true})]));
+    assert.equal(await stock(), 1);
+    assert.equal((await db.query<{ origin_cost: string }>("select origin_cost from product_costs where product_id=$1",[product])).rows[0].origin_cost, "500");
+
     assert.equal((await create()).id, first.id); assert.equal(await stock(), 1);
     await assert.rejects(create({ ...payload, request_hash: "changed" }));
     await assert.rejects(create({ ...payload, request_id: randomUUID(), total: 1 }));
@@ -39,5 +47,7 @@ test("Postgres transactional stock, idempotency, expiry and payment reconciliati
     assert.equal(late.status, "cancelled"); assert.equal(late.payment_review, true);
     await db.exec("set role anon"); await assert.rejects(create({ ...payload, request_id: randomUUID() }));
     await db.exec("reset role");
+    await db.exec("create or replace function public.is_admin() returns boolean language sql as $$ select false $$;");
+    await assert.rejects(db.query("select save_retail_financials_v1($1::jsonb)", [JSON.stringify(financial)]), /Forbidden/);
   } finally { await db.close(); }
 });

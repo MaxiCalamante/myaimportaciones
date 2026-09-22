@@ -36,7 +36,7 @@ async function resolveQuote(input: CheckoutInput) {
     const category = Array.isArray(p.categories) ? p.categories[0] : p.categories;
     if (!p.is_active || p.is_wholesale_only || /smartphone|telefon|tecnologia|celular/i.test(category?.slug ?? "") || !p.stock_verified_at || p.stock < line.quantity) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
     const cost = costs?.find(c => c.product_id === p.id);
-    const fresh = cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
+    const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
     return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: fresh ? Number(cost.landed_cost) : null, variableCost: Number(cost?.variable_cost ?? 0) + Number(p.retail_price) * Number(cost?.payment_fee_percent ?? 0) / 100, minimumContribution: Number(cost?.minimum_contribution ?? 0), beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
   });
   const shipping = calculateShipping(input.postalCode, 0, true);

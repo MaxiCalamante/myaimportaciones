@@ -1,0 +1,87 @@
+[
+  {
+    "id": "3628d0d5",
+    "url": "https://medicubebrazil.com/produto/medicube-red-acne-succinic-acid-peel-40g/",
+    "status": 406,
+    "title": "Not Acceptable!",
+    "image": null,
+    "size125": false,
+    "size40": false
+  },
+  {
+    "id": "4d8fce0d",
+    "url": "https://www.fragranza.uk/products/victorias-secret-midnight-bloom-fragrance-lotion-236ml",
+    "status": 200,
+    "title": "Victoria's Secret Midnight Bloom Fragrance Lotion 236ml | Fragranza UK",
+    "image": "http://www.fragranza.uk/cdn/shop/files/10026526_grande.jpg?v=1730533537",
+    "size125": false,
+    "size40": true
+  },
+  {
+    "id": "5700e91f",
+    "url": "https://comprasparaguay.com.ar/limpador-facial-medicube-kojic-acid-turmeric-vita-capsule-foam-cleanser-de-120g__5454657/",
+    "status": 200,
+    "title": "\n    \n        Limpador Facial Medicube Kojic Acid Turmeric Vita Capsule Foam Cleanser de 120G | Compras Paraguay\n    \n",
+    "image": "https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/f848a79e91dc9b2a06eac0200769ae258895587c.webp",
+    "size125": true,
+    "size40": true
+  },
+  {
+    "id": "5e56d8fa",
+    "url": "https://comprasparaguay.com.ar/tonico-lilyeve-grow-turn-exosome-brush-ampoule-100ml__5590871/",
+    "status": 200,
+    "title": "\n    \n        T\u00f3nico Lilyeve Grow Turn Exosome Brush Ampoule 100ML | Compras Paraguay\n    \n",
+    "image": "https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/cdd3a63b50467fdca328812fee15f0ee3278e01a.webp",
+    "size125": false,
+    "size40": true
+  },
+  {
+    "id": "767c239d",
+    "url": "https://comprasparaguay.com.ar/tratamiento-facial-vt-cosmetics-reedle-shot-300-50ml__5535934/",
+    "status": 200,
+    "title": "\n    \n        Tratamiento Facial VT Cosmetics Reedle Shot 300 50ML | Compras Paraguay\n    \n",
+    "image": "https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/cfc75c177ebaf450da02be145602d61d41d01253.webp",
+    "size125": false,
+    "size40": true
+  },
+  {
+    "id": "b872d8f7",
+    "url": "https://comprasparaguay.com.ar/karseell-maca-power-repair-curl-defining-cream-500ml-002542__5486792/",
+    "status": 200,
+    "title": "\n    \n        Karseell Maca Power Repair Curl Defining Cream 500ML (002542) | Compras Paraguay\n    \n",
+    "image": "https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/4a832d963a4b295a0fc48f651149893c62273a99.webp",
+    "size125": true,
+    "size40": true
+  },
+  {
+    "id": "c3a21e1d",
+    "url": "https://www.boots.com/medicube-pdrn-pink-cica-soothing-toner-250ml-10382690",
+    "status": 403,
+    "title": "",
+    "image": null,
+    "size125": false,
+    "size40": false
+  },
+  {
+    "id": "e3739a31",
+    "url": "https://comprasparaguay.com.ar/tonico-facial-medicube-red-succinic-acid-peeling-pad-70pads-155g-356170__5524515/",
+    "status": 200,
+    "title": "\n    \n        T\u00f3nico Facial Medicube Red Succinic Acid Peeling Pad 70PADS 155G 356170 | Compras Paraguay\n    \n",
+    "image": "https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/e231a12665e720023cad264e7756c28615144efa.webp",
+    "size125": false,
+    "size40": true
+  },
+  {
+    "id": "f0d33318",
+    "error": "('Connection aborted.', ConnectionResetError(10054, 'Se ha forzado la interrupci\u00f3n de una conexi\u00f3n existente por el host remoto', None, 10054, None))"
+  },
+  {
+    "id": "fc016ec8",
+    "url": "https://medicube.us/products/hypochlorous-acid-power-soothing-spray",
+    "status": 200,
+    "title": "medicube Hypochlorous Acid Power Soothing Spray | Soothing & Calming",
+    "image": "http://medicube.us/cdn/shop/files/00_25d13dd7-7e9c-44f5-9d43-cf692e13b6ed.jpg?v=1758766189",
+    "size125": false,
+    "size40": true
+  }
+]

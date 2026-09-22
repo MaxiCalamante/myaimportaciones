@@ -33,6 +33,7 @@ export interface Category {
 }
 
 export interface Product {
+  active?: boolean;
   brand?: string;
   model?: string;
   sku?: string;

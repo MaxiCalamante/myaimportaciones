@@ -1,3 +1,4 @@
+throw new Error('La ampliación artificial no recupera detalle. Usar refresh-supplier-catalog.py para obtener originales del modelo exacto.');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');

@@ -47,3 +47,13 @@ test("catalog pagination includes all pages and rejects partial exports", async 
   assert.deepEqual(rows, source);
   await assert.rejects(readAllPages(async (from, to) => from === 0 ? { data: source.slice(from, to + 1), error: null } : { data: null, error: new Error("offline") }));
 });
+
+
+test("profit separates purchase, delivery, fees and missing costs", async () => {
+ const { calculateProductProfit } = await import("../src/lib/product-profit");
+ assert.equal(calculateProductProfit(54900, null), null);
+ const cost = {product_id:"test",origin_cost:21000,currency:"ARS",exchange_rate:1,freight_per_unit:10000,other_landed_cost:0,variable_cost:0,payment_fee_percent:0,minimum_contribution:0,expenses_confirmed:false};
+ assert.equal(calculateProductProfit(54900,cost)?.contribution,23900);
+ assert.equal(calculateProductProfit(54900,cost)?.complete,false);
+ assert.equal(calculateProductProfit(54900,{...cost,payment_fee_percent:10})?.contribution,18410);
+});

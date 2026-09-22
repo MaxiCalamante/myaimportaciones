@@ -42,4 +42,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Reproducible local import batches; keep source manifests and final audit reports.
+docs/catalog-audit/*-refresh*.sql
+docs/catalog-audit/cost-import-*.sql
+__pycache__/
+
 .vercel

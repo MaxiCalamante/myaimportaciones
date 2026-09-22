@@ -1,0 +1,245 @@
+{
+  "date": "2026-09-21",
+  "activeProducts": 2886,
+  "withImages": 2886,
+  "originalAtLeast800": 2847,
+  "lowerResolution": [
+    {
+      "id": "1ca213cf-de58-581d-af00-0cb21e3a4b82",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000009",
+      "width": 519,
+      "height": 519,
+      "source": "local"
+    },
+    {
+      "id": "22f14608-f1c4-5176-aed1-c0149f9611b6",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "3cde477c-39e0-5984-ad96-e117155c3024",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "414798f3-2fb5-5c27-b206-de72c21143b5",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    },
+    {
+      "id": "50449eff-d27f-5f95-ac43-6b1844d55679",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "505be2f3-7a9b-565a-a3bb-1e1ae2ab9573",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "5700e91f-795a-5302-af02-44acab737da1",
+      "width": 500,
+      "height": 500,
+      "source": "local"
+    },
+    {
+      "id": "5876ce1a-ebc5-548b-a1e0-655a9752b4c6",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "5e56d8fa-d1fc-5e25-a765-3e46507b59f6",
+      "width": 500,
+      "height": 500,
+      "source": "local"
+    },
+    {
+      "id": "6269934f-07ae-52f3-ae1c-048f0d2c6cdc",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "6a9d044b-ce90-5b86-a2a7-8758f503d7ff",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "767c239d-b093-5c19-acbb-de993e1270c6",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "780f7741-8d9b-5889-a064-620fc1cd0c16",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "7856b04e-a098-5584-a0d4-25351c6048ad",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "789e6952-ddb4-5189-a640-191de0f3edf1",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "78b6b775-99ab-5240-8d3f-7b6e34ef9007",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    },
+    {
+      "id": "79034f3e-9ed6-56fd-ad85-79d0e5700881",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "7a732f64-4799-5475-aa0e-4168b47043f0",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "824450a6-86c0-5a22-bf2c-baf20d295024",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    },
+    {
+      "id": "84ab71eb-a0ed-5c0b-a1e6-8c498fe69852",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    },
+    {
+      "id": "85523221-28ed-516b-ad46-bd7cdfa9b6b6",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "874cb20a-e110-58d1-a3a0-ee93f7ff34bc",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "8ae472d2-2255-5116-af2a-0c6f93de432a",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "8ba36e2c-5716-55c0-a0c0-4e357cc7c7bb",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "9338df5c-c851-589f-ae07-38bc76713c61",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "965a7d37-ac11-542c-a5b2-446b83b04148",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "9f8ef386-4b6b-5768-b753-dbac5db98220",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    },
+    {
+      "id": "a62019f0-23a3-50b9-a4de-7647ebab09e4",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "b24dffca-bddf-5432-a915-a5a60a7de340",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "b872d8f7-179b-5496-ace8-104fdbde2405",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "be5ab49b-8594-5147-a4c3-79714fba63c8",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "c045f759-e2f3-5252-983b-f26847c75f63",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    },
+    {
+      "id": "c3bd552d-2299-51bc-a719-4bdd7468d1d3",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "d2731d94-5998-56f2-acf1-59c02b1c00e1",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "dfc1b277-f7d2-5b24-ad71-2cb6705cee6c",
+      "width": 550,
+      "height": 550,
+      "source": "local"
+    },
+    {
+      "id": "e3739a31-eb24-550b-a95e-22ca69c64e4a",
+      "width": 500,
+      "height": 500,
+      "source": "local"
+    },
+    {
+      "id": "efecfebe-abf5-584f-acce-20438841c869",
+      "width": 400,
+      "height": 400,
+      "source": "local"
+    },
+    {
+      "id": "f1a09f54-b58f-581f-85ca-b1f490bf941f",
+      "width": 768,
+      "height": 768,
+      "source": "supplier original checked 2026-09-21"
+    }
+  ],
+  "anonymousCostsVisible": 0,
+  "anonymousCostQueryError": null,
+  "problems": []
+}

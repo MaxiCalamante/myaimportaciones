@@ -24,7 +24,7 @@ Ejemplo real informado: una crema comprada por $21.000, transporte $10.000, vend
 
 No hay stock físico confirmado por el usuario. No se marcaron los valores históricos como verificados. No se confirmaron CUIT, razón social, domicilio comercial, habilitaciones/trazabilidad, garantías, costos completos ni tarifas de transporte. Los campos quedan pendientes; no inventarlos.
 
-La migración supabase/migrations/20260921134833_retail_integrity.sql está preparada y probada con PostgreSQL aislado. NO está aplicada en producción. Los cambios de aplicación y permisos deben coordinarse. Falta configurar clave de servicio, pagos, cron y datos reales antes de activar checkout. Mercado Pago no se probó con un cobro real. El proveedor logístico no tiene API integrada; envío requiere confirmación.
+La migración supabase/migrations/20260921134833_retail_integrity.sql está aplicada en producción. El cron también está aplicado. Falta publicar la aplicación y configurar las credenciales y los datos reales antes de activar checkout. Mercado Pago no se probó con un cobro real. El proveedor logístico no tiene API integrada; envío requiere confirmación.
 
 Las herramientas B2B antiguas y kits conservados NO están listos para reactivar sin revisión. Analytics depende de IDs configurados y consentimiento; configuración de marketing guardada en navegador es local. Las variables NEXT_PUBLIC_* establecen configuración compartida de despliegue. La medición de Purchase desde seguimiento no cuenta clientes que no vuelven; no sustituye contabilidad.
 
@@ -42,9 +42,9 @@ Las herramientas B2B antiguas y kits conservados NO están listos para reactivar
 
 Nuevo `/admin/estado` con presencia de configuración y contadores operativos, sin claves expuestas. Reclamos permiten leer motivo y actualizar estado. Exportación/sitemap/catálogo administrativo leen todas las páginas con orden estable; la importación masiva omite stock para preservar reservas. El administrador depende del rol persistido, sin ascenso por email. El servidor exige las tres credenciales de Mercado Pago para generar el pago.
 
-Segunda migración preparada: `20260921134855_reservation_schedule.sql`, agenda vencimientos cada cinco minutos en pg_cron. Todavía no aplicada: requiere Supabase y despliegue coordinado; no se valida la extensión en PGlite.
+Segunda migración aplicada: `20260921134855_reservation_schedule.sql`, agenda vencimientos cada cinco minutos en pg_cron; la extensión se verificó en Supabase.
 
-Acceso remoto revisado: Supabase responde, estructura antigua, un administrador y dos pedidos pendientes. Vercel CLI requiere reautenticación; herramientas del conector fallan. No se alteró producción ni se activó checkout. Referencia de pendientes y comprobaciones en docs/ACTIVACION-Y-VALIDACION.md.
+Acceso remoto revisado: Supabase responde, migraciones aplicadas, un administrador y dos pedidos conservados. Vercel CLI requiere reautenticación; herramientas del conector fallan. No se activó checkout. Referencia de pendientes y comprobaciones en docs/ACTIVACION-Y-VALIDACION.md.
 
 
 ## Estado vigente: migraciones aplicadas el 21/09/2026
@@ -54,3 +54,10 @@ Por instrucción expresa del dueño se aplicaron en producción `20260921134833_
 Verificación: tablas nuevas presentes, creación de pedidos restringida al servicio, inserts directos de clientes revocados, cron activo cada cinco minutos. Se conservaron 2 pedidos, 2.892 productos y la suma de stock de 107.654 (dato histórico, no conteo físico). Ningún producto se marcó verificado. Ejecución manual de vencimientos: 0 reservas liberadas, sin errores.
 
 El dueño realizará commit y push para publicar en Vercel. No se hizo commit, push ni despliegue desde esta tarea. La versión anterior del checkout puede resultar incompatible con los nuevos permisos hasta ese despliegue. La migración no configura credenciales de Vercel, no habilita compras y no reemplaza costos/stock/datos fiscales reales.
+
+
+## Catálogo y costos: estado vigente del 21/09/2026
+
+Aplicada `20260921185112_catalog_identity.sql`: identidad, galerías, procedencia privada de costos y guardado transaccional de costos/precio/stock. Importados 2.789 costos ARS por SKU del PDF mayorista; gastos sin confirmar. Actualizadas 2.789 herramientas y 97 cosméticos. Tres herramientas sin modelo inequívoco quedan como borradores conservados. 2.886 fichas públicas con foto; 2.847 fotos >=800 px y 39 de menor resolución original. No se alteraron precios, pedidos ni cantidades históricas.
+
+Panel `/admin/costos`: stock, compra, venta y contribución, con alertas por gastos incompletos y fichas similares con precios diferentes. No confundir contribución con ganancia neta. No hay PDF de costos de cosméticos; no se verificó individualmente el objetivo de precio 5–10% debajo de Mercado Libre. Ver `docs/CATALOGO-COSTOS-2026-09-21.md`, `docs/auditoria-precios.csv` y `docs/precios-fichas-a-revisar.csv`. Los archivos locales de imágenes y el panel requieren el push del dueño para publicarse.
