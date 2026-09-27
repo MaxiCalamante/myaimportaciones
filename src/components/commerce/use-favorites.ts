@@ -9,6 +9,7 @@ const read = (key: string) => { try { return parseFavoriteIds(localStorage.getIt
 const write = (key: string, ids: string[]) => { try { localStorage.setItem(key, JSON.stringify(ids)); } catch {} };
 export function useFavorites() {
   const [favoriteIds, setIds] = useState<string[]>([]);
+  const [favoritesReady, setFavoritesReady] = useState(false);
   const [favoriteError, setError] = useState("");
   const current = useRef<string[]>([]);
   const owner = useRef<string | null>(null);
@@ -20,25 +21,25 @@ export function useFavorites() {
     let active = true;
     const db = hasSupabaseConfig() ? createBrowserSupabaseClient() : null;
     async function load(userId: string | null) {
-      const version = ++revision.current; ready.current = false; owner.current = userId;
+      const version = ++revision.current; ready.current = false; setFavoritesReady(false); owner.current = userId;
       let ids = read(userId ? `mm-favorites:${userId}` : guestKey);
       current.current = ids; setIds(ids); setError("");
       if (userId && db) {
         const { data, error } = await db.from("favorites").select("product_id").eq("profile_id", userId).limit(500);
         if (!active || version !== revision.current) return;
-        if (error) { setError("No pudimos sincronizar favoritos. RecargÃ¡ para reintentar."); }
+        if (error) { setError("No pudimos sincronizar favoritos. Recargá para reintentar."); }
         else {
           const guest = read(guestKey);
           ids = [...new Set([...data.map(row => row.product_id as string), ...guest])].slice(0, 500);
           if (guest.length) {
             const { error: mergeError } = await db.from("favorites").upsert(guest.map(product_id => ({ profile_id: userId, product_id })), { onConflict: "profile_id,product_id" });
-            if (mergeError) setError("Tus favoritos locales estÃ¡n guardados; no pudimos sincronizarlos con la cuenta.");
+            if (mergeError) setError("Tus favoritos locales están guardados; no pudimos sincronizarlos con la cuenta.");
             else write(guestKey, []);
           }
         }
       }
       if (!active || version !== revision.current) return;
-      current.current = ids; setIds(ids); write(userId ? `mm-favorites:${userId}` : guestKey, ids); ready.current = true;
+      current.current = ids; setIds(ids); write(userId ? `mm-favorites:${userId}` : guestKey, ids); ready.current = true; setFavoritesReady(true);
     }
     if (!db) { void load(null); return () => { active = false; }; }
     let last: string | null | undefined;
@@ -56,7 +57,7 @@ export function useFavorites() {
     const userId = owner.current, version = revision.current;
     const operation = operations.current[id] = (operations.current[id] ?? 0) + 1;
     const adding = !current.current.includes(id);
-    if (adding && current.current.length >= 500) { setError("PodÃ©s guardar hasta 500 favoritos."); return; }
+    if (adding && current.current.length >= 500) { setError("Podés guardar hasta 500 favoritos."); return; }
     const next = adding ? [...current.current, id] : current.current.filter(x => x !== id);
     current.current = next; setIds(next); setError(""); write(userId ? `mm-favorites:${userId}` : guestKey, next);
     if (!userId) return;
@@ -73,5 +74,5 @@ export function useFavorites() {
       if (error) rollback();
     }).catch(rollback);
   }, []);
-  return { favoriteIds, toggleFavorite, favoriteError };
+  return { favoriteIds, favoritesReady, toggleFavorite, favoriteError };
 }

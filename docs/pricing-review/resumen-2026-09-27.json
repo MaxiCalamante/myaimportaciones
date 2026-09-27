@@ -1,0 +1,17 @@
+{
+  "fecha": "2026-09-27",
+  "productos": 2889,
+  "activos": 2889,
+  "con_sku": 2864,
+  "catalogo_minorista": 2886,
+  "proveedor_actual": 1311,
+  "sin_precio_proveedor_actual": 1578,
+  "costo_base_pdf": 2789,
+  "comparables_ML_verificados": 2,
+  "estados": {
+    "SIN_PRECIO_PROVEEDOR_ACTUAL": 1550,
+    "DEBAJO_DE_1_75_COSTO_BASE": 1239,
+    "SIN_COSTO_BASE_DOCUMENTADO": 100
+  },
+  "nota": "Referencia de 1,85 veces el costo base histórico. No incluye flete, impuestos ni gastos; no es precio aprobado ni competitivo verificado."
+}

@@ -16,18 +16,16 @@ export default async function AccountPage() {
     redirect("/login?next=/cuenta");
   }
 
-  // Si el usuario es administrador, lo redirigimos directamente a su panel de gestión
-  if (auth.profile?.role === "admin") {
-    redirect("/admin");
-  }
-
-  const orders = await getAccountOrders(auth.profile?.id ?? null);
+  const { orders, error } = await getAccountOrders(auth.profile?.id ?? null);
 
   return (
     <AccountPanel
-      email={auth.profile?.email ?? "cliente@example.com"}
-      fullName={auth.profile?.fullName ?? "Cliente demo"}
+      email={auth.profile?.email ?? ""}
+      fullName={auth.profile?.fullName ?? "Invitado"}
+      isAdmin={auth.profile?.role === "admin"}
+      canSignOut={Boolean(auth.user)}
       orders={orders}
+      ordersError={error}
     />
   );
 }

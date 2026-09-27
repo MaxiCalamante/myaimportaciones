@@ -145,7 +145,7 @@ export default async function RootLayout({
             <SiteFooter />
             <AnalyticsConsent />
           </div>
-          <CartDrawer />
+          <CartDrawer checkoutEnabled={process.env.COMMERCE_CHECKOUT_ENABLED === "true"} />
           <ProductDetailsModal />
           <WhatsAppFloatingButton />
           <MobileBottomNav signedIn={Boolean(profile)} />

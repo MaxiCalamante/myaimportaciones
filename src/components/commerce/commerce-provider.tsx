@@ -30,6 +30,7 @@ export interface CartLine {
 interface CommerceContextValue {
   cart: CartLine[];
   favoriteIds: string[];
+  favoritesReady: boolean;
   cartOpen: boolean;
   cartCount: number;
   favoritesCount: number;
@@ -64,7 +65,7 @@ const shippingOptionKey = "mya_shipping_option";
 
 export function CommerceProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartLine[]>([]);
-  const { favoriteIds, toggleFavorite, favoriteError } = useFavorites();
+  const { favoriteIds, favoritesReady, toggleFavorite, favoriteError } = useFavorites();
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [postalCode, setPostalCodeState] = useState("");
@@ -237,6 +238,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     () => ({
       cart,
       favoriteIds,
+      favoritesReady,
       cartOpen,
       cartCount,
       favoritesCount,
@@ -269,6 +271,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       cartOpen,
       cartTotal,
       favoriteIds,
+      favoritesReady,
       favoritesCount,
       isFavorite,
       removeFromCart,
