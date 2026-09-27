@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductGallery } from "@/components/commerce/product-gallery";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
+import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { ProductDetailInteractive } from "@/components/commerce/product-detail-interactive";
 import { ProductCard } from "@/components/commerce/product-card";
-import { isProductImmediateStock } from "@/lib/shipping";
+import { isVerifiedStock } from "@/lib/commerce-policy";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = product.title;
   const description =
     product.description ||
-    `Comprá ${product.title} en nuestra tienda minorista en MYA Importaciones. Envíos a todo el país.`;
+    `Conocé ${product.title} en MYA Importaciones. Consultá disponibilidad y entrega para tu destino.`;
 
   const imageUrl = product.imageUrl?.startsWith("http")
     ? product.imageUrl
@@ -103,7 +103,7 @@ export default async function ProductPage({ params }: Props) {
       priceCurrency: "ARS",
       price: product.retailPrice,
 
-      availability: product.stockVerifiedAt && product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      availability: isVerifiedStock(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
       seller: {
         "@type": "Organization",

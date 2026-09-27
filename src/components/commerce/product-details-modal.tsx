@@ -3,8 +3,8 @@ import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/c
 
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
-import { CreditCard, Heart, Landmark, Receipt, ShoppingCart, Wallet, X } from "lucide-react";
-import { formatCurrency, formatPaymentMethod } from "@/lib/format";
+import { Heart, ShoppingCart, X } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { Button } from "@/components/ui/button";
 import { trackAdsEvent } from "@/lib/analytics";
@@ -260,29 +260,6 @@ function ProductDetailsModalContent() {
             >
               Agregar ({formatCurrency(price * quantity)})
             </Button>
-          </div>
-
-          {/* Payments Accepted */}
-          <div className="mt-8 border-t border-zinc-250 pt-5">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Métodos de pago aceptados</span>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedProduct.paymentMethods.map((method) => {
-                let Icon = CreditCard;
-                if (method === "transferencia") Icon = Landmark;
-                else if (method === "efectivo") Icon = Receipt;
-                else if (method === "mercado_pago") Icon = Wallet;
-
-                return (
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700"
-                    key={method}
-                  >
-                    <Icon className="h-3.5 w-3.5 text-zinc-650" />
-                    {formatPaymentMethod(method)}
-                  </span>
-                );
-              })}
-            </div>
           </div>
 
         </div>

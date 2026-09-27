@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Mail, MapPin, Phone, MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site";
@@ -27,26 +28,24 @@ export function SiteFooter() {
   const pathname = usePathname();
   const isWholesale = pathname?.startsWith("/mayorista");
 
-  const brandName = isWholesale ? "MYA Mayorista" : "MYA Importaciones";
-
   return (
     <footer className="border-t border-zinc-900 bg-zinc-950 text-white">
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         {/* Column 1: Info */}
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-sky-50 p-0.5 ring-1 ring-sky-200/50">
-              <img
-                src="/logo.png"
-                alt="MYA Importaciones"
-                className="h-full w-full object-cover rounded-lg"
+            <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-white/30">
+              <Image
+                src="/mya-mark-white.png"
+                alt=""
+                width={80}
+                height={80}
+                className="absolute left-1/2 top-1/2 h-20 w-20 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain"
               />
             </div>
-            <div>
-              <span className="text-sm font-black uppercase tracking-tight block">
-                MYA <span className="font-semibold text-sky-400">Importaciones</span>
-              </span>
-              <span className="text-[10px] text-zinc-400 font-medium">Belleza y herramientas</span>
+            <div className="leading-tight">
+              <span className="block text-base font-bold text-white">importaciones</span>
+              {isWholesale && <span className="mt-1 block text-[10px] font-semibold text-amber-300">Mayorista</span>}
             </div>
           </div>
           <p className="text-sm leading-6 text-zinc-400">
@@ -89,7 +88,7 @@ export function SiteFooter() {
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cuidado-capilar" : "/?category=cuidado-capilar"}>
               Tratamientos Capilares & Karseell
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/#ofertas"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/catalogo"}>
               Explorar productos
             </Link>
           </div>
@@ -114,7 +113,7 @@ export function SiteFooter() {
                   Catálogo de Productos
                 </Link>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/#ofertas">
-                  Ofertas & Promociones
+                  Más para descubrir
                 </Link>
                 <a
                   className="text-amber-400/90 hover:text-amber-300 transition-colors"
@@ -157,8 +156,7 @@ export function SiteFooter() {
               {siteConfig.location}
             </span>
             <div className="border-t border-zinc-900 pt-2.5 mt-1 text-xs text-zinc-400 space-y-1">
-              <p>Despachos a todo el país (Correo Argentino / Andreani / Expresos)</p>
-              <p>Horario: Lunes a Sábados</p>
+              <p>Consultá las opciones de entrega disponibles para tu destino.</p>
             </div>
           </div>
         </div>
@@ -170,7 +168,7 @@ export function SiteFooter() {
           Precios en pesos argentinos · Consultá entrega y condiciones de compra
         </p>
         <p>
-          &copy; {new Date().getFullYear()} MYA Importaciones. Belleza y herramientas. Todos los derechos reservados.
+          &copy; {new Date().getFullYear()} MyA importaciones. Todos los derechos reservados.
         </p>
       </div>
     </footer>

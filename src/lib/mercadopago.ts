@@ -1,10 +1,19 @@
 import "server-only";
 import { siteConfig } from "@/lib/site";
 const token = () => process.env.MERCADOPAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
+export function isMercadoPagoConfigured() {
+  const accessToken = token();
+  return Boolean(
+    accessToken &&
+    process.env.MERCADOPAGO_WEBHOOK_SECRET &&
+    /^\d+$/.test(process.env.MERCADOPAGO_COLLECTOR_ID ?? "") &&
+    siteConfig.appUrl.startsWith("https://") &&
+    (process.env.NODE_ENV !== "production" || accessToken.startsWith("APP_USR-"))
+  );
+}
 export async function createMercadoPagoPreference(params: { trackingCode: string; orderId: string; total: number; expiresAt: string; payerEmail: string; payerName: string }) {
-  if (!token()) return { success: false, initPoint: undefined, preferenceId: undefined };
+  if (!isMercadoPagoConfigured()) return { success: false, initPoint: undefined, preferenceId: undefined };
   const appUrl = siteConfig.appUrl.replace(/\/$/, "");
-  if (!appUrl.startsWith("https://")) return { success: false, initPoint: undefined, preferenceId: undefined };
   const res = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST", signal: AbortSignal.timeout(15000),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}`, "X-Idempotency-Key": params.orderId },

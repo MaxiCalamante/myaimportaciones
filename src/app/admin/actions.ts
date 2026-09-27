@@ -181,7 +181,7 @@ export async function createProductAction(formData: FormData) {
     retail_price: Number(getString(formData, "retail_price") || 0),
     wholesale_price: Number(getString(formData, "wholesale_price") || 0),
     wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
-    stock: Number(getString(formData, "stock") || 0),
+    stock: 0,
     payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
     tags,
     is_featured: formData.get("is_featured") === "on",
@@ -325,6 +325,12 @@ export async function deleteProductAction(productId: string) {
 }
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
   const supabase = await getAdminClient();
+  if (newRole === "customer") {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id === userId) throw new Error("No podés quitarte tu propio acceso de administrador.");
+    const { count, error: countError } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin");
+    if (countError || (count ?? 0) <= 1) throw new Error("Debe quedar al menos un administrador.");
+  }
   const { error } = await supabase
     .from("profiles")
     .update({ role: newRole })
@@ -411,32 +417,23 @@ export interface BulkProductItem {
 }
 export async function bulkImportProductsAction(items: BulkProductItem[]) {
   const supabase = await getAdminClient();
-  if (!items || items.length === 0) {
-    throw new Error("No hay productos para importar.");
-  }
-  // Fetch all categories
-  const { data: categories } = await supabase.from("categories").select("id, name, slug");
+  if (!Array.isArray(items) || items.length === 0 || items.length > 200) throw new Error("Importá entre 1 y 200 productos por vez.");
+  const { data: categories, error: categoryError } = await supabase.from("categories").select("id, name, slug");
+  if (categoryError) throw new Error(`No se pudieron leer las categorías: ${categoryError.message}`);
   const catMap = new Map<string, string>();
   categories?.forEach((c) => {
     catMap.set(c.name.toLowerCase().trim(), c.id);
     catMap.set(c.slug.toLowerCase().trim(), c.id);
   });
-  const defaultCategoryId = categories?.[0]?.id || "";
-  let successCount = 0;
-  for (const item of items) {
-    if (!item.title) continue;
-    let targetCatId = item.categoryId;
-    if (!targetCatId && item.categoryName) {
-      targetCatId = catMap.get(item.categoryName.toLowerCase().trim());
-    }
-    if (!targetCatId) {
-      targetCatId = defaultCategoryId;
-    }
+  const payload = items.map((item, index) => {
+    const targetCatId = item.categoryId || (item.categoryName ? catMap.get(item.categoryName.toLowerCase().trim()) : undefined);
+    if (!targetCatId || !categories?.some((category) => category.id === targetCatId)) throw new Error(`Fila ${index + 1}: la categoría "${item.categoryName || ""}" no existe.`);
+    if (!item.title?.trim() || !Number.isFinite(item.retailPrice) || item.retailPrice <= 0) throw new Error(`Fila ${index + 1}: título o precio inválido.`);
     const slug = slugify(item.title);
-    const retailPrice = Number(item.retailPrice || 0);
-    const wholesalePrice = Number(item.wholesalePrice || Math.round(retailPrice * 0.75));
-    const { error } = await supabase.from("products").upsert(
-      {
+    const retailPrice = Number(item.retailPrice);
+    const wholesalePrice = Number(item.wholesalePrice ?? Math.round(retailPrice * 0.75));
+    if (!Number.isFinite(wholesalePrice) || wholesalePrice < 0 || !Number.isInteger(item.wholesaleMinQuantity ?? 1) || (item.wholesaleMinQuantity ?? 1) < 1) throw new Error(`Fila ${index + 1}: precio o mínimo mayorista inválido.`);
+    return {
         title: item.title,
         slug,
         description: item.description || "",
@@ -444,24 +441,21 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
         image_url: item.imageUrl || "/window.svg",
         retail_price: retailPrice,
         wholesale_price: wholesalePrice,
-        wholesale_min_qty: Number(item.wholesaleMinQuantity || 1),
+        wholesale_min_qty: Number(item.wholesaleMinQuantity ?? 1),
         // Stock is deliberately omitted: preserve reservations on existing products; new rows default to zero.
         payment_methods: ["transferencia", "tarjeta", "mercado_pago", "efectivo"],
         tags: item.tags || ["importado"],
         is_featured: Boolean(item.featured),
         is_wholesale_only: false,
         is_active: true,
-      },
-      { onConflict: "slug" }
-    );
-    if (!error) {
-      successCount++;
-    }
-  }
+      };
+  });
+  const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
+  if (error) throw new Error(`No se pudo importar el CSV: ${error.message}`);
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/mayorista");
-  return { importedCount: successCount };
+  return { importedCount: payload.length };
 }
 export interface BulkPriceUpdateOptions {
   scope: "all" | "supplier" | "category" | "brand";

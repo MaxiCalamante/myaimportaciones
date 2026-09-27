@@ -16,7 +16,7 @@ const heroSlides = [
     title: "Herramientas Industriales y Profesionales",
     description: "Herramientas para tu casa, taller y trabajo. Encontrá tu modelo y consultá disponibilidad y entrega desde Tandil.",
     btnText: "Ver Herramientas",
-    btnLink: "/?category=herramientas-equipamiento",
+    btnLink: "/catalogo?category=herramientas-equipamiento",
   },
   {
     image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1800&q=80",
@@ -24,7 +24,7 @@ const heroSlides = [
     title: "Tu próximo cuidado de la piel",
     description: "Sérums virales, cremas reparadoras y protectores de SKIN1004, Medicube, Dr. Althea y Celimax importados directamente para vos.",
     btnText: "Ver K-Beauty",
-    btnLink: "/?category=cosmetica-coreana",
+    btnLink: "/catalogo?category=cosmetica-coreana",
   },
   {
     image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
@@ -58,15 +58,15 @@ export function StoreHero() {
 
   return (
     <section className="relative overflow-hidden bg-zinc-950 text-white min-h-[520px]">
-      <h1 className="sr-only">MYA Importaciones: belleza y herramientas</h1>
-      <button className="absolute bottom-4 left-4 z-20 rounded-lg bg-black/80 px-3 py-2 text-xs text-white" onClick={() => setPaused(!paused)}>{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>
+      <h1 className="sr-only">MYA Importaciones: catálogo de productos</h1>
+      <button type="button" className="absolute right-4 top-4 z-20 min-h-11 rounded-lg bg-black/80 px-3 py-2 text-xs text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" onClick={() => setPaused(!paused)}>{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>
       {/* Slides */}
       {heroSlides.map((slide, idx) => (
         <div
           key={idx}
           aria-hidden={idx !== currentSlide}
           inert={idx !== currentSlide}
-          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+          className={`absolute inset-0 transition-opacity duration-200 ease-out ${
             idx === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
           }`}
         >
@@ -101,31 +101,29 @@ export function StoreHero() {
       <button
         aria-label="Slide anterior"
         onClick={handlePrev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-25 p-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/15 transition cursor-pointer"
+        className="absolute bottom-1 left-3 z-25 grid size-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
       <button
         aria-label="Siguiente slide"
         onClick={handleNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-25 p-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/15 transition cursor-pointer"
+        className="absolute bottom-1 right-3 z-25 grid size-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"
       >
         <ChevronRight className="h-5 w-5" />
       </button>
 
       {/* Slide Indicators */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-25 flex gap-2">
+      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-25 flex gap-1">
         {heroSlides.map((_, idx) => (
           <button
             key={idx}
-          aria-hidden={idx !== currentSlide}
-          inert={idx !== currentSlide}
+            type="button"
             onClick={() => setCurrentSlide(idx)}
-            className={`h-2.5 rounded-full transition-all duration-300 ${
-              idx === currentSlide ? "w-8 bg-sky-400" : "w-2.5 bg-white/40 hover:bg-white/60"
-            }`}
+            className="grid size-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             aria-label={`Ir al slide ${idx + 1}`}
-          />
+            aria-current={idx === currentSlide ? "true" : undefined}
+          ><span aria-hidden className={`size-2.5 rounded-full ${idx === currentSlide ? "bg-sky-400" : "bg-white/50"}`} /></button>
         ))}
       </div>
     </section>
@@ -158,7 +156,7 @@ export function RetailHighlights() {
 
   return (
     <section className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:grid-cols-2 lg:grid-cols-3 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         {items.map((item) => (
           <div className="flex items-start gap-3.5" key={item.title}>
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
@@ -253,7 +251,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                 <div>
                   {/* Image container */}
                   <Link
-                    href={`/?category=${category.slug}`}
+                    href={`/catalogo?category=${category.slug}`}
                     className="relative aspect-[16/10] overflow-hidden bg-zinc-100 block cursor-pointer"
                   >
                     <Image
@@ -275,13 +273,13 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
 
                   {/* Body Info */}
                   <div className="p-5">
-                    <Link href={`/?category=${category.slug}`}>
+                    <Link href={`/catalogo?category=${category.slug}`}>
                       <h3 className="text-lg font-black text-black group-hover:text-emerald-700 transition-colors">
                         {category.name}
                       </h3>
                     </Link>
                     <p className="mt-1.5 text-xs text-zinc-500 line-clamp-2 leading-relaxed">
-                      {category.description || "Línea completa importada directamente con despacho garantizado."}
+                      {category.description || "Explorá productos y consultá disponibilidad y entrega."}
                     </p>
 
                     {/* Curated Subcategories Preview */}
@@ -294,7 +292,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                           {subs.slice(0, 4).map((sub) => (
                             <Link
                               key={sub.id}
-                              href={`/?category=${sub.slug}`}
+                              href={`/catalogo?category=${sub.slug}`}
                               className="inline-block rounded-md bg-zinc-100/90 hover:bg-zinc-200/80 px-2 py-0.5 text-[11px] font-medium text-zinc-700 transition"
                             >
                               {sub.name}
@@ -302,7 +300,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                           ))}
                           {subs.length > 4 && (
                             <Link
-                              href={`/?category=${category.slug}`}
+                              href={`/catalogo?category=${category.slug}`}
                               className="inline-block rounded-md bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 transition"
                             >
                               +{subs.length - 4} más
@@ -317,7 +315,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                 {/* Footer Action Link */}
                 <div className="px-5 pb-5 pt-0">
                   <Link
-                    href={`/?category=${category.slug}`}
+                    href={`/catalogo?category=${category.slug}`}
                     className="flex items-center justify-between w-full rounded-xl bg-zinc-50 hover:bg-zinc-900 px-3.5 py-2.5 text-xs font-bold text-zinc-800 hover:text-white border border-zinc-200 hover:border-zinc-900 transition-all duration-200 group/btn"
                   >
                     <span>Explorar catálogo</span>
@@ -346,12 +344,13 @@ export function ProductSection({
   products: Product[];
   channel?: ProductChannel;
 }) {
+  if (!products.length) return null;
   return (
     <section className="bg-white py-12" id={id}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase text-emerald-700">
+            <p className="text-sm font-semibold uppercase text-sky-700">
               {eyebrow}
             </p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">{title}</h2>
@@ -360,10 +359,10 @@ export function ProductSection({
             <p className="text-sm font-medium text-zinc-500">
               Compra mínima y precios por volumen
             </p>
-          ) : null}
+          ) : <Link href="/catalogo" className="text-sm font-semibold text-sky-700 underline underline-offset-2">Ver todo el catálogo</Link>}
         </div>
 
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {products.map((product) => (
             <ProductCard channel={channel} key={product.id} product={product} />
           ))}

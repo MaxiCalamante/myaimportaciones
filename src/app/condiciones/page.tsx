@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { siteConfig } from "@/lib/site";
 export const metadata = { title: "Condiciones de compra" };
 export default function Conditions() { return <article className="mx-auto max-w-3xl space-y-5 px-5 py-10">
@@ -12,7 +11,6 @@ export default function Conditions() { return <article className="mx-auto max-w-
   <p>El retiro en Tandil se coordina previamente. Para envíos, se debe confirmar destino, peso, volumen, costo y plazo antes de pagar. No se garantiza entrega inmediata ni envío gratuito general.</p>
   <h2 className="text-xl font-bold">Arrepentimiento y reclamos</h2>
   <p>Podés solicitar el arrepentimiento de una compra a distancia dentro de los diez días corridos desde la entrega o la celebración del contrato, lo que ocurra después, conforme a la normativa aplicable. No necesitás una cuenta ni explicar el motivo. Coordinaremos la devolución según corresponda.</p>
-  <Link className="inline-block rounded-xl bg-zinc-950 px-5 py-3 text-white" href="/arrepentimiento">Botón de arrepentimiento</Link>
   <p>Para fallas, errores de entrega o garantías, contactanos con el detalle del producto y la compra. Se respetan los derechos y garantías legales aplicables. Cualquier garantía comercial adicional debe constar expresamente en la ficha; no se presume garantía oficial de una marca.</p>
   <p className="text-sm">Referencia: <a className="underline" href="https://www.argentina.gob.ar/normativa/nacional/norma-417152/texto">Disposición 954/2025</a>.</p>
  </article>; }

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, LayoutGrid, ShoppingBag, Truck, MessageCircle } from "lucide-react";
 import { useCommerce } from "@/components/commerce/commerce-provider";
-import { siteConfig, getWhatsAppUrl } from "@/lib/site";
+import { getWhatsAppUrl } from "@/lib/site";
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
   const { cartCount, setCartOpen } = useCommerce();
 
@@ -16,8 +16,8 @@ export function MobileBottomNav() {
   }
 
   const isHome = pathname === "/";
-  const isTracking = pathname === "/seguimiento";
-  const isWholesale = pathname?.startsWith("/mayorista");
+  const orderPath = signedIn ? "/cuenta" : "/seguimiento";
+  const isTracking = pathname?.startsWith(orderPath);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-lg safe-area-bottom">
@@ -61,13 +61,13 @@ export function MobileBottomNav() {
 
         {/* Order Tracking */}
         <Link
-          href="/seguimiento"
+          href={orderPath}
           className={`flex flex-col items-center justify-center flex-1 h-full transition ${
             isTracking ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
         >
           <Truck className="h-5 w-5" />
-          <span className="text-[10px] mt-1">Seguimiento</span>
+          <span className="text-[10px] mt-1">{signedIn ? "Mis pedidos" : "Seguimiento"}</span>
         </Link>
 
         {/* Direct WhatsApp */}

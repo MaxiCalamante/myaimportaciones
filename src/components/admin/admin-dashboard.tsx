@@ -39,6 +39,7 @@ import {
   Megaphone,
 } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { RealCosts } from "@/components/admin/real-costs";
 import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import { PricingEngine } from "@/components/admin/pricing-engine";
@@ -50,7 +51,6 @@ import {
   deleteCategoryAction,
   createProductAction,
   updateProductAction,
-  updateProductStockAction,
   updateProductWholesaleAction,
   deleteProductAction,
   updateUserRoleAction,
@@ -61,8 +61,9 @@ import {
 } from "@/app/admin/actions";
 import { formatCurrency, formatDate, formatOrderStatus, formatPaymentMethod } from "@/lib/format";
 import { getWhatsAppUrl } from "@/lib/site";
-import type { AdminDashboardData, PaymentMethod, Category, Product } from "@/lib/types";
+import type { AdminDashboardData, PaymentMethod, OrderStatus, Category, Product } from "@/lib/types";
 import { isProductImmediateStock } from "@/lib/shipping";
+import { parseAdminProductCsv } from "@/lib/admin-csv";
 
 const paymentMethods: PaymentMethod[] = [
   "transferencia",
@@ -72,6 +73,14 @@ const paymentMethods: PaymentMethod[] = [
   "cuenta_corriente",
 ];
 
+function availableOrderStatuses(status: OrderStatus, method: PaymentMethod): OrderStatus[] {
+  if (status === "pending") return method === "mercado_pago" ? ["pending", "cancelled"] : ["pending", "paid", "cancelled"];
+  if (status === "paid") return ["paid", "preparing"];
+  if (status === "preparing") return ["preparing", "shipped"];
+  if (status === "shipped") return ["shipped", "delivered"];
+  return [status];
+}
+
 export function AdminDashboard({
   data,
   supabaseReady,
@@ -79,11 +88,11 @@ export function AdminDashboard({
   data: AdminDashboardData;
   supabaseReady: boolean;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<
     "products" | "pricing_engine" | "resale_system" | "marketing" | "suppliers" | "categories" | "orders" | "customers"
   >("products");
   const [isPending, startTransition] = useTransition();
-  const [stockState, setStockState] = useState<Record<string, number>>({});
   const [showStockAudit, setShowStockAudit] = useState(false);
 
   // Suppliers & Cost Control tab states
@@ -131,6 +140,7 @@ export function AdminDashboard({
   // Product Search and Filter states
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("");
+  const [productPage, setProductPage] = useState(1);
 
   // Create modals state
   const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
@@ -289,36 +299,7 @@ Logística / Despacho: +${calcShippingPercent}%
     if (!bulkCsvText.trim()) return;
 
     try {
-      const lines = bulkCsvText.trim().split("\n");
-      const items: Array<{
-        title: string;
-        categoryName: string;
-        retailPrice: number;
-        wholesalePrice: number;
-        wholesaleMinQuantity: number;
-        stock: number;
-        description: string;
-      }> = [];
-      for (const line of lines) {
-        if (!line.trim() || line.startsWith("#") || line.toLowerCase().startsWith("titulo")) continue;
-        const parts = line.split(",").map((p) => p.trim());
-        if (parts.length < 3) continue;
-        const [title, categoryName, retailStr, wholesaleStr, minStr, stockStr, desc] = parts;
-        items.push({
-          title,
-          categoryName,
-          retailPrice: Number(retailStr) || 0,
-          wholesalePrice: Number(wholesaleStr) || Math.round((Number(retailStr) || 0) * 0.75),
-          wholesaleMinQuantity: Number(minStr) || 1,
-          stock: Number(stockStr) || 0,
-          description: desc || "",
-        });
-      }
-
-      if (items.length === 0) {
-        setBulkMsg({ type: "error", text: "No se reconocieron filas válidas en el formato." });
-        return;
-      }
+      const items = parseAdminProductCsv(bulkCsvText);
 
       startTransition(async () => {
         try {
@@ -346,22 +327,6 @@ Logística / Despacho: +${calcShippingPercent}%
   const editSubcategoriesForSelectedParent = useMemo(() => {
     return data.categories.filter((c) => c.parentId === editSelectedParentId);
   }, [data.categories, editSelectedParentId]);
-
-  // Handle inline stock change
-  const handleStockChange = (productId: string, currentStock: number, change: number) => {
-    const newStock = Math.max(0, (stockState[productId] ?? currentStock) + change);
-    
-    setStockState((prev) => ({ ...prev, [productId]: newStock }));
-
-    startTransition(async () => {
-      try {
-        await updateProductStockAction(productId, newStock);
-      } catch (err: unknown) {
-        alert("Error al actualizar el stock: " + (err instanceof Error ? err.message : "Error inesperado"));
-        setStockState((prev) => ({ ...prev, [productId]: currentStock }));
-      }
-    });
-  };
 
   // Handle delete actions
   const handleDeleteProduct = (productId: string, title: string) => {
@@ -498,24 +463,9 @@ Logística / Despacho: +${calcShippingPercent}%
   };
 
   const handleSaveSupplierStock = (productId: string, fallbackStock: number) => {
-    const newStock = supplierStockInputs[productId] !== undefined ? supplierStockInputs[productId] : fallbackStock;
-
-    startTransition(async () => {
-      try {
-        await updateProductStockAction(productId, newStock);
-        setStockState((prev) => ({ ...prev, [productId]: newStock }));
-        setSupplierActionFeedback((prev) => ({ ...prev, [`stock_${productId}`]: "✓ Stock OK" }));
-        setTimeout(() => {
-          setSupplierActionFeedback((prev) => {
-            const next = { ...prev };
-            delete next[`stock_${productId}`];
-            return next;
-          });
-        }, 2500);
-      } catch (err: unknown) {
-        alert("Error al actualizar stock: " + (err instanceof Error ? err.message : "Error inesperado"));
-      }
-    });
+    void productId;
+    void fallbackStock;
+    router.push("/admin/operaciones");
   };
 
   // Filter products locally for search & select rubro
@@ -538,6 +488,9 @@ Logística / Despacho: +${calcShippingPercent}%
       return matchesSearch && matchesCategory;
     });
   }, [data.products, data.categories, productSearch, productCategoryFilter]);
+  const productPageCount = Math.max(1, Math.ceil(filteredProducts.length / 24));
+  const currentProductPage = Math.min(productPage, productPageCount);
+  const visibleProducts = filteredProducts.slice((currentProductPage - 1) * 24, currentProductPage * 24);
 
   // Filter customers for search & category filter
   const filteredCustomers = useMemo(() => {
@@ -647,7 +600,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
     data.products.forEach((p) => {
       const sup = getProductSupplier(p);
-      const s = stockState[p.id] ?? p.stock;
+      const s = p.stock;
       if (s <= 0) outOfStockCount++;
       if (sup.id === "total_tools" || sup.id === "general") totalToolsCount++;
       else if (sup.id === "atacado_usa") atacadoUsaCount++;
@@ -659,14 +612,14 @@ Logística / Despacho: +${calcShippingPercent}%
       atacadoUsaCount,
       outOfStockCount,
     };
-  }, [data.products, data.categories, stockState]);
+  }, [data.products, data.categories]);
 
   // Filtered supplier products
   const filteredSupplierProducts = useMemo(() => {
     return data.products
       .map((product) => {
         const supplier = getProductSupplier(product);
-        const currentStock = stockState[product.id] ?? product.stock;
+        const currentStock = product.stock;
         return { product, supplier, currentStock };
       })
       .filter(({ product, supplier, currentStock }) => {
@@ -690,7 +643,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
         return true;
       });
-  }, [data.products, data.categories, stockState, supplierFilter, supplierStockFilter, supplierSearch]);
+  }, [data.products, data.categories, supplierFilter, supplierStockFilter, supplierSearch]);
 
   // Pagination for suppliers
   const SUPPLIERS_PER_PAGE = 30;
@@ -759,41 +712,41 @@ Logística / Despacho: +${calcShippingPercent}%
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Dashboard Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-6 mb-8">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-inset ring-sky-600/20">
-            <Sparkles className="h-3.5 w-3.5 text-sky-600" /> Dashboard de Control Oficial
+            <Sparkles className="h-3.5 w-3.5 text-sky-600" /> Gestión de tienda
           </span>
           <h1 className="mt-2 text-3xl font-extrabold text-zinc-950 tracking-tight">
-            Panel de Administración
+            Panel de administración
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Control de stock en tiempo real, márgenes de importación directa y métricas comerciales de MYA.
+            Productos, pedidos y clientes en un solo lugar.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => setActiveTab("pricing_engine")}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 text-sm font-bold text-white hover:bg-amber-600 shadow-sm transition-colors cursor-pointer"
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+          <a
+            href="/admin/costos"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 text-center text-xs font-bold text-zinc-950 hover:bg-amber-400 shadow-sm transition-colors sm:px-5 sm:text-sm"
           >
             <Percent className="h-4 w-4" />
-            Ajustar Precios (%)
-          </button>
+            Costos y precios
+          </a>
           <button
             onClick={() => {
               setBulkMsg(null);
               setIsBulkImportOpen(true);
             }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-bold text-white hover:bg-sky-700 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 text-center text-xs font-bold text-white hover:bg-sky-700 shadow-sm transition-colors sm:px-5 sm:text-sm"
           >
             <FileSpreadsheet className="h-4 w-4" />
-            Carga Masiva (CSV)
+            Importar CSV
           </button>
           <button
             onClick={() => setIsCreateProductOpen(true)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-bold text-white hover:bg-zinc-800 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-3 text-center text-xs font-bold text-white hover:bg-zinc-800 shadow-sm transition-colors sm:px-5 sm:text-sm"
           >
             <Plus className="h-4 w-4" />
             Nuevo Producto
@@ -803,7 +756,7 @@ Logística / Despacho: +${calcShippingPercent}%
               setCreateCategoryParentId("");
               setIsCreateCategoryOpen(true);
             }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white border border-zinc-300 px-5 text-sm font-bold text-zinc-800 hover:bg-zinc-100 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white border border-zinc-300 px-3 text-center text-xs font-bold text-zinc-800 hover:bg-zinc-100 shadow-sm transition-colors sm:px-5 sm:text-sm"
           >
             <FolderPlus className="h-4 w-4 text-zinc-600" />
             Nueva Categoría
@@ -811,21 +764,23 @@ Logística / Despacho: +${calcShippingPercent}%
         </div>
       </div>
 
+      {!supabaseReady && <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Vista de demostración: conectá la base de datos para guardar cambios.</p>}
+
       {/* Stats Cards Grid */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
         {stats.map((stat) => (
           <div
-            className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs transition-all hover:shadow-md"
+            className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs transition-all hover:shadow-md sm:p-6"
             key={stat.label}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-zinc-500">{stat.label}</span>
-              <span className={`rounded-xl p-2.5 border ${stat.color}`}>
+              <span className="text-xs font-medium text-zinc-500 sm:text-sm">{stat.label}</span>
+              <span className={`hidden rounded-xl border p-2.5 sm:inline-flex ${stat.color}`}>
                 <stat.icon className="h-5 w-5" />
               </span>
             </div>
             <div className="mt-4">
-              <p className="text-3xl font-extrabold text-zinc-900 tracking-tight">
+              <p className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
                 {stat.value}
               </p>
             </div>
@@ -833,41 +788,27 @@ Logística / Despacho: +${calcShippingPercent}%
         ))}
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-zinc-200 mb-6 overflow-x-auto">
-        <nav className="flex space-x-8 min-w-max" aria-label="Tabs">
+      {/* Main work areas */}
+      <nav className="mb-6 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xs" aria-label="Herramientas del panel">
+        <p className="px-2 pb-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Gestionar</p>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {[
-            { id: "products", name: "Productos & Stock", icon: Package },
-            { id: "pricing_engine", name: "Costos y precios reales", icon: Percent },
-            { id: "resale_system", name: "Cálculo & Reventa B2B", icon: Calculator },
-            { id: "marketing", name: "Marketing & Píxeles Ads", icon: Megaphone },
-            { id: "suppliers", name: "Costos de proveedores", icon: Truck },
-            { id: "categories", name: "Categorías & Rubros", icon: FolderOpen },
-            { id: "orders", name: "Pedidos / Ventas", icon: ReceiptText },
+            { id: "products", name: "Productos", icon: Package },
+            { id: "categories", name: "Categorías", icon: FolderOpen },
+            { id: "orders", name: "Pedidos", icon: ReceiptText },
             { id: "customers", name: "Clientes", icon: Users },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
-              <button
-                key={tab.id}
+              <button key={tab.id} type="button" aria-current={isActive ? "page" : undefined}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`group flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-semibold transition-colors cursor-pointer ${
-                  isActive
-                    ? "border-sky-600 text-sky-700"
-                    : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
-                }`}
-              >
-                <tab.icon
-                  className={`h-4.5 w-4.5 transition-colors ${
-                    isActive ? "text-sky-600" : "text-zinc-400 group-hover:text-zinc-500"
-                  }`}
-                />
-                {tab.name}
+                className={`flex min-h-14 items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold transition-colors sm:px-4 ${isActive ? "bg-sky-600 text-white shadow-sm" : "bg-zinc-50 text-zinc-700 hover:bg-sky-50 hover:text-sky-900"}`}>
+                <tab.icon className="h-5 w-5 shrink-0" />{tab.name}
               </button>
             );
           })}
-        </nav>
-      </div>
+        </div>
+      </nav>
 
       {/* TAB CONTENT: PRODUCTS */}
       {activeTab === "products" && (
@@ -880,7 +821,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 type="text"
                 placeholder="Buscar por título, descripción o etiqueta..."
                 value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
+                onChange={(e) => { setProductSearch(e.target.value); setProductPage(1); }}
                 className="w-full h-11 pl-10 pr-4 rounded-xl border border-zinc-300 outline-none focus:border-emerald-600 bg-white text-sm"
               />
             </div>
@@ -890,14 +831,17 @@ Logística / Despacho: +${calcShippingPercent}%
               </span>
               <select
                 value={productCategoryFilter}
-                onChange={(e) => setProductCategoryFilter(e.target.value)}
+                onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(1); }}
                 className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white text-sm cursor-pointer min-w-44"
               >
-                <option value="">Todos los rubros</option>
-                {mainCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                <option value="">Todas las categorías</option>
+                {mainCategories.map((category) => (
+                  <optgroup key={category.id} label={category.name}>
+                    <option value={category.id}>Todo {category.name}</option>
+                    {data.categories.filter((item) => item.parentId === category.id).map((subcategory) => (
+                      <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
 
@@ -999,7 +943,7 @@ Logística / Despacho: +${calcShippingPercent}%
           {/* Products Table */}
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="admin-card-table w-full min-w-[900px] text-left text-sm">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
                   <tr>
                     <th className="px-6 py-4 font-semibold">Producto</th>
@@ -1026,8 +970,7 @@ Logística / Despacho: +${calcShippingPercent}%
                       </td>
                     </tr>
                   ) : (
-                    filteredProducts.map((product) => {
-                      const currentStock = stockState[product.id] ?? product.stock;
+                    visibleProducts.map((product) => {
                       const prodCategory = data.categories.find(c => c.id === product.categoryId);
                       let categoryDisplay = product.categoryName;
                       if (prodCategory && prodCategory.parentId) {
@@ -1039,7 +982,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
                       return (
                         <tr key={product.id} className="hover:bg-zinc-50/40 transition-colors">
-                          <td className="px-6 py-4 font-medium text-zinc-950 flex items-center gap-3">
+                          <td data-label="Producto" className="px-6 py-4 font-medium text-zinc-950 flex items-center gap-3">
                             {product.imageUrl ? (
                               <img
                                 src={product.imageUrl}
@@ -1062,7 +1005,7 @@ Logística / Despacho: +${calcShippingPercent}%
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20">
-                                    ✈️ Importación (3-7d)
+                                    {product.fulfillmentMode === "supplier" ? "Disponible en proveedor" : "Stock sin verificar"}
                                   </span>
                                 )}
                                 {product.featured && (
@@ -1088,46 +1031,26 @@ Logística / Despacho: +${calcShippingPercent}%
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-zinc-600">
+                          <td data-label="Categoría" className="px-6 py-4 text-zinc-600">
                             <span className="inline-flex items-center gap-1 text-xs font-semibold bg-zinc-100 text-zinc-700 px-2.5 py-1 rounded-full border border-zinc-200">
                               <Layers className="h-3 w-3 text-zinc-400" /> {categoryDisplay}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-zinc-950 font-extrabold text-sm">
+                          <td data-label="Precio minorista" className="px-6 py-4 text-zinc-950 font-extrabold text-sm">
                             {formatCurrency(product.retailPrice)}
                           </td>
-                          <td className="px-6 py-4 text-zinc-950 font-extrabold text-sm">
+                          <td data-label="Precio mayorista" className="px-6 py-4 text-zinc-950 font-extrabold text-sm">
                             {formatCurrency(product.wholesalePrice)}
                             <span className="text-[10px] text-zinc-500 font-normal block mt-0.5">
                               Mín: {product.wholesaleMinQuantity} unid.
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            {product.fulfillmentMode === "supplier" ? <a href="/admin/costos" className="text-sm text-sky-700 underline">Proveedor: {product.supplierAvailable ? "disponible" : "pausado"}</a> : (
-                            <div className="flex items-center justify-center gap-2.5">
-                              <button
-                                onClick={() => handleStockChange(product.id, product.stock, -1)}
-                                className="h-8 w-8 rounded-full border border-zinc-200 bg-white flex items-center justify-center hover:bg-zinc-50 hover:border-zinc-350 text-zinc-650 shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed font-extrabold text-base cursor-pointer"
-                                disabled={currentStock <= 0 || isPending}
-                                type="button"
-                              >
-                                -
-                              </button>
-                              <span className="w-10 text-center text-sm font-extrabold text-zinc-900 bg-zinc-50/50 py-1 rounded-lg border border-zinc-100 min-w-10">
-                                {currentStock}
-                              </span>
-                              <button
-                                onClick={() => handleStockChange(product.id, product.stock, 1)}
-                                className="h-8 w-8 rounded-full border border-zinc-200 bg-white flex items-center justify-center hover:bg-zinc-50 hover:border-zinc-350 text-zinc-650 shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed font-extrabold text-base cursor-pointer"
-                                disabled={isPending}
-                                type="button"
-                              >
-                                +
-                              </button>
-                            </div>
-                            )}
+                          <td data-label="Disponibilidad" className="px-6 py-4 text-center">
+                            <a href={product.fulfillmentMode === "supplier" ? "/admin/costos" : "/admin/operaciones"} className="inline-flex min-h-10 items-center rounded-lg px-2 text-sm font-semibold text-sky-700 underline underline-offset-2">
+                              {product.fulfillmentMode === "supplier" ? `Proveedor: ${product.supplierAvailable ? "disponible" : "pausado"}` : product.stockVerifiedAt ? `${product.stock} verificadas · Revisar` : "Verificar stock"}
+                            </a>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td data-label="Acciones" className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => handleOpenEditProduct(product)}
@@ -1155,6 +1078,10 @@ Logística / Despacho: +${calcShippingPercent}%
               </table>
             </div>
           </div>
+          <nav aria-label="Páginas de productos" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white p-3 text-sm text-zinc-600 sm:px-5">
+            <span>{filteredProducts.length} productos · Página {currentProductPage} de {productPageCount}</span>
+            <div className="flex gap-2"><button type="button" disabled={currentProductPage <= 1} onClick={() => setProductPage(currentProductPage - 1)} className="min-h-10 rounded-lg border border-zinc-300 px-3 font-semibold disabled:opacity-40">Anterior</button><button type="button" disabled={currentProductPage >= productPageCount} onClick={() => setProductPage(currentProductPage + 1)} className="min-h-10 rounded-lg border border-zinc-300 px-3 font-semibold disabled:opacity-40">Siguiente</button></div>
+          </nav>
         </div>
       )}
 
@@ -2101,7 +2028,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[750px] text-left text-sm">
+              <table className="admin-card-table w-full min-w-[750px] text-left text-sm">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
                   <tr>
                     <th className="px-6 py-4 font-semibold">ID / Fecha</th>
@@ -2127,7 +2054,7 @@ Logística / Despacho: +${calcShippingPercent}%
                   ) : (
                     data.orders.map((order) => (
                       <tr key={order.id} className="hover:bg-zinc-50/40 transition-colors">
-                        <td className="px-6 py-4 align-top">
+                        <td data-label="Pedido" className="px-6 py-4 align-top">
                           <span className="font-mono text-xs font-black text-sky-900 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-lg inline-block mb-1.5 shadow-xs">
                             {order.trackingCode || `ORD-${order.id.slice(0, 6).toUpperCase()}`}
                           </span>
@@ -2136,7 +2063,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             {order.carrierTrackingCode && <span className="block">Guía: {order.carrierTrackingCode}</span>}
                           </p>
                         </td>
-                        <td className="px-6 py-4 align-top">
+                        <td data-label="Cliente" className="px-6 py-4 align-top">
                           <div className="font-bold text-zinc-900">{order.customerName}</div>
                           {order.shippingPhone && (
                             <p className="text-xs text-emerald-700 font-semibold mt-0.5">
@@ -2164,7 +2091,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             {order.channel === "wholesale" ? "Mayorista" : "Minorista"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 align-top">
+                        <td data-label="Productos" className="px-6 py-4 align-top">
                           {order.items && order.items.length > 0 ? (
                             <div className="space-y-1.5 max-w-sm">
                               {order.items.map((it, idx) => (
@@ -2180,7 +2107,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             <span className="text-xs text-zinc-400 italic">Detalle no disponible</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 align-top">
+                        <td data-label="Pago" className="px-6 py-4 align-top">
                           <p className="text-base font-extrabold text-zinc-950 tracking-tight">
                             {formatCurrency(order.total)}
                           </p>
@@ -2188,7 +2115,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             {formatPaymentMethod(order.paymentMethod)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center align-top">
+                        <td data-label="Estado" className="px-6 py-4 text-center align-top">
                           <div className="flex flex-col items-center gap-1.5">
                             <select
                               disabled={isPending}
@@ -2202,12 +2129,7 @@ Logística / Despacho: +${calcShippingPercent}%
                                   : "bg-amber-50 text-amber-850 border-amber-300"
                               }`}
                             >
-                              <option value="pending">Pendiente</option>
-                              <option value="paid">Pagado</option>
-                              <option value="preparing">En preparación</option>
-                              <option value="shipped">Enviado</option>
-                              <option value="delivered">Entregado</option>
-                              <option value="cancelled">Cancelado</option>
+                              {availableOrderStatuses(order.status, order.paymentMethod).map(status => <option key={status} value={status}>{formatOrderStatus(status)}</option>)}
                             </select>
                             <button
                               onClick={() => handleUpdateTrackingCode(order.id, order.carrierTrackingCode)}
@@ -2237,7 +2159,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 <Users className="h-5 w-5 text-emerald-700" /> Cuentas de Usuario y Clientes Mayoristas
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Compartí enlaces privados a clientes comerciales y habilitá sus cuentas para ver el catálogo mayorista.
+                Revisá las cuentas registradas y administrá los permisos del equipo.
               </p>
             </div>
             <div className="text-xs text-zinc-500 font-semibold bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200">
@@ -2246,7 +2168,7 @@ Logística / Despacho: +${calcShippingPercent}%
           </div>
 
           {/* Quick Wholesale Actions & Sharing */}
-          <div className="grid gap-4 md:grid-cols-2">
+          {WHOLESALE_ENABLED && <div className="grid gap-4 md:grid-cols-2">
             {/* Box 1: Compartir enlace mayorista */}
             <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4.5 flex flex-col justify-between">
               <div>
@@ -2306,7 +2228,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 </button>
               </form>
             </div>
-          </div>
+          </div>}
 
           {/* Search and Filters Bar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-3.5 rounded-2xl border border-zinc-200 shadow-xs">
@@ -2345,7 +2267,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-sm">
+              <table className="admin-card-table w-full min-w-[700px] text-left text-sm">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
                   <tr>
                     <th className="px-6 py-3.5 font-semibold text-xs">Usuario / Comercio</th>
@@ -2372,7 +2294,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
                       return (
                         <tr key={customer.id} className="hover:bg-zinc-50/40 transition-colors">
-                          <td className="px-6 py-3.5">
+                          <td data-label="Cliente" className="px-6 py-3.5">
                             <div className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs sm:text-sm">
                               {customer.fullName}
                               {isAdmin && (
@@ -2385,8 +2307,8 @@ Logística / Despacho: +${calcShippingPercent}%
                               <p className="text-[11px] text-zinc-500 font-medium">{customer.businessName} {customer.cuit ? `(CUIT: ${customer.cuit})` : ""}</p>
                             )}
                           </td>
-                          <td className="px-6 py-3.5 font-medium text-zinc-650 text-xs">{customer.email}</td>
-                          <td className="px-6 py-3.5">
+                          <td data-label="Email" className="px-6 py-3.5 font-medium text-zinc-650 text-xs">{customer.email}</td>
+                          <td data-label="Rol" className="px-6 py-3.5">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
                               isAdmin
                                 ? "bg-purple-50 text-purple-800 ring-purple-600/20"
@@ -2395,8 +2317,8 @@ Logística / Despacho: +${calcShippingPercent}%
                               {isAdmin ? "Administrador" : "Cliente"}
                             </span>
                           </td>
-                          <td className="px-6 py-3.5">
-                            <button
+                          <td data-label="Mayorista" className="px-6 py-3.5">
+                            {WHOLESALE_ENABLED ? <button
                               disabled={isPending}
                               onClick={() => handleToggleWholesale(customer.id, isApproved)}
                               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
@@ -2408,9 +2330,9 @@ Logística / Despacho: +${calcShippingPercent}%
                             >
                               <Check className={`h-3.5 w-3.5 ${isApproved ? "text-amber-700" : "text-transparent"}`} />
                               {isApproved ? "Mayorista Habilitado" : "Solo Minorista"}
-                            </button>
+                            </button> : <span className="text-xs text-zinc-500">Canal pausado</span>}
                           </td>
-                          <td className="px-6 py-3.5 text-right">
+                          <td data-label="Acciones" className="px-6 py-3.5 text-right">
                             <button
                               disabled={isPending}
                               onClick={() => handleUpdateRole(customer.id, customer.role)}
@@ -2468,7 +2390,7 @@ Logística / Despacho: +${calcShippingPercent}%
                       placeholder="Ej. Detergente Biodegradable 1L"
                     />
                   </label>
-                  <div className="grid gap-3 grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
                       Categoría
                       <select
@@ -2529,7 +2451,7 @@ Logística / Despacho: +${calcShippingPercent}%
                       type="file"
                     />
                   </label>
-                  <div className="grid gap-2 grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     <label className="grid gap-1 text-[11px] font-bold text-zinc-600">
                       Minorista ($)
                       <input
@@ -2562,16 +2484,6 @@ Logística / Despacho: +${calcShippingPercent}%
                         defaultValue={1}
                       />
                     </label>
-                    <label className="grid gap-1 text-[11px] font-bold text-zinc-600">
-                      Stock
-                      <input
-                        className="h-11 rounded-xl border border-zinc-300 px-2 outline-none focus:border-emerald-600 bg-white text-center font-bold text-sm"
-                        min="0"
-                        name="stock"
-                        type="number"
-                        defaultValue={0}
-                      />
-                    </label>
                   </div>
                 </div>
 
@@ -2598,20 +2510,7 @@ Logística / Despacho: +${calcShippingPercent}%
                   </div>
                 </fieldset>
 
-                {/* Immediate Stock Checkbox */}
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 space-y-1">
-                  <label className="flex items-center gap-2 text-sm font-bold text-emerald-950 cursor-pointer">
-                    <input
-                      name="is_in_stock_immediate"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                    />
-                    <span>⚡ En Stock Inmediato (Despacho 24hs Tandil)</span>
-                  </label>
-                  <p className="text-[11px] text-emerald-850 leading-relaxed pl-6">
-                    Dejar desmarcado para productos de importación directa (plazo de entrega al cliente de 3 a 7 días hábiles). Marcar únicamente si tenés unidades físicas en depósito listas para despachar en el día.
-                  </p>
-                </div>
+                <p className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-950">El stock físico y la modalidad de entrega se verifican después en Operaciones y Stock y costos.</p>
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="grid gap-1.5 text-sm font-semibold text-zinc-700 sm:col-span-2">
@@ -2910,7 +2809,7 @@ Logística / Despacho: +${calcShippingPercent}%
                     </label>
                   </div>
                   
-                  <div className="grid gap-2 grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     <label className="grid gap-1 text-[11px] font-bold text-zinc-650">
                       Minorista ($)
                       <input
@@ -2943,16 +2842,6 @@ Logística / Despacho: +${calcShippingPercent}%
                         defaultValue={editingProduct.wholesaleMinQuantity}
                       />
                     </label>
-                    <label className="grid gap-1 text-[11px] font-bold text-zinc-650">
-                      Stock
-                      <input
-                        className="h-11 rounded-xl border border-zinc-300 px-2 outline-none focus:border-emerald-600 bg-white text-center font-bold text-sm"
-                        min="0"
-                        name="stock"
-                        type="number"
-                        defaultValue={editingProduct.stock}
-                      />
-                    </label>
                   </div>
                 </div>
 
@@ -2979,21 +2868,7 @@ Logística / Despacho: +${calcShippingPercent}%
                   </div>
                 </fieldset>
 
-                {/* Immediate Stock Checkbox */}
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 space-y-1">
-                  <label className="flex items-center gap-2 text-sm font-bold text-emerald-950 cursor-pointer">
-                    <input 
-                      name="is_in_stock_immediate" 
-                      type="checkbox" 
-                      defaultChecked={isProductImmediateStock(editingProduct)}
-                      className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
-                    />
-                    <span>⚡ En Stock Inmediato (Despacho 24hs Tandil)</span>
-                  </label>
-                  <p className="text-[11px] text-emerald-850 leading-relaxed pl-6">
-                    Dejar desmarcado para productos de importación directa (plazo de entrega al cliente de 3 a 7 días hábiles). Marcar únicamente si tenés unidades físicas en depósito listas para despachar en el día.
-                  </p>
-                </div>
+                <p className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-950">El stock físico y la modalidad de entrega se verifican en Operaciones y Stock y costos.</p>
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="grid gap-1.5 text-sm font-semibold text-zinc-700 sm:col-span-2">
@@ -3219,10 +3094,10 @@ Logística / Despacho: +${calcShippingPercent}%
                 <div className="rounded-xl bg-sky-50 border border-sky-200 p-4 text-xs text-sky-900 leading-relaxed">
                   <p className="font-bold mb-1">Formato requerido (separado por comas):</p>
                   <p className="font-mono text-[11px] bg-white/70 p-2 rounded border border-sky-200">
-                    Titulo, Categoría, PrecioMinorista, PrecioMayorista, MinMayorista, Stock, Descripción
+                    Titulo, Categoría, PrecioMinorista, PrecioMayorista, MinMayorista, Descripción
                   </p>
                   <p className="mt-2 text-zinc-600">
-                    Podés pegar múltiples líneas de Excel o CSV. Si la categoría ya existe se asociará automáticamente.
+                    Podés pegar múltiples líneas CSV. La categoría debe coincidir con una existente. Usá comillas si una descripción contiene comas. El stock se verifica por separado en Operaciones.
                   </p>
                 </div>
 
@@ -3234,7 +3109,7 @@ Logística / Despacho: +${calcShippingPercent}%
                     type="button"
                     onClick={() =>
                       setBulkCsvText(
-                        `SKIN1004 Centella Toner 210ml, Cosmética Coreana, 36000, 27000, 6, 25, Tónico calmante con centella pura de Madagascar\nMedicube Zero Pore Pad 2.0, Cosmética Coreana, 42000, 31500, 6, 30, Discos exfoliantes de doble textura para poros\nWadfow Rotomartillo 800W, Herramientas & Equipamiento, 65000, 48000, 3, 20, Rotomartillo electro-neumático profesional SDS Plus\nTotal Tools Sierra Circular 1400W, Herramientas & Equipamiento, 88000, 69000, 2, 15, Sierra circular industrial 185mm 1400W`
+                        `Producto de ejemplo A, ${mainCategories[0]?.name ?? "Categoría existente"}, 36000, 27000, 2, "Descripción con detalle, presentación y uso"\nProducto de ejemplo B, ${mainCategories[1]?.name ?? mainCategories[0]?.name ?? "Categoría existente"}, 42000, 31500, 1, Descripción del segundo producto`
                       )
                     }
                     className="text-xs text-sky-600 hover:text-sky-700 font-semibold cursor-pointer underline"
@@ -3396,6 +3271,6 @@ Logística / Despacho: +${calcShippingPercent}%
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

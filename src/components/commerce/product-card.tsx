@@ -1,11 +1,11 @@
 "use client";
-import { isVerifiedStock } from "@/lib/commerce-policy";
+import { isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, PackageCheck, ShoppingCart } from "lucide-react";
-import { formatCurrency, formatPaymentMethod } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import type { Product, ProductChannel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -35,28 +35,28 @@ export function ProductCard({
   const shippingInfo = getProductShippingTimeInfo(product);
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white hover:border-zinc-300 hover:shadow-lg transition-all duration-300">
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-lg">
       <div className="relative">
       <Link
         href={`/producto/${product.slug}`}
-        className="relative aspect-square overflow-hidden bg-white p-4 sm:p-5 cursor-pointer block border-b border-zinc-100"
+        className="relative block aspect-[4/3] cursor-pointer overflow-hidden border-b border-zinc-100 bg-slate-50 p-3 sm:aspect-square sm:p-5"
       >
         <div className="relative h-full w-full">
           <Image
             alt={product.title}
-            className="object-contain transition-transform duration-300 group-hover:scale-105"
+            className="object-contain transition-transform duration-150 group-hover:scale-105"
             fill
-            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, 50vw"
             src={imageSrc}
             onError={() => setImageSrc("/placeholder-product.svg")}
-            quality={90}
+            quality={75}
           />
         </div>
-        {product.brand && <span className="absolute left-3 top-3 rounded-lg bg-zinc-950/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">{product.brand}</span>}
+        {product.brand && <span className="absolute left-2 top-2 max-w-[65%] truncate rounded-lg bg-white/95 px-2 py-1 text-[10px] font-bold text-slate-800 shadow-sm sm:left-3 sm:top-3">{product.brand}</span>}
       </Link>
         <button
           aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-          className={`absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 shadow-xs backdrop-blur transition hover:scale-110 active:scale-95 ${
+          className={`absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 shadow-xs transition-transform duration-150 hover:scale-105 active:scale-95 sm:right-3 sm:top-3 ${
             favorite ? "text-red-500" : "text-zinc-500 hover:text-red-500"
           }`}
           onClick={(e) => {
@@ -70,34 +70,22 @@ export function ProductCard({
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-sky-700 truncate">
-            <PackageCheck className="h-4 w-4 shrink-0" />
-            <span className="truncate">{product.categoryName}</span>
-          </div>
-          <span
-            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${shippingInfo.badgeClass}`}
-            title={shippingInfo.shippingTimeDescription}
-          >
-            {shippingInfo.isImmediate ? "Stock en Tandil" : "Consultar"}
-          </span>
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-sky-700 sm:text-xs">
+          <PackageCheck className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate" title={product.categoryName}>{product.categoryName}</span>
         </div>
         <Link href={`/producto/${product.slug}`}>
-          <h3 className="mt-2 text-base font-semibold text-zinc-950 hover:text-sky-600 transition-colors hover:underline">
+          <h3 className="mt-2 line-clamp-3 min-h-15 text-sm font-semibold leading-5 text-zinc-950 transition-colors hover:text-sky-600 sm:line-clamp-2 sm:min-h-12 sm:text-base sm:leading-6">
             {product.title}
           </h3>
         </Link>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600">
-          {product.description}
-        </p>
-
-        <div className="mt-4 flex items-end justify-between gap-3">
+        <div className="mt-auto pt-3">
           <div>
-            <p className="text-xs text-zinc-500">
+            <p className="text-[11px] text-zinc-500 sm:text-xs">
               {channel === "wholesale" ? "Precio mayorista" : "Precio minorista"}
             </p>
-            <p className="text-xl font-bold text-zinc-950">
+            <p className="text-lg font-bold tabular-nums text-zinc-950 sm:text-xl">
               {formatCurrency(price)}
             </p>
 
@@ -107,25 +95,19 @@ export function ProductCard({
               </p>
             ) : null}
           </div>
-          <p className="text-xs text-zinc-500">{isVerifiedStock(product) ? "Disponible" : "A confirmar"}</p>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {product.paymentMethods.slice(0, 3).map((method) => (
-            <span
-              className="rounded-md bg-zinc-105 px-2 py-1 text-xs text-zinc-600"
-              key={method}
-            >
-              {formatPaymentMethod(method)}
-            </span>
-          ))}
+          <span
+            className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${shippingInfo.badgeClass}`}
+            title={shippingInfo.shippingTimeDescription}
+          >
+            {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Disponible · entrega a coordinar" : "Disponibilidad a confirmar"}
+          </span>
         </div>
 
         {cartItem ? (
-          <div className="mt-4 flex items-center justify-between border border-zinc-200 rounded-lg p-1 h-10">
+          <div className="mt-3 flex h-12 items-center justify-between rounded-lg border border-zinc-200 sm:mt-4">
             <button
               aria-label="Restar unidad"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-650 hover:bg-zinc-100 cursor-pointer text-sm font-semibold"
+              className="inline-flex size-11 items-center justify-center rounded-md text-zinc-650 hover:bg-zinc-100 cursor-pointer text-sm font-semibold"
               onClick={() => {
                 if (channel === "wholesale" && cartItem.quantity <= product.wholesaleMinQuantity) {
                   updateQuantity(product.id, channel, 0); // remove from cart
@@ -140,22 +122,23 @@ export function ProductCard({
             <span className="text-sm font-bold text-zinc-950">{cartItem.quantity}</span>
             <button
               aria-label="Sumar unidad"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-650 hover:bg-zinc-100 cursor-pointer text-sm font-semibold"
+              disabled={cartItem.quantity >= purchasableQuantity(product)}
+              className="inline-flex size-11 items-center justify-center rounded-md text-zinc-650 hover:bg-zinc-100 cursor-pointer text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => updateQuantity(product.id, channel, cartItem.quantity + 1)}
               type="button"
             >
               +
             </button>
           </div>
-        ) : !isVerifiedStock(product) ? <Link href={`/producto/${product.slug}`} className="mt-4 rounded-xl bg-zinc-950 p-3 text-center text-sm font-semibold text-white">Consultar disponibilidad</Link> : (
+        ) : !isVerifiedStock(product) ? <Link href={`/producto/${product.slug}`} className="mt-3 rounded-xl bg-zinc-950 p-2.5 text-center text-xs font-semibold text-white sm:mt-4 sm:p-3 sm:text-sm">Ver disponibilidad</Link> : (
           <Button
             disabled={!isVerifiedStock(product)}
-            className="mt-4 w-full cursor-pointer"
+            className="mt-3 w-full cursor-pointer sm:mt-4"
             icon={<ShoppingCart className="h-4 w-4" />}
             onClick={() => addToCart(product, channel, addQuantity)}
             type="button"
           >
-            {isVerifiedStock(product) ? "Agregar" : "Ver disponibilidad en la ficha"}
+            Agregar
           </Button>
         )}
       </div>

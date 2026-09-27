@@ -1,9 +1,9 @@
 export const siteConfig = {
-  brandName: "MYA Importaciones",
-  shortName: "MYA",
-  tagline: "Belleza y herramientas desde Tandil",
+  brandName: "MyA importaciones",
+  shortName: "MyA",
+  tagline: "Desde Tandil a todo el país",
   description:
-    "Tienda oficial de MYA Importaciones en Argentina. Cosmética Coreana (K-Beauty), herramientas industriales Total y Wadfow con envíos a todo el país.",
+    "Tienda oficial de MyA importaciones en Argentina. Cosmética Coreana (K-Beauty), herramientas industriales Total y Wadfow con envíos a todo el país.",
   email: "maximocalamante14@gmail.com",
   phone: "+54 9 249 463-8919",
   whatsappNumber: "5492494638919",

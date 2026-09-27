@@ -29,9 +29,14 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
   }, [cart.length, cartTotal]);
   const refreshQuote = () => startTransition(async () => {
     setError("");
-    const response = await quoteOrderAction(input);
-    if (response.ok) { setQuote(response.quote); setQuotedKey(key); if (!requestId.current || quotedKey !== key) requestId.current = crypto.randomUUID(); }
-    else { setQuote(null); setError(response.error); }
+    setQuote(null);
+    try {
+      const response = await quoteOrderAction(input);
+      if (response.ok) { setQuote(response.quote); setQuotedKey(key); if (!requestId.current || quotedKey !== key) requestId.current = crypto.randomUUID(); }
+      else setError(response.error);
+    } catch {
+      setError("No pudimos calcular el total. Revisá tu conexión e intentá nuevamente.");
+    }
   });
   const field = "mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-950";
   if (result) return <section className="mx-auto max-w-2xl space-y-5 px-4 py-12">
@@ -44,8 +49,17 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
   </section>;
   return <section className="mx-auto max-w-6xl px-4 py-10"><h1 className="text-3xl font-bold">Finalizar compra</h1><p className="mt-2 text-slate-600">Revisá entrega y total antes de confirmar. La compra es minorista.</p>
     {!checkoutEnabled && <div role="status" className="my-5 rounded-xl bg-amber-50 p-4">La compra online está en preparación. <a className="underline" href={getWhatsAppUrl("Hola MYA! Quisiera consultar disponibilidad y entrega de un producto.")} target="_blank" rel="noopener noreferrer">Consultanos por WhatsApp</a> antes de realizar un pago.</div>}
-    {cart.length > 0 && <a className="mt-4 inline-block text-sky-700 underline" target="_blank" rel="noopener noreferrer" href={getWhatsAppUrl(`Hola MYA, quisiera confirmar el envío a ${postalCode || "mi destino"} de: ${cart.map(line => `${line.quantity} x ${line.product.title}`).join("; ")}.`)}>Confirmar envío de este carrito por WhatsApp</a>}
-    {!cart.length ? <p className="mt-8">Tu carrito está vacío. <Link href="/catalogo" className="text-sky-700 underline">Explorar productos</Link></p> :
+    {checkoutEnabled && cart.length > 0 && <a className="mt-4 inline-block text-sky-700 underline" target="_blank" rel="noopener noreferrer" href={getWhatsAppUrl(`Hola MYA, quisiera confirmar el envío a ${postalCode || "mi destino"} de: ${cart.map(line => `${line.quantity} x ${line.product.title}`).join("; ")}.`)}>Confirmar envío de este carrito por WhatsApp</a>}
+    {!cart.length ? <p className="mt-8">Tu carrito está vacío. <Link href="/catalogo" className="text-sky-700 underline">Explorar productos</Link></p> : !checkoutEnabled ?
+    <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
+        <h2 className="text-xl font-bold text-zinc-950">Coordiná tu compra</h2>
+        <p className="mt-2 text-sm leading-6 text-zinc-600">Confirmamos disponibilidad, costo y plazo de entrega según tu destino antes de indicarte cómo pagar.</p>
+        <a className="mt-6 block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700" target="_blank" rel="noopener noreferrer" href={getWhatsAppUrl(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}; entrega a cotizar.`)}>Consultar este carrito por WhatsApp</a>
+        <Link href="/catalogo" className="mt-4 inline-block text-sm font-semibold text-sky-700 underline underline-offset-2">Seguir viendo productos</Link>
+      </div>
+      <aside className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7"><h2 className="text-xl font-bold">Resumen del carrito</h2><div className="mt-4 space-y-4">{cart.map(l => <p key={`${l.product.id}-${l.channel}`} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}<strong className="mt-1 block text-zinc-950">{formatCurrency(l.quantity * (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice))}</strong></p>)}</div><p className="mt-4 flex justify-between font-bold"><span>Subtotal de referencia</span><span>{formatCurrency(cartTotal)}</span></p><p className="mt-2 text-xs text-zinc-500">Entrega y precio final sujetos a confirmación.</p></aside>
+    </div> :
     <form className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_380px]" onSubmit={e => {
       e.preventDefault(); if (!validQuote || !checkoutEnabled || pending) return;
       const form = new FormData(e.currentTarget);

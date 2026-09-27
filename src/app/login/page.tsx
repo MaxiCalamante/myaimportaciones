@@ -4,7 +4,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export const metadata = {
-  title: "Iniciar Sesión o Registrarse | MYA Importaciones",
+  title: "Ingresar",
 };
 
 export default async function LoginPage({
@@ -22,6 +22,7 @@ export default async function LoginPage({
       next={next}
       signedIn={Boolean(auth.profile)}
       supabaseReady={hasSupabaseConfig()}
+      mode="signin"
     />
   );
 }

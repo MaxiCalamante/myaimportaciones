@@ -5,7 +5,7 @@ import { createCommerceService } from "@/lib/supabase/service";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { calculateShipping } from "@/lib/shipping";
 import { priceOrder, type PricedItem } from "@/lib/order-pricing";
-import { createMercadoPagoPreference } from "@/lib/mercadopago";
+import { createMercadoPagoPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 export interface CheckoutInput {
   lines: { productId: string; quantity: number; channel: "retail" | "wholesale" }[];
   paymentMethod: "transferencia" | "mercado_pago" | "efectivo";
@@ -64,7 +64,7 @@ export async function createOrderAction(input: OrderInput) {
     if (typeof input[key] !== "string" || input[key].length > max) throw new Error("Revisá tus datos de contacto.");
   }
   if (input.name.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.phone.replace(/\D/g, "").length < 8) throw new Error("Completá nombre, email y teléfono válidos.");
-  if (input.paymentMethod === "mercado_pago" && !((process.env.MERCADOPAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN) && process.env.MERCADOPAGO_WEBHOOK_SECRET && process.env.MERCADOPAGO_COLLECTOR_ID)) throw new Error("Mercado Pago no está disponible. Elegí otro medio de pago.");
+  if (input.paymentMethod === "mercado_pago" && !isMercadoPagoConfigured()) throw new Error("Mercado Pago no está disponible. Elegí otro medio de pago.");
   if (process.env.COMMERCE_CHECKOUT_ENABLED !== "true") throw new Error("Las compras online están en preparación.");
   const session = await createServerSupabaseClient();
   const { data: { user } } = await session.auth.getUser();

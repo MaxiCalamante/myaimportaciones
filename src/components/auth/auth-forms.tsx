@@ -1,209 +1,76 @@
 "use client";
 
-import { LogIn, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Eye, EyeOff, LockKeyhole, ShoppingBag, UserRound } from "lucide-react";
 import { useState, useTransition } from "react";
 import { signInAction, signOutAction, signUpAction } from "@/app/login/actions";
 
-export function AuthForms({
-  next,
-  supabaseReady,
-  signedIn,
-  confirmationError = false,
-}: {
+type AuthMode = "signin" | "signup";
+
+export function AuthForms({ next, supabaseReady, signedIn, confirmationError = false, mode }: {
   next: string;
   supabaseReady: boolean;
   signedIn: boolean;
   confirmationError?: boolean;
+  mode: AuthMode;
 }) {
-  const [isSignInPending, startSignInTransition] = useTransition();
-  const [isSignUpPending, startSignUpTransition] = useTransition();
-  
-  const [signInError, setSignInError] = useState<string | null>(confirmationError ? "El enlace de confirmación no es válido o venció. Solicitá uno nuevo o ingresá si ya confirmaste tu email." : null);
-  const [signUpError, setSignUpError] = useState<string | null>(null);
-  const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(confirmationError ? "El enlace de confirmación no es válido o venció. Revisá tu email o intentá ingresar." : null);
+  const [confirmation, setConfirmation] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const isRegister = mode === "signup";
+  const nextQuery = next === "/cuenta" ? "" : `?next=${encodeURIComponent(next)}`;
 
-  const handleSignIn = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    setSignInError(null);
-
-    startSignInTransition(async () => {
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setError(null);
+    setConfirmation(false);
+    if (isRegister && form.get("password") !== form.get("confirm_password")) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+    startTransition(async () => {
       try {
-        const result = await signInAction(formData);
-        if (result.error) setSignInError(result.error);
+        const result = isRegister ? await signUpAction(form) : await signInAction(form);
+        if (result.error) setError(result.error);
         else if (result.redirectTo) window.location.assign(result.redirectTo);
-      } catch (err: unknown) {
-        if ((err instanceof Error ? err.message : "Error inesperado") === "NEXT_REDIRECT" || (err instanceof Error && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT"))) {
-          // Success (Next.js redirect)
-          return;
-        }
-        setSignInError((err instanceof Error ? err.message : "Error inesperado") || "Error al iniciar sesión.");
+        else if ("confirmation" in result && result.confirmation) setConfirmation(true);
+      } catch {
+        setError("No pudimos completar la solicitud. Intentá nuevamente.");
       }
     });
   };
 
-  const handleSignUp = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    setSignUpError(null);
-    setSignUpSuccess(false);
+  return <main className="min-h-[calc(100dvh-8rem)] bg-gradient-to-b from-sky-50/80 via-white to-white px-4 py-8 sm:px-6 sm:py-14">
+    <div className="mx-auto grid max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-lg lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="hidden bg-sky-950 p-9 text-white lg:flex lg:flex-col lg:justify-between">
+        <div><span className="inline-flex rounded-full border border-sky-300/30 bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-sky-100">MYA Importaciones</span><p className="mt-10 text-4xl font-bold leading-tight">Tu cuenta, tus compras, todo en un lugar.</p><p className="mt-4 text-sky-100/80">Guardá favoritos, consultá el estado de tus pedidos y retomá tu carrito cuando quieras.</p></div>
+        <div className="grid gap-3 text-sm text-sky-100"><p className="flex items-center gap-3"><ShoppingBag className="h-5 w-5 text-amber-300" /> Seguí tus pedidos desde tu cuenta</p><p className="flex items-center gap-3"><LockKeyhole className="h-5 w-5 text-amber-300" /> Tus datos se usan para gestionar tus compras</p></div>
+      </div>
+      <section className="p-5 sm:p-10 lg:p-12">
+        <p className="text-xs font-bold uppercase tracking-widest text-sky-700">Cuenta MYA</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">{signedIn ? "Ya ingresaste" : isRegister ? "Crear cuenta" : "Ingresar"}</h1>
+        <p className="mt-2 text-sm text-zinc-600">{signedIn ? "Podés continuar con tu cuenta o cerrar sesión." : isRegister ? "Creá tu cuenta para seguir tus compras y guardar favoritos." : "Ingresá para ver tus pedidos y favoritos."}</p>
+        <nav aria-label="Acceso a la cuenta" className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 text-sm font-semibold">
+          <Link href={`/login${nextQuery}`} aria-current={!isRegister ? "page" : undefined} className={`rounded-lg px-3 py-3 text-center ${!isRegister ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-600 hover:text-zinc-950"}`}>Ingresar</Link>
+          <Link href={`/register${nextQuery}`} aria-current={isRegister ? "page" : undefined} className={`rounded-lg px-3 py-3 text-center ${isRegister ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-600 hover:text-zinc-950"}`}>Crear cuenta</Link>
+        </nav>
 
-    startSignUpTransition(async () => {
-      try {
-        const result = await signUpAction(formData);
-        if (result.error) setSignUpError(result.error);
-        else if (result.redirectTo) window.location.assign(result.redirectTo);
-        else setSignUpSuccess(true);
-      } catch (err: unknown) {
-        if ((err instanceof Error ? err.message : "Error inesperado") === "NEXT_REDIRECT" || (err instanceof Error && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT"))) {
-          // Success (Next.js redirect)
-          return;
-        }
-        setSignUpError((err instanceof Error ? err.message : "Error inesperado") || "Error al registrar la cuenta.");
-      }
-    });
-  };
-
-  return (
-    <div className="mx-auto grid max-w-5xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
-      {/* Sección Ingresar */}
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <LogIn className="h-5 w-5 text-emerald-700" />
-          <h1 className="text-2xl font-bold text-zinc-950">Ingresar</h1>
-        </div>
-        
-        <form onSubmit={handleSignIn} className="mt-6 grid gap-4">
+        {signedIn ? <div className="mt-7 space-y-4"><Link href={next} className="block rounded-xl bg-sky-700 px-4 py-3 text-center font-bold text-white hover:bg-sky-800">Continuar</Link><form action={signOutAction}><button type="submit" className="w-full rounded-xl border border-zinc-300 px-4 py-3 font-semibold text-zinc-700">Cerrar sesión</button></form></div> : <form onSubmit={submit} className="mt-7 space-y-4">
           <input name="next" type="hidden" value={next} />
-          
-          {signInError && (
-            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
-              {signInError}
-            </div>
-          )}
-
-          <label className="grid gap-2 text-sm font-medium text-zinc-700">
-            Email
-            <input
-              className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              autoComplete="email"
-              name="email"
-              required
-              type="email"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium text-zinc-700">
-            Contraseña
-            <input
-              className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              autoComplete="current-password"
-              name="password"
-              required
-              type="password"
-            />
-          </label>
-          
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer transition-colors"
-            disabled={!supabaseReady || isSignInPending}
-            type="submit"
-          >
-            {isSignInPending ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <LogIn className="h-4 w-4" />
-            )}
-            {isSignInPending ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
-
-        {signedIn ? (
-          <form action={signOutAction} className="mt-4">
-            <button
-              className="text-sm font-semibold text-zinc-650 hover:text-zinc-950 cursor-pointer"
-              type="submit"
-            >
-              Cerrar sesión
-            </button>
-          </form>
-        ) : null}
-      </section>
-
-      {/* Sección Crear Cuenta */}
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5 text-emerald-700" />
-          <h2 className="text-2xl font-bold text-zinc-950">Crear cuenta</h2>
-        </div>
-        
-        <form onSubmit={handleSignUp} className="mt-6 grid gap-4">
-          <input name="next" type="hidden" value={next} />
-
-          {signUpError && (
-            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
-              {signUpError}
-            </div>
-          )}
-
-          {signUpSuccess && (
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
-              Revisá tu email para confirmar la cuenta. Si ya estabas registrado, ingresá con tu contraseña.
-            </div>
-          )}
-
-          <label className="grid gap-2 text-sm font-medium text-zinc-700">
-            Nombre
-            <input
-              className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              autoComplete="name"
-              minLength={2}
-              name="full_name"
-              required
-            />
-          </label>
-          
-          <label className="grid gap-2 text-sm font-medium text-zinc-700">
-            Email
-            <input
-              className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              autoComplete="email"
-              name="email"
-              required
-              type="email"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium text-zinc-700">
-            Contraseña
-            <input
-              className="h-11 rounded-lg border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-              autoComplete="new-password"
-              minLength={8}
-              name="password"
-              required
-              type="password"
-            />
-          </label>
-          
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 cursor-pointer transition-colors"
-            disabled={!supabaseReady || isSignUpPending}
-            type="submit"
-          >
-            {isSignUpPending ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <UserPlus className="h-4 w-4" />
-            )}
-            {isSignUpPending ? "Registrando..." : "Registrarme"}
-          </button>
-        </form>
-        
-        {!supabaseReady ? (
-          <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-            Carga las variables de Supabase para activar login, registro y roles.
-          </p>
-        ) : null}
+          {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+          {confirmation && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Revisá tu email para confirmar la cuenta. Si ya estabas registrado, ingresá con tu contraseña.</p>}
+          {isRegister && <label className="block text-sm font-semibold text-zinc-700">Nombre y apellido<input name="full_name" autoComplete="name" minLength={2} maxLength={120} required className="mt-1.5 h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 font-normal outline-none focus:border-sky-600" /></label>}
+          <label className="block text-sm font-semibold text-zinc-700">Email<input name="email" type="email" autoComplete="email" maxLength={254} required className="mt-1.5 h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 font-normal outline-none focus:border-sky-600" /></label>
+          <label className="block text-sm font-semibold text-zinc-700">Contraseña<span className="relative mt-1.5 block"><input name="password" type={showPassword ? "text" : "password"} autoComplete={isRegister ? "new-password" : "current-password"} minLength={isRegister ? 8 : undefined} required className="h-12 w-full rounded-xl border border-zinc-300 bg-white pl-3 pr-12 font-normal outline-none focus:border-sky-600" /><button type="button" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 grid w-12 place-items-center text-zinc-500">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></span></label>
+          {isRegister && <><label className="block text-sm font-semibold text-zinc-700">Repetir contraseña<span className="relative mt-1.5 block"><input name="confirm_password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" minLength={8} required className="h-12 w-full rounded-xl border border-zinc-300 bg-white pl-3 pr-12 font-normal outline-none focus:border-sky-600" /><button type="button" aria-label={showConfirmPassword ? "Ocultar contraseña repetida" : "Mostrar contraseña repetida"} onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 grid w-12 place-items-center text-zinc-500">{showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></span></label><p className="text-xs text-zinc-500">Usá al menos 8 caracteres. Te enviaremos un email para confirmar la cuenta.</p></>}
+          <button disabled={!supabaseReady || pending} type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 font-bold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50">{pending ? "Un momento…" : isRegister ? <><UserRound className="h-4 w-4" /> Crear cuenta</> : <><LockKeyhole className="h-4 w-4" /> Ingresar</>}</button>
+          {!supabaseReady && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">El acceso a cuentas no está disponible en este entorno.</p>}
+        </form>}
+        <p className="mt-6 text-center text-xs text-zinc-500">¿Solo querés explorar? <Link href="/catalogo" className="font-semibold text-sky-700 underline underline-offset-2">Ver catálogo</Link></p>
       </section>
     </div>
-  );
+  </main>;
 }

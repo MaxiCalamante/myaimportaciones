@@ -1,46 +1,97 @@
 import Link from "next/link";
+import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
 import { getStorefrontData, mapProduct } from "@/lib/storefront";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
-export const metadata = { title: "Catálogo minorista", description: "Belleza y herramientas. Consultá disponibilidad y condiciones de entrega." };
-export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ q?: string; category?: string; page?: string; sort?: string; brand?: string }> }) {
+import type { Product } from "@/lib/types";
+
+export const metadata = { title: "Catálogo minorista", description: "Encontrá productos por categoría, marca y precio. Consultá disponibilidad y entrega." };
+type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; min?: string; max?: string };
+const pageSize = 24;
+
+export default async function CatalogPage({ searchParams }: { searchParams: Promise<CatalogParams> }) {
   const params = await searchParams;
-  const q = (params.q ?? "").replace(/[%_]/g, "").trim().slice(0, 100);
+  const q = (params.q ?? "").replace(/[^\p{L}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " ").slice(0, 100);
+  const brand = (params.brand ?? "").trim().slice(0, 80);
+  const sort = ["price_asc", "price_desc", "name_asc"].includes(params.sort ?? "") ? params.sort! : "";
+  const minPrice = /^\d{1,12}$/.test(params.min ?? "") ? params.min! : "";
+  const maxPrice = /^\d{1,12}$/.test(params.max ?? "") ? params.max! : "";
   const page = Math.min(200, Math.max(1, Number.parseInt(params.page ?? "1") || 1));
   const { categories, products: fallback } = await getStorefrontData({ limit: 0 });
-  const category = categories.find(c => c.slug === params.category);
-  let products = fallback, count = 0, failed = false;
+  const visibleCategories = categories.filter(c => !c.wholesaleOnly);
+  const category = visibleCategories.find(c => c.slug === params.category);
+  const root = category?.parentId ? visibleCategories.find(c => c.id === category.parentId) : category;
+  const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
+  let products: Product[] = [], count = 0, failed = false;
   let brands: { brand: string; count: number }[] = [];
-  const brand = (params.brand ?? "").trim().slice(0, 80);
+
   if (hasSupabaseConfig()) {
     const db = await createServerSupabaseClient();
     const facets = await db.rpc("public_catalog_facets");
-    brands = facets.data?.brands ?? [];
-    const ids = category ? categories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id) : categories.filter(c => !c.wholesaleOnly).map(c => c.id);
-    let query = db.from("products").select("*, categories(name)", { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
-    if (brand) query = query.eq("brand", brand);
-    if (q) query = query.ilike("title", `%${q}%`);
-    query = params.sort === "price_asc" ? query.order("retail_price") : params.sort === "price_desc" ? query.order("retail_price", { ascending: false }) : query.order("is_featured", { ascending: false }).order("title");
-    const result = await query.order("id").range((page - 1) * 24, page * 24 - 1);
-    products = (result.data ?? []).map(p => mapProduct(p)); count = result.count ?? 0; failed = Boolean(result.error);
+    brands = (facets.data?.brands ?? []).filter((item: { brand?: string }) => item.brand);
+    const ids = category
+      ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id)
+      : visibleCategories.map(c => c.id);
+    if (ids.length) {
+      let query = db.from("products").select("*, categories(name)", { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
+      if (brand) query = query.eq("brand", brand);
+      if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`);
+      if (minPrice) query = query.gte("retail_price", Number(minPrice));
+      if (maxPrice) query = query.lte("retail_price", Number(maxPrice));
+      query = sort === "price_asc" ? query.order("retail_price") : sort === "price_desc" ? query.order("retail_price", { ascending: false }) : sort === "name_asc" ? query.order("title") : query.order("is_featured", { ascending: false }).order("title");
+      const result = await query.order("id").range((page - 1) * pageSize, page * pageSize - 1);
+      products = (result.data ?? []).map(p => mapProduct(p));
+      count = result.count ?? 0;
+      failed = Boolean(result.error);
+    }
+  } else {
+    const matching = fallback.filter(product => {
+      if (category && product.categoryId !== category.id && !visibleCategories.some(c => c.id === product.categoryId && c.parentId === category.id)) return false;
+      if (brand && product.brand !== brand) return false;
+      if (q && ![product.title, product.brand, product.model, product.sku, product.description].some(value => value?.toLocaleLowerCase("es").includes(q.toLocaleLowerCase("es")))) return false;
+      if (minPrice && product.retailPrice < Number(minPrice)) return false;
+      if (maxPrice && product.retailPrice > Number(maxPrice)) return false;
+      return true;
+    });
+    matching.sort((a, b) => sort === "price_asc" ? a.retailPrice - b.retailPrice : sort === "price_desc" ? b.retailPrice - a.retailPrice : sort === "name_asc" ? a.title.localeCompare(b.title, "es") : Number(b.featured) - Number(a.featured) || a.title.localeCompare(b.title, "es"));
+    count = matching.length;
+    products = matching.slice((page - 1) * pageSize, page * pageSize);
+    const brandCounts = new Map<string, number>();
+    fallback.forEach(product => { if (product.brand) brandCounts.set(product.brand, (brandCounts.get(product.brand) ?? 0) + 1); });
+    brands = [...brandCounts].map(([name, total]) => ({ brand: name, count: total })).sort((a, b) => a.brand.localeCompare(b.brand, "es"));
   }
-  const pages = Math.ceil(count / 24);
-  function pageUrl(n: number) { const query = new URLSearchParams({ q, brand, category: category?.slug ?? "", sort: params.sort ?? "", page: String(n) }); return `/catalogo?${query}`; }
-  return <div className="mx-auto max-w-7xl px-4 py-10">
-    {category?.parentId && <nav aria-label="Ubicación" className="mb-3 text-sm"><Link href="/catalogo" className="underline">Catálogo</Link> / <Link className="underline" href={`/catalogo?category=${categories.find(c => c.id === category.parentId)?.slug}`}>{categories.find(c => c.id === category.parentId)?.name}</Link> / {category.name}</nav>}
-    <h1 className="text-3xl font-bold">{category?.name ?? "Catálogo minorista"}</h1>
-    <p className="my-3 text-zinc-600">Precios en pesos argentinos. La disponibilidad se confirma en cada ficha.</p>
-    <form className="my-6 flex flex-wrap gap-3" action="/catalogo">
-      <input aria-label="Buscar productos" name="q" defaultValue={q} placeholder="Buscar producto o marca" className="min-w-0 flex-1 rounded-xl border p-3" />
-      <select aria-label="Categoría y subcategoría" name="category" defaultValue={category?.slug ?? ""} className="max-w-full rounded-xl border p-3"><option value="">Todas las categorías</option>{categories.filter(c => !c.wholesaleOnly && !c.parentId).map(root => <optgroup key={root.id} label={root.name}><option value={root.slug}>Todo en {root.name}</option>{categories.filter(c => c.parentId === root.id && !c.wholesaleOnly).sort((a,b) => a.name.localeCompare(b.name, "es")).map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</optgroup>)}</select>
-      <select aria-label="Marca" name="brand" defaultValue={brand} className="max-w-full rounded-xl border p-3"><option value="">Todas las marcas</option>{brands.map(b => <option key={b.brand} value={b.brand}>{b.brand} ({b.count})</option>)}</select>
-      <select aria-label="Ordenar" name="sort" defaultValue={params.sort ?? ""} className="rounded-xl border p-3"><option value="">Destacados</option><option value="price_asc">Menor precio</option><option value="price_desc">Mayor precio</option></select>
-      <button className="rounded-xl bg-zinc-950 px-5 py-3 text-white">Buscar</button>
-    </form>
-    <p className="mb-4 text-sm">{failed ? "No pudimos cargar el catálogo. Intentá nuevamente." : `${count} productos encontrados`}</p>
-    {!failed && !products.length && <p>Probá otra búsqueda o categoría.</p>}
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{products.map(p => <ProductCard key={p.id} product={p} />)}</div>
-    {pages > 1 && <nav aria-label="Páginas del catálogo" className="mt-8 flex justify-center gap-5">{page > 1 && <Link href={pageUrl(page - 1)}>Anterior</Link>}<span>Página {page} de {pages}</span>{page < pages && <Link href={pageUrl(page + 1)}>Siguiente</Link>}</nav>}
-  </div>;
+
+  const pages = Math.ceil(count / pageSize);
+  function catalogUrl(next: { category?: string; page?: number }) {
+    const query = new URLSearchParams();
+    if (q) query.set("q", q);
+    if (brand && next.category === category?.slug) query.set("brand", brand);
+    if (next.category) query.set("category", next.category);
+    if (sort) query.set("sort", sort);
+    if (minPrice) query.set("min", minPrice);
+    if (maxPrice) query.set("max", maxPrice);
+    if (next.page && next.page > 1) query.set("page", String(next.page));
+    return `/catalogo${query.size ? `?${query}` : ""}`;
+  }
+
+  return <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <nav aria-label="Ubicación" className="mb-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+      <Link href="/" className="hover:text-sky-700">Inicio</Link><span>/</span><Link href="/catalogo" className="hover:text-sky-700">Catálogo</Link>
+      {root && <><span>/</span><Link href={catalogUrl({ category: root.slug })} className="hover:text-sky-700">{root.name}</Link></>}
+      {category?.parentId && <><span>/</span><span className="font-semibold text-zinc-800">{category.name}</span></>}
+    </nav>
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-2 sm:mb-6 sm:gap-3">
+      <div><p className="hidden text-xs font-bold uppercase tracking-widest text-sky-700 sm:block">Explorá la tienda</p><h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:mt-1 sm:text-4xl">{category?.name ?? "Todos los productos"}</h1><p className="mt-2 hidden text-sm text-zinc-600 sm:block">Elegí un rubro y afiná tu búsqueda. Precios en pesos argentinos.</p></div>
+      <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-800">{count} {count === 1 ? "producto" : "productos"}</span>
+    </div>
+    <CatalogSearchControls key={JSON.stringify([category?.slug, q, brand, sort, minPrice, maxPrice])} categories={visibleCategories} category={category} brands={brands} query={q} brand={brand} sort={sort} minPrice={minPrice} maxPrice={maxPrice} />
+    <nav aria-label={root ? "Subcategorías" : "Categorías"} className="mt-4 flex gap-2 overflow-x-auto pb-2 sm:mt-6">
+      <Link href={catalogUrl({ category: root?.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${!category?.parentId ? "border-sky-700 bg-sky-700 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-sky-300"}`}>{root ? `Todo en ${root.name}` : "Todos los rubros"}</Link>
+      {(root ? [...subcategories].sort((a, b) => Number(b.id === category?.id) - Number(a.id === category?.id)) : visibleCategories.filter(c => !c.parentId)).map(item => <Link key={item.id} href={catalogUrl({ category: item.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${category?.id === item.id ? "border-sky-700 bg-sky-700 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-sky-300 hover:text-sky-800"}`}>{item.name}</Link>)}
+    </nav>
+    <div className="mt-5 flex items-center justify-between border-b border-zinc-200 pb-3 text-sm text-zinc-600"><span>{failed ? "No pudimos cargar el catálogo" : count ? `Mostrando ${Math.min((page - 1) * pageSize + 1, count)}–${Math.min(page * pageSize, count)} de ${count}` : "Sin resultados"}</span><span className="hidden sm:inline">Disponibilidad y entrega en cada producto</span></div>
+    {failed ? <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">No pudimos cargar los productos. Intentá nuevamente en unos minutos.</div> : products.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="mt-5 rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center"><h2 className="text-lg font-semibold">No encontramos productos con esos filtros</h2><p className="mt-2 text-sm text-zinc-600">Probá otra palabra, subcategoría o rango de precio.</p><Link href="/catalogo" className="mt-5 inline-flex rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white">Ver todo el catálogo</Link></div>}
+    {pages > 1 && <nav aria-label="Páginas del catálogo" className="mt-9 flex items-center justify-center gap-3 text-sm"><Link aria-disabled={page <= 1} className={`rounded-xl border px-4 py-2 ${page <= 1 ? "pointer-events-none opacity-40" : "bg-white hover:border-sky-400"}`} href={catalogUrl({ category: category?.slug, page: page - 1 })}>Anterior</Link><span className="px-2 font-semibold">Página {page} de {pages}</span><Link aria-disabled={page >= pages} className={`rounded-xl border px-4 py-2 ${page >= pages ? "pointer-events-none opacity-40" : "bg-white hover:border-sky-400"}`} href={catalogUrl({ category: category?.slug, page: page + 1 })}>Siguiente</Link></nav>}
+  </main>;
 }

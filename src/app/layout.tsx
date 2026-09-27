@@ -28,12 +28,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.appUrl),
   title: {
-    default: "MYA Importaciones | Cosmética Coreana y Herramientas Industriales",
-    template: "%s | MYA Importaciones",
+    default: "MyA importaciones | Cosmética Coreana y Herramientas Industriales",
+    template: "%s | MyA importaciones",
   },
   description: siteConfig.description,
   keywords: [
-    "MYA Importaciones",
+    "MyA importaciones",
     "Cosmética Coreana Argentina",
     "K-Beauty Argentina",
     "Skincare Coreano Original",
@@ -57,20 +57,20 @@ export const metadata: Metadata = {
     locale: "es_AR",
     url: siteConfig.appUrl,
     siteName: siteConfig.brandName,
-    title: "MYA Importaciones | Cosmética Coreana y Herramientas Industriales",
+    title: "MyA importaciones | Cosmética Coreana y Herramientas Industriales",
     description: siteConfig.description,
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 1200,
-        alt: "MYA Importaciones",
+        alt: "MyA importaciones",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MYA Importaciones | Importación Directa",
+    title: "MyA importaciones | Importación Directa",
     description: siteConfig.description,
     images: ["/og-image.png"],
   },
@@ -123,6 +123,7 @@ export default async function RootLayout({
   return (
     <html
       lang="es"
+      data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
@@ -140,14 +141,14 @@ export default async function RootLayout({
         <CommerceProvider>
           <div className="flex min-h-screen flex-col pb-16 md:pb-0">
             <SiteHeader initialCategories={categories} initialProducts={products} profile={profile} />
-            <div className="bg-zinc-100 px-4 py-2 text-center text-xs"><a href="/arrepentimiento" className="underline">Botón de arrepentimiento</a></div><main className="flex-1">{children}</main>
+            <main className="flex-1">{children}</main>
             <SiteFooter />
             <AnalyticsConsent />
           </div>
           <CartDrawer />
           <ProductDetailsModal />
           <WhatsAppFloatingButton />
-          <MobileBottomNav />
+          <MobileBottomNav signedIn={Boolean(profile)} />
           <Suspense fallback={null}>
             <MarketingScripts />
           </Suspense>

@@ -2,6 +2,7 @@
 
 import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ChevronDown,
   ChevronRight,
@@ -19,8 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
-import { siteConfig } from "@/lib/site";
+import { usePathname, useRouter } from "next/navigation";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import type { Category, Product } from "@/lib/types";
 import type { Profile } from "@/lib/auth";
@@ -36,6 +36,7 @@ export function SiteHeader({
   profile?: Profile | null;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isWholesale = pathname?.startsWith("/mayorista");
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -120,7 +121,14 @@ export function SiteHeader({
     return <LayoutGrid className={className} />;
   };
 
-  const brandName = isWholesale ? "MYA Mayorista" : "MYA Importaciones";
+  const brandName = isWholesale ? "MyA Mayorista" : "MyA importaciones";
+  const catalogPath = isWholesale ? "/mayorista" : "/catalogo";
+  const showSearchResults = () => {
+    if (!searchQuery.trim()) return;
+    router.push(`${catalogPath}?q=${encodeURIComponent(searchQuery.trim())}`);
+    setSearchQuery("");
+    setOpen(false);
+  };
 
   // Classes based on channel
   const headerClass = isWholesale
@@ -156,35 +164,27 @@ export function SiteHeader({
   ) : null;
 
   const iconButtonClass = isWholesale
-    ? "h-10 w-10 place-items-center rounded-xl text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors"
-    : "h-10 w-10 place-items-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors";
+    ? "h-9 w-9 shrink-0 place-items-center rounded-xl text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors sm:h-10 sm:w-10"
+    : "h-9 w-9 shrink-0 place-items-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors sm:h-10 sm:w-10";
 
   return (
     <header className={headerClass}>
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Link className="flex items-center gap-2.5 sm:gap-3 group shrink-0" href={isWholesale ? "/mayorista" : "/"}>
-          <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-xl bg-sky-50/80 p-0.5 shadow-xs ring-1 ring-sky-200/80 transition group-hover:scale-105">
-            <img
-              src="/logo.png"
-              alt="MYA Importaciones Logo"
-              className="h-full w-full object-contain rounded-lg"
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
+        <Link className="group flex shrink-0 items-center gap-1.5" href={isWholesale ? "/mayorista" : "/"} aria-label={brandName}>
+          <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200 transition group-hover:scale-105 sm:h-11 sm:w-20">
+            <Image
+              src="/mya-mark-white.png"
+              alt=""
+              width={80}
+              height={80}
+              className="absolute left-1/2 top-1/2 h-16 w-16 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain sm:h-20 sm:w-20"
             />
           </div>
-          <div className="flex flex-col">
-            <span className={`text-sm sm:text-base font-black tracking-tight leading-none ${
-              isWholesale ? "text-white" : "text-zinc-950"
-            }`}>
-              MYA <span className="font-semibold text-sky-600">Importaciones</span>
-            </span>
-            <span className={`text-[10px] font-medium tracking-wide mt-0.5 ${
-              isWholesale ? "text-amber-400 font-semibold uppercase text-[9px]" : "text-zinc-500"
-            }`}>
-              {isWholesale ? "Canal Mayorista Oficial" : "Belleza y herramientas"}
-            </span>
-          </div>
+          <span className={`text-[12px] font-bold tracking-tight sm:text-sm ${isWholesale ? "text-white" : "text-slate-800"}`}>importaciones</span>
+          {isWholesale && <span className="hidden rounded-full border border-amber-400/40 px-2 py-1 text-[10px] font-semibold text-amber-300 xl:block">Mayorista</span>}
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-1 lg:flex">
+        <nav className="ml-4 hidden items-center gap-1 xl:flex">
           <Link className={linkClass} href="/">
             Inicio
           </Link>
@@ -259,7 +259,7 @@ export function SiteHeader({
                             }`}
                           >
                             <Link
-                              href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
+                              href={`${catalogPath}?category=${category.slug}`}
                               onClick={() => setCategoriesMenuOpen(false)}
                               className="flex items-center gap-2.5 flex-1 min-w-0"
                             >
@@ -285,7 +285,7 @@ export function SiteHeader({
 
                     <div className={`mt-3 pt-3 border-t ${isWholesale ? "border-zinc-800" : "border-zinc-200/60"}`}>
                       <Link
-                        href={isWholesale ? "/mayorista" : "/"}
+                        href={catalogPath}
                         onClick={() => setCategoriesMenuOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 transition"
                       >
@@ -323,7 +323,7 @@ export function SiteHeader({
                             </p>
                           </div>
                           <Link
-                            href={`${isWholesale ? "/mayorista" : "/"}?category=${activeParentCategory.slug}`}
+                            href={`${catalogPath}?category=${activeParentCategory.slug}`}
                             onClick={() => setCategoriesMenuOpen(false)}
                             className={`group/btn inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-xs transition shrink-0 ${
                               isWholesale
@@ -341,7 +341,7 @@ export function SiteHeader({
                             {activeSubcategories.map((sub) => (
                               <Link
                                 key={sub.id}
-                                href={`${isWholesale ? "/mayorista" : "/"}?category=${sub.slug}`}
+                                href={`${catalogPath}?category=${sub.slug}`}
                                 onClick={() => setCategoriesMenuOpen(false)}
                                 className={`group/sub flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-all ${
                                   isWholesale
@@ -359,7 +359,7 @@ export function SiteHeader({
                           <div className={`py-10 text-center text-xs ${isWholesale ? "text-zinc-400" : "text-zinc-500"}`}>
                             <p>Todos los modelos de {activeParentCategory.name} se encuentran unificados en esta sección.</p>
                             <Link
-                              href={`${isWholesale ? "/mayorista" : "/"}?category=${activeParentCategory.slug}`}
+                              href={`${catalogPath}?category=${activeParentCategory.slug}`}
                               onClick={() => setCategoriesMenuOpen(false)}
                               className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-semibold rounded-xl transition"
                             >
@@ -377,18 +377,10 @@ export function SiteHeader({
           </div>
 
           <Link className={linkClass} href="/#ofertas">
-            Ofertas
+            Descubrí más
           </Link>
 
-          <Link className={linkClass} href="/seguimiento">
-            Seguimiento
-          </Link>
-
-          {profile && (
-            <Link className={linkClass} href="/cuenta">
-              Mis Pedidos
-            </Link>
-          )}
+          {profile ? <Link className={`${linkClass} whitespace-nowrap`} href="/cuenta">Mis pedidos</Link> : <Link className={linkClass} href="/seguimiento">Seguimiento</Link>}
 
           {toggleChannelLink}
         </nav>
@@ -408,6 +400,7 @@ export function SiteHeader({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") showSearchResults(); }}
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")} className="text-zinc-400 hover:text-zinc-650 cursor-pointer">
@@ -525,7 +518,7 @@ export function SiteHeader({
           </button>
           <button
             aria-label="Abrir menu"
-            className={`lg:hidden ${iconButtonClass}`}
+            className={`xl:hidden ${iconButtonClass}`}
             onClick={() => setOpen((value) => !value)}
             type="button"
           >
@@ -535,7 +528,7 @@ export function SiteHeader({
       </div>
 
       {open && (
-        <div className={`border-t px-4 py-3 lg:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-8 shadow-2xl ${
+        <div className={`border-t px-4 py-3 xl:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-8 shadow-2xl ${
           isWholesale ? "border-zinc-800 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-900"
         }`}>
           <div className="relative mb-3">
@@ -550,6 +543,7 @@ export function SiteHeader({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") showSearchResults(); }}
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery("")} className="text-zinc-500 hover:text-zinc-700 cursor-pointer">
@@ -620,10 +614,10 @@ export function SiteHeader({
               className={`rounded-lg px-3 py-2 text-sm font-medium ${
                 isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"
               }`}
-              href="/seguimiento"
+              href={profile ? "/cuenta" : "/seguimiento"}
               onClick={() => setOpen(false)}
             >
-              Seguimiento de Pedidos
+              {profile ? "Mis pedidos" : "Seguimiento de pedidos"}
             </Link>
 
             {/* Categorías en menú móvil: 4 Rubros Principales con subcategorías desplegables al tocar */}
@@ -634,7 +628,7 @@ export function SiteHeader({
                     Rubros Principales
                   </p>
                   <Link
-                    href={isWholesale ? "/mayorista" : "/"}
+                    href={catalogPath}
                     onClick={() => setOpen(false)}
                     className="text-[11px] font-bold text-sky-600 hover:text-sky-700"
                   >
@@ -695,7 +689,7 @@ export function SiteHeader({
                           </button>
                         ) : (
                           <Link
-                            href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
+                            href={`${catalogPath}?category=${category.slug}`}
                             onClick={() => setOpen(false)}
                             className="flex items-center justify-between p-3 text-left active:scale-[0.99] transition-transform"
                           >
@@ -722,7 +716,7 @@ export function SiteHeader({
                           }`}>
                             {/* Botón Ver todo el Rubro */}
                             <Link
-                              href={`${isWholesale ? "/mayorista" : "/"}?category=${category.slug}`}
+                              href={`${catalogPath}?category=${category.slug}`}
                               onClick={() => setOpen(false)}
                               className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold shadow-xs active:scale-[0.99] transition ${
                                 isWholesale ? "bg-white text-zinc-950" : "bg-zinc-950 text-white"
@@ -737,7 +731,7 @@ export function SiteHeader({
                               {subs.map((sub) => (
                                 <Link
                                   key={sub.id}
-                                  href={`${isWholesale ? "/mayorista" : "/"}?category=${sub.slug}`}
+                                  href={`${catalogPath}?category=${sub.slug}`}
                                   onClick={() => setOpen(false)}
                                   className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium border transition-colors ${
                                     isWholesale
@@ -759,18 +753,6 @@ export function SiteHeader({
               </div>
             )}
 
-            {profile && (
-              <Link
-                className={`rounded-lg px-3 py-2 text-sm font-medium ${
-                  isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"
-                }`}
-                href="/cuenta"
-                onClick={() => setOpen(false)}
-              >
-                Mis pedidos
-              </Link>
-            )}
-
             {profile?.role === "admin" && (
               <Link
                 className={`rounded-lg px-3 py-2 text-sm font-medium ${
@@ -790,7 +772,7 @@ export function SiteHeader({
               href="/#ofertas"
               onClick={() => setOpen(false)}
             >
-              Ofertas Especiales
+              Descubrí más productos
             </Link>
 
             {isWholesale ? (
