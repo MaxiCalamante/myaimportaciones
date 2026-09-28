@@ -2357,17 +2357,18 @@ Logística / Despacho: +${calcShippingPercent}%
 
       {/* MODAL: EDITAR PRODUCTO (Con Sticky Header/Footer y Scrollbar Fina - Resuelve overflow y invisibilidad de botón) */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-2 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl max-h-[92dvh] flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
             
             {/* Sticky Header */}
-            <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white flex-shrink-0 z-10">
-              <h3 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
-                <Edit className="h-5 w-5 text-emerald-600" /> Editar Publicación de Producto
+            <div className="flex items-center justify-between border-b border-zinc-200 p-4 sm:p-5 bg-white flex-shrink-0 z-10">
+              <h3 className="text-base sm:text-lg font-bold text-zinc-950 flex items-center gap-2 truncate">
+                <Edit className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span className="truncate">Editar Producto</span>
               </h3>
               <button
                 onClick={() => setEditingProduct(null)}
-                className="absolute right-4 top-4 rounded-lg p-2 text-zinc-400 hover:bg-zinc-150 hover:text-zinc-900 transition-colors cursor-pointer"
+                className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-150 hover:text-zinc-900 transition-colors cursor-pointer shrink-0"
                 type="button"
               >
                 <X className="h-5 w-5" />
@@ -2378,7 +2379,7 @@ Logística / Despacho: +${calcShippingPercent}%
             <form onSubmit={handleEditProductSubmit} className="flex-1 flex flex-col overflow-hidden" encType="multipart/form-data">
               
               {/* Scrollable Content Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin">
                 <input type="hidden" name="id" value={editingProduct.id} />
                 <input type="hidden" name="existing_image_url" value={editingProduct.imageUrl} />
 
@@ -2567,17 +2568,17 @@ Logística / Despacho: +${calcShippingPercent}%
               </div>
 
               {/* Sticky Footer - Always visible, corrected colors */}
-              <div className="flex justify-end gap-3 p-5 bg-zinc-50 border-t border-zinc-200 flex-shrink-0 z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2.5 p-4 sm:p-5 bg-zinc-50 border-t border-zinc-200 shrink-0 z-10">
                 <button
                   onClick={() => setEditingProduct(null)}
-                  className="px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer transition-colors"
+                  className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer transition-colors text-center"
                   type="button"
                   disabled={isPending}
                 >
                   Cancelar
                 </button>
                 <button
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-650 hover:bg-emerald-700 rounded-xl cursor-pointer transition-colors flex items-center gap-2 shadow-xs"
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2 shadow-xs text-center"
                   type="submit"
                   disabled={isPending}
                 >
@@ -2597,104 +2598,107 @@ Logística / Despacho: +${calcShippingPercent}%
 
       {/* MODAL: REGISTRAR NUEVO PROVEEDOR */}
       {isNewSupplierModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-zinc-200 bg-zinc-50">
-              <h3 className="text-lg font-extrabold text-zinc-950 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-emerald-600" /> Registrar Nuevo Proveedor Comercial
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-lg flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden max-h-[92dvh] animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-200 bg-zinc-50 shrink-0">
+              <h3 className="text-base sm:text-lg font-extrabold text-zinc-950 flex items-center gap-2 truncate">
+                <Building2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span className="truncate">Registrar Nuevo Proveedor</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsNewSupplierModalOpen(false)}
-                className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition cursor-pointer"
+                className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition cursor-pointer shrink-0"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewSupplier} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
-                  Nombre del Proveedor / Empresa *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Distribuidora Asunción Tools, Monalisa, etc."
-                  value={newSupName}
-                  onChange={(e) => setNewSupName(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium"
-                />
+            <form onSubmit={handleSaveNewSupplier} className="flex-1 flex flex-col overflow-hidden">
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                    Nombre del Proveedor / Empresa *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Distribuidora Asunción Tools, Monalisa, etc."
+                    value={newSupName}
+                    onChange={(e) => setNewSupName(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                    Rubro / Categoría Principal
+                  </label>
+                  <select
+                    value={newSupCategory}
+                    onChange={(e) => setNewSupCategory(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium bg-white cursor-pointer"
+                  >
+                    <option value="Herramientas">Herramientas & Maquinaria</option>
+                    <option value="Cosméticos">Cosméticos & K-Beauty</option>
+                    <option value="Tecnología">Smartphones & Tecnología</option>
+                    <option value="Calzado">Calzado & Indumentaria</option>
+                    <option value="General">Bazar & Varios</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                    Enlace Web / Catálogo Oficial
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={newSupUrl}
+                    onChange={(e) => setNewSupUrl(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                    Teléfono / WhatsApp de Contacto
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="+595 981 ... o +54 9 ..."
+                    value={newSupPhone}
+                    onChange={(e) => setNewSupPhone(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
+                    Notas o Condiciones (Mínimos de compra, plazos, fletes)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Ej: Descuento 10% llevando más de 5 bultos. Despacho por encomienda..."
+                    value={newSupNotes}
+                    onChange={(e) => setNewSupNotes(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-300 text-xs outline-none focus:border-emerald-600"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
-                  Rubro / Categoría Principal
-                </label>
-                <select
-                  value={newSupCategory}
-                  onChange={(e) => setNewSupCategory(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium bg-white cursor-pointer"
-                >
-                  <option value="Herramientas">Herramientas & Maquinaria</option>
-                  <option value="Cosméticos">Cosméticos & K-Beauty</option>
-                  <option value="Tecnología">Smartphones & Tecnología</option>
-                  <option value="Calzado">Calzado & Indumentaria</option>
-                  <option value="General">Bazar & Varios</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
-                  Enlace Web / Catálogo Oficial
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  value={newSupUrl}
-                  onChange={(e) => setNewSupUrl(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
-                  Teléfono / WhatsApp de Contacto
-                </label>
-                <input
-                  type="text"
-                  placeholder="+595 981 ... o +54 9 ..."
-                  value={newSupPhone}
-                  onChange={(e) => setNewSupPhone(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-zinc-300 text-sm outline-none focus:border-emerald-600 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-zinc-700 mb-1">
-                  Notas o Condiciones (Mínimos de compra, plazos, fletes)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Ej: Descuento 10% llevando más de 5 bultos. Despacho por encomienda..."
-                  value={newSupNotes}
-                  onChange={(e) => setNewSupNotes(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-zinc-300 text-xs outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2.5 p-4 sm:p-5 border-t border-zinc-100 bg-zinc-50 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsNewSupplierModalOpen(false)}
-                  className="px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-200 rounded-xl cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={!newSupName.trim()}
-                  className="px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition cursor-pointer disabled:opacity-50 text-center"
                 >
                   Guardar Proveedor
                 </button>

@@ -296,29 +296,29 @@ export function CreateProductModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 p-3 sm:p-5 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-white border border-zinc-200 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 p-2 sm:p-5 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl max-h-[92dvh] flex flex-col rounded-2xl sm:rounded-3xl bg-white border border-zinc-200 shadow-2xl overflow-hidden">
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 bg-gradient-to-r from-emerald-50/70 via-white to-zinc-50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
-              <PackagePlus className="h-6 w-6" />
+        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-r from-emerald-50/70 via-white to-zinc-50 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0">
+              <PackagePlus className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <h2 className="text-xl font-extrabold text-zinc-950 tracking-tight flex items-center gap-2">
-                Publicar Nuevo Producto
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-200">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-extrabold text-zinc-950 tracking-tight flex items-center gap-1.5 sm:gap-2 truncate">
+                <span className="truncate">Publicar Producto</span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-800 border border-emerald-200 shrink-0">
                   Control Total
                 </span>
               </h2>
-              <p className="text-xs text-zinc-500">
-                Carga completa con enlace a proveedor, rentabilidad y ficha técnica.
+              <p className="text-[11px] sm:text-xs text-zinc-500 truncate">
+                Enlace a mayorista, rentabilidad y ficha técnica.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer"
+            className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer shrink-0"
             type="button"
           >
             <X className="h-5 w-5" />
@@ -327,14 +327,14 @@ export function CreateProductModal({
 
         {/* ERROR ALERT */}
         {errorMessage && (
-          <div className="mx-6 mt-4 flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-800">
-            <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 sm:p-3.5 text-xs sm:text-sm text-red-800">
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-red-600" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* SECTION NAVIGATION PILLS */}
-        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-zinc-200 bg-zinc-50/70 px-6 py-2.5 scrollbar-none shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-zinc-200 bg-zinc-50/70 px-3 sm:px-6 py-2 sm:py-2.5 scrollbar-thin shrink-0">
           {[
             { id: "general", label: "1. Datos Básicos", icon: Layers },
             { id: "supplier", label: "2. Proveedor & Costo", icon: ExternalLink },
@@ -364,7 +364,7 @@ export function CreateProductModal({
 
         {/* FORM & SCROLLABLE BODY */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
             {/* ============================================================== */}
             {/* TAB 1: DATOS BÁSICOS */}
             {/* ============================================================== */}
@@ -1078,7 +1078,7 @@ export function CreateProductModal({
           </div>
 
           {/* STICKY FOOTER */}
-          <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50/90 px-6 py-4 shrink-0">
+          <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50/90 px-4 py-3 sm:px-6 sm:py-4 shrink-0">
             <div className="text-xs text-zinc-500 font-medium hidden sm:block">
               {title ? (
                 <span>
@@ -1089,28 +1089,28 @@ export function CreateProductModal({
               )}
             </div>
 
-            <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isPending}
-                className="rounded-xl px-5 py-2.5 text-xs font-bold text-zinc-600 hover:bg-zinc-200/70 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-initial rounded-xl px-4 py-2.5 text-xs font-bold text-zinc-600 hover:bg-zinc-200/70 transition-colors cursor-pointer text-center"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 sm:px-6 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-50 text-center"
               >
                 {isPending ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Publicando producto...
+                    Publicando...
                   </>
                 ) : (
                   <>
-                    <Check className="h-4 w-4" /> Publicar en Catálogo
+                    <Check className="h-4 w-4 shrink-0" /> Publicar en Catálogo
                   </>
                 )}
               </button>

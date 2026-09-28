@@ -121,26 +121,26 @@ export function CategoryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div className="relative w-full max-w-lg my-8 rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="relative w-full max-w-lg flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[92dvh]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white">
+        <div className="flex items-center justify-between border-b border-zinc-200 p-4 sm:p-5 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
               {isEditing ? <Edit className="h-5 w-5" /> : <FolderPlus className="h-5 w-5" />}
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-zinc-950">
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-lg font-bold text-zinc-950 truncate">
                 {isEditing ? "Editar Categoría" : "Nueva Categoría"}
               </h3>
-              <p className="text-xs text-zinc-500">
+              <p className="text-[11px] sm:text-xs text-zinc-500 truncate">
                 {isEditing ? "Modificá los datos del rubro." : "Creá un rubro o subcategoría para tu catálogo."}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition cursor-pointer"
+            className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition cursor-pointer shrink-0"
             type="button"
           >
             <X className="h-5 w-5" />
@@ -148,7 +148,8 @@ export function CategoryModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {/* Name & Slug preview */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700">
@@ -287,19 +288,21 @@ export function CategoryModal({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-zinc-100">
+          </div>
+
+          {/* Sticky Footer */}
+          <div className="flex items-center justify-end gap-2.5 p-4 sm:p-5 border-t border-zinc-100 bg-zinc-50 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 cursor-pointer"
+              className="rounded-xl border border-zinc-300 px-4 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 cursor-pointer transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer transition-colors"
             >
               {isPending ? (
                 "Guardando…"

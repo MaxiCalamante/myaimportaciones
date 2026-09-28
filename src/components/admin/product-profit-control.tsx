@@ -1410,19 +1410,20 @@ function FinancialControlModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div className="w-full max-w-3xl my-8 rounded-2xl bg-white p-6 shadow-2xl border border-zinc-200">
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-          <div>
-            <h2 className="text-xl font-bold text-zinc-950">Ajuste Integral de Costos & Ganancia</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">{product.title}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="w-full max-w-3xl flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden max-h-[92dvh]">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-100 bg-white shrink-0">
+          <div className="min-w-0 flex-1 pr-2">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-950 truncate">Ajuste Integral de Costos & Ganancia</h2>
+            <p className="text-xs text-zinc-500 mt-0.5 truncate">{product.title}</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 shrink-0 cursor-pointer">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* Section 1: Purchase and Currency */}
           <div>
             <div className="flex items-center justify-between border-b border-zinc-100 pb-1 mb-3">
@@ -1744,18 +1745,20 @@ function FinancialControlModal({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200">
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2.5 p-4 sm:p-5 border-t border-zinc-200 bg-zinc-50 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-300 px-5 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+              className="w-full sm:w-auto rounded-xl border border-zinc-300 px-5 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 transition-colors text-center cursor-pointer"
             >
               Cerrar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-zinc-800 disabled:opacity-50"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-950 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-zinc-800 disabled:opacity-50 transition-colors text-center cursor-pointer"
             >
               {isPending ? "Guardando…" : "Guardar Costos y Precio"}
             </button>

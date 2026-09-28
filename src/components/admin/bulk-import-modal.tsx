@@ -116,8 +116,8 @@ export function BulkImportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl my-8 flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="relative w-full max-w-4xl flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[92dvh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
@@ -243,8 +243,8 @@ export function BulkImportModal({
                   </span>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-zinc-200 max-h-56 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-auto rounded-xl border border-zinc-200 max-h-56 scrollbar-thin">
+                  <table className="w-full min-w-[620px] text-left text-xs">
                     <thead className="bg-zinc-100 text-zinc-600 font-bold sticky top-0 border-b border-zinc-200">
                       <tr>
                         <th className="p-2.5">Título</th>
@@ -293,28 +293,28 @@ export function BulkImportModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-5 bg-zinc-50 border-t border-zinc-200 shrink-0">
-            <span className="text-xs text-zinc-500">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 bg-zinc-50 border-t border-zinc-200 shrink-0">
+            <span className="text-xs text-zinc-500 text-center sm:text-left">
               {parsedProducts.length > 0 ? `${parsedProducts.length} productos detectados` : "Esperando archivo..."}
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer"
+                className="flex-1 sm:flex-initial px-4 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer transition-colors text-center"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isPending || parsedProducts.length === 0}
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-md transition cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-md transition cursor-pointer disabled:opacity-50 text-center"
               >
                 {isPending ? (
                   "Importando productos…"
                 ) : (
                   <>
-                    <CheckCircle2 className="h-4 w-4" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
                     Importar {parsedProducts.length} Productos
                   </>
                 )}
