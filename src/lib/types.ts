@@ -33,6 +33,10 @@ export interface Category {
 }
 
 export interface Product {
+  sourceUrl?: string | null;
+  supplierLastCheckedAt?: string | null;
+  supplierStockStatus?: string | null;
+  supplierLivePrice?: number | null;
   fulfillmentMode?: "own_stock" | "supplier";
   supplierAvailable?: boolean;
   active?: boolean;

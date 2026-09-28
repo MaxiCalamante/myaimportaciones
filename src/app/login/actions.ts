@@ -29,7 +29,7 @@ export async function signInAction(formData: FormData) {
     if (error.message === "Invalid login credentials") {
       return { error: "El email o la contraseña son incorrectos." };
     }
-    return { error: error.code === "email_not_confirmed" ? "Confirmá tu email antes de ingresar." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
+    return { error: error.code === "email_not_confirmed" ? "Tu cuenta todavía requiere una configuración de acceso. Contactanos por WhatsApp para ayudarte." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
   }
 
   return { redirectTo: next };
@@ -49,7 +49,6 @@ export async function signUpAction(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback?next=${encodeURIComponent(next)}`,
       data: {
         full_name: fullName,
         customer_tier: customerTier,
@@ -58,10 +57,10 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.code === "email_not_confirmed" ? "Confirmá tu email antes de ingresar." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
+    return { error: "No pudimos crear la cuenta. Revisá tus datos e intentá nuevamente." };
   }
 
-  return data.session ? { redirectTo: next } : { confirmation: true };
+  return data.session ? { redirectTo: next } : { error: "El registro inmediato todavía no está habilitado. Contactanos por WhatsApp para activar tu cuenta." };
 }
 
 export async function signOutAction() {

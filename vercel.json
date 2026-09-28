@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-supplier-stock",
+      "schedule": "0 */4 * * *"
+    }
+  ]
+}

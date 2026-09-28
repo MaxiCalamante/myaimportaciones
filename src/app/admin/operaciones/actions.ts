@@ -1,6 +1,7 @@
 "use server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 export async function updateWithdrawalAction(form: FormData) {
   const db = await createServerSupabaseClient();
   const { data: { user } } = await db.auth.getUser();
@@ -26,5 +27,6 @@ export async function verifyInventoryAction(form: FormData) {
   const specifications = Object.fromEntries(fields.map(k => [k, String(form.get(k) ?? "").trim().slice(0, 3000)]));
   const { error } = await db.rpc("verify_retail_inventory_v2", { product_id_input: String(form.get("product_id")), stock_input: stock, specifications_input: { ...specifications, peso_kg: String(weight) }, warranty_input: String(form.get("warranty") ?? "").slice(0, 3000) });
   if (error) throw new Error("No se pudo verificar el inventario. Revisá reservas activas y migración.");
+  invalidateAdminStorefrontCache();
   revalidatePath("/", "layout");
 }

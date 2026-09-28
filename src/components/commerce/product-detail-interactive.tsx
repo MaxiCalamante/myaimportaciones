@@ -12,7 +12,6 @@ import {
   ShoppingCart,
   Truck,
   Wallet,
-  Sparkles,
   Share2,
   Copy,
   Check,
@@ -143,7 +142,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         <div className="flex items-baseline justify-between">
           <div>
             <p className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">
-              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio del producto"}
+              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio con Mercado Pago"}
             </p>
             <div className="mt-1 flex items-baseline gap-3">
               <span className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
@@ -180,18 +179,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
         </div>
 
-        {/* 10% Transfer Discount Highlight */}
-        {false && channel === "retail" && (
-          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-xs text-emerald-900">
-            <span className="flex items-center gap-1.5 font-bold">
-              <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-              10% OFF en Transferencia / Efectivo:
-            </span>
-            <span className="font-black text-sm text-emerald-700">
-              {formatCurrency(Math.round(price * 0.90))}
-            </span>
-          </div>
-        )}
+        {channel === "retail" && <p className="text-xs text-emerald-800">Por transferencia puede haber un descuento adicional si los costos del producto lo permiten. El total exacto se calcula antes de confirmar el pedido.</p>}
 
         {/* Wholesale Reseller Profit Demonstration */}
         {channel === "wholesale" && product.retailPrice > product.wholesalePrice && (

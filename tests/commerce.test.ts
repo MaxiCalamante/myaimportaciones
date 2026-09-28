@@ -14,10 +14,11 @@ test("real purchase example and unprofitable market benchmark", () => {
   assert.equal(calculateResale({ ...i, ml: 60000 }).suggested, 54000);
   assert.equal(calculateResale({ ...i, feePercent: 10 }).floor, 34445);
 });
-test("promotions never stack and never consume cost floor", () => {
+test("transfer benefit adds to the best promotion without consuming the cost floor", () => {
   const quote = priceOrder([{ ...item, quantity: 3 }], "transferencia", "MYA5", 5200, "7000");
-  assert.equal(quote.discount, 16470); assert.equal(quote.total, 153430);
-  assert.equal(priceOrder([{ ...item, landedCost: 53000, variableCost: 0, minimumContribution: 0 }], "transferencia", "", 0, "7000").discount, 1900);
+  assert.equal(quote.discount, 18117); assert.equal(quote.total, 151783);
+  assert.equal(priceOrder([{ ...item, quantity: 3 }], "mercado_pago", "MYA5", 5200, "7000").total, 156724);
+  assert.equal(priceOrder([{ ...item, landedCost: 53000, variableCost: 0, minimumContribution: 0 }], "transferencia", "", 0, "7000").discount, 1647);
   assert.equal(priceOrder([{ ...item, landedCost: null }], "transferencia", "MYA5", 0, "7000").discount, 0);
 });
 test("negative and fractional quantities and below-cost price are rejected", () => {

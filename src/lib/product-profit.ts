@@ -1,8 +1,22 @@
 export interface ProductCost {
-  product_id: string; origin_cost: number; currency: string; exchange_rate: number;
-  freight_per_unit: number; other_landed_cost: number; variable_cost: number;
-  payment_fee_percent: number; minimum_contribution: number;
-  expenses_confirmed: boolean; source_document?: string | null; source_page?: number | null;
+  product_id: string;
+  origin_cost: number;
+  currency: string;
+  exchange_rate: number;
+  freight_per_unit: number;
+  other_landed_cost: number;
+  variable_cost: number;
+  payment_fee_percent: number;
+  minimum_contribution: number;
+  expenses_confirmed: boolean;
+  source_document?: string | null;
+  source_page?: number | null;
+  supplier_url?: string | null;
+  ml_price?: number | null;
+  ml_url?: string | null;
+  ml_checked_at?: string | null;
+  verified_at?: string | null;
+  updated_at?: string | null;
 }
 export function calculateProductProfit(sale: number, cost: ProductCost | null | undefined) {
   if (!cost || Number(cost.origin_cost) <= 0) return null;

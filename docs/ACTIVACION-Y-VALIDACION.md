@@ -1,5 +1,15 @@
 # Activación y validación
 
+## Registro y cobros — 28/09/2026
+
+- El registro de la aplicación ya entra directamente cuando Supabase devuelve una sesión. En el proyecto Supabase **Tienda Mayorista Minorista**, `Authentication > Sign In / Providers > Confirm email` quedó desactivado y la Site URL se corrigió de `http://localhost:3000` a `https://myaimportaciones.vercel.app` el 28/09/2026. Se verificó que ambos ajustes persisten tras recargar; las dos cuentas existentes ya tenían el email confirmado. Falta probar con una cuenta de ensayo nueva: registro, acceso inmediato, cierre, nuevo ingreso y sesión tras recargar.
+- El CVU `0000003100045616945389` y el WhatsApp `5492494638919` fueron confirmados por el dueño. La pantalla de transferencia muestra el CVU y abre WhatsApp con código e importe; el cliente adjunta manualmente el comprobante. Un comprobante recibido **no** acredita el pago: operaciones debe verificar el ingreso de fondos antes de marcar el pedido como pagado.
+- El precio de catálogo es el precio para Mercado Pago. La transferencia obtiene por defecto un 3% adicional (`TRANSFER_DISCOUNT_PERCENT`, limitado a 0–5%) sobre la mejor promoción, solo cuando los costos recientes y confirmados dejan ese margen. El servidor bloquea el pago si falta un costo confirmado y verificado en los últimos 30 días. Al 28/09/2026 hay 0 costos recientes confirmados entre 2.789 registros, por lo que todavía no hay productos habilitados para pago. Confirmar comisiones reales de Mercado Pago en `product_costs.payment_fee_percent` y los costos de envío antes de abrir cobros.
+- Para Mercado Pago faltan `MERCADOPAGO_ACCESS_TOKEN` de producción, `MERCADOPAGO_WEBHOOK_SECRET`, `MERCADOPAGO_COLLECTOR_ID` y `NEXT_PUBLIC_SITE_URL` HTTPS del dominio final. Los tres secretos deben cargarse solo del lado servidor en Vercel; `NEXT_PUBLIC_SITE_URL` es la URL pública. Configurar el webhook HTTPS `/api/mercadopago/webhook` para pagos; probar preferencia, pago aprobado/rechazado, firma, referencia, importe exacto y conciliación antes de activar `COMMERCE_CHECKOUT_ENABLED`.
+- En el proyecto Vercel `myaimportaciones` se observaron únicamente `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` para producción. Faltan la clave de servicio de Supabase y todas las variables de cobro y envío; la versión en producción sigue siendo el commit `0d2bde9` y no contiene estos cambios locales. El enlace local `.vercel/project.json` apunta a otro proyecto (`tienda-mayorista-minorista`); corregirlo antes de cualquier despliegue por CLI.
+- La sesión de Supabase no tiene vencimiento por inactividad ni plazo fijo; los tokens de acceso se renuevan (vigencia actual: 3.600 segundos). Las políticas de `favorites`, `orders` y `order_items` restringen al propietario mediante `auth.uid()`; los dos usuarios existentes tienen email confirmado. El asesor de seguridad muestra advertencias genéricas sobre funciones `SECURITY DEFINER` y protección contra contraseñas filtradas (esta última requiere plan Pro); no se modificaron esas opciones.
+- Para envíos desde proveedor faltan tarifas confirmadas por zona en `NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON` y pesos verificados; `COMMERCE_SHIPPING_ENABLED` sigue desactivado. La entrega sin tarifa permanece “A cotizar” y no acepta pagos.
+
 Los cambios son locales. No se aplicó la migración a Supabase ni se desplegó una versión pública.
 
 ## Orden de activación
@@ -64,3 +74,23 @@ Por instrucción expresa del dueño se aplicaron en producción `20260921134833_
 Verificación: tablas nuevas presentes, creación de pedidos restringida al servicio, inserts directos de clientes revocados, cron activo cada cinco minutos. Se conservaron 2 pedidos, 2.892 productos y la suma de stock de 107.654 (dato histórico, no conteo físico). Ningún producto se marcó verificado. Ejecución manual de vencimientos: 0 reservas liberadas, sin errores.
 
 El dueño realizará commit y push para publicar en Vercel. No se hizo commit, push ni despliegue desde esta tarea. La versión anterior del checkout puede resultar incompatible con los nuevos permisos hasta ese despliegue. La migración no configura credenciales de Vercel, no habilita compras y no reemplaza costos/stock/datos fiscales reales.
+
+## Control Profesional de Productos y Sincronización Mayorista — 28/09/2026
+
+Por requerimiento expreso del dueño se implementó el nuevo Control Profesional de Productos en `/admin`:
+1. **Centro de Control (`ProductControlCenter`)**:
+   - Tarjetas KPI en tiempo real: total de catálogo, publicaciones activas vs pausadas, productos en modo proveedor vs stock propio, productos disponibles vs pausados por falta de existencias en el mayorista.
+   - Búsqueda en tiempo real (por SKU, título, marca, modelo y etiquetas), filtros avanzados por estado en tienda, disponibilidad mayorista, modalidad de abastecimiento, categoría y marca, y selector de productos por página.
+   - Acciones masivas con selección múltiple: pausar en tienda, activar en tienda, habilitar en mayorista, pausar en mayorista y ajuste masivo de precios (+% o suma fija).
+   - Acciones individuales por fila: switch directo para pausar/activar en tienda (`is_active`), toggle directo de disponibilidad del mayorista (`supplier_available`), edición rápida de precios en 1 click, comprobación en vivo con el mayorista y modal de edición integral.
+2. **Sincronización Automática con Proveedor y Cron**:
+   - Módulo `src/lib/supplier-sync.ts`: verifica disponibilidad, precios y existencias directamente contra los sitios del mayorista (Total Tools / Wadfow y Atacado USA). Detecta páginas 404, indicadores de "sin stock / esgotado / fora de estoque" y precios publicados.
+   - Endpoint de cron `/api/cron/sync-supplier-stock`: endpoint para escaneo automatizado por lotes (concurrencia controlada para evitar bloqueos).
+   - Configuración `vercel.json`: cron programado cada 4 horas (`0 */4 * * *`) para ejecutar la verificación periódica de disponibilidad en Vercel.
+   - Botón interactivo "Sincronizar Lote Ahora" en el panel administrativo y botón "Comprobar" en cada fila para verificación instantánea.
+3. **Migración en Supabase**:
+   - Aplicada en producción: `20260928150000_supplier_stock_sync.sql` (columnas `supplier_last_checked_at`, `supplier_stock_status`, `supplier_live_price` e índice de escaneo, junto con RPC de actualización segura `update_product_supplier_sync_v1`).
+4. **Validaciones**:
+   - 16 pruebas automatizadas aprobadas (incluyendo tests de sincronización de mayorista).
+   - TypeScript y `npm run build` con Next.js 16.3.5 / Turbopack aprobados con 0 errores (30 rutas generadas exitosamente).
+

@@ -53,15 +53,16 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   }
 
   const supabase = await createServerSupabaseClient();
-  const storefront = await getStorefrontData({ admin: true });
 
   const [
+    storefront,
     { count: customersCount },
     { count: ordersCount },
     { data: customersData },
     { data: ordersData },
     { data: stockLogsData },
   ] = await Promise.all([
+    getStorefrontData({ admin: true }),
     supabase
       .from("profiles")
       .select("*", { count: "exact", head: true }),

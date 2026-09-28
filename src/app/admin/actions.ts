@@ -1,7 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "@/lib/types";
+import {
+  checkAndUpdateProductSupplierStock,
+  runBatchSupplierStockSync,
+  type SupplierCheckResult,
+} from "@/lib/supplier-sync";
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -69,6 +75,7 @@ export async function createCategoryAction(formData: FormData) {
     throw new Error(error.message);
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
 }
@@ -113,6 +120,7 @@ export async function updateCategoryAction(formData: FormData) {
     throw new Error(error.message);
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
 }
@@ -126,6 +134,7 @@ export async function deleteCategoryAction(categoryId: string) {
     throw new Error(error.message);
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
 }
@@ -134,11 +143,19 @@ export async function createProductAction(formData: FormData) {
   const title = getString(formData, "title");
   const categoryId = getString(formData, "category_id");
   const subcategoryId = getString(formData, "subcategory_id");
+  const brand = getString(formData, "brand") || null;
+  const model = getString(formData, "model") || null;
+  const sku = getString(formData, "sku") || null;
+  const sourceUrl = getString(formData, "source_url") || null;
+  const customSlug = getString(formData, "slug");
+  const customImageUrl = getString(formData, "custom_image_url");
   const image = formData.get("image");
-  let imageUrl = "";
+
   if (!title || (!categoryId && !subcategoryId)) {
-    throw new Error("El producto necesita titulo y categoria principal.");
+    throw new Error("El producto necesita título y categoría principal.");
   }
+
+  let imageUrl = customImageUrl || "";
   if (image instanceof File && image.size > 0) {
     const safeName = image.name.replace(/[^a-zA-Z0-9.-]/g, "-");
     const path = `products/${crypto.randomUUID()}-${safeName}`;
@@ -149,51 +166,121 @@ export async function createProductAction(formData: FormData) {
         upsert: false,
       });
     if (uploadError) {
-      throw new Error(uploadError.message);
+      throw new Error("Error al subir imagen: " + uploadError.message);
     }
     const { data } = supabase.storage.from("product-images").getPublicUrl(path);
     imageUrl = data.publicUrl;
   }
+
   const paymentMethods = formData
     .getAll("payment_methods")
     .filter((value): value is PaymentMethod => typeof value === "string");
+
   const finalCategoryId = subcategoryId || categoryId;
-  const isInStockImmediate = formData.get("is_in_stock_immediate") === "on";
+  const retailPrice = Number(getString(formData, "retail_price") || 0);
+  const wholesalePrice = Number(
+    getString(formData, "wholesale_price") || (retailPrice > 0 ? Math.round(retailPrice * 0.75) : 0)
+  );
+  const wholesaleMinQty = Number(getString(formData, "wholesale_min_qty") || 1);
+  const stock = Number(getString(formData, "stock") || 0);
+  const fulfillmentMode = getString(formData, "fulfillment_mode") || "supplier";
+  const supplierAvailable = formData.has("supplier_available_present")
+    ? formData.get("supplier_available") === "on"
+    : true;
+  const supplierLivePrice = getString(formData, "supplier_live_price")
+    ? Number(getString(formData, "supplier_live_price"))
+    : null;
+
   let tags = getString(formData, "tags")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
-  if (isInStockImmediate) {
-    if (!tags.some((t) => t.toLowerCase() === "en_stock")) {
-      tags.push("en_stock");
-    }
-  } else {
-    tags = tags.filter(
-      (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
-    );
+
+  const isInStockImmediate = formData.get("is_in_stock_immediate") === "on" || stock > 0;
+  if (isInStockImmediate && !tags.some((t) => t.toLowerCase() === "en_stock")) {
+    tags.push("en_stock");
   }
-  const { error } = await supabase.from("products").insert({
+
+  // Specifications JSON or key-value
+  let specifications: Record<string, string> = {};
+  const specsRaw = getString(formData, "specifications");
+  if (specsRaw) {
+    try {
+      specifications = JSON.parse(specsRaw);
+    } catch {
+      const lines = specsRaw.split("\n");
+      for (const line of lines) {
+        const colonIdx = line.indexOf(":");
+        if (colonIdx !== -1) {
+          const k = line.slice(0, colonIdx).trim();
+          const v = line.slice(colonIdx + 1).trim();
+          if (k && v) specifications[k] = v;
+        }
+      }
+    }
+  }
+
+  const baseSlug = customSlug ? slugify(customSlug) : slugify(title);
+  // Ensure slug uniqueness
+  const { data: existingSlug } = await supabase
+    .from("products")
+    .select("id")
+    .eq("slug", baseSlug)
+    .maybeSingle();
+
+  const finalSlug = existingSlug
+    ? `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`
+    : baseSlug;
+
+  const insertData = {
     title,
-    slug: slugify(title),
-    description: getString(formData, "description"),
+    slug: finalSlug,
+    description: getString(formData, "description") || null,
     category_id: finalCategoryId,
-    image_url: imageUrl,
-    retail_price: Number(getString(formData, "retail_price") || 0),
-    wholesale_price: Number(getString(formData, "wholesale_price") || 0),
-    wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
-    stock: 0,
+    image_url: imageUrl || null,
+    image_urls: imageUrl ? [imageUrl] : [],
+    retail_price: retailPrice,
+    wholesale_price: wholesalePrice,
+    wholesale_min_qty: wholesaleMinQty,
+    stock,
+    stock_verified_at: stock > 0 ? new Date().toISOString() : null,
     payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
     tags,
     is_featured: formData.get("is_featured") === "on",
     is_wholesale_only: formData.get("is_wholesale_only") === "on",
-    is_active: true,
-  });
+    is_active: formData.has("is_active_present") ? formData.get("is_active") === "on" : true,
+    brand,
+    model,
+    sku,
+    source_url: sourceUrl,
+    fulfillment_mode: ["own_stock", "supplier"].includes(fulfillmentMode) ? fulfillmentMode : "supplier",
+    supplier_available: supplierAvailable,
+    supplier_live_price: supplierLivePrice,
+    supplier_last_checked_at: sourceUrl ? new Date().toISOString() : null,
+    supplier_stock_status: sourceUrl ? (supplierAvailable ? "in_stock" : "out_of_stock") : null,
+    specifications,
+    warranty_terms: getString(formData, "warranty_terms") || null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: createdProduct, error } = await supabase
+    .from("products")
+    .insert(insertData)
+    .select("id, slug")
+    .single();
+
   if (error) {
     throw new Error(error.message);
   }
+
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/catalogo");
+
+  return { success: true, id: createdProduct.id, slug: createdProduct.slug };
 }
 export async function updateProductAction(formData: FormData) {
   const supabase = await getAdminClient();
@@ -203,6 +290,10 @@ export async function updateProductAction(formData: FormData) {
   const subcategoryId = getString(formData, "subcategory_id");
   const image = formData.get("image");
   let imageUrl = getString(formData, "existing_image_url");
+  const customImageUrl = getString(formData, "custom_image_url");
+  if (customImageUrl) {
+    imageUrl = customImageUrl;
+  }
   if (!id || !title || (!categoryId && !subcategoryId)) {
     throw new Error("El producto necesita ID, título y categoría principal.");
   }
@@ -239,30 +330,246 @@ export async function updateProductAction(formData: FormData) {
       (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
     );
   }
+
+  const updateData: Record<string, unknown> = {
+    title,
+    slug: slugify(title),
+    description: getString(formData, "description"),
+    category_id: finalCategoryId,
+    image_url: imageUrl,
+    retail_price: Number(getString(formData, "retail_price") || 0),
+    wholesale_price: Number(getString(formData, "wholesale_price") || 0),
+    wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
+    payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
+    tags,
+    is_featured: formData.get("is_featured") === "on",
+    is_wholesale_only: formData.get("is_wholesale_only") === "on",
+    updated_at: new Date().toISOString(),
+  };
+
+  if (formData.has("brand")) updateData.brand = getString(formData, "brand") || null;
+  if (formData.has("model")) updateData.model = getString(formData, "model") || null;
+  if (formData.has("sku")) updateData.sku = getString(formData, "sku") || null;
+  if (formData.has("source_url")) updateData.source_url = getString(formData, "source_url") || null;
+
+  if (formData.has("fulfillment_mode")) {
+    const mode = getString(formData, "fulfillment_mode");
+    if (["own_stock", "supplier"].includes(mode)) {
+      updateData.fulfillment_mode = mode;
+    }
+  }
+
+  if (formData.has("is_active_present")) {
+    updateData.is_active = formData.get("is_active") === "on";
+  }
+
+  if (formData.has("supplier_available_present")) {
+    updateData.supplier_available = formData.get("supplier_available") === "on";
+  }
+
+  if (formData.has("stock")) {
+    const s = Number(getString(formData, "stock") || 0);
+    updateData.stock = s;
+    if (s > 0) updateData.stock_verified_at = new Date().toISOString();
+  }
+
+  if (formData.has("supplier_live_price")) {
+    const p = getString(formData, "supplier_live_price");
+    updateData.supplier_live_price = p ? Number(p) : null;
+  }
+
+  if (formData.has("warranty_terms")) {
+    updateData.warranty_terms = getString(formData, "warranty_terms") || null;
+  }
+
+  if (formData.has("specifications")) {
+    const specsRaw = getString(formData, "specifications");
+    if (specsRaw) {
+      try {
+        updateData.specifications = JSON.parse(specsRaw);
+      } catch {
+        const specs: Record<string, string> = {};
+        const lines = specsRaw.split("\n");
+        for (const line of lines) {
+          const colonIdx = line.indexOf(":");
+          if (colonIdx !== -1) {
+            const k = line.slice(0, colonIdx).trim();
+            const v = line.slice(colonIdx + 1).trim();
+            if (k && v) specs[k] = v;
+          }
+        }
+        updateData.specifications = specs;
+      }
+    }
+  }
+
   const { error } = await supabase
     .from("products")
-    .update({
-      title,
-      slug: slugify(title),
-      description: getString(formData, "description"),
-      category_id: finalCategoryId,
-      image_url: imageUrl,
-      retail_price: Number(getString(formData, "retail_price") || 0),
-      wholesale_price: Number(getString(formData, "wholesale_price") || 0),
-      wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
-      payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
-      tags,
-      is_featured: formData.get("is_featured") === "on",
-      is_wholesale_only: formData.get("is_wholesale_only") === "on",
-    })
+    .update(updateData)
     .eq("id", id);
   if (error) {
     throw new Error(error.message);
   }
   revalidatePath("/");
-  revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/catalogo");
+}
+
+export async function toggleProductActiveAction(productId: string, isActive: boolean) {
+  const supabase = await getAdminClient();
+  const { error } = await supabase
+    .from("products")
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq("id", productId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return { success: true, isActive };
+}
+
+export async function toggleProductSupplierAvailabilityAction(productId: string, supplierAvailable: boolean) {
+  const supabase = await getAdminClient();
+  const { error } = await supabase
+    .from("products")
+    .update({
+      supplier_available: supplierAvailable,
+      supplier_stock_status: supplierAvailable ? "in_stock" : "out_of_stock",
+      supplier_last_checked_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  revalidatePath("/admin/costos");
+  return { success: true, supplierAvailable };
+}
+
+export async function checkSingleProductSupplierStockAction(productId: string): Promise<SupplierCheckResult> {
+  await getAdminClient();
+  const result = await checkAndUpdateProductSupplierStock(productId);
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return result;
+}
+
+export async function triggerBatchSupplierSyncAction(limit: number = 30) {
+  await getAdminClient();
+  const report = await runBatchSupplierStockSync({ limit });
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return report;
+}
+
+export async function quickUpdateProductPriceAction(productId: string, retailPrice: number, wholesalePrice?: number) {
+  const supabase = await getAdminClient();
+  if (retailPrice <= 0) throw new Error("El precio minorista debe ser mayor a cero.");
+  const updateData: Record<string, unknown> = {
+    retail_price: retailPrice,
+    updated_at: new Date().toISOString(),
+  };
+  if (wholesalePrice !== undefined && wholesalePrice >= 0) {
+    updateData.wholesale_price = wholesalePrice;
+  }
+  const { error } = await supabase
+    .from("products")
+    .update(updateData)
+    .eq("id", productId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return { success: true };
+}
+
+export async function bulkUpdateProductStatusAction(
+  productIds: string[],
+  action: "activate" | "pause" | "supplier_available" | "supplier_pause" | "set_mode_supplier" | "set_mode_own"
+) {
+  const supabase = await getAdminClient();
+  if (!productIds || productIds.length === 0) throw new Error("No hay productos seleccionados.");
+
+  let updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (action === "activate") {
+    updatePayload = { is_active: true };
+  } else if (action === "pause") {
+    updatePayload = { is_active: false };
+  } else if (action === "supplier_available") {
+    updatePayload = {
+      supplier_available: true,
+      supplier_stock_status: "in_stock",
+      supplier_last_checked_at: new Date().toISOString(),
+    };
+  } else if (action === "supplier_pause") {
+    updatePayload = {
+      supplier_available: false,
+      supplier_stock_status: "out_of_stock",
+      supplier_last_checked_at: new Date().toISOString(),
+    };
+  } else if (action === "set_mode_supplier") {
+    updatePayload = { fulfillment_mode: "supplier" };
+  } else if (action === "set_mode_own") {
+    updatePayload = { fulfillment_mode: "own_stock" };
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update(updatePayload)
+    .in("id", productIds);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return { success: true, count: productIds.length };
+}
+
+export async function bulkAdjustPricesAction(
+  productIds: string[],
+  type: "percentage" | "fixed_markup",
+  amount: number
+) {
+  const supabase = await getAdminClient();
+  if (!productIds || productIds.length === 0) throw new Error("No hay productos seleccionados.");
+  if (!Number.isFinite(amount)) throw new Error("Importe o porcentaje inválido.");
+
+  const { data: currentProducts, error: fetchError } = await supabase
+    .from("products")
+    .select("id, retail_price")
+    .in("id", productIds);
+
+  if (fetchError || !currentProducts) throw new Error("Error al leer productos para ajuste de precio.");
+
+  const updates = currentProducts.map((p) => {
+    let newPrice = Number(p.retail_price || 0);
+    if (type === "percentage") {
+      newPrice = Math.round(newPrice * (1 + amount / 100));
+    } else {
+      newPrice = Math.round(newPrice + amount);
+    }
+    if (newPrice < 0) newPrice = 0;
+    return supabase
+      .from("products")
+      .update({ retail_price: newPrice, updated_at: new Date().toISOString() })
+      .eq("id", p.id);
+  });
+
+  await Promise.all(updates);
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return { success: true, count: productIds.length };
 }
 export async function updateProductStockAction(productId: string, stock: number) {
   await getAdminClient(); void productId; void stock;
@@ -285,6 +592,7 @@ export async function updateProductWholesaleAction(
     throw new Error(error.message);
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
 }
@@ -305,6 +613,7 @@ export async function updateProductPricesAction(
     throw new Error(error.message);
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   revalidatePath("/catalogo");
@@ -320,6 +629,7 @@ export async function deleteProductAction(productId: string) {
     throw new Error(error.message);
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
 }
@@ -338,6 +648,7 @@ export async function updateUserRoleAction(userId: string, newRole: "admin" | "c
   if (error) {
     throw new Error(`Error al actualizar el rol: ${error.message}`);
   }
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
 }
 export async function toggleWholesaleApprovalAction(userId: string, isApproved: boolean) {
@@ -352,6 +663,7 @@ export async function toggleWholesaleApprovalAction(userId: string, isApproved: 
   if (error) {
     throw new Error(`Error al actualizar estado mayorista: ${error.message}`);
   }
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   revalidatePath("/");
@@ -383,6 +695,7 @@ export async function setWholesaleByEmailAction(email: string, isApproved: boole
   if (error) {
     throw new Error(`Error al actualizar estado mayorista: ${error.message}`);
   }
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   revalidatePath("/");
@@ -399,6 +712,7 @@ export async function updateOrderStatusAction(
   if (error) {
     throw new Error(`Error al actualizar estado del pedido: ${error.message}`);
   }
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/cuenta");
 }
@@ -453,6 +767,7 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
   const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
   if (error) throw new Error(`No se pudo importar el CSV: ${error.message}`);
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   return { importedCount: payload.length };
@@ -589,6 +904,7 @@ export async function bulkUpdatePricesAction(options: BulkPriceUpdateOptions) {
     );
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   return {
@@ -658,6 +974,7 @@ export async function bulkUpdateStockAction(options: {
     );
   }
   revalidatePath("/");
+  invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
   return {
@@ -665,4 +982,46 @@ export async function bulkUpdateStockAction(options: {
     updatedCount: updates.length,
     message: `¡Se actualizó exitosamente el stock de ${updates.length} productos!`,
   };
+}
+
+export async function quickUpdateSupplierLinkAction(
+  productId: string,
+  sourceUrl: string,
+  livePrice?: number | null,
+  fulfillmentMode: "own_stock" | "supplier" = "supplier",
+  supplierAvailable: boolean = true
+) {
+  const supabase = await getAdminClient();
+  const cleanUrl = sourceUrl.trim();
+  const updateData: Record<string, unknown> = {
+    source_url: cleanUrl || null,
+    fulfillment_mode: fulfillmentMode,
+    supplier_available: supplierAvailable,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
+    updateData.supplier_live_price = livePrice;
+  }
+
+  if (cleanUrl) {
+    updateData.supplier_last_checked_at = new Date().toISOString();
+    updateData.supplier_stock_status = supplierAvailable ? "in_stock" : "out_of_stock";
+  } else {
+    updateData.supplier_last_checked_at = null;
+    updateData.supplier_stock_status = null;
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update(updateData)
+    .eq("id", productId);
+
+  if (error) {
+    throw new Error("No se pudo actualizar el enlace de proveedor: " + error.message);
+  }
+
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  return { success: true };
 }

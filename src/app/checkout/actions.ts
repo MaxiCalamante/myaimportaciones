@@ -37,7 +37,8 @@ async function resolveQuote(input: CheckoutInput) {
     if (!p.is_active || p.is_wholesale_only || /smartphone|telefon|tecnologia|celular/i.test(category?.slug ?? "") || (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity))) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
     const cost = costs?.find(c => c.product_id === p.id);
     const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
-    return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: fresh ? Number(cost.landed_cost) : null, variableCost: Number(cost?.variable_cost ?? 0) + Number(p.retail_price) * Number(cost?.payment_fee_percent ?? 0) / 100, minimumContribution: Number(cost?.minimum_contribution ?? 0), beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
+    if (!fresh) throw new Error(`El precio final de ${p.title} necesita verificación. Consultanos para continuar.`);
+    return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: Number(cost.landed_cost), variableCost: Number(cost.variable_cost ?? 0) + Number(p.retail_price) * Number(cost.payment_fee_percent ?? 0) / 100, minimumContribution: Number(cost.minimum_contribution ?? 0), beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
   });
   const supplierDelivery = products.some(p => p.fulfillment_mode === "supplier");
   if (supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");

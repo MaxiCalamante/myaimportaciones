@@ -18,7 +18,7 @@ export interface OrderQuote {
   couponMessage: string;
 }
 
-/** One best promotion, never stacked. Cost floors and a 30-day cost review protect contribution. */
+/** Cost floors and a 30-day cost review protect contribution. */
 export function priceOrder(items: PricedItem[], payment: string, coupon: string, shipping: number, postalCode: string): OrderQuote {
   if (!items.length || !Number.isFinite(shipping) || shipping < 0) throw new Error("Pedido inválido.");
   for (const item of items) {
@@ -29,7 +29,6 @@ export function priceOrder(items: PricedItem[], payment: string, coupon: string,
   const capacity = items.some(i => i.landedCost === null) ? 0 : Math.max(0, Math.floor(items.reduce((s, i) => s + (i.landedCost === null ? 0 : Math.max(0, i.price - i.landedCost - i.variableCost - i.minimumContribution)) * i.quantity, 0)));
   const units = items.reduce((s, i) => s + i.quantity, 0);
   const candidates = [{ amount: 0, label: "Sin promoción" }];
-  if (payment === "transferencia" || payment === "efectivo") candidates.push({ amount: Math.floor(subtotal * 0.1), label: "Transferencia / efectivo" });
   if (units >= 2) candidates.push({ amount: Math.floor(subtotal * (units >= 3 ? 0.08 : 0.05)), label: "Cantidad" });
   const code = coupon.trim().toUpperCase();
   let couponMessage = "";
@@ -40,6 +39,12 @@ export function priceOrder(items: PricedItem[], payment: string, coupon: string,
     else couponMessage = "El cupón no está habilitado para este pedido.";
   }
   const best = candidates.sort((a, b) => b.amount - a.amount)[0];
-  const discount = Math.min(best.amount, capacity);
-  return { subtotal, discount, shipping, total: Math.round((subtotal - discount + shipping) * 100) / 100, promotion: discount ? best.label : "Sin promoción disponible", couponMessage };
+  const promotionDiscount = Math.min(best.amount, capacity);
+  // Transfer pricing is additional to the best offer, but never exceeds verified margin.
+  const configuredPercent = Number(process.env.TRANSFER_DISCOUNT_PERCENT ?? 3);
+  const transferPercent = Number.isFinite(configuredPercent) ? Math.max(0, Math.min(5, configuredPercent)) : 0;
+  const transferDiscount = payment === "transferencia" ? Math.min(Math.floor(subtotal * transferPercent / 100), capacity - promotionDiscount) : 0;
+  const discount = promotionDiscount + transferDiscount;
+  const promotion = [promotionDiscount ? best.label : "", transferDiscount ? `Transferencia ${transferPercent}%` : ""].filter(Boolean).join(" + ") || "Sin promoción disponible";
+  return { subtotal, discount, shipping, total: Math.round((subtotal - discount + shipping) * 100) / 100, promotion, couponMessage };
 }
