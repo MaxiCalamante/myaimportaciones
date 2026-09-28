@@ -47,11 +47,10 @@ import { SupplierResaleSystem } from "@/components/admin/supplier-resale-system"
 import { MarketingHub } from "@/components/admin/marketing-hub";
 import { ProductControlCenter } from "@/components/admin/product-control-center";
 import { CreateProductModal } from "@/components/admin/create-product-modal";
+import { BulkImportModal } from "@/components/admin/bulk-import-modal";
+import { CategoryModal } from "@/components/admin/category-modal";
 import {
-  createCategoryAction,
-  updateCategoryAction,
   deleteCategoryAction,
-  createProductAction,
   updateProductAction,
   updateProductWholesaleAction,
   deleteProductAction,
@@ -59,13 +58,11 @@ import {
   toggleWholesaleApprovalAction,
   setWholesaleByEmailAction,
   updateOrderStatusAction,
-  bulkImportProductsAction,
 } from "@/app/admin/actions";
 import { formatCurrency, formatDate, formatOrderStatus, formatPaymentMethod } from "@/lib/format";
 import { getWhatsAppUrl } from "@/lib/site";
 import type { AdminDashboardData, PaymentMethod, OrderStatus, Category, Product } from "@/lib/types";
 import { isProductImmediateStock } from "@/lib/shipping";
-import { parseAdminProductCsv } from "@/lib/admin-csv";
 
 const paymentMethods: PaymentMethod[] = [
   "transferencia",
@@ -165,8 +162,12 @@ export function AdminDashboard({
 
   // Bulk import state
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
-  const [bulkCsvText, setBulkCsvText] = useState("");
-  const [bulkMsg, setBulkMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Category and Order search & filter states
+  const [categorySearch, setCategorySearch] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [orderChannelFilter, setOrderChannelFilter] = useState("all");
 
   // Customer filter and search states
   const [customerSearch, setCustomerSearch] = useState("");
@@ -296,26 +297,6 @@ Logística / Despacho: +${calcShippingPercent}%
     });
   };
 
-  const handleBulkImportSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bulkCsvText.trim()) return;
-
-    try {
-      const items = parseAdminProductCsv(bulkCsvText);
-
-      startTransition(async () => {
-        try {
-          const res = await bulkImportProductsAction(items);
-          setBulkMsg({ type: "success", text: `Se importaron/actualizaron ${res.importedCount} productos con éxito.` });
-          setBulkCsvText("");
-        } catch (err: unknown) {
-          setBulkMsg({ type: "error", text: "Error: " + (err instanceof Error ? err.message : "Error inesperado") });
-        }
-      });
-    } catch (err: unknown) {
-      setBulkMsg({ type: "error", text: "Error de parseo: " + (err instanceof Error ? err.message : "Error inesperado") });
-    }
-  };
 
   // Categorization helpers
   const mainCategories = useMemo(() => {
@@ -329,6 +310,83 @@ Logística / Despacho: +${calcShippingPercent}%
   const editSubcategoriesForSelectedParent = useMemo(() => {
     return data.categories.filter((c) => c.parentId === editSelectedParentId);
   }, [data.categories, editSelectedParentId]);
+
+  // Filtered categories with search support
+  const filteredMainCategories = useMemo(() => {
+    const q = categorySearch.toLowerCase().trim();
+    if (!q) return mainCategories;
+    return mainCategories.filter((parent) => {
+      const matchParent = parent.name.toLowerCase().includes(q) || parent.slug.toLowerCase().includes(q);
+      const subcats = data.categories.filter((c) => c.parentId === parent.id);
+      const matchSub = subcats.some(
+        (s) => s.name.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q)
+      );
+      return matchParent || matchSub;
+    });
+  }, [mainCategories, data.categories, categorySearch]);
+
+  const getCategoryProductCount = (catId: string) => {
+    const subIds = data.categories.filter((c) => c.parentId === catId).map((c) => c.id);
+    return data.products.filter((p) => p.categoryId === catId || subIds.includes(p.categoryId)).length;
+  };
+
+  const getDirectSubcategoryCount = (subId: string) => {
+    return data.products.filter((p) => p.categoryId === subId).length;
+  };
+
+  // Filtered orders with search and status filters
+  const filteredOrders = useMemo(() => {
+    const q = orderSearch.toLowerCase().trim();
+    return data.orders.filter((o) => {
+      if (q) {
+        const matchCode = (o.trackingCode || "").toLowerCase().includes(q) || o.id.toLowerCase().includes(q);
+        const matchCarrier = (o.carrierTrackingCode || "").toLowerCase().includes(q);
+        const matchName = (o.customerName || "").toLowerCase().includes(q);
+        const matchEmail = (o.customerEmail || "").toLowerCase().includes(q);
+        const matchAddress = (o.shippingAddress || "").toLowerCase().includes(q);
+        const matchPhone = (o.shippingPhone || "").toLowerCase().includes(q);
+        if (!matchCode && !matchCarrier && !matchName && !matchEmail && !matchAddress && !matchPhone) return false;
+      }
+      if (orderStatusFilter !== "all" && o.status !== orderStatusFilter) return false;
+      if (orderChannelFilter !== "all" && o.channel !== orderChannelFilter) return false;
+      return true;
+    });
+  }, [data.orders, orderSearch, orderStatusFilter, orderChannelFilter]);
+
+  // Order statistics
+  const orderStats = useMemo(() => {
+    let pendingCount = 0;
+    let deliveredCount = 0;
+    let totalRevenue = 0;
+    for (const o of data.orders) {
+      if (o.status === "delivered") deliveredCount++;
+      else if (o.status !== "cancelled") pendingCount++;
+      if (o.status === "paid" || o.status === "delivered" || o.status === "preparing" || o.status === "shipped") {
+        totalRevenue += o.total;
+      }
+    }
+    return {
+      total: data.orders.length,
+      pendingCount,
+      deliveredCount,
+      totalRevenue,
+    };
+  }, [data.orders]);
+
+  // Customer statistics
+  const customerStats = useMemo(() => {
+    let wholesaleCount = 0;
+    let adminCount = 0;
+    for (const c of data.customers) {
+      if (c.role === "admin") adminCount++;
+      if (c.isApprovedWholesale) wholesaleCount++;
+    }
+    return {
+      total: data.customers.length,
+      wholesaleCount,
+      adminCount,
+    };
+  }, [data.customers]);
 
   // Handle delete actions
   const handleDeleteProduct = (productId: string, title: string) => {
@@ -378,42 +436,7 @@ Logística / Despacho: +${calcShippingPercent}%
     }
   };
 
-  // Submit forms handlers
-  const handleCreateProductSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
-    startTransition(async () => {
-      try {
-        await createProductAction(formData);
-        setIsCreateProductOpen(false);
-        form.reset();
-        setSelectedParentId("");
-        setSelectedSubcategoryId("");
-      } catch (err: unknown) {
-        alert("Error al crear el producto: " + (err instanceof Error ? err.message : "Error inesperado"));
-      }
-    });
-  };
-
-  const handleCreateCategorySubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
-    startTransition(async () => {
-      try {
-        await createCategoryAction(formData);
-        setIsCreateCategoryOpen(false);
-        form.reset();
-        setCreateCategoryParentId("");
-      } catch (err: unknown) {
-        alert("Error al crear la categoría: " + (err instanceof Error ? err.message : "Error inesperado"));
-      }
-    });
-  };
-
+  // Submit form handler
   const handleEditProductSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -424,20 +447,6 @@ Logística / Despacho: +${calcShippingPercent}%
         setEditingProduct(null);
       } catch (err: unknown) {
         alert("Error al guardar el producto: " + (err instanceof Error ? err.message : "Error inesperado"));
-      }
-    });
-  };
-
-  const handleEditCategorySubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    startTransition(async () => {
-      try {
-        await updateCategoryAction(formData);
-        setEditingCategory(null);
-      } catch (err: unknown) {
-        alert("Error al guardar la categoría: " + (err instanceof Error ? err.message : "Error inesperado"));
       }
     });
   };
@@ -715,10 +724,7 @@ Logística / Despacho: +${calcShippingPercent}%
             Costos y precios
           </a>
           <button
-            onClick={() => {
-              setBulkMsg(null);
-              setIsBulkImportOpen(true);
-            }}
+            onClick={() => setIsBulkImportOpen(true)}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 text-center text-xs font-bold text-white hover:bg-sky-700 shadow-sm transition-colors sm:px-5 sm:text-sm"
           >
             <FileSpreadsheet className="h-4 w-4" />
@@ -1551,36 +1557,64 @@ Logística / Despacho: +${calcShippingPercent}%
       {/* TAB CONTENT: CATEGORIES HIERARCHY TREE */}
       {activeTab === "categories" && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-            <h2 className="text-xl font-bold text-zinc-955 flex items-center gap-2">
-              <FolderOpen className="h-5 w-5 text-emerald-700" /> Estructura de Rubros y Categorías
-            </h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-emerald-700" /> Estructura de Rubros y Categorías ({data.categories.length})
+              </h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Organizá los rubros principales y subcategorías para la navegación en la tienda web.
+              </p>
+            </div>
             <button
               onClick={() => {
                 setCreateCategoryParentId("");
                 setIsCreateCategoryOpen(true);
               }}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm transition-colors cursor-pointer"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               Nueva Categoría Principal
             </button>
           </div>
 
-          {mainCategories.length === 0 ? (
+          {/* Search bar for categories */}
+          <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-zinc-200 shadow-xs">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre o slug de categoría o subcategoría..."
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                className="w-full h-9.5 pl-9 pr-3 rounded-xl border border-zinc-300 outline-none focus:border-emerald-600 bg-white text-xs"
+              />
+            </div>
+            {categorySearch && (
+              <button
+                onClick={() => setCategorySearch("")}
+                className="text-xs font-semibold text-zinc-500 hover:text-zinc-800"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {filteredMainCategories.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-zinc-500 shadow-xs">
               <div className="flex flex-col items-center justify-center">
                 <FolderOpen className="h-10 w-10 text-zinc-300 mb-2" />
-                <p className="font-semibold text-zinc-700">No hay categorías principales registradas</p>
+                <p className="font-semibold text-zinc-700">No se encontraron categorías</p>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Crea una categoría principal y luego agrégale subcategorías de ser necesario.
+                  Probá ajustando el término de búsqueda o creá una categoría nueva.
                 </p>
               </div>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
-              {mainCategories.map((parent) => {
+              {filteredMainCategories.map((parent) => {
                 const subcategories = data.categories.filter((c) => c.parentId === parent.id);
+                const totalProducts = getCategoryProductCount(parent.id);
 
                 return (
                   <div
@@ -1614,15 +1648,24 @@ Logística / Despacho: +${calcShippingPercent}%
                         <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">
                           {parent.description || "Sin descripción."}
                         </p>
-                        <span className="text-[10px] text-zinc-500 block mt-0.5">
-                          Prioridad de orden: {parent.displayOrder}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px]">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                            <Package className="h-3 w-3" /> {totalProducts} productos
+                          </span>
+                          <a
+                            href={`/catalogo?categoria=${parent.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-sky-600 hover:underline font-semibold"
+                          >
+                            Ver en tienda <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => {
                             setEditingCategory(parent);
-                            setEditSelectedParentId(parent.parentId || "");
                           }}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-white hover:text-zinc-900 cursor-pointer transition-colors bg-white shadow-xs"
                           title="Editar"
@@ -1646,7 +1689,6 @@ Logística / Despacho: +${calcShippingPercent}%
                           <ArrowRight className="h-3 w-3 text-zinc-300" /> Subcategorías ({subcategories.length})
                         </h4>
                         
-                        {/* Direct add subcategory button - premium UX improvement */}
                         <button
                           onClick={() => {
                             setCreateCategoryParentId(parent.id);
@@ -1663,61 +1705,76 @@ Logística / Despacho: +${calcShippingPercent}%
                           No tiene subcategorías asociadas. Hacé clic en &quot;Agregar Subcategoría&quot; arriba para crear una.
                         </p>
                       ) : (
-                        <div className="space-y-3 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
-                          {subcategories.map((sub) => (
-                            <div
-                              key={sub.id}
-                              className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-150 hover:bg-zinc-100/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                {sub.imageUrl ? (
-                                  <img
-                                    src={sub.imageUrl}
-                                    alt={sub.name}
-                                    className="h-10 w-14 rounded object-cover border border-zinc-200"
-                                  />
-                                ) : (
-                                  <div className="h-10 w-14 rounded bg-zinc-200 flex items-center justify-center text-[10px] text-zinc-400 font-semibold border border-dashed border-zinc-300">
-                                    N/A
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-zinc-800 truncate">
-                                      {sub.name}
-                                    </span>
-                                    {sub.wholesaleOnly && (
-                                      <span className="inline-flex items-center rounded bg-amber-50 px-1 py-0.2 text-[8px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/10">
-                                        M
+                        <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                          {subcategories.map((sub) => {
+                            const subCount = getDirectSubcategoryCount(sub.id);
+
+                            return (
+                              <div
+                                key={sub.id}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/80 hover:bg-zinc-100/60 transition-colors"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {sub.imageUrl ? (
+                                    <img
+                                      src={sub.imageUrl}
+                                      alt={sub.name}
+                                      className="h-10 w-14 rounded object-cover border border-zinc-200"
+                                    />
+                                  ) : (
+                                    <div className="h-10 w-14 rounded bg-zinc-200 flex items-center justify-center text-[10px] text-zinc-400 font-semibold border border-dashed border-zinc-300">
+                                      N/A
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-zinc-800 truncate">
+                                        {sub.name}
                                       </span>
-                                    )}
+                                      <span className="rounded bg-zinc-200/80 px-1.5 py-0.2 text-[9px] font-semibold text-zinc-700">
+                                        {subCount} prod
+                                      </span>
+                                      {sub.wholesaleOnly && (
+                                        <span className="inline-flex items-center rounded bg-amber-50 px-1 py-0.2 text-[8px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/10">
+                                          M
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                                      {sub.description || `Slug: ${sub.slug}`}
+                                    </p>
                                   </div>
-                                  <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                                    {sub.description || "Sin descripción."}
-                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 ml-2 shrink-0">
+                                  <a
+                                    href={`/catalogo?categoria=${sub.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-zinc-200 text-zinc-400 hover:text-sky-600 bg-white"
+                                    title="Ver en tienda"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                  <button
+                                    onClick={() => {
+                                      setEditingCategory(sub);
+                                    }}
+                                    className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-white hover:text-zinc-900 cursor-pointer transition-colors bg-white shadow-xs"
+                                    title="Editar subcategoría"
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCategory(sub.id, sub.name)}
+                                    className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 hover:text-red-700 cursor-pointer transition-colors bg-white shadow-xs"
+                                    title="Eliminar subcategoría"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1 ml-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingCategory(sub);
-                                    setEditSelectedParentId(sub.parentId || "");
-                                  }}
-                                  className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-white hover:text-zinc-900 cursor-pointer transition-colors bg-white shadow-xs"
-                                  title="Editar subcategoría"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteCategory(sub.id, sub.name)}
-                                  className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 hover:text-red-700 cursor-pointer transition-colors bg-white shadow-xs"
-                                  title="Eliminar subcategoría"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1732,12 +1789,91 @@ Logística / Despacho: +${calcShippingPercent}%
       {/* TAB CONTENT: ORDERS */}
       {activeTab === "orders" && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-            <h2 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
-              <ReceiptText className="h-5 w-5 text-emerald-700" /> Registro de Pedidos Comerciales
-            </h2>
+          {/* Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-3">
+            <div>
+              <h2 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
+                <ReceiptText className="h-5 w-5 text-emerald-700" /> Registro de Pedidos Comerciales
+              </h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Seguimiento de compras, despachos logísticos y conciliación de cobros.
+              </p>
+            </div>
             <div className="text-xs text-zinc-500 font-semibold bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-250">
-              Cobrado en últimos 50 pedidos: <span className="font-extrabold text-emerald-750">{formatCurrency(data.stats.revenue)}</span>
+              Cobrado en últimos 50 pedidos: <span className="font-extrabold text-emerald-700">{formatCurrency(orderStats.totalRevenue)}</span>
+            </div>
+          </div>
+
+          {/* 4 KPI Cards for Orders */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Total Pedidos</span>
+              <p className="mt-1 text-2xl font-black text-zinc-900">{orderStats.total}</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs">
+              <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">En Curso / Pendientes</span>
+              <p className="mt-1 text-2xl font-black text-amber-600">{orderStats.pendingCount}</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs">
+              <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Entregados</span>
+              <p className="mt-1 text-2xl font-black text-emerald-600">{orderStats.deliveredCount}</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs">
+              <span className="text-xs font-semibold text-sky-600 uppercase tracking-wider">Facturación Total</span>
+              <p className="mt-1 text-xl font-black text-sky-700 truncate">{formatCurrency(orderStats.totalRevenue)}</p>
+            </div>
+          </div>
+
+          {/* Search and Filters Bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-3.5 rounded-2xl border border-zinc-200 shadow-xs">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Buscar por código, cliente, email, teléfono o guía..."
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+                className="w-full h-9.5 pl-9 pr-3 rounded-xl border border-zinc-300 outline-none focus:border-emerald-600 bg-white text-xs"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={orderStatusFilter}
+                onChange={(e) => setOrderStatusFilter(e.target.value)}
+                className="h-9.5 rounded-xl border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700"
+              >
+                <option value="all">Todos los Estados</option>
+                <option value="pending">Pendiente</option>
+                <option value="paid">Pagado</option>
+                <option value="preparing">En preparación</option>
+                <option value="shipped">Enviado</option>
+                <option value="delivered">Entregado</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
+
+              <select
+                value={orderChannelFilter}
+                onChange={(e) => setOrderChannelFilter(e.target.value)}
+                className="h-9.5 rounded-xl border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700"
+              >
+                <option value="all">Todos los Canales</option>
+                <option value="retail">Minorista</option>
+                <option value="wholesale">Mayorista</option>
+              </select>
+
+              {(orderSearch || orderStatusFilter !== "all" || orderChannelFilter !== "all") && (
+                <button
+                  onClick={() => {
+                    setOrderSearch("");
+                    setOrderStatusFilter("all");
+                    setOrderChannelFilter("all");
+                  }}
+                  className="text-xs font-bold text-rose-600 hover:underline px-2"
+                >
+                  Limpiar
+                </button>
+              )}
             </div>
           </div>
 
@@ -1746,28 +1882,28 @@ Logística / Despacho: +${calcShippingPercent}%
               <table className="admin-card-table w-full min-w-[750px] text-left text-sm">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
                   <tr>
-                    <th className="px-6 py-4 font-semibold">ID / Fecha</th>
-                    <th className="px-6 py-4 font-semibold">Cliente / Canal</th>
-                    <th className="px-6 py-4 font-semibold">Items del Pedido</th>
-                    <th className="px-6 py-4 font-semibold">Método & Total</th>
-                    <th className="px-6 py-4 font-semibold text-center">Estado</th>
+                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">ID / Fecha</th>
+                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Cliente / Contacto</th>
+                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Items del Pedido</th>
+                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Método & Total</th>
+                    <th className="px-6 py-4 font-semibold text-center text-xs uppercase tracking-wider">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {data.orders.length === 0 ? (
+                  {filteredOrders.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
                         <div className="flex flex-col items-center justify-center">
                           <Inbox className="h-10 w-10 text-zinc-300 mb-2" />
-                          <p className="font-semibold text-zinc-700">No hay pedidos registrados</p>
+                          <p className="font-semibold text-zinc-700">No se encontraron pedidos</p>
                           <p className="text-xs text-zinc-400 mt-1">
-                            Las compras que realicen tus usuarios aparecerán automáticamente en esta sección.
+                            Ajustá los filtros de búsqueda para visualizar compras.
                           </p>
                         </div>
                       </td>
                     </tr>
                   ) : (
-                    data.orders.map((order) => (
+                    filteredOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-zinc-50/40 transition-colors">
                         <td data-label="Pedido" className="px-6 py-4 align-top">
                           <span className="font-mono text-xs font-black text-sky-900 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-lg inline-block mb-1.5 shadow-xs">
@@ -1775,15 +1911,33 @@ Logística / Despacho: +${calcShippingPercent}%
                           </span>
                           <p className="text-xs text-zinc-500 font-medium">
                             {formatDate(order.createdAt)}
-                            {order.carrierTrackingCode && <span className="block">Guía: {order.carrierTrackingCode}</span>}
+                            {order.carrierTrackingCode && (
+                              <span className="block font-semibold text-sky-800 mt-0.5">
+                                Guía: {order.carrierTrackingCode}
+                              </span>
+                            )}
                           </p>
                         </td>
                         <td data-label="Cliente" className="px-6 py-4 align-top">
                           <div className="font-bold text-zinc-900">{order.customerName}</div>
                           {order.shippingPhone && (
-                            <p className="text-xs text-emerald-700 font-semibold mt-0.5">
-                              📞 {order.shippingPhone}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-zinc-600 font-medium">
+                                📞 {order.shippingPhone}
+                              </span>
+                              <a
+                                href={`https://wa.me/${order.shippingPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                                  `Hola ${order.customerName}! Te contactamos de MYA Importaciones sobre tu pedido ${
+                                    order.trackingCode || ""
+                                  }.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                              >
+                                <MessageCircle className="h-3 w-3 text-emerald-600" /> WhatsApp
+                              </a>
+                            </div>
                           )}
                           {order.customerEmail && (
                             <p className="text-xs text-zinc-500 font-medium mt-0.5">{order.customerEmail}</p>
@@ -1798,11 +1952,13 @@ Logística / Despacho: +${calcShippingPercent}%
                               💬 {order.orderNotes}
                             </div>
                           )}
-                          <span className={`inline-block mt-2 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
-                            order.channel === "wholesale"
-                              ? "bg-amber-50 text-amber-700 border-amber-200/50"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200/50"
-                          }`}>
+                          <span
+                            className={`inline-block mt-2 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                              order.channel === "wholesale"
+                                ? "bg-amber-50 text-amber-700 border-amber-200/50"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200/50"
+                            }`}
+                          >
                             {order.channel === "wholesale" ? "Mayorista" : "Minorista"}
                           </span>
                         </td>
@@ -1851,7 +2007,7 @@ Logística / Despacho: +${calcShippingPercent}%
                               className="text-[10px] text-zinc-500 hover:text-emerald-700 flex items-center gap-1 cursor-pointer font-medium"
                               title="Asignar o editar código de seguimiento"
                             >
-                              <Truck className="h-3 w-3" /> Seguimiento
+                              <Truck className="h-3 w-3" /> Asignar Guía
                             </button>
                           </div>
                         </td>
@@ -1874,76 +2030,116 @@ Logística / Despacho: +${calcShippingPercent}%
                 <Users className="h-5 w-5 text-emerald-700" /> Cuentas de Usuario y Clientes Mayoristas
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Revisá las cuentas registradas y administrá los permisos del equipo.
+                Revisá las cuentas registradas, gestioná la habilitación B2B mayorista y asigná roles del equipo.
               </p>
             </div>
-            <div className="text-xs text-zinc-500 font-semibold bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200">
-              Total registrados: <span className="font-extrabold text-zinc-800">{data.stats.customers}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-500 font-semibold bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200">
+                Total Registrados: <strong className="text-zinc-900">{customerStats.total}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-xs flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700 shrink-0">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Total Usuarios</p>
+                <p className="text-xl font-extrabold text-zinc-950">{customerStats.total}</p>
+                <p className="text-[10px] text-zinc-500">Cuentas creadas en la plataforma</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-xs flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-700 shrink-0">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Clientes Mayoristas</p>
+                <p className="text-xl font-extrabold text-amber-950">{customerStats.wholesaleCount}</p>
+                <p className="text-[10px] text-amber-700/80">Comercios y revendedores habilitados</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-indigo-200 shadow-xs flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-700 shrink-0">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-800">Administradores</p>
+                <p className="text-xl font-extrabold text-indigo-950">{customerStats.adminCount}</p>
+                <p className="text-[10px] text-indigo-700/80">Acceso total al panel de control</p>
+              </div>
             </div>
           </div>
 
           {/* Quick Wholesale Actions & Sharing */}
-          {WHOLESALE_ENABLED && <div className="grid gap-4 md:grid-cols-2">
-            {/* Box 1: Compartir enlace mayorista */}
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4.5 flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-600" /> Enlace Privado del Catálogo Mayorista
-                </p>
-                <p className="mt-1 text-xs text-amber-800/80 leading-relaxed">
-                  Copiá el enlace para enviárselo directamente por WhatsApp a ferreterías, comercios o revendedores.
-                </p>
+          {WHOLESALE_ENABLED && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Box 1: Compartir enlace mayorista */}
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4.5 flex flex-col justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-600" /> Enlace Privado del Catálogo Mayorista
+                  </p>
+                  <p className="mt-1 text-xs text-amber-800/80 leading-relaxed">
+                    Copiá el enlace para enviárselo directamente por WhatsApp a ferreterías, comercios o revendedores.
+                  </p>
+                </div>
+                <div className="mt-3.5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyWholesaleLink}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold px-3.5 py-2 text-xs transition shadow-xs cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedWholesaleLink ? "¡Enlace Copiado!" : "Copiar Link Mayorista"}
+                  </button>
+                  <a
+                    href={getWhatsAppUrl("Hola! Acá te comparto el enlace exclusivo para acceder a nuestro catálogo mayorista de MYA Importaciones:")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 text-xs transition shadow-xs"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Enviar por WhatsApp
+                  </a>
+                </div>
               </div>
-              <div className="mt-3.5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyWholesaleLink}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold px-3.5 py-2 text-xs transition shadow-xs cursor-pointer"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  {copiedWholesaleLink ? "¡Enlace Copiado!" : "Copiar Link Mayorista"}
-                </button>
-                <a
-                  href={getWhatsAppUrl("Hola! Acá te comparto el enlace exclusivo para acceder a nuestro catálogo mayorista de MYA Importaciones:")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 text-xs transition shadow-xs"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  Enviar por WhatsApp
-                </a>
-              </div>
-            </div>
 
-            {/* Box 2: Habilitar por Email */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4.5 flex flex-col justify-between shadow-xs">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-zinc-700">
-                  Habilitar Cliente Mayorista por Email
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
-                  Ingresá el email de un usuario ya registrado para otorgarle condición de cliente mayorista de inmediato.
-                </p>
+              {/* Box 2: Habilitar por Email */}
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4.5 flex flex-col justify-between shadow-xs">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-700">
+                    Habilitar Cliente Mayorista por Email
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
+                    Ingresá el email de un usuario ya registrado para otorgarle condición de cliente mayorista de inmediato.
+                  </p>
+                </div>
+                <form onSubmit={handleQuickWholesaleSubmit} className="mt-3.5 flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="ejemplo@comercio.com"
+                    value={quickWholesaleEmail}
+                    onChange={(e) => setQuickWholesaleEmail(e.target.value)}
+                    className="flex-1 h-9.5 rounded-xl border border-zinc-300 px-3 text-xs outline-none focus:border-emerald-600 bg-white"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-3.5 py-2 text-xs transition cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    Habilitar Mayorista
+                  </button>
+                </form>
               </div>
-              <form onSubmit={handleQuickWholesaleSubmit} className="mt-3.5 flex gap-2">
-                <input
-                  type="email"
-                  placeholder="ejemplo@comercio.com"
-                  value={quickWholesaleEmail}
-                  onChange={(e) => setQuickWholesaleEmail(e.target.value)}
-                  className="flex-1 h-9.5 rounded-xl border border-zinc-300 px-3 text-xs outline-none focus:border-emerald-600 bg-white"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-3.5 py-2 text-xs transition cursor-pointer shrink-0 disabled:opacity-50"
-                >
-                  Habilitar Mayorista
-                </button>
-              </form>
             </div>
-          </div>}
+          )}
 
           {/* Search and Filters Bar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-3.5 rounded-2xl border border-zinc-200 shadow-xs">
@@ -1960,9 +2156,9 @@ Logística / Despacho: +${calcShippingPercent}%
             <div className="flex flex-wrap gap-1.5">
               {[
                 { id: "all", label: `Todos (${data.customers.length})` },
-                { id: "wholesale", label: `Mayoristas (${data.customers.filter(c => c.isApprovedWholesale).length})` },
+                { id: "wholesale", label: `Mayoristas (${customerStats.wholesaleCount})` },
                 { id: "retail", label: `Minoristas (${data.customers.filter(c => !c.isApprovedWholesale && c.role !== "admin").length})` },
-                { id: "admin", label: `Admins (${data.customers.filter(c => c.role === "admin").length})` },
+                { id: "admin", label: `Admins (${customerStats.adminCount})` },
               ].map((f) => (
                 <button
                   key={f.id}
@@ -1970,7 +2166,7 @@ Logística / Despacho: +${calcShippingPercent}%
                   onClick={() => setCustomerFilter(f.id as typeof customerFilter)}
                   className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
                     customerFilter === f.id
-                      ? "bg-zinc-900 text-white"
+                      ? "bg-zinc-900 text-white shadow-xs"
                       : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                   }`}
                 >
@@ -1980,16 +2176,17 @@ Logística / Despacho: +${calcShippingPercent}%
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+          {/* Customers Table */}
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
-              <table className="admin-card-table w-full min-w-[700px] text-left text-sm">
+              <table className="admin-card-table w-full min-w-[750px] text-left text-sm">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
                   <tr>
                     <th className="px-6 py-3.5 font-semibold text-xs">Usuario / Comercio</th>
-                    <th className="px-6 py-3.5 font-semibold text-xs">Email</th>
-                    <th className="px-6 py-3.5 font-semibold text-xs">Rol</th>
-                    <th className="px-6 py-3.5 font-semibold text-xs">Estado Mayorista</th>
-                    <th className="px-6 py-3.5 font-semibold text-xs text-right">Acciones</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs">Contacto</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs text-center">Compras</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs text-center">Condición Mayorista</th>
+                    <th className="px-6 py-3.5 font-semibold text-xs text-right">Rol & Permisos</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -1999,6 +2196,7 @@ Logística / Despacho: +${calcShippingPercent}%
                         <div className="flex flex-col items-center justify-center">
                           <Inbox className="h-10 w-10 text-zinc-300 mb-2" />
                           <p className="font-semibold text-zinc-700">No se encontraron usuarios</p>
+                          <p className="text-xs text-zinc-400 mt-1">Probá cambiando el término de búsqueda o el filtro.</p>
                         </div>
                       </td>
                     </tr>
@@ -2006,48 +2204,94 @@ Logística / Despacho: +${calcShippingPercent}%
                     filteredCustomers.map((customer) => {
                       const isAdmin = customer.role === "admin";
                       const isApproved = customer.isApprovedWholesale ?? false;
+                      const customerPhone = data.orders.find(
+                        (o) => o.customerEmail?.toLowerCase() === customer.email.toLowerCase() && o.shippingPhone
+                      )?.shippingPhone;
 
                       return (
-                        <tr key={customer.id} className="hover:bg-zinc-50/40 transition-colors">
-                          <td data-label="Cliente" className="px-6 py-3.5">
-                            <div className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs sm:text-sm">
-                              {customer.fullName}
-                              {isAdmin && (
-                                <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 ring-1 ring-inset ring-indigo-700/20">
-                                  <Shield className="h-2.5 w-2.5" /> Admin
-                                </span>
-                              )}
+                        <tr key={customer.id} className="hover:bg-zinc-50/60 transition-colors">
+                          <td data-label="Cliente" className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-bold text-zinc-700 shrink-0 uppercase">
+                                {customer.fullName?.slice(0, 2) || "CL"}
+                              </div>
+                              <div>
+                                <div className="font-bold text-zinc-950 flex items-center gap-1.5 text-xs sm:text-sm">
+                                  {customer.fullName}
+                                  {isAdmin && (
+                                    <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 ring-1 ring-inset ring-indigo-700/20">
+                                      <Shield className="h-2.5 w-2.5" /> Admin
+                                    </span>
+                                  )}
+                                </div>
+                                {customer.businessName ? (
+                                  <p className="text-[11px] text-zinc-600 font-medium">
+                                    🏢 {customer.businessName} {customer.cuit ? `(CUIT: ${customer.cuit})` : ""}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-zinc-400">Cliente consumidor final</p>
+                                )}
+                              </div>
                             </div>
-                            {customer.businessName && (
-                              <p className="text-[11px] text-zinc-500 font-medium">{customer.businessName} {customer.cuit ? `(CUIT: ${customer.cuit})` : ""}</p>
+                          </td>
+
+                          <td data-label="Contacto" className="px-6 py-4">
+                            <p className="font-medium text-zinc-700 text-xs">{customer.email}</p>
+                            {customerPhone ? (
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <a
+                                  href={`https://wa.me/${customerPhone.replace(/[^0-9]/g, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 transition"
+                                  title="Abrir chat de WhatsApp"
+                                >
+                                  <MessageCircle className="h-3 w-3 text-emerald-600" />
+                                  {customerPhone}
+                                </a>
+                              </div>
+                            ) : (
+                              <a
+                                href={`mailto:${customer.email}`}
+                                className="text-[11px] text-zinc-400 hover:text-zinc-600 inline-block mt-0.5"
+                              >
+                                Enviar email
+                              </a>
                             )}
                           </td>
-                          <td data-label="Email" className="px-6 py-3.5 font-medium text-zinc-650 text-xs">{customer.email}</td>
-                          <td data-label="Rol" className="px-6 py-3.5">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
-                              isAdmin
-                                ? "bg-purple-50 text-purple-800 ring-purple-600/20"
-                                : "bg-zinc-100 text-zinc-700 ring-zinc-500/20"
-                            }`}>
-                              {isAdmin ? "Administrador" : "Cliente"}
+
+                          <td data-label="Compras" className="px-6 py-4 text-center">
+                            <span className="inline-block font-extrabold text-xs text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded">
+                              {customer.ordersCount} pedidos
                             </span>
+                            {customer.totalSpent > 0 && (
+                              <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">
+                                {formatCurrency(customer.totalSpent)}
+                              </p>
+                            )}
                           </td>
-                          <td data-label="Mayorista" className="px-6 py-3.5">
-                            {WHOLESALE_ENABLED ? <button
-                              disabled={isPending}
-                              onClick={() => handleToggleWholesale(customer.id, isApproved)}
-                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                                isApproved
-                                  ? "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
-                                  : "bg-zinc-100 text-zinc-600 border border-zinc-200 hover:bg-zinc-200"
-                              }`}
-                              title="Hacé clic para cambiar la autorización mayorista"
-                            >
-                              <Check className={`h-3.5 w-3.5 ${isApproved ? "text-amber-700" : "text-transparent"}`} />
-                              {isApproved ? "Mayorista Habilitado" : "Solo Minorista"}
-                            </button> : <span className="text-xs text-zinc-500">Canal pausado</span>}
+
+                          <td data-label="Mayorista" className="px-6 py-4 text-center">
+                            {WHOLESALE_ENABLED ? (
+                              <button
+                                disabled={isPending}
+                                onClick={() => handleToggleWholesale(customer.id, isApproved)}
+                                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                  isApproved
+                                    ? "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 shadow-xs"
+                                    : "bg-zinc-100 text-zinc-600 border border-zinc-200 hover:bg-zinc-200"
+                                }`}
+                                title="Hacé clic para cambiar la autorización mayorista"
+                              >
+                                <Check className={`h-3.5 w-3.5 ${isApproved ? "text-amber-700 font-extrabold" : "text-transparent"}`} />
+                                {isApproved ? "Mayorista Habilitado" : "Solo Minorista"}
+                              </button>
+                            ) : (
+                              <span className="text-xs text-zinc-500">Canal pausado</span>
+                            )}
                           </td>
-                          <td data-label="Acciones" className="px-6 py-3.5 text-right">
+
+                          <td data-label="Acciones" className="px-6 py-4 text-right">
                             <button
                               disabled={isPending}
                               onClick={() => handleUpdateRole(customer.id, customer.role)}
@@ -2082,132 +2326,34 @@ Logística / Despacho: +${calcShippingPercent}%
         }}
       />
 
-      {/* MODAL: NUEVA CATEGORÍA (Con Sticky Header/Footer y preselección inteligente de rubro padre) */}
-      {isCreateCategoryOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-            
-            {/* Sticky Header */}
-            <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white flex-shrink-0 z-10">
-              <h3 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
-                <FolderPlus className="h-5 w-5 text-emerald-600" /> 
-                {createCategoryParentId ? "Crear Subcategoría" : "Crear Nueva Categoría Principal"}
-              </h3>
-              <button
-                onClick={() => setIsCreateCategoryOpen(false)}
-                className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer"
-                type="button"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {/* MODAL: CATEGORÍA PROFESIONAL (Creación y Edición con Upload de Imagen y Jerarquía) */}
+      <CategoryModal
+        isOpen={isCreateCategoryOpen || Boolean(editingCategory)}
+        categories={data.categories}
+        initialParentId={createCategoryParentId}
+        categoryToEdit={editingCategory}
+        onClose={() => {
+          setIsCreateCategoryOpen(false);
+          setEditingCategory(null);
+          setCreateCategoryParentId("");
+        }}
+        onSuccess={(msg) => {
+          alert(msg);
+          router.refresh();
+        }}
+      />
 
-            {/* Form containing scrollable body and sticky footer */}
-            <form onSubmit={handleCreateCategorySubmit} className="flex-1 flex flex-col overflow-hidden">
-              
-              {/* Scrollable Content Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
-                {createCategoryParentId && (
-                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs text-emerald-800 font-medium">
-                    Creando subcategoría relacionada bajo el rubro: <span className="font-bold uppercase">{data.categories.find(c => c.id === createCategoryParentId)?.name}</span>
-                  </div>
-                )}
+      {/* MODAL: CARGA MASIVA DE PRODUCTOS CSV PROFESIONAL */}
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        categories={data.categories}
+        onClose={() => setIsBulkImportOpen(false)}
+        onSuccess={(count) => {
+          alert(`¡Se procesaron y sincronizaron ${count} productos con éxito!`);
+          router.refresh();
+        }}
+      />
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                    Nombre del Rubro
-                    <input
-                      className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-                      name="name"
-                      required
-                      placeholder="Ej. Herramientas, K-Beauty o Tecnología"
-                    />
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                    ¿Es subcategoría de?
-                    <select
-                      className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white cursor-pointer"
-                      name="parent_id"
-                      value={createCategoryParentId}
-                      onChange={(e) => setCreateCategoryParentId(e.target.value)}
-                    >
-                      <option value="">Ninguna (Es Categoría Principal)</option>
-                      {mainCategories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                  Descripción
-                  <textarea
-                    className="min-h-20 rounded-xl border border-zinc-300 p-3 outline-none focus:border-emerald-600 bg-white"
-                    name="description"
-                    placeholder="Descripción breve del rubro..."
-                  />
-                </label>
-
-                <div className="grid gap-4 sm:grid-cols-2 items-center">
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                    Foto de Categoría (Subida directa)
-                    <input
-                      accept="image/*"
-                      className="rounded-xl border border-zinc-300 p-2 text-sm bg-white cursor-pointer w-full h-11 file:mr-2.5 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200"
-                      name="image"
-                      type="file"
-                    />
-                  </label>
-                  <div className="flex flex-wrap items-center gap-4 mt-5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700 cursor-pointer">
-                      <input
-                        name="is_wholesale_only"
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer"
-                      />
-                      Solo Mayorista
-                    </label>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
-                      Orden de Visualización
-                      <input
-                        className="h-10 w-20 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white text-center font-bold"
-                        name="display_order"
-                        type="number"
-                        defaultValue={0}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sticky Footer - Always visible, corrected colors */}
-              <div className="flex justify-end gap-3 p-5 bg-zinc-50 border-t border-zinc-200 flex-shrink-0 z-10">
-                <button
-                  onClick={() => setIsCreateCategoryOpen(false)}
-                  className="px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer transition-colors"
-                  type="button"
-                  disabled={isPending}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer transition-colors flex items-center gap-2 shadow-xs"
-                  type="submit"
-                  disabled={isPending}
-                >
-                  {isPending && (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  )}
-                  Crear Categoría
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL: EDITAR PRODUCTO (Con Sticky Header/Footer y Scrollbar Fina - Resuelve overflow y invisibilidad de botón) */}
       {editingProduct && (
@@ -2447,234 +2593,7 @@ Logística / Despacho: +${calcShippingPercent}%
         </div>
       )}
 
-      {/* MODAL: EDITAR CATEGORÍA (Con Sticky Header/Footer y Scrollbar Fina) */}
-      {editingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-            
-            {/* Sticky Header */}
-            <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white flex-shrink-0 z-10">
-              <h3 className="text-xl font-bold text-zinc-955 flex items-center gap-2">
-                <Edit className="h-5 w-5 text-emerald-650" /> Editar Categoría / Rubro
-              </h3>
-              <button
-                onClick={() => setEditingCategory(null)}
-                className="absolute right-4 top-4 rounded-lg p-2 text-zinc-400 hover:bg-zinc-150 hover:text-zinc-900 transition-colors cursor-pointer"
-                type="button"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            {/* Form containing scrollable body and sticky footer */}
-            <form onSubmit={handleEditCategorySubmit} className="flex-1 flex flex-col overflow-hidden" encType="multipart/form-data">
-              
-              {/* Scrollable Content Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
-                <input type="hidden" name="id" value={editingCategory.id} />
-                <input type="hidden" name="existing_image_url" value={editingCategory.imageUrl} />
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                    Nombre
-                    <input
-                      className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white font-bold text-zinc-905"
-                      name="name"
-                      required
-                      defaultValue={editingCategory.name}
-                    />
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                    ¿Es subcategoría de?
-                    <select
-                      className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white cursor-pointer"
-                      name="parent_id"
-                      defaultValue={editingCategory.parentId || ""}
-                    >
-                      <option value="">Ninguna (Es principal)</option>
-                      {mainCategories
-                        .filter((c) => c.id !== editingCategory.id) // Prevent self-referencing
-                        .map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                  </label>
-                </div>
-
-                <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                  Descripción
-                  <textarea
-                    className="min-h-20 rounded-xl border border-zinc-300 p-3 outline-none focus:border-emerald-600 bg-white"
-                    name="description"
-                    defaultValue={editingCategory.description}
-                  />
-                </label>
-
-                <div className="grid gap-4 sm:grid-cols-2 items-center">
-                  <div className="flex items-center gap-3">
-                    {editingCategory.imageUrl ? (
-                      <img 
-                        src={editingCategory.imageUrl} 
-                        alt="Actual" 
-                        className="h-12 w-16 rounded-lg object-cover border border-zinc-200 shadow-sm flex-none" 
-                      />
-                    ) : (
-                      <div className="h-12 w-16 rounded-lg bg-zinc-100 border border-dashed border-zinc-300 flex items-center justify-center text-zinc-405 text-[10px] font-semibold flex-none">
-                        Sin foto
-                      </div>
-                    )}
-                    <label className="grid gap-1 text-xs font-semibold text-zinc-700 flex-1">
-                      Cambiar Foto (Subida directa)
-                      <input
-                        accept="image/*"
-                        className="rounded-xl border border-zinc-300 p-1.5 text-xs bg-white cursor-pointer w-full h-10 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-100 file:text-zinc-700"
-                        name="image"
-                        type="file"
-                      />
-                    </label>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-4 mt-2 justify-end">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700 cursor-pointer">
-                      <input 
-                        name="is_wholesale_only" 
-                        type="checkbox" 
-                        defaultChecked={editingCategory.wholesaleOnly}
-                        className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer" 
-                      />
-                      Solo mayorista
-                    </label>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
-                      Orden de Visualización
-                      <input
-                        className="h-10 w-16 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white text-center font-bold"
-                        name="display_order"
-                        type="number"
-                        defaultValue={editingCategory.displayOrder}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sticky Footer - Always visible, corrected colors */}
-              <div className="flex justify-end gap-3 p-5 bg-zinc-50 border-t border-zinc-200 flex-shrink-0 z-10">
-                <button
-                  onClick={() => setEditingCategory(null)}
-                  className="px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer transition-colors"
-                  type="button"
-                  disabled={isPending}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-650 hover:bg-emerald-700 rounded-xl cursor-pointer transition-colors flex items-center gap-2 shadow-xs"
-                  type="submit"
-                  disabled={isPending}
-                >
-                  {isPending && (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  )}
-                  Guardar Cambios
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-      {/* MODAL: CARGA MASIVA DE PRODUCTOS */}
-      {isBulkImportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white flex-shrink-0 z-10">
-              <h3 className="text-xl font-bold text-zinc-950 flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5 text-sky-600" /> Carga Masiva de Productos
-              </h3>
-              <button
-                onClick={() => setIsBulkImportOpen(false)}
-                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition cursor-pointer"
-                type="button"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleBulkImportSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-6 space-y-4 overflow-y-auto flex-1">
-                <div className="rounded-xl bg-sky-50 border border-sky-200 p-4 text-xs text-sky-900 leading-relaxed">
-                  <p className="font-bold mb-1">Formato requerido (separado por comas):</p>
-                  <p className="font-mono text-[11px] bg-white/70 p-2 rounded border border-sky-200">
-                    Titulo, Categoría, PrecioMinorista, PrecioMayorista, MinMayorista, Descripción
-                  </p>
-                  <p className="mt-2 text-zinc-600">
-                    Podés pegar múltiples líneas CSV. La categoría debe coincidir con una existente. Usá comillas si una descripción contiene comas. El stock se verifica por separado en Operaciones.
-                  </p>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold uppercase text-zinc-700">
-                    Pegar Datos CSV
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setBulkCsvText(
-                        `Producto de ejemplo A, ${mainCategories[0]?.name ?? "Categoría existente"}, 36000, 27000, 2, "Descripción con detalle, presentación y uso"\nProducto de ejemplo B, ${mainCategories[1]?.name ?? mainCategories[0]?.name ?? "Categoría existente"}, 42000, 31500, 1, Descripción del segundo producto`
-                      )
-                    }
-                    className="text-xs text-sky-600 hover:text-sky-700 font-semibold cursor-pointer underline"
-                  >
-                    Insertar plantilla de ejemplo
-                  </button>
-                </div>
-
-                <textarea
-                  rows={8}
-                  value={bulkCsvText}
-                  onChange={(e) => setBulkCsvText(e.target.value)}
-                  placeholder="Pegá aquí tus filas de productos..."
-                  className="w-full rounded-xl border border-zinc-300 p-3 font-mono text-xs outline-none focus:border-sky-600 bg-zinc-50 focus:bg-white"
-                />
-
-                {bulkMsg && (
-                  <div
-                    className={`rounded-xl p-3 text-xs font-semibold ${
-                      bulkMsg.type === "success"
-                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                        : "bg-red-50 text-red-800 border border-red-200"
-                    }`}
-                  >
-                    {bulkMsg.text}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 p-5 bg-zinc-50 border-t border-zinc-200 flex-shrink-0 z-10">
-                <button
-                  type="button"
-                  onClick={() => setIsBulkImportOpen(false)}
-                  className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:bg-zinc-200 rounded-xl cursor-pointer"
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending || !bulkCsvText.trim()}
-                  className="px-5 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isPending && (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  )}
-                  Importar Productos
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL: REGISTRAR NUEVO PROVEEDOR */}
       {isNewSupplierModalOpen && (

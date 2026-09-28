@@ -728,6 +728,11 @@ export interface BulkProductItem {
   imageUrl?: string;
   tags?: string[];
   featured?: boolean;
+  sku?: string;
+  brand?: string;
+  model?: string;
+  sourceUrl?: string;
+  supplierLivePrice?: number;
 }
 export async function bulkImportProductsAction(items: BulkProductItem[]) {
   const supabase = await getAdminClient();
@@ -750,6 +755,11 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
     return {
         title: item.title,
         slug,
+        sku: item.sku?.trim() || null,
+        brand: item.brand?.trim() || null,
+        model: item.model?.trim() || null,
+        source_url: item.sourceUrl?.trim() || null,
+        supplier_live_price: item.supplierLivePrice ? Number(item.supplierLivePrice) : null,
         description: item.description || "",
         category_id: targetCatId,
         image_url: item.imageUrl || "/window.svg",
@@ -769,6 +779,7 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
   revalidatePath("/");
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
+  revalidatePath("/admin/costos");
   revalidatePath("/mayorista");
   return { importedCount: payload.length };
 }

@@ -155,6 +155,62 @@ Por solicitud expresa del usuario para transformar `/admin/costos` en una herram
   - `saveFinancialControl` y `saveProductCostAction` actualizan simultáneamente `product_costs` y `products` (`source_url`, `supplier_live_price`, `fulfillment_mode`, `supplier_available`), e invalidan la caché de inmediato.
 - **Verificación**: 0 errores de TypeScript (`tsc --noEmit`), 16/16 pruebas aprobadas (`npm test`), 30 rutas de producción compiladas limpiamente en Next.js Turbopack.
 
+## Estado vigente al 28/09/2026: Modernización y Rediseño Integral de Todo el Panel de Administración (7 Secciones)
 
+Por requerimiento expreso del usuario de transformar todos los módulos clave del panel administrativo en herramientas profesionales, modernas y completas (tanto frontend como backend):
 
+1. **Costos y Precios (`/admin/costos`)**:
+   - Layout espacioso y responsive con navegación directa hacia el panel principal, operaciones y tienda.
+   - 6 Tarjetas de KPIs financieros y de rentabilidad.
+   - Pestaña de Control de Catálogo con filtros avanzados por salud de margen (crítico, bajo, saludable), proveedor y modalidad.
+   - Simulador Mercado Libre modernizado con autocompletado de productos, sugerencia de precios y aplicación directa al catálogo.
+   - Modales ágiles para ajuste de precio (`QuickPriceModal`), costo de proveedor (`QuickSupplierCostModal`) y control financiero atómico (`FinancialControlModal`).
 
+2. **Importar CSV (`BulkImportModal` + `src/lib/admin-csv.ts`)**:
+   - Componente modular de carga masiva (`src/components/admin/bulk-import-modal.tsx`) con doble entrada: Drag & Drop de archivos `.csv` y pestaña para pegar texto directo.
+   - Botón para descargar la plantilla oficial con encabezados (`plantilla-productos-mya.csv`).
+   - Tabla interactiva de previsualización que muestra los primeros registros parseados, con badges de validación (estado listo vs errores) antes de confirmar.
+   - Compatibilidad ampliada del parser con SKU, marca, modelo, enlace a proveedor y costo en vivo, manteniendo estricta compatibilidad con las pruebas unitarias existentes.
+
+3. **Nuevo Producto (`CreateProductModal`)**:
+   - Modal asistido por pasos / pestañas (Identificación, Categoría, Precios & Margen con calculadora interactiva, Imagen & Stock, Ficha & Publicación).
+   - Soporte directo de enlace a proveedor mayorista, costo de origen y cálculo en vivo del margen de ganancia antes de publicar.
+   - Constructor dinámico de especificaciones técnicas y carga directa de imágenes a Supabase Storage con previsualización.
+
+4. **Nueva Categoría (`CategoryModal`)**:
+   - Componente reutilizable tanto para creación como para edición (`src/components/admin/category-modal.tsx`).
+   - Subida directa de imágenes con preview interactivo (admite tanto archivo local como URL externa).
+   - Generación y vista previa en tiempo real del slug URL de catálogo (`/catalogo?categoria=...`).
+   - Selector jerárquico inteligente de categoría padre / subcategoría con prevención de auto-referencia.
+   - Configuración de visibilidad exclusiva para mayoristas y orden de visualización numérico.
+
+5. **Productos (`ProductControlCenter`)**:
+   - Panel de control de productos de alto rendimiento con vista de catálogo, buscador en tiempo real y filtrado por rubros.
+   - Botones directos para abrir o copiar el enlace del proveedor mayorista con un solo clic.
+   - Píldoras visuales de margen comercial y stock físico.
+   - Acciones masivas de catálogo y operaciones optimizadas.
+
+6. **Categorías (Pestaña Categorías en `AdminDashboard`)**:
+   - Buscador en tiempo real de categorías y subcategorías.
+   - Conteo automático y badges de productos asociados por rubro principal y por cada subcategoría directa.
+   - Enlace directo con ícono para abrir el catálogo público filtrado por dicha categoría en la tienda (`/catalogo?categoria=...`).
+   - Botón directo "+ Subcategoría" dentro de cada tarjeta para crear subcategorías con la categoría padre preseleccionada.
+   - Botones rápidos de edición (abre `CategoryModal`) y eliminación con confirmación segura.
+
+7. **Pedidos y Clientes (Pestañas Pedidos y Clientes en `AdminDashboard`)**:
+   - **Pedidos**:
+     - 4 Tarjetas de métricas superiores: Total pedidos, pedidos pendientes, pedidos entregados y facturación acumulada.
+     - Buscador global por número de pedido, cliente, email, teléfono, dirección o código de seguimiento.
+     - Filtros rápidos por estado de pedido y por canal comercial (minorista vs mayorista).
+     - Botón directo de WhatsApp (`https://wa.me/...`) en cada fila de pedido para contactar al cliente con un solo clic.
+     - Asignador y actualizador rápido de número de guía / seguimiento de encomienda / correo.
+   - **Clientes**:
+     - 3 Tarjetas de métricas: Total usuarios registrados, clientes mayoristas activos y cuentas de administrador.
+     - Buscador por nombre, email, empresa / nombre de fantasía y CUIT.
+     - Filtros rápidos por rol (Todos, Mayoristas, Minoristas, Admins).
+     - Enlace y botón para copiar o compartir el enlace mayorista privado por WhatsApp.
+     - Formulario de habilitación rápida de cliente mayorista por correo.
+     - Tabla enriquecida con avatar de iniciales, CUIT/empresa, botón directo de WhatsApp si el cliente registró teléfono en sus compras, historial de compras (`X pedidos`, `total gastado`), switch interactivo de condición mayorista y gestión de rol de administrador.
+
+8. **Vercel Hobby Cron Compliance**:
+   - Ajustada la expresión cron en `vercel.json` a `0 6 * * *` (diaria a las 06:00 UTC / 03:00 ART) para cumplir estrictamente con el límite de ejecuciones diarias del plan gratuito de Vercel.
