@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product, Category } from "@/lib/types";
@@ -49,6 +50,7 @@ export function ProductProfitControl({
   categories = [],
   costs,
 }: ProductProfitControlProps) {
+  const router = useRouter();
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<"catalog" | "ml_simulator">("catalog");
 
@@ -66,7 +68,7 @@ export function ProductProfitControl({
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
 
   // Active Modals
   const [selectedFinancialProduct, setSelectedFinancialProduct] = useState<Product | null>(null);
@@ -104,9 +106,8 @@ export function ProductProfitControl({
     for (const p of products) {
       const c = costMap.get(p.id);
       const hasDirectCost = Boolean(c && Number(c.origin_cost) > 0);
-      const hasLiveCost = Boolean(p.supplierLivePrice && p.supplierLivePrice > 0);
 
-      if (hasDirectCost || hasLiveCost) {
+      if (hasDirectCost) {
         withCost++;
       } else {
         withoutCost++;
@@ -127,16 +128,6 @@ export function ProductProfitControl({
         if (profit.margin >= 30) healthyCount++;
         else if (profit.margin >= 15) acceptableCount++;
         else if (profit.margin > 0) lowCount++;
-        else criticalCount++;
-      } else if (hasLiveCost) {
-        const estCost = p.supplierLivePrice!;
-        const estMargin = ((p.retailPrice - estCost) / p.retailPrice) * 100;
-        marginSum += estMargin;
-        marginValidCount++;
-
-        if (estMargin >= 30) healthyCount++;
-        else if (estMargin >= 15) acceptableCount++;
-        else if (estMargin > 0) lowCount++;
         else criticalCount++;
       }
     }
@@ -210,14 +201,10 @@ export function ProductProfitControl({
         if (marginFilter !== "all") {
           const c = costMap.get(p.id);
           const profit = calculateProductProfit(p.retailPrice, c);
-          const effectiveMargin = profit
-            ? profit.margin
-            : p.supplierLivePrice
-            ? ((p.retailPrice - p.supplierLivePrice) / p.retailPrice) * 100
-            : null;
+          const effectiveMargin = profit?.margin ?? null;
 
           if (marginFilter === "missing") {
-            if (c || (p.supplierLivePrice && p.supplierLivePrice > 0)) return false;
+            if (profit) return false;
           } else if (effectiveMargin === null) {
             return false;
           } else if (marginFilter === "healthy") {
@@ -239,24 +226,16 @@ export function ProductProfitControl({
         const profitA = calculateProductProfit(a.retailPrice, costA);
         const profitB = calculateProductProfit(b.retailPrice, costB);
 
-        const marginA = profitA
-          ? profitA.margin
-          : a.supplierLivePrice
-          ? ((a.retailPrice - a.supplierLivePrice) / a.retailPrice) * 100
-          : -999;
-        const marginB = profitB
-          ? profitB.margin
-          : b.supplierLivePrice
-          ? ((b.retailPrice - b.supplierLivePrice) / b.retailPrice) * 100
-          : -999;
+        const marginA = profitA?.margin ?? -999;
+        const marginB = profitB?.margin ?? -999;
 
         if (sortBy === "margin_desc") return marginB - marginA;
         if (sortBy === "margin_asc") return marginA - marginB;
         if (sortBy === "price_desc") return b.retailPrice - a.retailPrice;
         if (sortBy === "price_asc") return a.retailPrice - b.retailPrice;
         if (sortBy === "cost_desc") {
-          const cA = profitA?.purchase || a.supplierLivePrice || 0;
-          const cB = profitB?.purchase || b.supplierLivePrice || 0;
+          const cA = profitA?.purchase ?? 0;
+          const cB = profitB?.purchase ?? 0;
           return cB - cA;
         }
         return a.title.localeCompare(b.title);
@@ -330,10 +309,10 @@ export function ProductProfitControl({
         </div>
 
         {/* View Switcher Tabs */}
-        <div className="inline-flex rounded-xl bg-zinc-200/70 p-1 border border-zinc-300/80">
+        <div className="grid w-full max-w-sm grid-cols-2 rounded-xl bg-zinc-200/70 p-1 border border-zinc-300/80">
           <button
             onClick={() => setActiveTab("catalog")}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 py-2 text-center text-xs font-bold transition-all ${
               activeTab === "catalog"
                 ? "bg-white text-zinc-950 shadow-xs"
                 : "text-zinc-600 hover:text-zinc-950"
@@ -344,14 +323,14 @@ export function ProductProfitControl({
           </button>
           <button
             onClick={() => setActiveTab("ml_simulator")}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 py-2 text-center text-xs font-bold transition-all ${
               activeTab === "ml_simulator"
                 ? "bg-white text-zinc-950 shadow-xs"
                 : "text-zinc-600 hover:text-zinc-950"
             }`}
           >
             <Calculator className="h-3.5 w-3.5" />
-            Simulador Mercado Libre (-8%)
+            Simulador Mercado Libre
           </button>
         </div>
       </div>
@@ -586,7 +565,7 @@ export function ProductProfitControl({
               {/* Items per page selector */}
               <div className="flex items-center gap-1.5">
                 <span>Filas por página:</span>
-                {[15, 25, 50, 100].map((size) => (
+                {[10, 25, 50, 100].map((size) => (
                   <button
                     key={size}
                     onClick={() => {
@@ -609,7 +588,7 @@ export function ProductProfitControl({
           {/* Table Container */}
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] text-left text-xs">
+              <table className="admin-card-table w-full min-w-[1050px] text-left text-xs">
                 {/* Table Header */}
                 <thead className="border-b border-zinc-200 bg-zinc-50/90 text-zinc-600 font-bold uppercase tracking-wider text-[11px]">
                   <tr>
@@ -630,27 +609,10 @@ export function ProductProfitControl({
                       const costRecord = costMap.get(p.id);
                       const profit = calculateProductProfit(p.retailPrice, costRecord);
 
-                      // If no verified costRecord, compute provisional using supplierLivePrice if available
-                      const purchasePrice = profit
-                        ? profit.purchase
-                        : p.supplierLivePrice
-                        ? p.supplierLivePrice
-                        : null;
-                      const landedPrice = profit
-                        ? profit.landed
-                        : p.supplierLivePrice
-                        ? p.supplierLivePrice
-                        : null;
-                      const contribution = profit
-                        ? profit.contribution
-                        : p.supplierLivePrice
-                        ? p.retailPrice - p.supplierLivePrice
-                        : null;
-                      const marginPercent = profit
-                        ? profit.margin
-                        : p.supplierLivePrice
-                        ? ((p.retailPrice - p.supplierLivePrice) / p.retailPrice) * 100
-                        : null;
+                      const purchasePrice = profit?.purchase ?? null;
+                      const landedPrice = profit?.landed ?? null;
+                      const contribution = profit?.contribution ?? null;
+                      const marginPercent = profit?.margin ?? null;
 
                       const isCritical = marginPercent !== null && marginPercent <= 0;
                       const isLow = marginPercent !== null && marginPercent > 0 && marginPercent < 15;
@@ -664,7 +626,7 @@ export function ProductProfitControl({
                           }`}
                         >
                           {/* 1. Product Identity */}
-                          <td className="py-3.5 pl-4 pr-3 max-w-[280px]">
+                          <td data-label="Producto" className="py-3.5 pl-4 pr-3 max-w-[280px]">
                             <div className="flex items-center gap-3">
                               {/* Thumbnail */}
                               <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
@@ -730,7 +692,7 @@ export function ProductProfitControl({
                           </td>
 
                           {/* 2. Supplier Link & Origin Cost */}
-                          <td className="px-3 py-3.5 max-w-[220px]">
+                          <td data-label="Proveedor y costo" className="px-3 py-3.5 max-w-[220px]">
                             {p.sourceUrl ? (
                               <div className="space-y-1">
                                 <div className="flex items-center gap-1.5">
@@ -811,7 +773,7 @@ export function ProductProfitControl({
                           </td>
 
                           {/* 3. Costo Puesto (Landed) */}
-                          <td className="px-3 py-3.5">
+                          <td data-label="Costo puesto" className="px-3 py-3.5">
                             {landedPrice ? (
                               <div>
                                 <span className="font-bold text-zinc-900">{money(landedPrice)}</span>
@@ -831,7 +793,7 @@ export function ProductProfitControl({
                           </td>
 
                           {/* 4. Precio de Venta (PVP) */}
-                          <td className="px-3 py-3.5">
+                          <td data-label="Precio de venta" className="px-3 py-3.5">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-black text-zinc-900">
                                 {money(p.retailPrice)}
@@ -853,7 +815,7 @@ export function ProductProfitControl({
                           </td>
 
                           {/* 5. Contribución & Margen */}
-                          <td className="px-3 py-3.5">
+                          <td data-label="Contribución y margen" className="px-3 py-3.5">
                             {marginPercent !== null && contribution !== null ? (
                               <div className="space-y-1">
                                 <div className="flex items-center gap-1.5">
@@ -900,7 +862,7 @@ export function ProductProfitControl({
                           </td>
 
                           {/* 6. Modalidad & Stock */}
-                          <td className="px-3 py-3.5">
+                          <td data-label="Modalidad y stock" className="px-3 py-3.5">
                             {p.fulfillmentMode === "supplier" ? (
                               <div>
                                 <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
@@ -929,7 +891,7 @@ export function ProductProfitControl({
                           </td>
 
                           {/* 7. Actions */}
-                          <td className="py-3.5 pl-3 pr-4 text-right">
+                          <td data-label="Acciones" className="py-3.5 pl-3 pr-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
@@ -998,7 +960,10 @@ export function ProductProfitControl({
         <RealCosts
           products={products}
           costs={costs}
-          onSaved={() => showToast("Costos registrados con éxito", "success")}
+          onSaved={() => {
+            router.refresh();
+            showToast("Costos registrados con éxito", "success");
+          }}
         />
       )}
 
@@ -1009,6 +974,7 @@ export function ProductProfitControl({
           costRecord={costMap.get(selectedQuickPriceProduct.id)}
           onClose={() => setSelectedQuickPriceProduct(null)}
           onSuccess={(msg) => {
+            router.refresh();
             showToast(msg, "success");
             setSelectedQuickPriceProduct(null);
           }}
@@ -1019,9 +985,9 @@ export function ProductProfitControl({
       {selectedQuickSupplierProduct && (
         <QuickSupplierCostModal
           product={selectedQuickSupplierProduct}
-          costRecord={costMap.get(selectedQuickSupplierProduct.id)}
           onClose={() => setSelectedQuickSupplierProduct(null)}
           onSuccess={(msg) => {
+            router.refresh();
             showToast(msg, "success");
             setSelectedQuickSupplierProduct(null);
           }}
@@ -1035,6 +1001,7 @@ export function ProductProfitControl({
           costRecord={costMap.get(selectedFinancialProduct.id)}
           onClose={() => setSelectedFinancialProduct(null)}
           onSuccess={(msg) => {
+            router.refresh();
             showToast(msg, "success");
             setSelectedFinancialProduct(null);
           }}
@@ -1062,7 +1029,7 @@ function QuickPriceModal({
   const [wholesalePrice, setWholesalePrice] = useState(product.wholesalePrice || 0);
   const [isPending, startTransition] = useTransition();
 
-  const currentCost = costRecord?.origin_cost || product.supplierLivePrice || 0;
+  const currentCost = costRecord?.origin_cost || 0;
   const currentLanded = costRecord
     ? costRecord.origin_cost * costRecord.exchange_rate + costRecord.freight_per_unit
     : currentCost;
@@ -1089,8 +1056,8 @@ function QuickPriceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-zinc-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="my-auto max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6">
         <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
           <h3 className="text-base font-bold text-zinc-950">Ajuste Rápido de Precios</h3>
           <button onClick={onClose} className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100">
@@ -1184,19 +1151,15 @@ function QuickPriceModal({
 // -----------------------------------------------------------------------------
 function QuickSupplierCostModal({
   product,
-  costRecord,
   onClose,
   onSuccess,
 }: {
   product: Product;
-  costRecord?: ProductCost;
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }) {
   const [sourceUrl, setSourceUrl] = useState(product.sourceUrl || "");
-  const [supplierLivePrice, setSupplierLivePrice] = useState(
-    product.supplierLivePrice || costRecord?.origin_cost || ""
-  );
+  const [supplierLivePrice, setSupplierLivePrice] = useState<number | "">("");
   const [supplierAvailable, setSupplierAvailable] = useState(product.supplierAvailable ?? true);
   const [fulfillmentMode, setFulfillmentMode] = useState<"own_stock" | "supplier">(
     product.fulfillmentMode ?? "supplier"
@@ -1222,8 +1185,8 @@ function QuickSupplierCostModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-zinc-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="my-auto max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6">
         <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
           <div className="flex items-center gap-2">
             <LinkIcon className="h-4 w-4 text-sky-600" />
@@ -1349,7 +1312,7 @@ function FinancialControlModal({
   const [errorMessage, setErrorMessage] = useState("");
 
   const [values, setValues] = useState({
-    purchase: Number(costRecord?.origin_cost || product.supplierLivePrice || 0),
+    purchase: Number(costRecord?.origin_cost || 0),
     exchange: Number(costRecord?.exchange_rate || 1),
     freight: Number(costRecord?.freight_per_unit || 0),
     other: Number(costRecord?.other_landed_cost || 0),
@@ -1410,8 +1373,8 @@ function FinancialControlModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
-      <div className="w-full max-w-3xl flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden max-h-[92dvh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="my-auto w-full max-w-3xl min-h-0 flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden max-h-[calc(100dvh-1rem)] sm:max-h-[92dvh]">
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-100 bg-white shrink-0">
           <div className="min-w-0 flex-1 pr-2">
             <h2 className="text-base sm:text-lg font-bold text-zinc-950 truncate">Ajuste Integral de Costos & Ganancia</h2>
@@ -1422,8 +1385,8 @@ function FinancialControlModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 flex flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6">
           {/* Section 1: Purchase and Currency */}
           <div>
             <div className="flex items-center justify-between border-b border-zinc-100 pb-1 mb-3">

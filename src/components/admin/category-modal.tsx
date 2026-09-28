@@ -96,7 +96,8 @@ export function CategoryModal({
     formData.set("parent_id", parentId);
     formData.set("description", description.trim());
     formData.set("display_order", String(displayOrder));
-    if (wholesaleOnly) formData.set("wholesale_only", "on");
+    if (wholesaleOnly) formData.set("is_wholesale_only", "on");
+    if (isEditing && categoryToEdit) formData.set("existing_image_url", categoryToEdit.imageUrl || "");
 
     if (imageFile) {
       formData.set("image", imageFile);
@@ -121,8 +122,8 @@ export function CategoryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
-      <div className="relative w-full max-w-lg flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[92dvh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="relative my-auto w-full max-w-lg min-h-0 flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[calc(100dvh-1rem)] sm:max-h-[92dvh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-200 p-4 sm:p-5 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
@@ -148,8 +149,8 @@ export function CategoryModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 flex flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
           {/* Name & Slug preview */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700">
@@ -165,7 +166,7 @@ export function CategoryModal({
             />
             {slugPreview && (
               <span className="block mt-1 text-[11px] text-zinc-400 font-mono">
-                Enlace en tienda: /catalogo?categoria={slugPreview}
+                Enlace en tienda: /catalogo?category={slugPreview}
               </span>
             )}
           </div>

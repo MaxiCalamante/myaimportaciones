@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Package,
@@ -55,6 +56,7 @@ export function ProductControlCenter({
   stockLogs,
   onOpenCreateProduct,
 }: ProductControlCenterProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   // Filters state
@@ -71,7 +73,7 @@ export function ProductControlCenter({
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
 
   // Selection state for bulk operations
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -262,7 +264,7 @@ export function ProductControlCenter({
     startTransition(async () => {
       try {
         await toggleProductActiveAction(product.id, nextState);
-        product.active = nextState;
+        router.refresh();
         showToast(nextState ? `"${product.title}" ahora está activo en la tienda.` : `"${product.title}" fue pausado (oculto del catálogo).`, "info");
       } catch (err: unknown) {
         showToast(err instanceof Error ? err.message : "Error al actualizar estado.", "error");
@@ -276,7 +278,7 @@ export function ProductControlCenter({
     startTransition(async () => {
       try {
         await toggleProductSupplierAvailabilityAction(product.id, nextState);
-        product.supplierAvailable = nextState;
+        router.refresh();
         showToast(nextState ? `Mayorista habilitado: disponible para clientes.` : `Disponibilidad de mayorista pausada (sin stock temporal).`, "info");
       } catch (err: unknown) {
         showToast(err instanceof Error ? err.message : "Error al cambiar disponibilidad.", "error");
@@ -290,10 +292,7 @@ export function ProductControlCenter({
     startTransition(async () => {
       try {
         const result = await checkSingleProductSupplierStockAction(product.id);
-        product.supplierAvailable = result.available;
-        product.supplierLastCheckedAt = new Date().toISOString();
-        product.supplierStockStatus = result.status;
-        if (result.livePrice) product.supplierLivePrice = result.livePrice;
+        router.refresh();
 
         setVerificationFeedback((prev) => ({
           ...prev,
@@ -327,6 +326,7 @@ export function ProductControlCenter({
           errors: report.errors,
           timestamp: new Date().toLocaleTimeString(),
         });
+        router.refresh();
         showToast(
           `Sincronización completada: ${report.inStock} disponibles, ${report.outOfStock} sin stock pausados automáticamente.`,
           "success"
@@ -345,6 +345,7 @@ export function ProductControlCenter({
     startTransition(async () => {
       try {
         await bulkUpdateProductStatusAction(selectedIds, action);
+        router.refresh();
         showToast(`Operación masiva aplicada a ${selectedIds.length} productos.`, "success");
         setSelectedIds([]);
       } catch (err: unknown) {
@@ -359,6 +360,7 @@ export function ProductControlCenter({
     startTransition(async () => {
       try {
         await bulkAdjustPricesAction(selectedIds, bulkPriceType, bulkPriceAmount);
+        router.refresh();
         showToast(`Precios actualizados para ${selectedIds.length} productos.`, "success");
         setIsBulkPriceModalOpen(false);
         setSelectedIds([]);
@@ -374,8 +376,7 @@ export function ProductControlCenter({
     startTransition(async () => {
       try {
         await quickUpdateProductPriceAction(quickPriceProduct.id, quickRetailPrice, quickWholesalePrice);
-        quickPriceProduct.retailPrice = quickRetailPrice;
-        if (quickWholesalePrice > 0) quickPriceProduct.wholesalePrice = quickWholesalePrice;
+        router.refresh();
         showToast(`Precio actualizado para "${quickPriceProduct.title}".`, "success");
         setQuickPriceProduct(null);
       } catch (err: unknown) {
@@ -405,6 +406,7 @@ export function ProductControlCenter({
       startTransition(async () => {
         try {
           await deleteProductAction(productId);
+          router.refresh();
           showToast(`Producto "${title}" eliminado.`, "info");
         } catch (err: unknown) {
           showToast(err instanceof Error ? err.message : "Error al eliminar producto.", "error");
@@ -501,12 +503,12 @@ export function ProductControlCenter({
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-zinc-900">Control & Sincronización Automática con Mayorista</h3>
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                Cron Activo cada 4h
+                Programado diariamente, 06:00 UTC
               </span>
             </div>
             <p className="text-xs text-zinc-600 mt-0.5">
-              Verifica en vivo stock en la web del proveedor (Total Tools / Wadfow / Atacado USA). Si el proveedor agota un
-              producto, se pausa automáticamente para prevenir ventas sin stock.
+              La sincronización consulta la web del proveedor (Total Tools / Wadfow / Atacado USA). Cuando confirma que un
+              producto se agotó, pausa su disponibilidad para prevenir ventas sin stock.
             </p>
             {batchSyncReport && (
               <p className="text-xs text-sky-800 font-semibold mt-1">
@@ -610,9 +612,9 @@ export function ProductControlCenter({
 
       {/* Filter and Control Toolbar */}
       <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3">
           {/* Live Search */}
-          <div className="relative flex-1 max-w-lg">
+          <div className="relative w-full max-w-lg">
             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
             <input
               type="text"
@@ -846,7 +848,7 @@ export function ProductControlCenter({
       {/* Main Products Table */}
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-sm">
+          <table className="admin-card-table w-full min-w-[1000px] text-left text-sm">
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 text-xs font-semibold uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-3.5 w-12 text-center">
@@ -904,7 +906,7 @@ export function ProductControlCenter({
                       } ${!isActive ? "opacity-75 bg-zinc-50/40" : ""}`}
                     >
                       {/* Select Checkbox */}
-                      <td className="px-4 py-3.5 text-center">
+                      <td data-label="Seleccionar" className="px-4 py-3.5 text-center">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -914,7 +916,7 @@ export function ProductControlCenter({
                       </td>
 
                       {/* Product identity */}
-                      <td className="px-4 py-3.5">
+                      <td data-label="Producto" className="px-4 py-3.5">
                         <div className="flex items-start gap-3">
                           {product.imageUrl ? (
                             <img
@@ -982,7 +984,7 @@ export function ProductControlCenter({
                       </td>
 
                       {/* Category */}
-                      <td className="px-4 py-3.5 text-zinc-600 text-xs">
+                      <td data-label="Categoría" className="px-4 py-3.5 text-zinc-600 text-xs">
                         <span className="inline-flex items-center gap-1 font-medium bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-lg border border-zinc-200/70 max-w-44 truncate">
                           <Layers className="h-3 w-3 text-zinc-400 shrink-0" />
                           <span className="truncate">{categoryDisplay}</span>
@@ -990,7 +992,7 @@ export function ProductControlCenter({
                       </td>
 
                       {/* Prices & Quick Edit */}
-                      <td className="px-4 py-3.5">
+                      <td data-label="Precios" className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
                           <div>
                             <div className="font-black text-zinc-950 text-sm">
@@ -1017,7 +1019,7 @@ export function ProductControlCenter({
                       </td>
 
                       {/* Fulfillment & Supplier Link / Availability */}
-                      <td className="px-4 py-3.5">
+                      <td data-label="Abastecimiento" className="px-4 py-3.5">
                         <div className="space-y-2">
                           {/* Supplier Direct Link & Actions */}
                           {product.sourceUrl ? (
@@ -1141,7 +1143,7 @@ export function ProductControlCenter({
                       </td>
 
                       {/* Status in Retail Shop (Active / Paused switch) */}
-                      <td className="px-4 py-3.5 text-center">
+                      <td data-label="Estado en tienda" className="px-4 py-3.5 text-center">
                         <button
                           type="button"
                           onClick={() => handleToggleActive(product)}
@@ -1158,7 +1160,7 @@ export function ProductControlCenter({
                       </td>
 
                       {/* Row Actions */}
-                      <td className="px-4 py-3.5 text-center">
+                      <td data-label="Acciones" className="px-4 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
@@ -1170,7 +1172,7 @@ export function ProductControlCenter({
                           </button>
 
                           <a
-                            href={`/catalogo/${product.slug}`}
+                            href={`/producto/${product.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer bg-white shadow-2xs"
@@ -1215,6 +1217,7 @@ export function ProductControlCenter({
                 }}
                 className="rounded-lg border border-zinc-300 px-2 py-1 bg-white font-semibold cursor-pointer"
               >
+                <option value={10}>10</option>
                 <option value={15}>15</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -1410,7 +1413,19 @@ export function ProductControlCenter({
           onClose={() => setEditingProduct(null)}
           onSaved={() => {
             setEditingProduct(null);
+            router.refresh();
             showToast("Producto actualizado exitosamente.", "success");
+          }}
+        />
+      )}
+      {quickSupplierProduct && (
+        <QuickSupplierModal
+          product={quickSupplierProduct}
+          onClose={() => setQuickSupplierProduct(null)}
+          onSaved={() => {
+            setQuickSupplierProduct(null);
+            router.refresh();
+            showToast("Proveedor actualizado.", "success");
           }}
         />
       )}
@@ -2055,8 +2070,8 @@ function QuickSupplierModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-      <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-zinc-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in">
+      <div className="my-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[92dvh]">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-zinc-200 bg-gradient-to-r from-sky-50 via-white to-zinc-50">
           <div className="flex items-center gap-2.5">
@@ -2086,7 +2101,7 @@ function QuickSupplierModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
           {/* Supplier Link Input with Test Button */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-zinc-700">
@@ -2157,14 +2172,11 @@ function QuickSupplierModal({
           {marginStats && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 flex items-center justify-between text-xs">
               <div>
-                <span className="text-[11px] text-zinc-500 font-semibold block">Margen de ganancia estimado:</span>
+                <span className="text-[11px] text-zinc-500 font-semibold block">Diferencia antes de envío y cargos:</span>
                 <strong className="text-sm font-extrabold text-emerald-950">
-                  +{marginStats.margin}% ({formatCurrency(marginStats.profit)} ganancia bruta)
+                  {marginStats.margin}% ({formatCurrency(marginStats.profit)})
                 </strong>
               </div>
-              <span className="rounded-lg bg-emerald-600 text-white text-[11px] font-bold px-2 py-1">
-                Rentable
-              </span>
             </div>
           )}
 

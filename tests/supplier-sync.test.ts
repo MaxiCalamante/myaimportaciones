@@ -14,3 +14,17 @@ test("supplier sync handles 404 response cleanly", async () => {
   assert.equal(result.available, false);
   assert.equal(result.status, "not_found");
 });
+
+test("supplier sync does not infer stock from a generic successful page", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response("<html><body>Producto</body></html>", { status: 200 }));
+  const result = await checkSupplierProductAvailability("https://proveedor.example/producto");
+  assert.equal(result.available, false);
+  assert.equal(result.status, "error");
+});
+
+test("supplier sync requires a price signal on known supplier pages", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response("<html><body>Producto</body></html>", { status: 200 }));
+  const result = await checkSupplierProductAvailability("https://www.totalherramientasoficial.com.py/producto");
+  assert.equal(result.available, false);
+  assert.equal(result.status, "error");
+});

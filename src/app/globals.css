@@ -71,6 +71,7 @@ html {
   }
   .admin-card-table td {
     display: block !important;
+    max-width: none !important;
     padding: 0.75rem 1rem !important;
     border-bottom: 1px solid #f4f4f5;
     text-align: left !important;
@@ -91,6 +92,12 @@ html {
   .admin-card-table td[data-label] > .flex {
     justify-content: flex-start;
     align-items: flex-start;
+  }
+  .admin-card-table td[data-label] {
+    overflow-wrap: anywhere;
+  }
+  .admin-card-table td[data-label] button {
+    max-width: 100%;
   }
   .admin-cost-table { min-width: 0 !important; }
   .admin-cost-table thead { display: none; }

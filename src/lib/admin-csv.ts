@@ -12,7 +12,7 @@ export interface AdminCsvProduct {
   supplierLivePrice?: number;
 }
 
-export function parseAdminProductCsv(input: string): AdminCsvProduct[] {
+export function parseAdminProductCsv(input: string, validCategories?: ReadonlySet<string>): AdminCsvProduct[] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -69,6 +69,9 @@ export function parseAdminProductCsv(input: string): AdminCsvProduct[] {
     ) {
       throw new Error(`Fila ${index + 1}: revisá título, categoría y precios.`);
     }
+    if (validCategories && !validCategories.has(categoryName.toLowerCase().trim())) {
+      throw new Error(`Fila ${index + 1}: la categoría "${categoryName}" no existe.`);
+    }
 
     let description = "";
     let sku: string | undefined;
@@ -105,6 +108,7 @@ export function parseAdminProductCsv(input: string): AdminCsvProduct[] {
       sourceUrl,
       supplierLivePrice,
     });
+    if (products.length > 200) throw new Error("Importá hasta 200 productos por archivo.");
   }
 
   if (products.length === 0) throw new Error("No hay productos válidos para importar.");

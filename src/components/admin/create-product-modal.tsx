@@ -296,8 +296,8 @@ export function CreateProductModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 p-2 sm:p-5 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[92dvh] flex flex-col rounded-2xl sm:rounded-3xl bg-white border border-zinc-200 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-zinc-950/70 p-2 sm:p-5 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative my-auto w-full max-w-4xl max-h-[calc(100dvh-1rem)] sm:max-h-[92dvh] min-h-0 flex flex-col rounded-2xl sm:rounded-3xl bg-white border border-zinc-200 shadow-2xl overflow-hidden">
         {/* MODAL HEADER */}
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-r from-emerald-50/70 via-white to-zinc-50 shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -363,8 +363,8 @@ export function CreateProductModal({
         </div>
 
         {/* FORM & SCROLLABLE BODY */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 flex flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5 sm:space-y-6">
             {/* ============================================================== */}
             {/* TAB 1: DATOS BÁSICOS */}
             {/* ============================================================== */}

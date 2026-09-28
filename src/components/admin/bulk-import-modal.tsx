@@ -72,7 +72,8 @@ export function BulkImportModal({
 
   const parseContent = (text: string) => {
     try {
-      const items = parseAdminProductCsv(text);
+      const validCategories = new Set(categories.flatMap((category) => [category.name.toLowerCase().trim(), category.slug.toLowerCase().trim()]));
+      const items = parseAdminProductCsv(text, validCategories);
       setParsedProducts(items);
       setParseError(null);
     } catch (err: unknown) {
@@ -117,7 +118,7 @@ export function BulkImportModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
-      <div className="relative w-full max-w-4xl flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[92dvh]">
+      <div className="relative w-full max-w-4xl min-h-0 flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl overflow-hidden max-h-[calc(100dvh-1rem)] sm:max-h-[92dvh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-200 p-5 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
@@ -139,8 +140,8 @@ export function BulkImportModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="p-6 space-y-5 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="min-h-0 flex flex-col flex-1 overflow-hidden">
+          <div className="min-h-0 p-4 sm:p-6 space-y-5 overflow-y-auto overscroll-contain flex-1">
             {/* Top Bar with Template & Mode switcher */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
               <div className="inline-flex rounded-xl bg-zinc-200/80 p-1">

@@ -43,7 +43,7 @@ export async function createCategoryAction(formData: FormData) {
   const name = getString(formData, "name");
   const parentId = getString(formData, "parent_id");
   const image = formData.get("image");
-  let imageUrl = "";
+  let imageUrl = getString(formData, "custom_image_url");
   if (!name) {
     throw new Error("La categoria necesita un nombre.");
   }
@@ -86,6 +86,8 @@ export async function updateCategoryAction(formData: FormData) {
   const parentId = getString(formData, "parent_id");
   const image = formData.get("image");
   let imageUrl = getString(formData, "existing_image_url");
+  const customImageUrl = getString(formData, "custom_image_url");
+  if (customImageUrl) imageUrl = customImageUrl;
   if (!id || !name) {
     throw new Error("ID y Nombre de categoría son requeridos.");
   }
@@ -191,7 +193,7 @@ export async function createProductAction(formData: FormData) {
     ? Number(getString(formData, "supplier_live_price"))
     : null;
 
-  let tags = getString(formData, "tags")
+  const tags = getString(formData, "tags")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
@@ -256,8 +258,8 @@ export async function createProductAction(formData: FormData) {
     fulfillment_mode: ["own_stock", "supplier"].includes(fulfillmentMode) ? fulfillmentMode : "supplier",
     supplier_available: supplierAvailable,
     supplier_live_price: supplierLivePrice,
-    supplier_last_checked_at: sourceUrl ? new Date().toISOString() : null,
-    supplier_stock_status: sourceUrl ? (supplierAvailable ? "in_stock" : "out_of_stock") : null,
+    supplier_last_checked_at: null,
+    supplier_stock_status: "unknown",
     specifications,
     warranty_terms: getString(formData, "warranty_terms") || null,
     created_at: new Date().toISOString(),
@@ -333,7 +335,6 @@ export async function updateProductAction(formData: FormData) {
 
   const updateData: Record<string, unknown> = {
     title,
-    slug: slugify(title),
     description: getString(formData, "description"),
     category_id: finalCategoryId,
     image_url: imageUrl,
@@ -437,8 +438,8 @@ export async function toggleProductSupplierAvailabilityAction(productId: string,
     .from("products")
     .update({
       supplier_available: supplierAvailable,
-      supplier_stock_status: supplierAvailable ? "in_stock" : "out_of_stock",
-      supplier_last_checked_at: new Date().toISOString(),
+      supplier_stock_status: "unknown",
+      supplier_last_checked_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", productId);
@@ -471,7 +472,8 @@ export async function triggerBatchSupplierSyncAction(limit: number = 30) {
 
 export async function quickUpdateProductPriceAction(productId: string, retailPrice: number, wholesalePrice?: number) {
   const supabase = await getAdminClient();
-  if (retailPrice <= 0) throw new Error("El precio minorista debe ser mayor a cero.");
+  if (!Number.isFinite(retailPrice) || retailPrice <= 0) throw new Error("El precio minorista debe ser mayor a cero.");
+  if (wholesalePrice !== undefined && (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) throw new Error("El precio mayorista no es válido.");
   const updateData: Record<string, unknown> = {
     retail_price: retailPrice,
     updated_at: new Date().toISOString(),
@@ -506,14 +508,14 @@ export async function bulkUpdateProductStatusAction(
   } else if (action === "supplier_available") {
     updatePayload = {
       supplier_available: true,
-      supplier_stock_status: "in_stock",
-      supplier_last_checked_at: new Date().toISOString(),
+      supplier_stock_status: "unknown",
+      supplier_last_checked_at: null,
     };
   } else if (action === "supplier_pause") {
     updatePayload = {
       supplier_available: false,
-      supplier_stock_status: "out_of_stock",
-      supplier_last_checked_at: new Date().toISOString(),
+      supplier_stock_status: "unknown",
+      supplier_last_checked_at: null,
     };
   } else if (action === "set_mode_supplier") {
     updatePayload = { fulfillment_mode: "supplier" };
@@ -541,7 +543,7 @@ export async function bulkAdjustPricesAction(
 ) {
   const supabase = await getAdminClient();
   if (!productIds || productIds.length === 0) throw new Error("No hay productos seleccionados.");
-  if (!Number.isFinite(amount)) throw new Error("Importe o porcentaje inválido.");
+  if (!Number.isFinite(amount) || !["percentage", "fixed_markup"].includes(type)) throw new Error("Importe o porcentaje inválido.");
 
   const { data: currentProducts, error: fetchError } = await supabase
     .from("products")
@@ -549,22 +551,28 @@ export async function bulkAdjustPricesAction(
     .in("id", productIds);
 
   if (fetchError || !currentProducts) throw new Error("Error al leer productos para ajuste de precio.");
+  if (currentProducts.length !== new Set(productIds).size) throw new Error("No se encontraron todos los productos seleccionados.");
 
-  const updates = currentProducts.map((p) => {
+  const nextPrices = currentProducts.map((p) => {
     let newPrice = Number(p.retail_price || 0);
     if (type === "percentage") {
       newPrice = Math.round(newPrice * (1 + amount / 100));
     } else {
       newPrice = Math.round(newPrice + amount);
     }
-    if (newPrice < 0) newPrice = 0;
-    return supabase
-      .from("products")
-      .update({ retail_price: newPrice, updated_at: new Date().toISOString() })
-      .eq("id", p.id);
+    if (!Number.isFinite(newPrice) || newPrice <= 0) throw new Error(`El ajuste dejaría sin precio al producto ${p.id}.`);
+    return { id: p.id, price: newPrice };
   });
+  const results = await Promise.all(nextPrices.map((product) =>
+    supabase
+      .from("products")
+      .update({ retail_price: product.price, updated_at: new Date().toISOString() })
+      .eq("id", product.id)
+  ));
 
-  await Promise.all(updates);
+  if (results.some((result) => result.error)) {
+    throw new Error("Algunos precios no se pudieron actualizar. Recargá el catálogo antes de reintentar.");
+  }
   revalidatePath("/");
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
@@ -744,34 +752,43 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
     catMap.set(c.name.toLowerCase().trim(), c.id);
     catMap.set(c.slug.toLowerCase().trim(), c.id);
   });
+  const slugs = items.map((item) => slugify(item.title ?? ""));
+  if (new Set(slugs).size !== slugs.length) throw new Error("El CSV tiene títulos repetidos que generarían el mismo enlace de producto.");
+  const { data: existingProducts, error: existingError } = await supabase
+    .from("products")
+    .select("slug, description, image_url, payment_methods, tags, is_featured, is_wholesale_only, is_active, sku, brand, model, source_url, supplier_live_price")
+    .in("slug", slugs);
+  if (existingError) throw new Error(`No se pudieron verificar los productos existentes: ${existingError.message}`);
+  const existingBySlug = new Map((existingProducts ?? []).map((product) => [product.slug, product]));
   const payload = items.map((item, index) => {
     const targetCatId = item.categoryId || (item.categoryName ? catMap.get(item.categoryName.toLowerCase().trim()) : undefined);
     if (!targetCatId || !categories?.some((category) => category.id === targetCatId)) throw new Error(`Fila ${index + 1}: la categoría "${item.categoryName || ""}" no existe.`);
     if (!item.title?.trim() || !Number.isFinite(item.retailPrice) || item.retailPrice <= 0) throw new Error(`Fila ${index + 1}: título o precio inválido.`);
-    const slug = slugify(item.title);
+    const slug = slugs[index];
+    const existing = existingBySlug.get(slug);
     const retailPrice = Number(item.retailPrice);
     const wholesalePrice = Number(item.wholesalePrice ?? Math.round(retailPrice * 0.75));
     if (!Number.isFinite(wholesalePrice) || wholesalePrice < 0 || !Number.isInteger(item.wholesaleMinQuantity ?? 1) || (item.wholesaleMinQuantity ?? 1) < 1) throw new Error(`Fila ${index + 1}: precio o mínimo mayorista inválido.`);
     return {
         title: item.title,
         slug,
-        sku: item.sku?.trim() || null,
-        brand: item.brand?.trim() || null,
-        model: item.model?.trim() || null,
-        source_url: item.sourceUrl?.trim() || null,
-        supplier_live_price: item.supplierLivePrice ? Number(item.supplierLivePrice) : null,
-        description: item.description || "",
+        sku: item.sku?.trim() || existing?.sku || null,
+        brand: item.brand?.trim() || existing?.brand || null,
+        model: item.model?.trim() || existing?.model || null,
+        source_url: item.sourceUrl?.trim() || existing?.source_url || null,
+        supplier_live_price: item.supplierLivePrice ?? existing?.supplier_live_price ?? null,
+        description: item.description || existing?.description || "",
         category_id: targetCatId,
-        image_url: item.imageUrl || "/window.svg",
+        image_url: item.imageUrl || existing?.image_url || "/placeholder-product.svg",
         retail_price: retailPrice,
         wholesale_price: wholesalePrice,
         wholesale_min_qty: Number(item.wholesaleMinQuantity ?? 1),
         // Stock is deliberately omitted: preserve reservations on existing products; new rows default to zero.
-        payment_methods: ["transferencia", "tarjeta", "mercado_pago", "efectivo"],
-        tags: item.tags || ["importado"],
-        is_featured: Boolean(item.featured),
-        is_wholesale_only: false,
-        is_active: true,
+        payment_methods: existing?.payment_methods ?? ["transferencia"],
+        tags: item.tags || existing?.tags || ["importado"],
+        is_featured: existing?.is_featured ?? Boolean(item.featured),
+        is_wholesale_only: existing?.is_wholesale_only ?? false,
+        is_active: existing?.is_active ?? true,
       };
   });
   const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
@@ -1011,17 +1028,12 @@ export async function quickUpdateSupplierLinkAction(
     updated_at: new Date().toISOString(),
   };
 
-  if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
+  if (livePrice !== undefined && livePrice !== null && Number.isFinite(livePrice) && livePrice >= 0) {
     updateData.supplier_live_price = livePrice;
   }
 
-  if (cleanUrl) {
-    updateData.supplier_last_checked_at = new Date().toISOString();
-    updateData.supplier_stock_status = supplierAvailable ? "in_stock" : "out_of_stock";
-  } else {
-    updateData.supplier_last_checked_at = null;
-    updateData.supplier_stock_status = null;
-  }
+  updateData.supplier_last_checked_at = null;
+  updateData.supplier_stock_status = "unknown";
 
   const { error } = await supabase
     .from("products")

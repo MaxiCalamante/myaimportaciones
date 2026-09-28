@@ -58,6 +58,14 @@ export async function checkSupplierProductAvailability(
             checkedUrl: searchUrl,
           };
         }
+        if (price === null || !Number.isFinite(price)) {
+          return {
+            available: false,
+            status: "error",
+            message: "No se pudo confirmar disponibilidad ni precio en el mayorista",
+            checkedUrl: searchUrl,
+          };
+        }
         return {
           available: true,
           status: "in_stock",
@@ -125,6 +133,14 @@ export async function checkSupplierProductAvailability(
           checkedUrl: targetUrl,
         };
       }
+      if (price === null || !Number.isFinite(price)) {
+        return {
+          available: false,
+          status: "error",
+          message: "No se pudo confirmar disponibilidad ni precio en Total Tools",
+          checkedUrl: targetUrl,
+        };
+      }
 
       return {
         available: true,
@@ -156,6 +172,14 @@ export async function checkSupplierProductAvailability(
           checkedUrl: targetUrl,
         };
       }
+      if (price === null) {
+        return {
+          available: false,
+          status: "error",
+          message: "No se pudo confirmar disponibilidad ni precio en Atacado USA",
+          checkedUrl: targetUrl,
+        };
+      }
 
       return {
         available: true,
@@ -179,9 +203,9 @@ export async function checkSupplierProductAvailability(
     }
 
     return {
-      available: true,
-      status: "in_stock",
-      message: "Disponible en sitio del proveedor",
+      available: false,
+      status: "error",
+      message: "El sitio del proveedor no ofrece una señal de stock verificable",
       checkedUrl: targetUrl,
     };
   } catch (error: unknown) {
@@ -219,12 +243,16 @@ export async function checkAndUpdateProductSupplierStock(productId: string): Pro
   // If there was a network error, keep current availability to prevent accidental disruption, but record status.
   const newAvailable = check.status === "in_stock" ? true : check.status === "out_of_stock" || check.status === "not_found" ? false : Boolean(product.supplier_available);
 
-  await supabase.rpc("update_product_supplier_sync_v1", {
+  const { error: updateError } = await supabase.rpc("update_product_supplier_sync_v1", {
     product_id_input: productId,
     available_input: newAvailable,
     status_input: check.status,
-    live_price_input: check.livePrice ?? null,
+    // supplier_live_price is used as an ARS cost throughout the admin; scraper prices are USD.
+    live_price_input: null,
   });
+  if (updateError) {
+    return { ...check, productId, available: Boolean(product.supplier_available), status: "error", message: `No se pudo guardar la verificación: ${updateError.message}` };
+  }
 
   return {
     ...check,
@@ -306,12 +334,23 @@ export async function runBatchSupplierStockSync(options?: {
           ? false
           : Boolean(p.supplier_available);
 
-      await supabase.rpc("update_product_supplier_sync_v1", {
+      const { error: updateError } = await supabase.rpc("update_product_supplier_sync_v1", {
         product_id_input: p.id,
         available_input: newAvailable,
         status_input: check.status,
-        live_price_input: check.livePrice ?? null,
+        live_price_input: null,
       });
+
+      if (updateError) {
+        return {
+          id: p.id,
+          title: p.title,
+          sku: p.sku ?? "",
+          available: Boolean(p.supplier_available),
+          status: "error",
+          message: `No se pudo guardar la verificación: ${updateError.message}`,
+        };
+      }
 
       return {
         id: p.id,

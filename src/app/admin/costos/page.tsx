@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { getStorefrontData } from "@/lib/storefront";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Activity, ClipboardList, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, Activity, ClipboardList } from "lucide-react";
 
 export const metadata = {
   title: "Control de Costos, Precios y Márgenes | MYA Importaciones",
@@ -35,7 +35,7 @@ export default async function CostsPage() {
   return (
     <div className="min-h-screen bg-zinc-50/70 pb-20">
       {/* Top Admin Navigation Header */}
-      <header className="border-b border-zinc-200/80 bg-white sticky top-0 z-30 shadow-xs">
+      <header className="border-b border-zinc-200/80 bg-white shadow-xs">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Left breadcrumb navigation */}

@@ -1653,7 +1653,7 @@ Logística / Despacho: +${calcShippingPercent}%
                             <Package className="h-3 w-3" /> {totalProducts} productos
                           </span>
                           <a
-                            href={`/catalogo?categoria=${parent.slug}`}
+                            href={`/catalogo?category=${parent.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-[11px] text-sky-600 hover:underline font-semibold"
@@ -1705,7 +1705,7 @@ Logística / Despacho: +${calcShippingPercent}%
                           No tiene subcategorías asociadas. Hacé clic en &quot;Agregar Subcategoría&quot; arriba para crear una.
                         </p>
                       ) : (
-                        <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                        <div className="space-y-2.5 md:max-h-56 md:overflow-y-auto md:pr-1 scrollbar-thin">
                           {subcategories.map((sub) => {
                             const subCount = getDirectSubcategoryCount(sub.id);
 
@@ -1747,7 +1747,7 @@ Logística / Despacho: +${calcShippingPercent}%
                                 </div>
                                 <div className="flex items-center gap-1 ml-2 shrink-0">
                                   <a
-                                    href={`/catalogo?categoria=${sub.slug}`}
+                                    href={`/catalogo?category=${sub.slug}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-zinc-200 text-zinc-400 hover:text-sky-600 bg-white"
@@ -1819,7 +1819,7 @@ Logística / Despacho: +${calcShippingPercent}%
               <p className="mt-1 text-2xl font-black text-emerald-600">{orderStats.deliveredCount}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs">
-              <span className="text-xs font-semibold text-sky-600 uppercase tracking-wider">Facturación Total</span>
+              <span className="text-xs font-semibold text-sky-600 uppercase tracking-wider">Cobrado (últimos 50)</span>
               <p className="mt-1 text-xl font-black text-sky-700 truncate">{formatCurrency(orderStats.totalRevenue)}</p>
             </div>
           </div>
@@ -1928,7 +1928,7 @@ Logística / Despacho: +${calcShippingPercent}%
                               <a
                                 href={`https://wa.me/${order.shippingPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
                                   `Hola ${order.customerName}! Te contactamos de MYA Importaciones sobre tu pedido ${
-                                    order.trackingCode || ""
+                                    order.trackingCode || `ORD-${order.id.slice(0, 6).toUpperCase()}`
                                   }.`
                                 )}`}
                                 target="_blank"
@@ -2327,7 +2327,8 @@ Logística / Despacho: +${calcShippingPercent}%
       />
 
       {/* MODAL: CATEGORÍA PROFESIONAL (Creación y Edición con Upload de Imagen y Jerarquía) */}
-      <CategoryModal
+      {(isCreateCategoryOpen || Boolean(editingCategory)) && <CategoryModal
+        key={editingCategory?.id ?? `create-${createCategoryParentId}`}
         isOpen={isCreateCategoryOpen || Boolean(editingCategory)}
         categories={data.categories}
         initialParentId={createCategoryParentId}
@@ -2341,7 +2342,7 @@ Logística / Despacho: +${calcShippingPercent}%
           alert(msg);
           router.refresh();
         }}
-      />
+      />}
 
       {/* MODAL: CARGA MASIVA DE PRODUCTOS CSV PROFESIONAL */}
       <BulkImportModal
