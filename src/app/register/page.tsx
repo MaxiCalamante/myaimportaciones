@@ -3,7 +3,8 @@ import { AuthForms } from "@/components/auth/auth-forms";
 import { getCurrentProfile } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
-export const metadata = { title: "Crear cuenta", robots: { index: false, follow: false } };
+export const metadata = {
+  title: "Crear cuenta", robots: { index: false, follow: false } };
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const params = await searchParams;

@@ -1,3 +1,5 @@
+import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
+import { EmptyCatalog } from "@/components/commerce/empty-catalog";
 import Link from "next/link";
 import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -18,12 +20,12 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const minPrice = /^\d{1,12}$/.test(params.min ?? "") ? params.min! : "";
   const maxPrice = /^\d{1,12}$/.test(params.max ?? "") ? params.max! : "";
   const page = Math.min(200, Math.max(1, Number.parseInt(params.page ?? "1") || 1));
-  const { categories, products: fallback } = await getStorefrontData({ limit: 0 });
+  const { categories, products: fallback, error: catalogError } = await getStorefrontData({ limit: 0 });
   const visibleCategories = categories.filter(c => !c.wholesaleOnly);
   const category = visibleCategories.find(c => c.slug === params.category);
   const root = category?.parentId ? visibleCategories.find(c => c.id === category.parentId) : category;
   const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
-  let products: Product[] = [], count = 0, failed = false;
+  let products: Product[] = [], count = 0, failed = Boolean(catalogError);
   let brands: { brand: string; count: number }[] = [];
 
   if (hasSupabaseConfig()) {
@@ -34,7 +36,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id)
       : visibleCategories.map(c => c.id);
     if (ids.length) {
-      let query = db.from("products").select("*, categories(name)", { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
+      let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
       if (brand) query = query.eq("brand", brand);
       if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`);
       if (minPrice) query = query.gte("retail_price", Number(minPrice));
@@ -43,7 +45,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       const result = await query.order("id").range((page - 1) * pageSize, page * pageSize - 1);
       products = (result.data ?? []).map(p => mapProduct(p));
       count = result.count ?? 0;
-      failed = Boolean(result.error);
+      failed = failed || Boolean(result.error);
     }
   } else {
     const matching = fallback.filter(product => {
@@ -75,7 +77,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     return `/catalogo${query.size ? `?${query}` : ""}`;
   }
 
-  return <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+  return <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
     <nav aria-label="Ubicación" className="mb-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
       <Link href="/" className="hover:text-sky-700">Inicio</Link><span>/</span><Link href="/catalogo" className="hover:text-sky-700">Catálogo</Link>
       {root && <><span>/</span><Link href={catalogUrl({ category: root.slug })} className="hover:text-sky-700">{root.name}</Link></>}
@@ -91,7 +93,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       {(root ? [...subcategories].sort((a, b) => Number(b.id === category?.id) - Number(a.id === category?.id)) : visibleCategories.filter(c => !c.parentId)).map(item => <Link key={item.id} href={catalogUrl({ category: item.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${category?.id === item.id ? "border-sky-700 bg-sky-700 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-sky-300 hover:text-sky-800"}`}>{item.name}</Link>)}
     </nav>
     <div className="mt-5 flex items-center justify-between border-b border-zinc-200 pb-3 text-sm text-zinc-600"><span>{failed ? "No pudimos cargar el catálogo" : count ? `Mostrando ${Math.min((page - 1) * pageSize + 1, count)}–${Math.min(page * pageSize, count)} de ${count}` : "Sin resultados"}</span><span className="hidden sm:inline">Disponibilidad y entrega en cada producto</span></div>
-    {failed ? <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">No pudimos cargar los productos. Intentá nuevamente en unos minutos.</div> : products.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="mt-5 rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center"><h2 className="text-lg font-semibold">No encontramos productos con esos filtros</h2><p className="mt-2 text-sm text-zinc-600">Probá otra palabra, subcategoría o rango de precio.</p><Link href="/catalogo" className="mt-5 inline-flex rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white">Ver todo el catálogo</Link></div>}
+    {(!count && !q && !category && !brand && !minPrice && !maxPrice) || failed ? <EmptyCatalog error={failed ? "No pudimos cargar el catálogo. Probá nuevamente o consultanos por WhatsApp." : undefined} /> : products.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="mt-5 rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center"><h2 className="text-lg font-semibold">No encontramos productos con esos filtros</h2><p className="mt-2 text-sm text-zinc-600">Probá otra palabra, subcategoría o rango de precio.</p><Link href="/catalogo" className="mt-5 inline-flex rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white">Ver todo el catálogo</Link></div>}
     {pages > 1 && <nav aria-label="Páginas del catálogo" className="mt-9 flex items-center justify-center gap-3 text-sm"><Link aria-disabled={page <= 1} className={`rounded-xl border px-4 py-2 ${page <= 1 ? "pointer-events-none opacity-40" : "bg-white hover:border-sky-400"}`} href={catalogUrl({ category: category?.slug, page: page - 1 })}>Anterior</Link><span className="px-2 font-semibold">Página {page} de {pages}</span><Link aria-disabled={page >= pages} className={`rounded-xl border px-4 py-2 ${page >= pages ? "pointer-events-none opacity-40" : "bg-white hover:border-sky-400"}`} href={catalogUrl({ category: category?.slug, page: page + 1 })}>Siguiente</Link></nav>}
-  </main>;
+  </div>;
 }

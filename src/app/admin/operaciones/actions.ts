@@ -25,7 +25,10 @@ export async function verifyInventoryAction(form: FormData) {
   if (!Number.isInteger(stock) || stock < 0 || stock > 100000 || !Number.isFinite(weight) || weight < 0 || form.get("confirmed") !== "on") throw new Error("Confirmá el conteo físico y los datos del producto.");
   const fields = ["modelo", "contenido", "ingredientes", "uso", "precauciones", "incluye", "compatibilidad", "responsable_local", "lote", "vencimiento"];
   const specifications = Object.fromEntries(fields.map(k => [k, String(form.get(k) ?? "").trim().slice(0, 3000)]));
-  const { error } = await db.rpc("verify_retail_inventory_v2", { product_id_input: String(form.get("product_id")), stock_input: stock, specifications_input: { ...specifications, peso_kg: String(weight) }, warranty_input: String(form.get("warranty") ?? "").slice(0, 3000) });
+  const productId = String(form.get("product_id"));
+  const { data: existing, error: readError } = await db.from("products").select("specifications").eq("id", productId).single();
+  if (readError || !existing) throw new Error("No se pudo leer la ficha. Recargá antes de verificar inventario.");
+  const { error } = await db.rpc("verify_retail_inventory_v2", { product_id_input: productId, stock_input: stock, specifications_input: { ...(existing.specifications ?? {}), ...specifications, peso_kg: String(weight) }, warranty_input: String(form.get("warranty") ?? "").slice(0, 3000) });
   if (error) throw new Error("No se pudo verificar el inventario. Revisá reservas activas y migración.");
   invalidateAdminStorefrontCache();
   revalidatePath("/", "layout");

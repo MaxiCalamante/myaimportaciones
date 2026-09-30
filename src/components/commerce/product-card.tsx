@@ -83,12 +83,12 @@ export function ProductCard({
         <div className="mt-auto pt-3">
           <div>
             <p className="text-[11px] text-zinc-500 sm:text-xs">
-              {channel === "wholesale" ? "Precio mayorista" : "Precio con Mercado Pago"}
+              {channel === "wholesale" ? "Precio mayorista" : "Precio en pesos"}
             </p>
             <p className="text-lg font-bold tabular-nums text-zinc-950 sm:text-xl">
               {formatCurrency(price)}
             </p>
-            {channel === "retail" && <p className="mt-1 text-[11px] text-emerald-800">Descuento por transferencia según costos</p>}
+            {channel === "retail" && <p className="mt-1 text-[11px] text-emerald-800">Consultá las condiciones de compra</p>}
 
             {channel === "wholesale" ? (
               <p className="mt-1 text-xs text-zinc-500">

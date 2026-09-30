@@ -19,7 +19,8 @@ export async function readAllPagesParallel<T>(
   totalCount: number,
   size = 1000
 ): Promise<T[]> {
-  if (totalCount <= 0) return [];
+  if (!Number.isInteger(size) || size < 1 || size > 1000 || !Number.isInteger(totalCount) || totalCount < 0) throw new Error("Invalid page range");
+  if (totalCount === 0) return [];
   const numPages = Math.ceil(totalCount / size);
   const promises: PromiseLike<{ data: T[] | null; error: unknown }>[] = [];
   for (let page = 0; page < numPages; page++) {
@@ -38,7 +39,8 @@ export async function readAllPagesParallel<T>(
   let from = numPages * size;
   while (lastBatch.length === size) {
     const { data, error } = await fetchPage(from, from + size - 1);
-    if (error || !data || data.length === 0) break;
+    if (error || !data) throw new Error("No se pudo completar la lectura paralela del catálogo.");
+    if (data.length === 0) break;
     rows.push(...data);
     lastBatch = data;
     from += size;

@@ -6,6 +6,8 @@ import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu } from "luc
 
 const sections = [
   { href: "/admin", label: "Panel", icon: LayoutDashboard },
+  { href: "/admin/carrusel", label: "Carrusel", icon: LayoutDashboard },
+  { href: "/admin/proveedores", label: "Proveedores", icon: Boxes },
   { href: "/admin/operaciones", label: "Operaciones", icon: Boxes },
   { href: "/admin/costos", label: "Stock y costos", icon: ChartNoAxesCombined },
   { href: "/admin/estado", label: "Estado de la tienda", icon: Activity },

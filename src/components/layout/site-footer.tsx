@@ -37,7 +37,7 @@ export function SiteFooter() {
             <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-white/30">
               <Image
                 src="/mya-mark-white.png"
-                alt=""
+                alt={siteConfig.brandName}
                 width={80}
                 height={80}
                 className="absolute left-1/2 top-1/2 h-20 w-20 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain"
@@ -134,7 +134,7 @@ export function SiteFooter() {
               Seguimiento de Pedidos
             </Link>
             <Link className="text-zinc-400 hover:text-white transition-colors" href="/cuenta">
-              Mi Cuenta / Favoritos
+              Mi cuenta
             </Link>
           </div>
         </div>
@@ -145,11 +145,11 @@ export function SiteFooter() {
           <div className="mt-4 grid gap-3 text-sm text-zinc-400">
             <span className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-sky-400" />
-              {siteConfig.phone}
+              <a href={`tel:${siteConfig.phone.replace(/[^+0-9]/g, "")}`} className="inline-flex min-h-11 items-center hover:text-white">{siteConfig.phone}</a>
             </span>
             <span className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-sky-400" />
-              {siteConfig.email}
+              <a href={`mailto:${siteConfig.email}`} className="inline-flex min-h-11 break-all items-center hover:text-white">{siteConfig.email}</a>
             </span>
             <span className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-sky-400" />

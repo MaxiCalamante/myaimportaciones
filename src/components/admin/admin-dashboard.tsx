@@ -701,7 +701,7 @@ Logística / Despacho: +${calcShippingPercent}%
   ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Dashboard Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-6 mb-8">
         <div>
@@ -752,6 +752,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
       {!supabaseReady && <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Vista de demostración: conectá la base de datos para guardar cambios.</p>}
 
+      {data.products.length === 0 && <section className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 p-5"><h2 className="text-lg font-bold text-sky-950">Empezá con tu primer producto</h2><p className="mt-2 text-sm text-sky-900">La base conectada no tiene productos. Revisá las categorías, cargá fotos y precio, confirmá disponibilidad y publicá cuando la ficha esté lista. Podés guardar borradores.</p><a href="/admin/proveedores" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-sky-900">Gestionar proveedores y contactos</a></section>}
       {/* Stats Cards Grid */}
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
         {stats.map((stat) => (
@@ -2708,6 +2709,6 @@ Logística / Despacho: +${calcShippingPercent}%
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

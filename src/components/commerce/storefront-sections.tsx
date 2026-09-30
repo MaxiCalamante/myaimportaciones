@@ -1,5 +1,6 @@
 "use client";
 
+import { defaultCarouselSlides, type CarouselSlide } from "@/lib/carousel";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,44 +10,18 @@ import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
 import { ButtonLink } from "@/components/ui/button";
 
-const heroSlides = [
-  {
-    image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Total Tools & Wadfow",
-    title: "Herramientas Industriales y Profesionales",
-    description: "Herramientas para tu casa, taller y trabajo. Encontrá tu modelo y consultá disponibilidad y entrega desde Tandil.",
-    btnText: "Ver Herramientas",
-    btnLink: "/catalogo?category=herramientas-equipamiento",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Tendencia Mundial en Skincare",
-    title: "Tu próximo cuidado de la piel",
-    description: "Sérums virales, cremas reparadoras y protectores de SKIN1004, Medicube, Dr. Althea y Celimax importados directamente para vos.",
-    btnText: "Ver K-Beauty",
-    btnLink: "/catalogo?category=cosmetica-coreana",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1800&q=80",
-    eyebrow: "Envíos Seguros a Todo el País",
-    title: "Comprá con atención cercana",
-    description: "Elegí tus productos y revisá disponibilidad, entrega y condiciones antes de confirmar tu pedido.",
-    btnText: "Ver Catálogo Completo",
-    btnLink: "/catalogo",
-  },
-];
-
-export function StoreHero() {
+export function StoreHero({ slides = defaultCarouselSlides, preview = false }: { slides?: CarouselSlide[]; preview?: boolean }) {
+  const heroSlides = slides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (paused || preview || heroSlides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [paused]);
+  }, [paused, preview, heroSlides.length]);
 
   const handlePrev = () => {
     setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
@@ -56,24 +31,26 @@ export function StoreHero() {
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
   };
 
+  if (!heroSlides.length) return null;
+  const visibleIndex = currentSlide % heroSlides.length;
   return (
-    <section className="relative overflow-hidden bg-zinc-950 text-white min-h-[520px]">
-      <h1 className="sr-only">MYA Importaciones: catálogo de productos</h1>
-      <button type="button" className="absolute right-4 top-4 z-20 min-h-11 rounded-lg bg-black/80 px-3 py-2 text-xs text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" onClick={() => setPaused(!paused)}>{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>
+    <section aria-label={preview ? "Vista previa del carrusel" : "Carrusel de inicio"} className="relative overflow-hidden bg-zinc-950 text-white min-h-[520px]">
+      {!preview && <h1 className="sr-only">MYA Importaciones: catálogo de productos</h1>}
+      {heroSlides.length > 1 && <button type="button" className="absolute right-4 top-4 z-20 min-h-11 rounded-lg bg-black/80 px-3 py-2 text-xs text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" onClick={() => setPaused(!paused)}>{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>}
       {/* Slides */}
       {heroSlides.map((slide, idx) => (
         <div
-          key={idx}
-          aria-hidden={idx !== currentSlide}
-          inert={idx !== currentSlide}
-          className={`absolute inset-0 transition-opacity duration-200 ease-out ${
-            idx === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+          key={slide.id}
+          aria-hidden={idx !== visibleIndex}
+          inert={idx !== visibleIndex}
+          className={`inset-0 transition-opacity duration-200 ease-out ${
+            idx === visibleIndex ? "relative opacity-100 z-10" : "absolute opacity-0 z-0 pointer-events-none"
           }`}
         >
           <div
             className="absolute inset-0 bg-cover bg-center opacity-50"
             style={{
-              backgroundImage: `linear-gradient(90deg, rgba(9,9,11,0.95), rgba(9,9,11,0.4)), url(${slide.image})`,
+              backgroundImage: `linear-gradient(90deg, rgba(9,9,11,0.95), rgba(9,9,11,0.4)), url(${JSON.stringify(slide.image)})`,
             }}
           />
           <div className="relative mx-auto grid min-h-[520px] w-full max-w-7xl content-center gap-8 px-4 py-16 sm:px-6 lg:px-8">
@@ -87,17 +64,18 @@ export function StoreHero() {
               <p className="mt-5 max-w-xl text-base leading-7 text-zinc-150 sm:text-lg">
                 {slide.description}
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href={slide.btnLink} icon={<ArrowRight className="h-4 w-4" />}>
+              {slide.btnText && slide.btnLink && <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <ButtonLink href={slide.btnLink} aria-disabled={preview || undefined} onClick={preview ? event => event.preventDefault() : undefined} icon={<ArrowRight className="h-4 w-4" />}>
                   {slide.btnText}
                 </ButtonLink>
-              </div>
+              </div>}
             </div>
           </div>
         </div>
       ))}
 
       {/* Navigation Arrows */}
+      {heroSlides.length > 1 && <>
       <button
         aria-label="Slide anterior"
         onClick={handlePrev}
@@ -114,18 +92,19 @@ export function StoreHero() {
       </button>
 
       {/* Slide Indicators */}
-      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-25 flex gap-1">
+      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-25 flex w-max max-w-[calc(100%-120px)] gap-1">
         {heroSlides.map((_, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => setCurrentSlide(idx)}
-            className="grid size-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="grid h-11 w-11 min-w-0 shrink place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             aria-label={`Ir al slide ${idx + 1}`}
-            aria-current={idx === currentSlide ? "true" : undefined}
-          ><span aria-hidden className={`size-2.5 rounded-full ${idx === currentSlide ? "bg-sky-400" : "bg-white/50"}`} /></button>
+            aria-current={idx === visibleIndex ? "true" : undefined}
+          ><span aria-hidden className={`size-2.5 rounded-full ${idx === visibleIndex ? "bg-sky-400" : "bg-white/50"}`} /></button>
         ))}
       </div>
+      </>}
     </section>
   );
 }

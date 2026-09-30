@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-30",
+  "authenticated": false,
+  "results": [
+    {
+      "path": "/admin/costos",
+      "initialStatus": 307,
+      "location": "/login?next=/admin",
+      "finalStatus": 200,
+      "finalUrl": "http://localhost:3100/login?next=/admin",
+      "loginFormVisible": true,
+      "genericAdminErrorVisible": false,
+      "jsErrors": []
+    },
+    {
+      "path": "/admin/operaciones",
+      "initialStatus": 307,
+      "location": "/login?next=/admin",
+      "finalStatus": 200,
+      "finalUrl": "http://localhost:3100/login?next=/admin",
+      "loginFormVisible": true,
+      "genericAdminErrorVisible": false,
+      "jsErrors": []
+    },
+    {
+      "path": "/admin/proveedores",
+      "initialStatus": 307,
+      "location": "/login?next=/admin",
+      "finalStatus": 200,
+      "finalUrl": "http://localhost:3100/login?next=/admin",
+      "loginFormVisible": true,
+      "genericAdminErrorVisible": false,
+      "jsErrors": []
+    },
+    {
+      "path": "/admin/estado",
+      "initialStatus": 307,
+      "location": "/login?next=/admin",
+      "finalStatus": 200,
+      "finalUrl": "http://localhost:3100/login?next=/admin",
+      "loginFormVisible": true,
+      "genericAdminErrorVisible": false,
+      "jsErrors": []
+    }
+  ]
+}

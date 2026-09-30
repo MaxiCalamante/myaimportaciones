@@ -1,4 +1,7 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/admin-auth";
+import { readAdminProducts } from "@/lib/admin-catalog-read";
+import { readAllPages } from "@/lib/read-all-pages";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface SupplierCheckResult {
   productId?: string;
@@ -220,12 +223,9 @@ export async function checkSupplierProductAvailability(
 }
 
 export async function checkAndUpdateProductSupplierStock(productId: string): Promise<SupplierCheckResult> {
-  const supabase = await createServerSupabaseClient();
-  const { data: product, error } = await supabase
-    .from("products")
-    .select("id, title, sku, brand, source_url, fulfillment_mode, supplier_available")
-    .eq("id", productId)
-    .single();
+  const supabase = await getAdminClient();
+  const { data, error } = await readAdminProducts(supabase, { ids: [productId], size: 1 });
+  const product = data?.[0] as { source_url: string; sku: string; brand: string; supplier_available: boolean } | undefined;
 
   if (error || !product) {
     return {
@@ -264,6 +264,7 @@ export async function checkAndUpdateProductSupplierStock(productId: string): Pro
 export async function runBatchSupplierStockSync(options?: {
   limit?: number;
   onlySupplierMode?: boolean;
+  client?: SupabaseClient;
 }): Promise<{
   total: number;
   checked: number;
@@ -279,33 +280,21 @@ export async function runBatchSupplierStockSync(options?: {
     message: string;
   }>;
 }> {
-  const limit = Math.min(options?.limit ?? 25, 100);
-  const supabase = await createServerSupabaseClient();
-
-  // Pick active products with source_url, prioritizing supplier mode and least recently checked
-  let query = supabase
-    .from("products")
-    .select("id, title, sku, brand, source_url, fulfillment_mode, supplier_available, supplier_last_checked_at")
-    .eq("is_active", true)
-    .not("source_url", "is", null);
-
-  if (options?.onlySupplierMode !== false) {
-    query = query.eq("fulfillment_mode", "supplier");
-  }
-
-  const { data: products, error } = await query
-    .order("supplier_last_checked_at", { ascending: true, nullsFirst: true })
-    .limit(limit);
-
-  if (error || !products || products.length === 0) {
-    return {
-      total: 0,
-      checked: 0,
-      inStock: 0,
-      outOfStock: 0,
-      errors: 0,
-      results: [],
-    };
+  const limit = options?.limit ?? 25;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("El límite de verificación debe estar entre 1 y 100.");
+  const supabase = options?.client ?? await getAdminClient();
+  type SyncProduct = { id: string; title: string; sku: string; brand: string; source_url: string; fulfillment_mode: string; supplier_available: boolean; supplier_last_checked_at: string | null; is_active: boolean };
+  let products: SyncProduct[];
+  if (options?.client) {
+    let query = supabase.from("products").select("id,title,sku,brand,source_url,fulfillment_mode,supplier_available,supplier_last_checked_at,is_active").eq("is_active", true).not("source_url", "is", null);
+    if (options?.onlySupplierMode !== false) query = query.eq("fulfillment_mode", "supplier");
+    const result = await query.order("supplier_last_checked_at", { ascending: true, nullsFirst: true }).limit(limit);
+    if (result.error) throw new Error("No se pudo leer el catálogo para verificar disponibilidad.");
+    products = result.data as SyncProduct[];
+  } else {
+    const all = await readAllPages((from, to) => readAdminProducts(supabase, { from, size: to - from + 1 }));
+    products = (all as SyncProduct[]).filter(p => p.is_active && p.source_url && (options?.onlySupplierMode === false || p.fulfillment_mode === "supplier"))
+      .sort((a, b) => (a.supplier_last_checked_at ?? "").localeCompare(b.supplier_last_checked_at ?? "")).slice(0, limit);
   }
 
   const results: Array<{

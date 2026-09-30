@@ -4,7 +4,7 @@ import { getStorefrontData } from "@/lib/storefront";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteConfig.appUrl;
-  const { categories, products: catalog } = await getStorefrontData({ admin: true });
+  const { categories, products: catalog } = await getStorefrontData({ all: true });
   const products = catalog.filter(p => p.active && !p.wholesaleOnly);
 
   const staticRoutes: MetadataRoute.Sitemap = [

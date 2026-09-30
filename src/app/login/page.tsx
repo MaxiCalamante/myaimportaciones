@@ -4,6 +4,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Ingresar",
 };
 

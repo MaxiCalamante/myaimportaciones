@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { calculateResale } from "@/lib/resale-pricing";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
+import { httpsUrl } from "@/lib/admin-product";
 
 export async function saveProductCostAction(data: FormData) {
   const db = await createServerSupabaseClient();
@@ -25,7 +26,7 @@ export async function saveProductCostAction(data: FormData) {
     ml: n("ml"),
   };
   calculateResale(i);
-  const supplier = String(data.get("supplier_url") ?? "").trim();
+  const supplier = httpsUrl(String(data.get("supplier_url") ?? "").trim(), "Proveedor");
   const ml = String(data.get("ml_url") ?? "").trim();
   if (
     (supplier && !/^https:\/\//.test(supplier)) ||
@@ -74,7 +75,8 @@ export async function saveProductCostAction(data: FormData) {
   }
 
   if (Object.keys(updateProductPayload).length > 0) {
-    await db.from("products").update(updateProductPayload).eq("id", id);
+    const { error: updateError, data: updated } = await db.from("products").update(updateProductPayload).eq("id", id).select("id").single();
+    if (updateError || !updated) throw new Error("Los costos se guardaron, pero la ficha o el precio no se pudieron actualizar. Recargá y revisá antes de reintentar.");
   }
 
   invalidateAdminStorefrontCache();

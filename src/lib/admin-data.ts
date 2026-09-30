@@ -1,6 +1,5 @@
-import { demoAdminData } from "@/lib/demo-data";
+import { getAdminClient } from "./admin-auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getStorefrontData } from "@/lib/storefront";
 import type {
   AdminDashboardData,
@@ -49,18 +48,18 @@ interface DbOrderSummary {
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   if (!hasSupabaseConfig()) {
-    return demoAdminData;
+    throw new Error("Conectá Supabase para administrar la tienda.");
   }
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = await getAdminClient();
 
   const [
     storefront,
-    { count: customersCount },
-    { count: ordersCount },
-    { data: customersData },
-    { data: ordersData },
-    { data: stockLogsData },
+    { count: customersCount, error: customersCountError },
+    { count: ordersCount, error: ordersCountError },
+    { data: customersData, error: customersError },
+    { data: ordersData, error: ordersError },
+    { data: stockLogsData, error: logsError },
   ] = await Promise.all([
     getStorefrontData({ admin: true }),
     supabase
@@ -86,6 +85,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       .limit(50),
   ]);
 
+  if (customersCountError || ordersCountError || customersError || ordersError || logsError) throw new Error("No se pudieron leer todos los datos del panel. Recargá o revisá los permisos.");
+
   const customers = ((customersData ?? []) as DbProfileSummary[]).map(
     (customer): CustomerSummary => ({
       id: customer.id,
@@ -98,7 +99,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       totalSpent: 0,
       businessName: customer.business_name ?? undefined,
       cuit: customer.cuit ?? undefined,
-      isApprovedWholesale: customer.is_approved_wholesale ?? true,
+      isApprovedWholesale: customer.is_approved_wholesale ?? false,
     }),
   );
 

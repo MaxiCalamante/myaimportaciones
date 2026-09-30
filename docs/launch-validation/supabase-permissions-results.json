@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-30",
+  "project": "gqcdurxndbeeugjfworx",
+  "migrations": [
+    {
+      "version": "20260930200323",
+      "name": "admin_suppliers_and_catalog_security",
+      "success": true
+    },
+    {
+      "version": "20260930200326",
+      "name": "storefront_carousel",
+      "success": true
+    }
+  ],
+  "checks": {
+    "anonPublicOnly": true,
+    "customerDenied": true,
+    "adminPersistence": true,
+    "staleRevisionRejected": true,
+    "pausedExcluded": true,
+    "supplierWrite": true
+  },
+  "testWrites": "Rolled back",
+  "finalState": {
+    "products": 0,
+    "suppliers": 0,
+    "carouselRevision": 0,
+    "activeSlides": 3
+  },
+  "realAdminBrowserSession": false
+}

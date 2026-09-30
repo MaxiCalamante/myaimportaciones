@@ -65,6 +65,7 @@ export interface Product {
 }
 
 export interface StorefrontData {
+  error?: string;
   categories: Category[];
   products: Product[];
   source: DataSource;

@@ -1,3 +1,4 @@
+import { createCommerceService, hasCommerceService } from "@/lib/supabase/service";
 import { NextRequest, NextResponse } from "next/server";
 import { runBatchSupplierStockSync } from "@/lib/supplier-sync";
 
@@ -8,31 +9,23 @@ export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret) {
-    const isBearerValid = authHeader === `Bearer ${cronSecret}`;
-    const isVercelCron = req.headers.get("x-vercel-cron") === "1";
-    const keyParam = req.nextUrl.searchParams.get("key");
-    const isKeyValid = keyParam === cronSecret;
-
-    if (!isBearerValid && !isVercelCron && !isKeyValid) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
-
-  const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") || 30), 100);
+  if (!cronSecret || !hasCommerceService()) return NextResponse.json({ error: "Sincronización no configurada" }, { status: 503 });
+  if (authHeader !== `Bearer ${cronSecret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limit = Number(req.nextUrl.searchParams.get("limit") || 30);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) return NextResponse.json({ error: "Límite inválido" }, { status: 400 });
 
   try {
-    const report = await runBatchSupplierStockSync({ limit });
+    const report = await runBatchSupplierStockSync({ limit, client: createCommerceService() });
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       report,
     });
-  } catch (error: unknown) {
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Error executing cron sync",
+        error: "No se pudo completar la sincronización.",
       },
       { status: 500 }
     );

@@ -1,4 +1,5 @@
 "use server";
+import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
 import { limitCommerceRequest } from "@/lib/request-limit";
 import { createHash } from "node:crypto";
 import { createCommerceService } from "@/lib/supabase/service";
@@ -27,7 +28,7 @@ async function resolveQuote(input: CheckoutInput) {
     ids.add(line.productId);
   }
   const db = createCommerceService();
-  const { data: products, error } = await db.from("products").select("*, categories(name, slug)").in("id", [...ids]);
+  const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...ids]);
   if (error || products?.length !== ids.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
   const { data: costs, error: costError } = await db.from("product_costs").select("*").in("product_id", [...ids]);
   if (costError) throw new Error("No pudimos verificar los precios. Consultanos para continuar.");

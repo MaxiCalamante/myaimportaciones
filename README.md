@@ -1,53 +1,39 @@
-# MYA Importaciones - E-Commerce Oficial
+# MyA Importaciones
 
-Plataforma oficial de comercio electrónico de **MYA Importaciones** (Argentina). Especialistas en importación directa y distribución mayorista y minorista de Cosmética Coreana original (K-Beauty), smartphones liberados Apple iPhone y herramientas profesionales de equipamiento.
+Tienda minorista de MyA Importaciones, con Next.js 16.3.5, React 19 y Supabase. La aplicación activa está en este directorio.
 
-## ✨ Características Principales
+## Estado y lanzamiento
 
-- **Doble Modalidad Minorista & Mayorista (B2B)**: Experiencia de compra minorista ágil y portal mayorista con precios diferenciales por bulto/volumen y calculadora de pedidos.
-- **Catálogo Real Integrado**: Conexión nativa con Supabase (PostgreSQL, Storage y Auth).
-- **SEO de Nueva Generación**: Fichas dinámicas `/producto/[slug]` con metadatos SSR, OpenGraph, Twitter Cards y datos estructurados Schema.org (`Product`, `BreadcrumbList`, `Organization`).
-- **Sitemap & Robots**: Generación dinámica en `/sitemap.xml` y `/robots.txt`.
-- **Integraciones de Contacto**: Botón flotante de WhatsApp, enlaces a Instagram (`@_myaimportaciones`) y checkout con datos bancarios (Alias/CBU) y confirmación directa por WhatsApp.
-- **Panel Administrativo Completo (`/admin`)**:
-  - Control de catálogo (productos, categorías, stock, imágenes).
-  - Carga masiva de productos vía CSV.
-  - Gestión de roles de usuario (Admin / Cliente / Mayorista Aprobado).
-  - Gestión interactiva de estados de pedidos en tiempo real.
+Ver [mejoras, evidencia y checklist del 30/09/2026](docs/MEJORAS-Y-LANZAMIENTO-2026-09-30.md). La base conectada tiene cero productos al verificarla. Las migraciones de proveedores/seguridad y carrusel se aplicaron y verificaron remotamente el 30/09/2026. La publicación de la aplicación se verifica por separado del commit/push.
 
-## 🛠️ Stack Tecnológico
+El canal B2B permanece desactivado. Checkout y envío automático requieren configuración y conciliación real antes de habilitarse; el cliente puede consultar disponibilidad y entrega por WhatsApp.
 
-- **Framework**: Next.js 15 (App Router, Turbopack)
-- **Lenguaje**: TypeScript
-- **Estilos**: Tailwind CSS & Lucide Icons
-- **Backend & Base de Datos**: Supabase (PostgreSQL, Auth, Storage, RLS)
-- **Deploy**: Vercel
+## Administración
 
-## 🚀 Despliegue en Vercel
+- `/admin`: productos, categorías, pedidos y clientes. Crear y editar comparten editor, galería, cámara/archivos y validación en servidor.
+- `/admin/proveedores`: agenda privada compartida entre dispositivos, contacto, notas y archivo lógico; requiere la migración nueva.
+- `/admin/carrusel`: imágenes, textos, enlaces, orden y visibilidad del inicio, con vista previa y guardado conjunto; requiere `20260930200326_storefront_carousel.sql`.
+- `/admin/operaciones`: verificación de stock físico y reclamos.
+- `/admin/costos`: costos documentados y precios.
+- `/admin/estado`: configuración operativa.
 
-1. En tu panel de [Vercel](https://vercel.com/), conecta tu repositorio de GitHub `MaxiCalamante/myaimportaciones`.
-2. En la sección **Environment Variables**, configura las siguientes variables:
+Todos los accesos necesitan una sesión con rol admin. No ejecutar seeds históricos para empezar una tienda vacía. Los productos se crean como borradores y la disponibilidad de proveedor se confirma expresamente.
 
-```bash
-NEXT_PUBLIC_SITE_URL=https://myaimportaciones.vercel.app
-NEXT_PUBLIC_SUPABASE_URL=https://gqcdurxndbeeugjfworx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key_de_supabase
-```
+## Desarrollo y validación
 
-3. Haz clic en **Deploy**. ¡Listo!
+Copiar `.env.example` a una configuración local y completar las variables correspondientes. No guardar credenciales privadas en el repositorio ni usar prefijo `NEXT_PUBLIC` para secretos.
 
-## 💻 Desarrollo Local
-
-```bash
-# Instalar dependencias
+```sh
 npm install
-
-# Correr servidor de desarrollo
 npm run dev
-
-# Compilar para producción
+npm run type-check
+npm run lint
+npm run test
 npm run build
 ```
 
-Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+El script `scripts/verify-launch.mjs` comprueba la experiencia pública móvil/escritorio con Playwright y Edge sobre un servidor local. Acepta URL y, opcionalmente, ruta a los módulos de Playwright. No crea productos ni envía mensajes.
 
+La publicación debe coordinar esta versión de código con la migración `20260930200323_admin_suppliers_and_catalog_security.sql`. Ver el checklist antes de activar cobros, cron o publicar.
+
+El carrusel agrega la migración independiente `20260930200326_storefront_carousel.sql`, aplicada remotamente. `scripts/verify-carousel.mjs` verifica sus controles públicos y el acceso sin sesión en móvil/escritorio con los mismos argumentos del script anterior. `node --env-file=.env.local --import tsx scripts/verify-supabase-release.mjs` comprueba lectura pública, bloqueo de campos privados y las diapositivas persistidas mediante PostgREST, sin imprimir claves ni modificar datos.

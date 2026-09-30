@@ -1,4 +1,5 @@
 "use server";
+import { httpsUrl } from "@/lib/admin-product";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
@@ -75,22 +76,16 @@ export async function saveFinancialControl(form: FormData) {
   const sourceUrl = form.get("source_url");
   const updateProductPayload: Record<string, unknown> = {};
   if (typeof sourceUrl === "string") {
-    updateProductPayload.source_url = sourceUrl.trim() || null;
+    updateProductPayload.source_url = httpsUrl(sourceUrl.trim(), "Proveedor") || null;
   }
   if (amounts.purchase > 0) {
     const costInArs = amounts.purchase * (amounts.exchange || 1);
     updateProductPayload.supplier_live_price = costInArs;
   }
-  const mode = form.get("mode");
-  if (mode === "own_stock" || mode === "supplier") {
-    updateProductPayload.fulfillment_mode = mode;
-  }
-  if (form.has("available")) {
-    updateProductPayload.supplier_available = form.get("available") === "on";
-  }
-
+  // Availability/mode is saved by the separate fulfillment control RPC, which checks reservations.
   if (Object.keys(updateProductPayload).length > 0) {
-    await db.from("products").update(updateProductPayload).eq("id", productId);
+    const { error: updateError } = await db.from("products").update(updateProductPayload).eq("id", productId);
+    if (updateError) throw new Error("Los costos se guardaron, pero no se pudo actualizar el enlace del proveedor. Recargá y revisá la ficha.");
   }
 
   invalidateAdminStorefrontCache();

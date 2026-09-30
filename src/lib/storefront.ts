@@ -1,90 +1,25 @@
 import { readAllPages, readAllPagesParallel } from "@/lib/read-all-pages";
 import { cache } from "react";
-import { WHOLESALE_ENABLED, isExcludedCategory, cleanProductTitle } from "@/lib/commerce-policy";
-import { demoCategories, demoProducts } from "@/lib/demo-data";
+import { WHOLESALE_ENABLED, isExcludedCategory } from "@/lib/commerce-policy";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Category, PaymentMethod, Product, StorefrontData } from "@/lib/types";
+import type { Product, StorefrontData } from "@/lib/types";
 
-// In-memory cache for admin storefront queries across page transitions
-interface CachedAdminStorefront {
-  data: StorefrontData;
-  timestamp: number;
-}
-let adminStorefrontCache: CachedAdminStorefront | null = null;
-const ADMIN_CACHE_TTL_MS = 60 * 1000; // 60 seconds
-
-export function invalidateAdminStorefrontCache(): void {
-  adminStorefrontCache = null;
-}
-
-interface DbCategory {
-  id: string;
-  name: string;
-  slug: string;
-  parent_id: string | null;
-  description: string | null;
-  image_url: string | null;
-  is_wholesale_only: boolean | null;
-  display_order: number | null;
-}
-
-interface DbProduct {
-  source_url?: string | null;
-  supplier_last_checked_at?: string | null;
-  supplier_stock_status?: string | null;
-  supplier_live_price?: number | null;
-  fulfillment_mode?: "own_stock" | "supplier";
-  supplier_available?: boolean;
-  is_active?: boolean;
-  brand?: string | null;
-  model?: string | null;
-  sku?: string | null;
-  image_urls?: string[] | null;
-  id: string;
-  slug: string;
-  title: string;
-  description: string | null;
-  category_id: string;
-  image_url: string | null;
-  retail_price: number | null;
-  wholesale_price: number | null;
-  wholesale_min_qty: number | null;
-  stock: number | null;
-  stock_verified_at?: string | null;
-  specifications?: Record<string, string>;
-  warranty_terms?: string | null;
-  payment_methods: PaymentMethod[] | null;
-  tags: string[] | null;
-  is_featured: boolean | null;
-  is_wholesale_only: boolean | null;
-  categories: { name: string } | Array<{ name: string }> | null;
-}
+import { readAdminProducts } from "./admin-catalog-read";
+import { getAdminClient } from "./admin-auth";
+import { mapCategory, mapProduct, PUBLIC_PRODUCT_COLUMNS, type DbCategory, type DbProduct } from "./catalog-data";
+export { mapCategory, mapProduct } from "./catalog-data";
+// Admin data is cached only within the current React request, after authorization.
+export function invalidateAdminStorefrontCache(): void {}
 
 export const getStorefrontData = cache(async function getStorefrontData(options?: {
   categoryId?: string;
   admin?: boolean;
   limit?: number;
+  all?: boolean;
 }): Promise<StorefrontData> {
-  // Return cached admin data immediately if valid (instant navigation between admin sections)
-  if (
-    options?.admin &&
-    !options?.categoryId &&
-    adminStorefrontCache &&
-    Date.now() - adminStorefrontCache.timestamp < ADMIN_CACHE_TTL_MS
-  ) {
-    return adminStorefrontCache.data;
-  }
-
-  if (!hasSupabaseConfig()) {
-    return {
-      categories: demoCategories.filter(c => !isExcludedCategory(c.slug)),
-      products: demoProducts.filter(p => !p.wholesaleOnly && !/iphone|smartphone|celular/i.test(p.title)),
-      source: "demo",
-    };
-  }
-
-  const supabase = await createServerSupabaseClient();
+  if (!hasSupabaseConfig()) return { categories: [], products: [], source: "demo", error: "La tienda está en preparación. Consultanos por WhatsApp." };
+  const supabase = options?.admin ? await getAdminClient() : await createServerSupabaseClient();
 
   // Run category listing and total product count concurrently
   const [categoriesRes, countRes] = await Promise.all([
@@ -99,16 +34,20 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
       : Promise.resolve({ count: null }),
   ]);
 
+  if (categoriesRes.error || ("error" in countRes && countRes.error)) {
+    if (options?.admin) throw new Error("No se pudo leer el catálogo administrativo.");
+    return { categories: [], products: [], source: "supabase", error: "No pudimos cargar el catálogo. Probá nuevamente o consultanos." };
+  }
   const categoriesData = categoriesRes.data;
-  const totalCount = countRes.count ?? 3000;
+  const totalCount = countRes.count ?? 0;
 
   const buildProductsQuery = () => {
     let query = supabase
       .from("products")
       .select(
         options?.admin
-          ? "id, slug, title, description, category_id, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, source_url, supplier_last_checked_at, supplier_stock_status, supplier_live_price, fulfillment_mode, supplier_available, tags, payment_methods, specifications, warranty_terms, categories(name)"
-          : "*, categories(name)",
+          ? "*, categories(name)"
+          : `${PUBLIC_PRODUCT_COLUMNS}, categories(name)`,
       );
     if (!options?.admin) query = query.eq("is_active", true);
 
@@ -130,100 +69,48 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
       .order("created_at", { ascending: false }).order("id");
   };
 
-  const productsData = options?.admin
-    ? await readAllPagesParallel((from, to) => buildProductsQuery().range(from, to), totalCount, 1000)
-    : (await buildProductsQuery().limit(options?.limit ?? 24)).data ?? [];
-
-  const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(
-    mapCategory,
-  );
+  let productsData: unknown[];
+  if (options?.admin) {
+    productsData = await readAllPagesParallel((from, to) => readAdminProducts(supabase, { from, size: to - from + 1 }), totalCount, 1000);
+    productsData = productsData.map(row => ({ ...(row as DbProduct), categories: { name: categoriesData?.find(c => c.id === (row as DbProduct).category_id)?.name ?? "Catálogo" } }));
+  }
+  else if (options?.all) productsData = await readAllPages((from, to) => buildProductsQuery().range(from, to));
+  else if (options?.limit === 0) productsData = [];
+  else {
+    const result = await buildProductsQuery().limit(options?.limit ?? 24);
+    if (result.error) return { categories: (categoriesData ?? []).map(c => mapCategory(c)), products: [], source: "supabase", error: "No pudimos cargar los productos. Probá nuevamente." };
+    productsData = result.data ?? [];
+  }
+  const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(c => mapCategory(c, options?.admin));
   const excluded = new Set(categories.filter(c => isExcludedCategory(c.slug)).map(c => c.id));
-  const products = ((productsData ?? []) as unknown as DbProduct[]).map(p => mapProduct(p, options?.admin)).filter(p => !excluded.has(p.categoryId) && !/iphone|smartphone|celular/i.test(p.title));
+  categories.forEach(c => { if (c.parentId && excluded.has(c.parentId)) excluded.add(c.id); });
+  const products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin)).filter(p => options?.admin || (!excluded.has(p.categoryId) && !/iphone|smartphone|celular/i.test(p.title)));
 
   const result: StorefrontData = {
-    categories: categories.filter(c => !isExcludedCategory(c.slug) && !excluded.has(c.parentId ?? "")),
+    categories: options?.admin ? categories : categories.filter(c => !c.wholesaleOnly && !excluded.has(c.id)),
     products,
     source: "supabase",
   };
-
-  // Cache for subsequent admin navigation requests
-  if (options?.admin && !options?.categoryId) {
-    adminStorefrontCache = {
-      data: result,
-      timestamp: Date.now(),
-    };
-  }
 
   return result;
 });
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (!hasSupabaseConfig()) {
-    return demoProducts.find((p) => p.slug === slug) ?? null;
+    return null;
   }
 
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("products")
     .select(
-      "*, categories(name)",
+      `${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`,
     )
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || /iphone|smartphone|celular/i.test(data.title)) return null;
+  if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || /iphone|smartphone|celular/i.test(data.title) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
 
   return mapProduct(data as unknown as DbProduct);
-}
-
-export function mapCategory(category: DbCategory): Category {
-  return {
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    parentId: category.parent_id,
-    description: /garant[ií]a oficial|stock inmediato|24\s*h|100%/i.test(category.description ?? "") ? "Consultá productos, disponibilidad y condiciones de compra." : (category.description ?? ""),
-    imageUrl: category.image_url ?? "",
-    wholesaleOnly: Boolean(category.is_wholesale_only),
-    displayOrder: category.display_order ?? 0,
-  };
-}
-
-export function mapProduct(product: DbProduct, admin = false): Product {
-  const category = Array.isArray(product.categories)
-    ? product.categories[0]
-    : product.categories;
-
-  return {
-    id: product.id,
-    sourceUrl: product.source_url ?? null,
-    supplierLastCheckedAt: product.supplier_last_checked_at ?? null,
-    supplierStockStatus: product.supplier_stock_status ?? null,
-    supplierLivePrice: product.supplier_live_price !== null && product.supplier_live_price !== undefined ? Number(product.supplier_live_price) : null,
-    fulfillmentMode: product.fulfillment_mode ?? "own_stock",
-    supplierAvailable: Boolean(product.supplier_available),
-    active: product.is_active ?? true,
-    slug: product.slug,
-    title: cleanProductTitle(product.title),
-    brand: product.brand ?? undefined,
-    model: product.model ?? undefined,
-    sku: product.sku ?? undefined,
-    imageUrls: product.image_urls ?? [],
-    stockVerifiedAt: product.stock_verified_at ?? null,
-    specifications: product.specifications ?? {},
-    warrantyTerms: product.warranty_terms ?? null,
-    description: /Catálogo Oficial 2026|Formulación: Tratamiento dermatológico|100% Original Garantizado|Factura A o B/i.test(product.description ?? "") ? "Consultá la presentación, especificaciones y condiciones de este producto antes de comprar." : (product.description ?? ""),
-    categoryId: product.category_id,
-    categoryName: category?.name ?? "Catalogo",
-    imageUrl: product.image_url ?? "",
-    retailPrice: Number(product.retail_price ?? 0),
-    wholesalePrice: (WHOLESALE_ENABLED || admin) ? Number(product.wholesale_price ?? 0) : 0,
-    wholesaleMinQuantity: Number(product.wholesale_min_qty ?? 1),
-    stock: Number(product.stock ?? 0),
-    paymentMethods: product.payment_methods ?? ["transferencia"],
-    tags: product.tags ?? [],
-    featured: Boolean(product.is_featured),
-    wholesaleOnly: Boolean(product.is_wholesale_only),
-  };
 }

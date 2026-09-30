@@ -1,8 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { PaymentMethod } from "@/lib/types";
+import { readAdminProducts } from "@/lib/admin-catalog-read";
+import { getAdminClient } from "@/lib/admin-auth";
+import { parseProductForm, productImageUrl, httpsUrl, validId, validateImageContent } from "@/lib/admin-product";
+import { prepareProductImages } from "@/lib/admin-media";
 import {
   checkAndUpdateProductSupplierStock,
   runBatchSupplierStockSync,
@@ -20,34 +22,28 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
-async function getAdminClient() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    throw new Error("Tenes que iniciar sesion.");
+async function validateCategoryParent(db: Awaited<ReturnType<typeof getAdminClient>>, parentId: string, id?: string) {
+  if (!parentId) return;
+  validId(parentId);
+  const { data, error } = await db.from("categories").select("id,parent_id").eq("id", parentId).single();
+  if (error || !data || parentId === id || data.parent_id) throw new Error("Elegí un rubro principal válido. La categoría no puede ser su propio padre.");
+  if (id) {
+    const { count, error: countError } = await db.from("categories").select("id", { count: "exact", head: true }).eq("parent_id", id);
+    if (countError || count) throw new Error("Este rubro tiene subcategorías. No puede convertirse en subcategoría.");
   }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (profile?.role !== "admin") {
-    throw new Error("No tenes permisos de administrador.");
-  }
-  return supabase;
 }
 export async function createCategoryAction(formData: FormData) {
   const supabase = await getAdminClient();
   const name = getString(formData, "name");
   const parentId = getString(formData, "parent_id");
   const image = formData.get("image");
-  let imageUrl = getString(formData, "custom_image_url");
-  if (!name) {
+  let imageUrl = productImageUrl(getString(formData, "custom_image_url"));
+  await validateCategoryParent(supabase, parentId);
+  if (!slugify(name) || name.length > 200) {
     throw new Error("La categoria necesita un nombre.");
   }
   if (image instanceof File && image.size > 0) {
+    await validateImageContent(image);
     const safeName = image.name.replace(/[^a-zA-Z0-9.-]/g, "-");
     const path = `categories/${crypto.randomUUID()}-${safeName}`;
     const { error: uploadError } = await supabase.storage
@@ -78,6 +74,8 @@ export async function createCategoryAction(formData: FormData) {
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/", "layout");
+  revalidatePath("/producto/[slug]", "page");
 }
 export async function updateCategoryAction(formData: FormData) {
   const supabase = await getAdminClient();
@@ -87,11 +85,14 @@ export async function updateCategoryAction(formData: FormData) {
   const image = formData.get("image");
   let imageUrl = getString(formData, "existing_image_url");
   const customImageUrl = getString(formData, "custom_image_url");
-  if (customImageUrl) imageUrl = customImageUrl;
-  if (!id || !name) {
+  if (customImageUrl) imageUrl = productImageUrl(customImageUrl);
+  validId(id);
+  await validateCategoryParent(supabase, parentId, id);
+  if (!slugify(name) || name.length > 200) {
     throw new Error("ID y Nombre de categoría son requeridos.");
   }
   if (image instanceof File && image.size > 0) {
+    await validateImageContent(image);
     const safeName = image.name.replace(/[^a-zA-Z0-9.-]/g, "-");
     const path = `categories/${crypto.randomUUID()}-${safeName}`;
     const { error: uploadError } = await supabase.storage
@@ -125,6 +126,8 @@ export async function updateCategoryAction(formData: FormData) {
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/", "layout");
+  revalidatePath("/producto/[slug]", "page");
 }
 export async function deleteCategoryAction(categoryId: string) {
   const supabase = await getAdminClient();
@@ -139,287 +142,80 @@ export async function deleteCategoryAction(categoryId: string) {
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/", "layout");
+  revalidatePath("/producto/[slug]", "page");
+}
+function refreshCatalog() {
+  invalidateAdminStorefrontCache();
+  revalidatePath("/", "layout");
+  revalidatePath("/producto/[slug]", "page");
+  revalidatePath("/sitemap.xml");
+}
+async function checkProductCategory(db: Awaited<ReturnType<typeof getAdminClient>>, categoryId: string, parentId: string) {
+  const { data, error } = await db.from("categories").select("id, parent_id").eq("id", categoryId).single();
+  if (error || !data || (parentId && categoryId !== parentId && data.parent_id !== parentId)) throw new Error("La categoría seleccionada no existe o no pertenece al rubro elegido.");
 }
 export async function createProductAction(formData: FormData) {
-  const supabase = await getAdminClient();
-  const title = getString(formData, "title");
-  const categoryId = getString(formData, "category_id");
-  const subcategoryId = getString(formData, "subcategory_id");
-  const brand = getString(formData, "brand") || null;
-  const model = getString(formData, "model") || null;
-  const sku = getString(formData, "sku") || null;
-  const sourceUrl = getString(formData, "source_url") || null;
-  const customSlug = getString(formData, "slug");
-  const customImageUrl = getString(formData, "custom_image_url");
-  const image = formData.get("image");
-
-  if (!title || (!categoryId && !subcategoryId)) {
-    throw new Error("El producto necesita título y categoría principal.");
+  const db = await getAdminClient();
+  const { fields, slug, stock } = parseProductForm(formData, true);
+  await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
+  const { data: match, error: slugError } = await db.from("products").select("id").eq("slug", slug).maybeSingle();
+  if (slugError) throw new Error("No se pudo verificar el enlace del producto.");
+  const finalSlug = match ? `${slug}-${crypto.randomUUID().slice(0, 8)}` : slug;
+  const { urls, paths } = await prepareProductImages(db, formData);
+  if (fields.is_active && !urls.length) throw new Error("Agregá al menos una foto antes de publicar.");
+  const { data, error } = await db.from("products").insert({
+    ...fields, slug: finalSlug, stock: stock ?? 0,
+    stock_verified_at: fields.fulfillment_mode === "own_stock" && stock ? new Date().toISOString() : null,
+    image_url: urls[0] || null, image_urls: urls,
+    supplier_stock_status: "unknown", supplier_last_checked_at: null,
+  }).select("id, slug").single();
+  if (error || !data) {
+    if (paths.length) await db.storage.from("product-images").remove(paths);
+    throw new Error(error?.code === "23505" ? "Ya existe un producto con ese enlace o SKU. Revisá el catálogo." : "No se pudo guardar el producto. Revisá los datos y tu conexión.");
   }
-
-  let imageUrl = customImageUrl || "";
-  if (image instanceof File && image.size > 0) {
-    const safeName = image.name.replace(/[^a-zA-Z0-9.-]/g, "-");
-    const path = `products/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage
-      .from("product-images")
-      .upload(path, image, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-    if (uploadError) {
-      throw new Error("Error al subir imagen: " + uploadError.message);
-    }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    imageUrl = data.publicUrl;
-  }
-
-  const paymentMethods = formData
-    .getAll("payment_methods")
-    .filter((value): value is PaymentMethod => typeof value === "string");
-
-  const finalCategoryId = subcategoryId || categoryId;
-  const retailPrice = Number(getString(formData, "retail_price") || 0);
-  const wholesalePrice = Number(
-    getString(formData, "wholesale_price") || (retailPrice > 0 ? Math.round(retailPrice * 0.75) : 0)
-  );
-  const wholesaleMinQty = Number(getString(formData, "wholesale_min_qty") || 1);
-  const stock = Number(getString(formData, "stock") || 0);
-  const fulfillmentMode = getString(formData, "fulfillment_mode") || "supplier";
-  const supplierAvailable = formData.has("supplier_available_present")
-    ? formData.get("supplier_available") === "on"
-    : true;
-  const supplierLivePrice = getString(formData, "supplier_live_price")
-    ? Number(getString(formData, "supplier_live_price"))
-    : null;
-
-  const tags = getString(formData, "tags")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
-  const isInStockImmediate = formData.get("is_in_stock_immediate") === "on" || stock > 0;
-  if (isInStockImmediate && !tags.some((t) => t.toLowerCase() === "en_stock")) {
-    tags.push("en_stock");
-  }
-
-  // Specifications JSON or key-value
-  let specifications: Record<string, string> = {};
-  const specsRaw = getString(formData, "specifications");
-  if (specsRaw) {
-    try {
-      specifications = JSON.parse(specsRaw);
-    } catch {
-      const lines = specsRaw.split("\n");
-      for (const line of lines) {
-        const colonIdx = line.indexOf(":");
-        if (colonIdx !== -1) {
-          const k = line.slice(0, colonIdx).trim();
-          const v = line.slice(colonIdx + 1).trim();
-          if (k && v) specifications[k] = v;
-        }
-      }
-    }
-  }
-
-  const baseSlug = customSlug ? slugify(customSlug) : slugify(title);
-  // Ensure slug uniqueness
-  const { data: existingSlug } = await supabase
-    .from("products")
-    .select("id")
-    .eq("slug", baseSlug)
-    .maybeSingle();
-
-  const finalSlug = existingSlug
-    ? `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`
-    : baseSlug;
-
-  const insertData = {
-    title,
-    slug: finalSlug,
-    description: getString(formData, "description") || null,
-    category_id: finalCategoryId,
-    image_url: imageUrl || null,
-    image_urls: imageUrl ? [imageUrl] : [],
-    retail_price: retailPrice,
-    wholesale_price: wholesalePrice,
-    wholesale_min_qty: wholesaleMinQty,
-    stock,
-    stock_verified_at: stock > 0 ? new Date().toISOString() : null,
-    payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
-    tags,
-    is_featured: formData.get("is_featured") === "on",
-    is_wholesale_only: formData.get("is_wholesale_only") === "on",
-    is_active: formData.has("is_active_present") ? formData.get("is_active") === "on" : true,
-    brand,
-    model,
-    sku,
-    source_url: sourceUrl,
-    fulfillment_mode: ["own_stock", "supplier"].includes(fulfillmentMode) ? fulfillmentMode : "supplier",
-    supplier_available: supplierAvailable,
-    supplier_live_price: supplierLivePrice,
-    supplier_last_checked_at: null,
-    supplier_stock_status: "unknown",
-    specifications,
-    warranty_terms: getString(formData, "warranty_terms") || null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: createdProduct, error } = await supabase
-    .from("products")
-    .insert(insertData)
-    .select("id, slug")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/mayorista");
-  revalidatePath("/catalogo");
-
-  return { success: true, id: createdProduct.id, slug: createdProduct.slug };
+  refreshCatalog();
+  return { success: true, id: data.id, slug: data.slug };
 }
 export async function updateProductAction(formData: FormData) {
-  const supabase = await getAdminClient();
-  const id = getString(formData, "id");
-  const title = getString(formData, "title");
-  const categoryId = getString(formData, "category_id");
-  const subcategoryId = getString(formData, "subcategory_id");
-  const image = formData.get("image");
-  let imageUrl = getString(formData, "existing_image_url");
-  const customImageUrl = getString(formData, "custom_image_url");
-  if (customImageUrl) {
-    imageUrl = customImageUrl;
-  }
-  if (!id || !title || (!categoryId && !subcategoryId)) {
-    throw new Error("El producto necesita ID, título y categoría principal.");
-  }
-  if (image instanceof File && image.size > 0) {
-    const safeName = image.name.replace(/[^a-zA-Z0-9.-]/g, "-");
-    const path = `products/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage
-      .from("product-images")
-      .upload(path, image, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-    if (uploadError) {
-      throw new Error(uploadError.message);
+  const db = await getAdminClient();
+  const id = validId(getString(formData, "id"));
+  const { fields } = parseProductForm(formData, false);
+  await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
+  const { data: matches, error: readError } = await readAdminProducts(db, { ids: [id], size: 1 });
+  const existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null } | undefined;
+  if (readError || !existing) throw new Error("El producto ya no está disponible para editar. Recargá el panel.");
+  if (formData.has("stock") && Number(formData.get("stock")) !== existing.stock) throw new Error("Verificá el conteo físico desde Operaciones para proteger las reservas.");
+  const gallery = [...new Set([existing.image_url, ...(existing.image_urls ?? [])].filter(Boolean))] as string[];
+  const { urls, paths } = await prepareProductImages(db, formData, gallery);
+  if (fields.is_active && !urls.length) throw new Error("Agregá al menos una foto antes de publicar.");
+  try {
+    if (existing.fulfillment_mode !== fields.fulfillment_mode) {
+      const { error } = await db.rpc("set_product_fulfillment_v1", { product_id_input: id, mode_input: fields.fulfillment_mode, available_input: fields.supplier_available });
+      if (error) throw new Error("No se pudo cambiar la modalidad. Resolvé las reservas pendientes antes de cambiarla.");
     }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    imageUrl = data.publicUrl;
+    const { fulfillment_mode: mode, ...update } = fields;
+    void mode;
+    const { error, data } = await db.from("products").update({ ...update,
+      image_url: urls[0] || null, image_urls: urls,
+      ...(existing.source_url !== fields.source_url ? { supplier_last_checked_at: null, supplier_stock_status: "unknown" } : {}),
+    }).eq("id", id).select("id").single();
+    if (error || !data) throw new Error("No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
+  } catch (error) {
+    if (paths.length) await db.storage.from("product-images").remove(paths);
+    throw error;
   }
-  const paymentMethods = formData
-    .getAll("payment_methods")
-    .filter((value): value is PaymentMethod => typeof value === "string");
-  const finalCategoryId = subcategoryId || categoryId;
-  const isInStockImmediate = formData.get("is_in_stock_immediate") === "on";
-  let tags = getString(formData, "tags")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-  if (isInStockImmediate) {
-    if (!tags.some((t) => t.toLowerCase() === "en_stock")) {
-      tags.push("en_stock");
-    }
-  } else {
-    tags = tags.filter(
-      (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
-    );
-  }
-
-  const updateData: Record<string, unknown> = {
-    title,
-    description: getString(formData, "description"),
-    category_id: finalCategoryId,
-    image_url: imageUrl,
-    retail_price: Number(getString(formData, "retail_price") || 0),
-    wholesale_price: Number(getString(formData, "wholesale_price") || 0),
-    wholesale_min_qty: Number(getString(formData, "wholesale_min_qty") || 1),
-    payment_methods: paymentMethods.length > 0 ? paymentMethods : ["transferencia"],
-    tags,
-    is_featured: formData.get("is_featured") === "on",
-    is_wholesale_only: formData.get("is_wholesale_only") === "on",
-    updated_at: new Date().toISOString(),
-  };
-
-  if (formData.has("brand")) updateData.brand = getString(formData, "brand") || null;
-  if (formData.has("model")) updateData.model = getString(formData, "model") || null;
-  if (formData.has("sku")) updateData.sku = getString(formData, "sku") || null;
-  if (formData.has("source_url")) updateData.source_url = getString(formData, "source_url") || null;
-
-  if (formData.has("fulfillment_mode")) {
-    const mode = getString(formData, "fulfillment_mode");
-    if (["own_stock", "supplier"].includes(mode)) {
-      updateData.fulfillment_mode = mode;
-    }
-  }
-
-  if (formData.has("is_active_present")) {
-    updateData.is_active = formData.get("is_active") === "on";
-  }
-
-  if (formData.has("supplier_available_present")) {
-    updateData.supplier_available = formData.get("supplier_available") === "on";
-  }
-
-  if (formData.has("stock")) {
-    const s = Number(getString(formData, "stock") || 0);
-    updateData.stock = s;
-    if (s > 0) updateData.stock_verified_at = new Date().toISOString();
-  }
-
-  if (formData.has("supplier_live_price")) {
-    const p = getString(formData, "supplier_live_price");
-    updateData.supplier_live_price = p ? Number(p) : null;
-  }
-
-  if (formData.has("warranty_terms")) {
-    updateData.warranty_terms = getString(formData, "warranty_terms") || null;
-  }
-
-  if (formData.has("specifications")) {
-    const specsRaw = getString(formData, "specifications");
-    if (specsRaw) {
-      try {
-        updateData.specifications = JSON.parse(specsRaw);
-      } catch {
-        const specs: Record<string, string> = {};
-        const lines = specsRaw.split("\n");
-        for (const line of lines) {
-          const colonIdx = line.indexOf(":");
-          if (colonIdx !== -1) {
-            const k = line.slice(0, colonIdx).trim();
-            const v = line.slice(colonIdx + 1).trim();
-            if (k && v) specs[k] = v;
-          }
-        }
-        updateData.specifications = specs;
-      }
-    }
-  }
-
-  const { error } = await supabase
-    .from("products")
-    .update(updateData)
-    .eq("id", id);
-  if (error) {
-    throw new Error(error.message);
-  }
-  revalidatePath("/");
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/mayorista");
-  revalidatePath("/catalogo");
+  refreshCatalog();
+  return { success: true };
 }
 
+async function validatePublish(db: Awaited<ReturnType<typeof getAdminClient>>, ids: string[]) {
+  const { data, error } = await db.from("products").select("id,retail_price,image_url").in("id", ids);
+  if (error || !data || data.length !== new Set(ids).size || data.some(p => p.retail_price <= 0 || !p.image_url || p.image_url.includes("placeholder"))) throw new Error("Antes de publicar, cada producto debe tener precio y una foto real.");
+}
 export async function toggleProductActiveAction(productId: string, isActive: boolean) {
   const supabase = await getAdminClient();
+  if (isActive) await validatePublish(supabase, [productId]);
   const { error } = await supabase
     .from("products")
     .update({ is_active: isActive, updated_at: new Date().toISOString() })
@@ -498,10 +294,12 @@ export async function bulkUpdateProductStatusAction(
   action: "activate" | "pause" | "supplier_available" | "supplier_pause" | "set_mode_supplier" | "set_mode_own"
 ) {
   const supabase = await getAdminClient();
-  if (!productIds || productIds.length === 0) throw new Error("No hay productos seleccionados.");
+  if (!Array.isArray(productIds) || !productIds.length || productIds.length > 200) throw new Error("Seleccioná entre 1 y 200 productos.");
+  productIds.forEach(validId);
 
   let updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (action === "activate") {
+    await validatePublish(supabase, productIds);
     updatePayload = { is_active: true };
   } else if (action === "pause") {
     updatePayload = { is_active: false };
@@ -517,11 +315,16 @@ export async function bulkUpdateProductStatusAction(
       supplier_stock_status: "unknown",
       supplier_last_checked_at: null,
     };
-  } else if (action === "set_mode_supplier") {
-    updatePayload = { fulfillment_mode: "supplier" };
-  } else if (action === "set_mode_own") {
-    updatePayload = { fulfillment_mode: "own_stock" };
-  }
+  } else if (action === "set_mode_supplier" || action === "set_mode_own") {
+    let changed = 0;
+    for (const id of [...new Set(productIds)].sort()) {
+      const { error } = await supabase.rpc("set_product_fulfillment_v1", { product_id_input: id, mode_input: action === "set_mode_supplier" ? "supplier" : "own_stock", available_input: false });
+      if (error) { refreshCatalog(); throw new Error(`Se actualizaron ${changed} productos. Revisá las reservas pendientes del resto y recargá antes de reintentar.`); }
+      changed++;
+    }
+    refreshCatalog();
+    return { success: true, count: changed };
+  } else throw new Error("Acción inválida.");
 
   const { error } = await supabase
     .from("products")
@@ -542,7 +345,8 @@ export async function bulkAdjustPricesAction(
   amount: number
 ) {
   const supabase = await getAdminClient();
-  if (!productIds || productIds.length === 0) throw new Error("No hay productos seleccionados.");
+  if (!Array.isArray(productIds) || !productIds.length || productIds.length > 200) throw new Error("Seleccioná entre 1 y 200 productos.");
+  productIds.forEach(validId);
   if (!Number.isFinite(amount) || !["percentage", "fixed_markup"].includes(type)) throw new Error("Importe o porcentaje inválido.");
 
   const { data: currentProducts, error: fetchError } = await supabase
@@ -603,6 +407,8 @@ export async function updateProductWholesaleAction(
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/", "layout");
+  revalidatePath("/producto/[slug]", "page");
 }
 export async function updateProductPricesAction(
   productId: string,
@@ -640,6 +446,8 @@ export async function deleteProductAction(productId: string) {
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
+  revalidatePath("/", "layout");
+  revalidatePath("/producto/[slug]", "page");
 }
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
   const supabase = await getAdminClient();
@@ -754,20 +562,18 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
   });
   const slugs = items.map((item) => slugify(item.title ?? ""));
   if (new Set(slugs).size !== slugs.length) throw new Error("El CSV tiene títulos repetidos que generarían el mismo enlace de producto.");
-  const { data: existingProducts, error: existingError } = await supabase
-    .from("products")
-    .select("slug, description, image_url, payment_methods, tags, is_featured, is_wholesale_only, is_active, sku, brand, model, source_url, supplier_live_price")
-    .in("slug", slugs);
+  const { data: existingProducts, error: existingError } = await readAdminProducts(supabase, { slugs, size: 200 });
   if (existingError) throw new Error(`No se pudieron verificar los productos existentes: ${existingError.message}`);
   const existingBySlug = new Map((existingProducts ?? []).map((product) => [product.slug, product]));
   const payload = items.map((item, index) => {
     const targetCatId = item.categoryId || (item.categoryName ? catMap.get(item.categoryName.toLowerCase().trim()) : undefined);
     if (!targetCatId || !categories?.some((category) => category.id === targetCatId)) throw new Error(`Fila ${index + 1}: la categoría "${item.categoryName || ""}" no existe.`);
     if (!item.title?.trim() || !Number.isFinite(item.retailPrice) || item.retailPrice <= 0) throw new Error(`Fila ${index + 1}: título o precio inválido.`);
+    if (item.supplierLivePrice !== undefined && (!Number.isFinite(item.supplierLivePrice) || item.supplierLivePrice < 0)) throw new Error(`Fila ${index + 1}: costo de proveedor inválido.`);
     const slug = slugs[index];
     const existing = existingBySlug.get(slug);
     const retailPrice = Number(item.retailPrice);
-    const wholesalePrice = Number(item.wholesalePrice ?? Math.round(retailPrice * 0.75));
+    const wholesalePrice = Number(item.wholesalePrice ?? existing?.wholesale_price ?? 0);
     if (!Number.isFinite(wholesalePrice) || wholesalePrice < 0 || !Number.isInteger(item.wholesaleMinQuantity ?? 1) || (item.wholesaleMinQuantity ?? 1) < 1) throw new Error(`Fila ${index + 1}: precio o mínimo mayorista inválido.`);
     return {
         title: item.title,
@@ -775,11 +581,12 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
         sku: item.sku?.trim() || existing?.sku || null,
         brand: item.brand?.trim() || existing?.brand || null,
         model: item.model?.trim() || existing?.model || null,
-        source_url: item.sourceUrl?.trim() || existing?.source_url || null,
+        source_url: item.sourceUrl ? httpsUrl(item.sourceUrl.trim(), "Proveedor") : existing?.source_url || null,
         supplier_live_price: item.supplierLivePrice ?? existing?.supplier_live_price ?? null,
         description: item.description || existing?.description || "",
         category_id: targetCatId,
-        image_url: item.imageUrl || existing?.image_url || "/placeholder-product.svg",
+        image_url: item.imageUrl ? productImageUrl(item.imageUrl) : existing?.image_url || null,
+        image_urls: item.imageUrl ? [productImageUrl(item.imageUrl)] : existing?.image_urls || [],
         retail_price: retailPrice,
         wholesale_price: wholesalePrice,
         wholesale_min_qty: Number(item.wholesaleMinQuantity ?? 1),
@@ -788,7 +595,9 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
         tags: item.tags || existing?.tags || ["importado"],
         is_featured: existing?.is_featured ?? Boolean(item.featured),
         is_wholesale_only: existing?.is_wholesale_only ?? false,
-        is_active: existing?.is_active ?? true,
+        is_active: existing?.is_active ?? false,
+        fulfillment_mode: existing?.fulfillment_mode ?? "supplier",
+        supplier_available: existing?.supplier_available ?? false,
       };
   });
   const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
@@ -1020,10 +829,13 @@ export async function quickUpdateSupplierLinkAction(
   supplierAvailable: boolean = true
 ) {
   const supabase = await getAdminClient();
-  const cleanUrl = sourceUrl.trim();
+  const cleanUrl = httpsUrl(sourceUrl.trim(), "Proveedor");
+  validId(productId);
+  if (livePrice !== undefined && livePrice !== null && (!Number.isFinite(livePrice) || livePrice < 0)) throw new Error("Costo de proveedor inválido.");
+  const { error: modeError } = await supabase.rpc("set_product_fulfillment_v1", { product_id_input: productId, mode_input: fulfillmentMode, available_input: supplierAvailable });
+  if (modeError) throw new Error("No se pudo cambiar la modalidad. Revisá las reservas pendientes.");
   const updateData: Record<string, unknown> = {
     source_url: cleanUrl || null,
-    fulfillment_mode: fulfillmentMode,
     supplier_available: supplierAvailable,
     updated_at: new Date().toISOString(),
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useId } from "react";
+import { optimizeProductPhoto } from "@/lib/image-upload";
 import type { Category } from "@/lib/types";
 import { createCategoryAction, updateCategoryAction } from "@/app/admin/actions";
 import {
@@ -62,9 +63,11 @@ export function CategoryModal({
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.files?.[0];
+    if (input) {
+      try {
+      const file = await optimizeProductPhoto(input);
       setImageFile(file);
       setCustomImageUrl("");
       const reader = new FileReader();
@@ -72,6 +75,7 @@ export function CategoryModal({
         setImagePreview(String(event.target?.result ?? ""));
       };
       reader.readAsDataURL(file);
+      } catch (err) { setErrorMsg(err instanceof Error ? err.message : "No se pudo preparar la foto."); }
     }
   };
 
@@ -237,7 +241,7 @@ export function CategoryModal({
                   <input
                     id={fileInputId}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleFileChange}
                     className="hidden"
                   />

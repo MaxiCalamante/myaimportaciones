@@ -36,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    alternates: { canonical: `/producto/${product.slug}` },
     keywords: [
       product.title,
       product.categoryName,
@@ -145,12 +146,12 @@ export default async function ProductPage({ params }: Props) {
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
       />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap">
+        <nav aria-label="Ubicación del producto" className="mb-6 flex items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap">
           <Link href="/" className="hover:text-zinc-900 transition flex items-center gap-1">
             <ArrowLeft className="h-3.5 w-3.5" /> Inicio
           </Link>

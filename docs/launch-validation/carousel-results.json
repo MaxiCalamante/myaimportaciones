@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-30",
+  "base": "http://127.0.0.1:3100",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "publicStatus": 200,
+      "controls": "pause, next, previous, indicators, resume",
+      "horizontalOverflow": false,
+      "ctaClipped": false,
+      "guestAdminRedirect": "http://127.0.0.1:3100/login?next=/admin",
+      "browserErrors": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "publicStatus": 200,
+      "controls": "pause, next, previous, indicators, resume",
+      "horizontalOverflow": false,
+      "ctaClipped": false,
+      "guestAdminRedirect": "http://127.0.0.1:3100/login?next=/admin",
+      "browserErrors": []
+    }
+  ],
+  "adminAuthenticatedTest": false,
+  "remoteWrites": false
+}

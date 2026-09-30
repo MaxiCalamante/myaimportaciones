@@ -138,10 +138,11 @@ export default async function RootLayout({
 
       </head>
       <body className="min-h-full bg-slate-50 text-zinc-950">
+        <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-5 focus:py-3 focus:font-bold focus:shadow-xl">Saltar al contenido</a>
         <CommerceProvider>
           <div className="flex min-h-screen flex-col pb-16 md:pb-0">
             <SiteHeader initialCategories={categories} initialProducts={products} profile={profile} />
-            <main className="flex-1">{children}</main>
+            <main id="contenido" tabIndex={-1} className="flex-1">{children}</main>
             <SiteFooter />
             <AnalyticsConsent />
           </div>

@@ -39,8 +39,8 @@ function extractBrand(title: string, categoryName: string, tags: string[] = []):
 }
 
 export async function GET() {
-  const { products: loaded } = await getStorefrontData({ admin: true });
-  const products = loaded.filter(p => p.active && !p.wholesaleOnly && p.stockVerifiedAt && p.stock > 0);
+  const { products: loaded } = await getStorefrontData({ all: true });
+  const products = loaded.filter(p => p.active && !p.wholesaleOnly && p.fulfillmentMode === "own_stock" && p.stockVerifiedAt && p.stock > 0 && p.retailPrice > 0 && p.imageUrl);
   const baseUrl = siteConfig.appUrl.replace(/\/$/, "");
 
   const itemsXml = products

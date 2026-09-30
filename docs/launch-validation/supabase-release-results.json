@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-30",
+  "project": "gqcdurxndbeeugjfworx",
+  "checks": [
+    {
+      "path": "products?select=id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, tags, payment_methods, specifications, warranty_terms&limit=1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "products?select=source_url&limit=1",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "path": "products?select=supplier_live_price&limit=1",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "path": "suppliers?select=id&limit=1",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "path": "storefront_carousel?select=slides&limit=1",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "path": "rpc/public_carousel_slides",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "rpc/admin_catalog_page",
+      "method": "POST",
+      "status": 401
+    },
+    {
+      "path": "rpc/update_product_supplier_sync_v1",
+      "method": "POST",
+      "status": 401
+    }
+  ],
+  "remoteCatalogWrites": false,
+  "storageUploadTest": false,
+  "realAdminBrowserSession": false
+}
