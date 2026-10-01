@@ -9,6 +9,7 @@ type Props = {
   categories: Category[];
   category: Category | undefined;
   brands: { brand: string; count: number }[];
+  brandsByCategory: Record<string, { brand: string; count: number }[]>;
   query: string;
   brand: string;
   sort: string;
@@ -16,7 +17,7 @@ type Props = {
   maxPrice: string;
 };
 
-export function CatalogSearchControls({ categories, category, brands, query, brand, sort, minPrice, maxPrice }: Props) {
+export function CatalogSearchControls({ categories, category, brands, brandsByCategory, query, brand, sort, minPrice, maxPrice }: Props) {
   const [filtersOpen, setFiltersOpen] = useState(Boolean(brand || sort || minPrice || maxPrice));
   const [advancedOpen, setAdvancedOpen] = useState(Boolean(brand || sort || minPrice || maxPrice));
   const [rootSlug, setRootSlug] = useState(category?.parentId ? categories.find(c => c.id === category.parentId)?.slug ?? "" : category?.slug ?? "");
@@ -25,6 +26,8 @@ export function CatalogSearchControls({ categories, category, brands, query, bra
   const roots = categories.filter(c => !c.parentId && !c.wholesaleOnly);
   const selectedRoot = roots.find(c => c.slug === rootSlug);
   const subcategories = selectedRoot ? categories.filter(c => c.parentId === selectedRoot.id && !c.wholesaleOnly).sort((a, b) => a.name.localeCompare(b.name, "es")) : [];
+  const selectedCategoryId = subcategorySlug ? subcategories.find(c => c.slug === subcategorySlug)?.id : selectedRoot?.id;
+  const visibleBrands = selectedCategoryId ? brandsByCategory[selectedCategoryId] ?? [] : brands;
   const showBrandCounts = !rootSlug && !query && !minPrice && !maxPrice;
   const field = "h-11 min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100";
 
@@ -60,8 +63,8 @@ export function CatalogSearchControls({ categories, category, brands, query, bra
         <span className="mb-1.5 block text-xs font-semibold text-zinc-600">Marca</span>
         <select className={field} name="brand" value={selectedBrand} onChange={event => setSelectedBrand(event.target.value)}>
           <option value="">Todas las marcas</option>
-          {selectedBrand && !brands.some(b => b.brand === selectedBrand) && <option value={selectedBrand}>{selectedBrand}</option>}
-          {brands.map(b => <option value={b.brand} key={b.brand}>{b.brand}{showBrandCounts ? ` (${b.count})` : ""}</option>)}
+          {selectedBrand && !visibleBrands.some(b => b.brand === selectedBrand) && <option value={selectedBrand}>{selectedBrand}</option>}
+          {visibleBrands.map(b => <option value={b.brand} key={b.brand}>{b.brand}{showBrandCounts ? ` (${b.count})` : ""}</option>)}
         </select>
       </label>
       <label className={`${advancedOpen ? "" : "hidden"} sm:block lg:col-span-3`}>

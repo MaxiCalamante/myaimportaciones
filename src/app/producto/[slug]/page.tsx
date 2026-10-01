@@ -82,6 +82,10 @@ export default async function ProductPage({ params }: Props) {
 
   const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
   const category = categories.find((c) => c.id === product.categoryId);
+  const alternativeModel = product.specifications?.["Modelo alternativo"];
+  const alternativeProduct = alternativeModel
+    ? products.find((p) => p.id !== product.id && p.model === alternativeModel)
+    : undefined;
   const relatedProducts = products
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
@@ -200,6 +204,14 @@ export default async function ProductPage({ params }: Props) {
             </p>
 
             <ProductDetailInteractive product={product} />
+            {alternativeProduct && (
+              <Link
+                href={`/producto/${alternativeProduct.slug}`}
+                className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900 transition hover:bg-sky-100"
+              >
+                Ver otra versión: {alternativeProduct.title}
+              </Link>
+            )}
           {Object.entries(product.specifications ?? {}).filter(([,v]) => v).length > 0 && <dl className="mt-6 space-y-3">{Object.entries(product.specifications ?? {}).filter(([,v]) => v).map(([k,v]) => <div key={k}><dt className="font-semibold">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line text-sm">{v}</dd></div>)}</dl>}
           {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
 

@@ -3,7 +3,8 @@ import { EmptyCatalog } from "@/components/commerce/empty-catalog";
 import Link from "next/link";
 import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
-import { getStorefrontData, mapProduct } from "@/lib/storefront";
+import { getStorefrontData, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
+import { deriveCatalogFacets, type BrandFacet } from "@/lib/catalog-facets";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import type { Product } from "@/lib/types";
@@ -21,17 +22,23 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const maxPrice = /^\d{1,12}$/.test(params.max ?? "") ? params.max! : "";
   const page = Math.min(200, Math.max(1, Number.parseInt(params.page ?? "1") || 1));
   const { categories, products: fallback, error: catalogError } = await getStorefrontData({ limit: 0 });
-  const visibleCategories = categories.filter(c => !c.wholesaleOnly);
+  let visibleCategories = categories.filter(c => !c.wholesaleOnly);
   const category = visibleCategories.find(c => c.slug === params.category);
   const root = category?.parentId ? visibleCategories.find(c => c.id === category.parentId) : category;
-  const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
   let products: Product[] = [], count = 0, failed = Boolean(catalogError);
   let brands: { brand: string; count: number }[] = [];
+  let brandsByCategory: Record<string, BrandFacet[]> = {};
 
   if (hasSupabaseConfig()) {
     const db = await createServerSupabaseClient();
-    const facets = await db.rpc("public_catalog_facets");
-    brands = (facets.data?.brands ?? []).filter((item: { brand?: string }) => item.brand);
+    try {
+      const facets = deriveCatalogFacets(visibleCategories, await getPublicFacetProducts());
+      visibleCategories = facets.categories;
+      brands = facets.brands;
+      brandsByCategory = facets.brandsByCategory;
+    } catch {
+      failed = true;
+    }
     const ids = category
       ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id)
       : visibleCategories.map(c => c.id);
@@ -59,12 +66,14 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     matching.sort((a, b) => sort === "price_asc" ? a.retailPrice - b.retailPrice : sort === "price_desc" ? b.retailPrice - a.retailPrice : sort === "name_asc" ? a.title.localeCompare(b.title, "es") : Number(b.featured) - Number(a.featured) || a.title.localeCompare(b.title, "es"));
     count = matching.length;
     products = matching.slice((page - 1) * pageSize, page * pageSize);
-    const brandCounts = new Map<string, number>();
-    fallback.forEach(product => { if (product.brand) brandCounts.set(product.brand, (brandCounts.get(product.brand) ?? 0) + 1); });
-    brands = [...brandCounts].map(([name, total]) => ({ brand: name, count: total })).sort((a, b) => a.brand.localeCompare(b.brand, "es"));
+    const facets = deriveCatalogFacets(visibleCategories, fallback.map(p => ({ category_id: p.categoryId, brand: p.brand ?? null })));
+    visibleCategories = facets.categories;
+    brands = facets.brands;
+    brandsByCategory = facets.brandsByCategory;
   }
 
   const pages = Math.ceil(count / pageSize);
+  const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
   function catalogUrl(next: { category?: string; page?: number }) {
     const query = new URLSearchParams();
     if (q) query.set("q", q);
@@ -87,7 +96,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       <div><p className="hidden text-xs font-bold uppercase tracking-widest text-sky-700 sm:block">Explorá la tienda</p><h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:mt-1 sm:text-4xl">{category?.name ?? "Todos los productos"}</h1><p className="mt-2 hidden text-sm text-zinc-600 sm:block">Elegí un rubro y afiná tu búsqueda. Precios en pesos argentinos.</p></div>
       <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-800">{count} {count === 1 ? "producto" : "productos"}</span>
     </div>
-    <CatalogSearchControls key={JSON.stringify([category?.slug, q, brand, sort, minPrice, maxPrice])} categories={visibleCategories} category={category} brands={brands} query={q} brand={brand} sort={sort} minPrice={minPrice} maxPrice={maxPrice} />
+    <CatalogSearchControls key={JSON.stringify([category?.slug, q, brand, sort, minPrice, maxPrice])} categories={visibleCategories} category={category} brands={brands} brandsByCategory={brandsByCategory} query={q} brand={brand} sort={sort} minPrice={minPrice} maxPrice={maxPrice} />
     <nav aria-label={root ? "Subcategorías" : "Categorías"} className="mt-4 flex gap-2 overflow-x-auto pb-2 sm:mt-6">
       <Link href={catalogUrl({ category: root?.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${!category?.parentId ? "border-sky-700 bg-sky-700 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-sky-300"}`}>{root ? `Todo en ${root.name}` : "Todos los rubros"}</Link>
       {(root ? [...subcategories].sort((a, b) => Number(b.id === category?.id) - Number(a.id === category?.id)) : visibleCategories.filter(c => !c.parentId)).map(item => <Link key={item.id} href={catalogUrl({ category: item.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${category?.id === item.id ? "border-sky-700 bg-sky-700 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-sky-300 hover:text-sky-800"}`}>{item.name}</Link>)}

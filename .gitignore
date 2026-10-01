@@ -73,6 +73,15 @@ docs/cosmetics-completion-2026-10-01/*
 !docs/cosmetics-completion-2026-10-01/ficha-corregida-publicada.jpg
 
 # typescript
+docs/tools-selection-2026-10-01/*
+!docs/tools-selection-2026-10-01/README.md
+!docs/tools-selection-2026-10-01/verification.json
+!docs/tools-selection-2026-10-01/ui-verification.json
+!docs/tools-selection-2026-10-01/media-verification.json
+!docs/tools-selection-2026-10-01/deployment.json
+!docs/tools-selection-2026-10-01/herramientas-publicadas.jpg
+!docs/tools-selection-2026-10-01/herramientas-mobile.jpg
+
 *.tsbuildinfo
 next-env.d.ts
 

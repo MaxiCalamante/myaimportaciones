@@ -1,0 +1,22 @@
+{
+  "loaded": 60,
+  "published": 52,
+  "drafts": 8,
+  "pairs_published": 26,
+  "prior_products_preserved": 154,
+  "prior_costs_preserved": 154,
+  "stock_own_units_claimed": 0,
+  "source_links_private": true,
+  "all_public_pages_http_200": true,
+  "all_drafts_http_404": true,
+  "all_public_prices_correct": true,
+  "market_references_published": 36,
+  "provisional_prices_without_ml": 16,
+  "images": {
+    "products": 60,
+    "gallery_images": 85,
+    "all_readable": true,
+    "minimum_width": 1024,
+    "minimum_height": 506
+  }
+}

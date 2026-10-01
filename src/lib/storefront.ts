@@ -8,9 +8,17 @@ import type { Product, StorefrontData } from "@/lib/types";
 import { readAdminProducts } from "./admin-catalog-read";
 import { getAdminClient } from "./admin-auth";
 import { mapCategory, mapProduct, PUBLIC_PRODUCT_COLUMNS, type DbCategory, type DbProduct } from "./catalog-data";
+import type { CatalogFacetProduct } from "./catalog-facets";
 export { mapCategory, mapProduct } from "./catalog-data";
 // Admin data is cached only within the current React request, after authorization.
 export function invalidateAdminStorefrontCache(): void {}
+
+export const getPublicFacetProducts = cache(async (): Promise<CatalogFacetProduct[]> => {
+  if (!hasSupabaseConfig()) return [];
+  const db = await createServerSupabaseClient();
+  return readAllPages((from, to) => db.from("products").select("category_id,brand")
+    .eq("is_active", true).eq("is_wholesale_only", false).order("id").range(from, to));
+});
 
 export const getStorefrontData = cache(async function getStorefrontData(options?: {
   categoryId?: string;
