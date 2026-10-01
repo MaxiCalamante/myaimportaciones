@@ -12,4 +12,8 @@ El proveedor publica precios distintos según país. La evidencia de compra corr
 
 Scripts: `collect-total-selection.py`, `review-total-candidates.py`, `prepare-total-selection.py`, `verify-total-media.py` y `verify-total-selection.py`. La preparación valida presentaciones, enlaces de mercado observados, pares completos, fotos y precios; genera un lote transaccional que no se aplica automáticamente. La verificación comprueba el lote aplicado y las páginas anónimas.
 
-Validación de aplicación: 35 pruebas aprobadas, TypeScript y compilación aprobados; ESLint sin errores y con 111 advertencias preexistentes.
+El verificador de Total lee la disponibilidad del SKU principal desde sus datos estructurados. No toma la disponibilidad de recomendaciones ni interpreta guaraníes como dólares; deja el costo de compra según la cotización revisada. Se comprobó contra las 60 fichas del lote.
+
+Revisión visual en producción: escritorio de 1280 px y celular de 390 px sin desbordamiento horizontal; fotos visibles correctas, filtro Wadfow con 9 resultados y enlaces entre ambas versiones comprobados. Las capturas y `ui-verification.json` documentan la revisión.
+
+Validación de aplicación: 38 pruebas aprobadas, TypeScript y compilación aprobados; ESLint sin errores y con 111 advertencias preexistentes.

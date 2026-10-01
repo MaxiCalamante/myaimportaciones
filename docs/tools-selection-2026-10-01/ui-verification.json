@@ -1,0 +1,20 @@
+{
+  "checked_date": "2026-10-01",
+  "production_url": "https://myaimportaciones.vercel.app/catalogo?category=herramientas-equipamiento",
+  "published_count": 52,
+  "populated_subcategories": 15,
+  "tool_brands": ["Total", "Wadfow"],
+  "wadfow_filter_results": 9,
+  "desktop_width": 1280,
+  "mobile_width": 390,
+  "horizontal_page_overflow": false,
+  "visible_image_failures": 0,
+  "alternative_links_checked_bidirectionally": ["TG11512536", "WAG15761"],
+  "all_pair_targets_verified_in_catalog_data": true,
+  "total_supplier_parser_verified_against_cached_fiches": 60,
+  "tests_passed": 38,
+  "type_check": "passed",
+  "build": "passed",
+  "lint_errors": 0,
+  "existing_lint_warnings": 111
+}

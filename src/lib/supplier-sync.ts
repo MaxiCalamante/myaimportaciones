@@ -1,6 +1,7 @@
 import { getAdminClient } from "@/lib/admin-auth";
 import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { readAllPages } from "@/lib/read-all-pages";
+import { parseTotalAvailability } from "@/lib/total-availability";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface SupplierCheckResult {
@@ -39,44 +40,7 @@ export async function checkSupplierProductAvailability(
           };
         }
         const html = await res.text();
-        const hasSku = html.includes(`data-item_codigo="${sku}"`) || html.includes(sku);
-        if (!hasSku) {
-          return {
-            available: false,
-            status: "not_found",
-            message: `SKU ${sku} no encontrado en catálogo del mayorista`,
-            checkedUrl: searchUrl,
-          };
-        }
-        const priceMatch = html.match(/data-item_preco="([^"]+)"/i);
-        const price = priceMatch ? parseFloat(priceMatch[1]) : null;
-        const isOut = /esgotado|indispon[íi]vel|sem estoque|fora de estoque|produto esgotado/i.test(html);
-        if (isOut || (price !== null && price <= 0)) {
-          return {
-            available: false,
-            status: "out_of_stock",
-            livePrice: price,
-            currency: "USD",
-            message: "Agotado / Sin stock en catálogo del mayorista",
-            checkedUrl: searchUrl,
-          };
-        }
-        if (price === null || !Number.isFinite(price)) {
-          return {
-            available: false,
-            status: "error",
-            message: "No se pudo confirmar disponibilidad ni precio en el mayorista",
-            checkedUrl: searchUrl,
-          };
-        }
-        return {
-          available: true,
-          status: "in_stock",
-          livePrice: price,
-          currency: "USD",
-          message: `En stock en mayorista (USD ${price?.toFixed(2) ?? "—"})`,
-          checkedUrl: searchUrl,
-        };
+        return { ...parseTotalAvailability(html, sku), checkedUrl: searchUrl };
       } catch (err: unknown) {
         return {
           available: false,
@@ -122,37 +86,7 @@ export async function checkSupplierProductAvailability(
 
     // Check specific scrapers based on URL domain
     if (targetUrl.includes("totalherramientasoficial.com.py")) {
-      const priceMatch = html.match(/data-item_preco="([^"]+)"/i);
-      const price = priceMatch ? parseFloat(priceMatch[1]) : null;
-      const isOut = /esgotado|indispon[íi]vel|sem estoque|fora de estoque|produto esgotado/i.test(html);
-
-      if (isOut || (price !== null && price <= 0)) {
-        return {
-          available: false,
-          status: "out_of_stock",
-          livePrice: price,
-          currency: "USD",
-          message: "Agotado / Sin existencias en Total Tools",
-          checkedUrl: targetUrl,
-        };
-      }
-      if (price === null || !Number.isFinite(price)) {
-        return {
-          available: false,
-          status: "error",
-          message: "No se pudo confirmar disponibilidad ni precio en Total Tools",
-          checkedUrl: targetUrl,
-        };
-      }
-
-      return {
-        available: true,
-        status: "in_stock",
-        livePrice: price,
-        currency: "USD",
-        message: `En stock en Total Tools (USD ${price?.toFixed(2) ?? "—"})`,
-        checkedUrl: targetUrl,
-      };
+      return { ...parseTotalAvailability(html, sku), checkedUrl: targetUrl };
     }
 
     if (targetUrl.includes("atacadousa.com.py")) {
