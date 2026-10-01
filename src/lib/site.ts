@@ -1,3 +1,8 @@
+const configuredAppUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://myaimportaciones.vercel.app").replace(/\/+$/, "");
+const appUrl = configuredAppUrl === "https://tienda-mayorista-minorista.vercel.app"
+  ? "https://myaimportaciones.vercel.app"
+  : configuredAppUrl;
+
 export const siteConfig = {
   brandName: "MyA importaciones",
   shortName: "MyA",
@@ -10,7 +15,7 @@ export const siteConfig = {
   instagram: "https://www.instagram.com/_myaimportaciones/",
   instagramHandle: "@_myaimportaciones",
   location: "Tandil, Buenos Aires, Argentina",
-  appUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  appUrl,
   logoUrl: "/logo.png",
   bankTransfer: {
     bank: "Mercado Pago",

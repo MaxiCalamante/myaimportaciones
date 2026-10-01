@@ -142,7 +142,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         <div className="flex items-baseline justify-between">
           <div>
             <p className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">
-              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio con Mercado Pago"}
+              {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio en pesos"}
             </p>
             <div className="mt-1 flex items-baseline gap-3">
               <span className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
