@@ -1,0 +1,938 @@
+[
+  {
+    "id": "e52a8551-2452-5aee-a681-172928b1d684",
+    "title": "SKIN1004 Madagascar Centella Quick Calming Pad 70Pads/130 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-0.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "84fbba21-3271-518b-9b2c-1a29c47d5f57",
+    "title": "SKIN1004 Madagascar Centella Hyalu-Cica Moisture Cream 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-2.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "04a50cee-7ac5-582b-8468-6c34161c331f",
+    "title": "SKIN1004 Madagascar Centella Poremizing Light Gel Cream 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-3.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "fb38b0cd-1455-5410-9555-21a929ff6603",
+    "title": "SKIN1004 Madagascar Centella Hyalu-Cica Sleeping Pack 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-9.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "aa6f28bc-ee9a-5d1a-a455-ef3dd6885741",
+    "title": "SKIN1004 Madagascar Centella Hyalu-Cica Sleeping Pack 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-10.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ae65a8f8-0aee-59bc-a26c-9169c207c1a3",
+    "title": "Medicube Zero Pore Cooling Mask - 1 mascarilla / 27 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-22.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "88d6ae49-2e2c-5d33-8e52-8c8e1e069e96",
+    "title": "Medicube Zero Pore Cream 2.0 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-24.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "952d8968-1584-5dee-8c16-2d77644612fd",
+    "title": "Medicube PDRN Collagen Gua Sha Neck Wrinkle Cream 5% Volufiline 90 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-28.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "9d3b857a-d545-5ed3-9ca3-1d0a0752d48d",
+    "title": "Medicube AGE-R Glutathione Glow Toner 140 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-31.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ac7a3374-c8b7-5458-b91b-91cc8188454d",
+    "title": "Medicube Soymint Scaling Shampoo 490 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-33.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "67cec773-87e5-58bb-bbb3-d8b0fea14d9e",
+    "title": "Medicube Triple Collagen Serum 4.0 55 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-35.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "cf433eed-8bc9-5e8a-b068-5b8a30163afb",
+    "title": "Medicube Kojic Acid Turmeric Vita Jelly Mist Serum 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-37.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "156233dc-6bbd-5105-aaf0-95ee11ec297f",
+    "title": "Medicube Collagen Glow Bubble Serum 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-46.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "29ac14cc-ac6a-5fe2-b605-a9e948f24e7e",
+    "title": "Medicube PDRN Pink Caffeine Night Wrapping Mask 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-40.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "67fc2c08-1862-546f-a003-b34c1a58d922",
+    "title": "Medicube Kojic Acid Turmeric Vita Bright Body Wash 400 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-42.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "291500dd-d464-54c3-b31d-fd5f0db311bf",
+    "title": "Medicube PDRN Hydrating Gel Cleanser 200 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-48.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "a99ad2b8-c03c-530c-8ced-c63bcb056494",
+    "title": "SKIN1004 Madagascar Centella Ampoule 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-56.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "c5ec63c1-034b-5f12-86e6-e85affac2da5",
+    "title": "SKIN1004 Madagascar Centella Poremizing Fresh Ampoule 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-57.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "bea399c9-b151-57c7-b82a-6c3bfa8b421f",
+    "title": "Medicube PDRN Pink Collagen Toning Gel Toner 70 pads - 120 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-61.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f9b8e0f7-ec3d-5787-9277-5cc6daba570c",
+    "title": "SKIN1004 Madagascar Cente. Poremizing Deep Cleansing Foam 125 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-65.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "20128371-c2b7-5fea-91b4-9ba3f7c1ee4a",
+    "title": "Medicube PDRN Pink Peptide Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-68.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "4b31c7c0-d9c4-57da-8651-6b1af9537374",
+    "title": "Medicube TXA Niacinamide 15% Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-69.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "748486ca-e5a7-5b30-acf5-034ea9693603",
+    "title": "SKIN1004 Centella Mascarilla Facial Poremizing Quick Clay Stick 27 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-64.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "551f7221-ca6b-5afa-930b-26667c0a57dc",
+    "title": "Medicube PDRN Hyaluronic Moisturizing Cream 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-72.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f725a021-1c37-5f1d-afda-319c71926b62",
+    "title": "Medicube One Day Exosome Shot 2000 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-77.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "8225bcc4-2555-5dbb-982a-36b7cc16f570",
+    "title": "Medicube Sérum Facial PDRN Pink Exosome Shot 2000 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-78.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "71600ba1-9756-5baf-baba-6e70cec5e831",
+    "title": "Medicube Kojic Acid Turmeric Toning Cleanser 120 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-85.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "142f1003-fe12-5ad4-b1f5-baeda8657bc6",
+    "title": "Medicube Collagen Lifting Mask - 1 mascarilla / 27 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-83.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "b0c874de-0953-5148-a391-b71261c25aef",
+    "title": "SKIN1004 Madagascar Centella Travel Kit - 5 productos",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-89.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "bb7cc3f3-6846-5aee-9122-fb58796264c8",
+    "title": "SKIN1004 Madagascar Centella Tone Brightening Boosting Toner 210 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-90.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ab79ff8b-3368-56c8-8042-2c43edbcbbf0",
+    "title": "SKIN1004 Madagascar Centella Contorno De Ojos Probio-Cica 20 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-92.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "394724b8-38e6-50d2-9aa3-657700c4b613",
+    "title": "Medicube Zero Pore One Day Cream 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-97.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "275a41f1-a0ee-544b-94dd-883d9b43748c",
+    "title": "Medicube EGF NAD Firming Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-113.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "379b29e9-35bf-59c6-a08b-da9f116e3784",
+    "title": "Medicube Kojic Acid Turmeric Niacinamide Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-124.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "4c3751db-537e-5a9c-a42e-84cf1dbc34ab",
+    "title": "Medicube PDRN Booster Gel 300 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-99.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "c8e0602a-45d4-5712-bb3d-435b2433ce07",
+    "title": "Medicube Hyaluronic Ceramide Jelly Cream 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-126.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "a027e2bc-aead-5cdc-9e13-d1ea9455642e",
+    "title": "Medicube Azelaic Acid Exosome Shot 2000 Sérum Facial 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-149.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f9a014d6-f820-5769-88e2-a1e6e4937930",
+    "title": "Medicube Kojic Acid Turmeric Vita Eye Gel Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-159.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "9abf2862-d42c-58e2-84d9-e60afbf4849e",
+    "title": "Medicube Vita A Retinal Volume Booster Serum 15 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-164.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ec68730e-c627-55e6-8dd0-3702fd9457d4",
+    "title": "Medicube Zero Foam Cleanser 120 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-165.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "01fdab28-d646-5d08-8f0b-6fe27310f769",
+    "title": "Medicube Zero Pore 2.0 Sérum Facial 37 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-167.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "71446601-e0d0-57bd-ab3a-9ce4e6288029",
+    "title": "SKIN1004 Madagascar Centella Soothing Cream 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-178.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "5ca349c6-b6f2-5cba-86e6-7ddcfdac9a1b",
+    "title": "SKIN1004 Madagascar Centella Poremizing Clear Toner 210 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-182.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "888e94d3-232b-5e34-9116-ea2e39653dfd",
+    "title": "SKIN1004 Madagascar Centella Tea-Trica Relief Ampoule 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-189.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "988a0a45-85dc-5353-8933-543545cb5d09",
+    "title": "SKIN1004 Madagascar Centella Probio-Cica Intensive Ampoule 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-191.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "55babd8c-f8c9-5c64-a9aa-96795beca505",
+    "title": "SKIN1004 Madagascar Centella Probio-Cica Enrich Cream 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-192.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "58903652-4ec1-5f5c-87bb-c9b703455a07",
+    "title": "SKIN1004 Madagascar Centella Tea-Trica B5 Cream 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-193.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "1908c445-6545-5a6f-bcc6-08f245da1b27",
+    "title": "SKIN1004 Madagascar Centella Poremizing Fresh Ampoule 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-195.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "a01bb880-e7db-549a-aed0-eccfbfa914ef",
+    "title": "SKIN1004 Madagascar Centella Tone Brightening Capsule Ampoule 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-200.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f6d809c0-45cc-5475-b66e-7fd521bda8a0",
+    "title": "SKIN1004 Madagascar Centella Light Cleansing Oil 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-202.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "09ee7599-5f85-5882-b3d2-bd6d219181a9",
+    "title": "SKIN1004 Madagascar Centella Poremizing Travel Kit - 4 productos",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-204.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "07574043-cd93-5462-85c5-da1acab90f07",
+    "title": "Dr. Althea 345 Relief Cream 50 ml",
+    "url": "https://atacadousa.com.py/3630-large_default/creme-facial-dralthea-345-relief-cream-50ml256221.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "c5da84e1-acdc-5714-abdc-db3eab9fcde6",
+    "title": "Medicube One Day Exosome Shot 7500 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-73.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "899556c3-f698-54c4-b86f-b5a2f31875fd",
+    "title": "Medicube Azelaic Acid Exosome Shot 7500 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-27.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "e5c2f84f-5ab6-5d8e-9cfd-66817ad00399",
+    "title": "Medicube Triple Collagen Cream 4.0 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-76.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "d74e93dd-5b99-5035-a870-bbf8eb15f29a",
+    "title": "Medicube Collagen Jelly Cream 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-81.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "5e259db6-73ea-5fa2-be64-dffa04eb6227",
+    "title": "Medicube Collagen Jelly Cream 110 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-82.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "016fa704-eaa6-5385-8a3d-ab228fc9877c",
+    "title": "Medicube AGE-R Glutathione Glow Capsule Cream 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-75.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "09ef8573-c0f6-51c6-8725-7f638121f900",
+    "title": "Medicube Deep Lifting Peptide Eye Cream 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-11.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "7278aedc-a8b1-5869-b064-367b0a32eacd",
+    "title": "Medicube PDRN Pink Peptide Eye Cream 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-51.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "3b941fed-b3bb-5768-ab04-3d1ba94b0224",
+    "title": "Medicube Hyaluronic Multi Peptide Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-59.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "6fbb7625-1e80-500f-9818-0fcf9806c3a8",
+    "title": "Medicube Deep Vita A Retinol Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-12.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "18e5a159-4574-5d8b-96e9-d5d62c1f7aa8",
+    "title": "Medicube Collagen Glow Booster Serum 15 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-21.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "13512c54-d95b-5c9b-8868-8881520372ad",
+    "title": "Medicube Sérum Facial Exosome Cica 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-23.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "aed21d2c-7739-5b53-b192-07b6e617d80c",
+    "title": "Medicube Deep Vita C Capsule Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-45.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "c5e494d8-204f-534c-8c3a-e1d0a3b15173",
+    "title": "Medicube Retinol NMN Boosting Serum 1.9% 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-58.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "a4761429-b94d-5780-abd1-d6712581b4b7",
+    "title": "Medicube Azelaic Acid 16 BB Calming Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-38.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "1fcd8192-a275-5e02-a3b3-1f65ec69e6e5",
+    "title": "Medicube Glutathione Glow Serum 30 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-52.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "cfd321a4-fc63-5835-8767-0daaab3fd164",
+    "title": "Medicube PDRN Collagen Glow Jelly Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-36.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "2d33df44-80c4-58a5-b3a9-1f873932ffb5",
+    "title": "Medicube Ultra Light PDRN Pink Peptide Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-43.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "6364f99f-7c0b-5584-b1be-00a68a92459a",
+    "title": "Medicube PDRN Pink Collagen Capsule Cream 55 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-96.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "d3ea0921-9e25-51f6-b908-f8a55206b718",
+    "title": "Medicube TXA Niacinamide Capsule Cream 5% 55 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-74.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "e91b2c96-c5ab-5586-9eab-66bfd51b184f",
+    "title": "Medicube Hyaluronic Moisturizing Capsule Cream 55 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-26.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "d97f9f59-b597-5f66-9c53-16e253928fe4",
+    "title": "Medicube Deep Vita C Capsule Cream 55 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-67.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f70d9524-df2d-58de-8062-03e25deac564",
+    "title": "Medicube Triple Collagen Toner 4.0 140 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-19.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "1eb9acc8-9a2b-5fb1-859b-0efe9e8ace4a",
+    "title": "Medicube Deep Vita C Pad - 70 pads / 150 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-93.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "736bbd70-618e-5753-8331-fcd8d92113ba",
+    "title": "Medicube Kojic Acid Turmeric Pad - 70 pads / 160 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-80.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "5db1a01f-1cf0-5aea-a659-902c3cdade46",
+    "title": "Medicube Zero Pore Pad 2.0 - 70 pads / 155 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-66.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "255dd4e0-7aa3-5237-8ba6-f1a235380a48",
+    "title": "Medicube Zero Pore Pad Mild - 70 pads / 155 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-15.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "0c4b8284-6558-51b3-bf35-8427daab1dee",
+    "title": "Medicube Red Succinic Acid Peeling Pad - 70 pads / 155 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-84.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "3c4564e0-91ca-5559-b8b0-49fab96f389e",
+    "title": "Medicube Sérum Facial PDRN Pink Collagen Exosome Shot 7500 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-71.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "79ae76af-4f0a-5c99-b1b8-33ef4e5877d5",
+    "title": "Medicube Crema Facial Exosome Cica 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-16.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "88c48936-9b30-5382-a799-9970a574deeb",
+    "title": "Medicube Tónico Facial PDRN Pink Cica Soothing 250 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-70.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f1f55824-1381-563b-b08c-419dc472e9c5",
+    "title": "Medicube Tónico Facial Exosome Cica 210 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-20.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "82f78440-eec8-5508-ad66-fd28ada1920d",
+    "title": "Medicube Azelaic Acid Capsule Cleansing Foam 120 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-34.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "e21a0e0b-2ad0-536a-b0dc-a173babb7b0f",
+    "title": "Celimax Retinal Shot Tightening Booster 15 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-12.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ad58601a-2aa8-54d2-b4c7-98baee9b1898",
+    "title": "Celimax Retinol Shot Tightening Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-45.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "2aa0e2ee-24be-5274-9197-c43f0727b5bb",
+    "title": "Celimax Dual Barrier Creamy Toner 150 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-39.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "7c792809-1511-5506-b3da-39f2b55af161",
+    "title": "Celimax Noni Energy Ampoule 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-43.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f68bf1a3-30b5-576b-b3b1-127b20dbb530",
+    "title": "Celimax Noni Acne Bubble Cleanser 155 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-41.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "313b2c06-112e-5e4c-a701-3080b8ea8fca",
+    "title": "Numbuzin No.5+ Glutathione Vitamin Toner Pads 70 unidades",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-13.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "9ebac269-41b0-5f19-b29e-d87124ef80a9",
+    "title": "Dr. Althea 345 Relief Cream Mask 4 unidades",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-21.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "e97b9728-8e92-53dd-b916-1079a8a4918f",
+    "title": "Dr. Althea Vitamin C Boosting Serum 30 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-22.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "3abc1863-453e-5560-8f71-6931f693430c",
+    "title": "Anua PDRN Hyaluronic Acid Hydrating Capsule Mist 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-28.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "7fe8fc66-20f2-53c9-8fd6-add40f101b01",
+    "title": "Anua Heartleaf Pore Control Cleansing Oil 200 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-8.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "2c6a30cb-08d1-5f26-b438-444a1a031cb0",
+    "title": "Tree Hut Coco Colada Shea Sugar Scrub 510 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-46.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "d6cb2833-8afd-5903-9581-f84560a99b58",
+    "title": "Victoria's Secret Pure Seduction Body Mist 250 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-47.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "868d64dd-3150-5e36-9a2d-a6eef9268d5d",
+    "title": "Medicube Kojic Acid Turmeric Peel Shot 80 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-47.png",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "8d4cef65-e791-5a04-bc04-d2a7e2a01d28",
+    "title": "Medicube Collagen Night Wrapping Mask 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-94.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "be95f80b-ce34-5f38-ad71-4fb16dff4523",
+    "title": "Medicube PDRN Pink Collagen Gel Mask - 4 mascarillas de 28 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-95.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "a6f319f3-1143-549a-904f-2358a4bdf87a",
+    "title": "Medicube PDRN Pink Glutathione Serum Mist 100 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-100.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "93599540-bc14-5b45-b007-d5467422382d",
+    "title": "Medicube Kojic Acid Turmeric Vita Capsule Crema Facial 53 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-123.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "294c4932-fc10-5178-a3b5-a7aa1dbf3baa",
+    "title": "Medicube Kojic Acid Turmeric Night Wrapping Mask 75 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-125.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "165ceeb8-4cdb-5396-ae48-99825b4fd9a9",
+    "title": "Medicube Azelaic Acid 16 BB Calming Serum Mask - 1 mascarilla",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-142.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ddf47972-9de3-573a-8116-fc4b143af7ed",
+    "title": "Medicube AGE-R Booster Pro X2 Pink",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-143.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "4d62e706-ce7e-5335-a89a-7ec32f9790a1",
+    "title": "Medicube AGE-R Booster Pro X2 White",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-144.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "f367f198-f282-593b-a5d7-21754ad8973a",
+    "title": "SKIN1004 Madagascar Centella Watergel Sheet Ampoule Mask - 1 mascarilla / 25 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-173.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "c91003f0-2ea3-5115-942b-5ecaa6677615",
+    "title": "SKIN1004 Madagascar Centella Hyalu-Cica Water-Fit Sun Serum 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-184.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "cd8217b2-769a-5ffe-aa0c-806f92d902d6",
+    "title": "SKIN1004 Madagascar Centella Tea-Trica BHA Foam 125 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-190.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "4afac7dc-f827-5f74-93dd-5575af6ac580",
+    "title": "SKIN1004 Madagascar Centella Hyalu-Cica Silky-Fit Sun Stick 20 g",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-197.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "ee5c7c62-ca5d-5aef-9200-656185f5fc1c",
+    "title": "Medicube AGE-R Booster Pro Mini Plus Rosa",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-13.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "e8b09638-96d7-5c7c-9fb1-6e3a84019fc0",
+    "title": "Medicube AGE-R Booster Pro Negro",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-44.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "2eebc109-0e78-57df-8437-80201247a484",
+    "title": "Medicube Hypochlorous Acid Daily Facial Spray 50 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-86.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "62cc3221-fb24-5599-8d22-331b0761ff1e",
+    "title": "Medicube Hypochlorous Acid Daily Facial Spray 125 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-kbeauty-20261001-87.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "753b73f6-1ac4-5eea-a107-410bc854bca2",
+    "title": "SKIN1004 Madagascar Centella Light Cleansing Oil 200 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-fix-20261001-54.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "d1dde7fe-552d-5052-adfe-ab0d3a449bfa",
+    "title": "SKIN1004 Madagascar Centella Ampoule Foam 125 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-fix-20261001-7.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "1f9b8c06-f693-5398-838e-72b8b0503617",
+    "title": "Medicube PDRN Pink Peptide Serum Mask - 6 mascarillas de 23 ml",
+    "url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-fix-20261001-55.jpg",
+    "status": 200,
+    "width": 800,
+    "height": 800
+  }
+]

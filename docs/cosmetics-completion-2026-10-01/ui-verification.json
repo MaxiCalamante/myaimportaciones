@@ -1,0 +1,30 @@
+{
+  "production_catalog": "https://myaimportaciones.vercel.app/catalogo?category=cosmetica-coreana",
+  "production_count": 116,
+  "brand_filter_checked": [
+    "Celimax: 5 products",
+    "Anua: 2 products"
+  ],
+  "subcategory_filter_checked": "Protección solar: 2 products",
+  "desktop_viewport": [
+    1280,
+    900
+  ],
+  "mobile_viewport": [
+    390,
+    844
+  ],
+  "mobile_document_width": 375,
+  "mobile_horizontal_overflow": false,
+  "public_product_detail_checked": "Anua Heartleaf Pore Control Cleansing Oil 200 ml",
+  "production_issue_found": "Share URL used retired tienda-mayorista-minorista.vercel.app origin, which returned 404",
+  "price_label_issue_found": "Precio con Mercado Pago despite product displaying transferencia payment method",
+  "frontend_fix_status": "Published and verified in production, commit 5fc3ddb",
+  "type_check": "passed",
+  "regression_tests": "4 passed",
+  "lint": "0 errors, 111 existing warnings",
+  "production_build": "passed",
+  "full_test_suite": "32 passed",
+  "production_share_link": "https://myaimportaciones.vercel.app/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+  "production_price_label": "Precio en pesos"
+}

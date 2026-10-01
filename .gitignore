@@ -38,6 +38,40 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Supplier downloads and inspection caches; manifests and final reports stay tracked.
+docs/supplier-import-2026-10-01/atacado*.html
+docs/supplier-import-2026-10-01/star*.html
+docs/supplier-import-2026-10-01/manual-live*.html
+docs/supplier-import-2026-10-01/althea-345-live.html
+docs/supplier-import-2026-10-01/ml-probe.html
+docs/supplier-import-2026-10-01/*.txt
+docs/supplier-import-2026-10-01/inspect-*.jpg
+docs/supplier-import-2026-10-01/skin-inspect-*.jpg
+docs/supplier-import-2026-10-01/media/
+docs/cosmetics-completion-2026-10-01/atacado*.html
+docs/cosmetics-completion-2026-10-01/star*.html
+docs/cosmetics-completion-2026-10-01/*.txt
+docs/cosmetics-completion-2026-10-01/contact-*.jpg
+docs/cosmetics-completion-2026-10-01/noni-gallery.jpg
+docs/cosmetics-completion-2026-10-01/media/
+
+# GitHub is public: private purchasing, margin and database evidence stays local.
+docs/supplier-import-2026-10-01/*
+!docs/supplier-import-2026-10-01/README.md
+!docs/supplier-import-2026-10-01/verification.json
+!docs/supplier-import-2026-10-01/manual-prices-verification.json
+!docs/supplier-import-2026-10-01/catalogo-publicado.jpg
+!docs/supplier-import-2026-10-01/precio-booster-aprobado.jpg
+docs/cosmetics-completion-2026-10-01/*
+!docs/cosmetics-completion-2026-10-01/README.md
+!docs/cosmetics-completion-2026-10-01/verification.json
+!docs/cosmetics-completion-2026-10-01/ui-verification.json
+!docs/cosmetics-completion-2026-10-01/media-verification.json
+!docs/cosmetics-completion-2026-10-01/deployment.json
+!docs/cosmetics-completion-2026-10-01/catalogo-publicado.jpg
+!docs/cosmetics-completion-2026-10-01/catalogo-mobile.jpg
+!docs/cosmetics-completion-2026-10-01/ficha-corregida-publicada.jpg
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

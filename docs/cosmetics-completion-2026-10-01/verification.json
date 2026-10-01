@@ -1,0 +1,39 @@
+{
+  "total": 154,
+  "public_total": 117,
+  "cosmetics_public": 116,
+  "hair_public": 1,
+  "drafts": 37,
+  "new_public": 12,
+  "approved_prices_preserved": 38,
+  "all_existing_prices_costs_unchanged": 142,
+  "category_corrections": 46,
+  "new_categories": 3,
+  "photos_replaced": 3,
+  "images_checked": 117,
+  "brands": {
+    "SKIN1004": 28,
+    "Medicube": 76,
+    "Dr. Althea": 3,
+    "Celimax": 5,
+    "Numbuzin": 1,
+    "Anua": 2,
+    "Tree Hut": 1,
+    "Victoria's Secret": 1
+  },
+  "categories": {
+    "Tónicos, pads y brumas": 20,
+    "Cremas e hidratantes": 22,
+    "Mascarillas faciales": 13,
+    "Shampoos y acondicionadores": 1,
+    "Sérums y ampollas faciales": 34,
+    "Cuidado corporal y fragancias": 3,
+    "Limpieza y exfoliación": 12,
+    "Kits de cuidado facial": 2,
+    "Contorno de ojos": 4,
+    "Dispositivos faciales": 4,
+    "Protección solar": 2
+  },
+  "private_costs_protected": true,
+  "physical_stock_not_invented": true
+}

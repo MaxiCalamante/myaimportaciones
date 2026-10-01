@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"result\": {\n    \"deployment\": {\n      \"id\": \"dpl_uSj7tcjSQ7PFCGXNy8De5XYJTQmk\",\n      \"name\": \"myaimportaciones\",\n      \"url\": \"myaimportaciones-1vgdjqcbt-maxicalamantes-projects.vercel.app\",\n      \"type\": \"LAMBDAS\",\n      \"state\": \"READY\",\n      \"createdAt\": 1790874441137,\n      \"creator\": {\n        \"uid\": \"zOJ8Uy3xrZvJ4ePmq6mhdQFy\",\n        \"username\": \"maxicalamante\"\n      },\n      \"project\": {\n        \"id\": \"prj_DrB3GfgMM7y1nAjL87wQ5430LCRo\",\n        \"name\": \"myaimportaciones\",\n        \"framework\": \"nextjs\"\n      },\n      \"meta\": {\n        \"githubCommitRef\": \"main\",\n        \"githubCommitSha\": \"5fc3ddb58454a9a1c62bc4233cc56829ea294063\",\n        \"githubCommitMessage\": \"fix: correct storefront sharing links and price label\",\n        \"githubRepo\": \"myaimportaciones\",\n        \"githubOrg\": \"MaxiCalamante\"\n      },\n      \"alias\": [\n        \"myaimportaciones.vercel.app\",\n        \"myaimportaciones-maxicalamantes-projects.vercel.app\",\n        \"myaimportaciones-git-main-maxicalamantes-projects.vercel.app\"\n      ],\n      \"target\": \"production\",\n      \"regions\": [\n        \"iad1\"\n      ],\n      \"buildingAt\": 1790874443277,\n      \"ready\": 1790874483537,\n      \"readyState\": \"READY\",\n      \"source\": \"git\",\n      \"aliasError\": null\n    }\n  }\n}"
+    }
+  ],
+  "isError": false
+}
