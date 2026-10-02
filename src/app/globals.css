@@ -51,6 +51,14 @@ html {
   background-color: #d4d4d8;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @media (max-width: 767px) {
   .admin-card-table {
     min-width: 0 !important;
