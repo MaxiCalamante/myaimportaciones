@@ -50,6 +50,8 @@ interface CommerceContextValue {
   setProvince: (code: string) => void;
   city: string;
   setCity: (city: string) => void;
+  address: string;
+  setAddress: (address: string) => void;
   shippingCost: number;
   shippingCalculation: ShippingCalculation;
   isAllImmediateStock: boolean;
@@ -67,6 +69,7 @@ const cartKey = "mm-cart";
 const postalCodeKey = "mya_postal_code";
 const provinceKey = "mya_province";
 const cityKey = "mya_city";
+const addressKey = "mya_address";
 const shippingOptionKey = "mya_shipping_option";
 
 export function CommerceProvider({ children }: { children: ReactNode }) {
@@ -77,6 +80,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const [postalCode, setPostalCodeState] = useState("");
   const [province, setProvinceState] = useState("");
   const [city, setCityState] = useState("");
+  const [address, setAddressState] = useState("");
   const [selectedShippingOptionId, setSelectedShippingOptionIdState] = useState("correo_domicilio");
   const hydrated = useRef(false);
 
@@ -88,6 +92,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         const storedPostalCode = window.localStorage.getItem(postalCodeKey);
         const storedProvince = window.localStorage.getItem(provinceKey);
         const storedCity = window.localStorage.getItem(cityKey);
+        const storedAddress = window.localStorage.getItem(addressKey);
         const storedShippingOption = window.localStorage.getItem(shippingOptionKey);
 
         if (storedCart) {
@@ -103,6 +108,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         }
         if (storedCity) {
           setCityState(storedCity);
+        }
+        if (storedAddress) {
+          setAddressState(storedAddress);
         }
 
         if (storedShippingOption) {
@@ -145,6 +153,17 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         window.localStorage.setItem(cityKey, val);
       } else {
         window.localStorage.removeItem(cityKey);
+      }
+    } catch {}
+  }, []);
+
+  const setAddress = useCallback((val: string) => {
+    setAddressState(val);
+    try {
+      if (val) {
+        window.localStorage.setItem(addressKey, val);
+      } else {
+        window.localStorage.removeItem(addressKey);
       }
     } catch {}
   }, []);
@@ -240,10 +259,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     return cart.length > 0 && cart.every((line) => isProductImmediateStock(line.product));
   }, [cart]);
 
-  // Dynamic shipping calculation based on postalCode, cartTotal, isAllImmediateStock, province, and city
+  // Dynamic shipping calculation based on postalCode, cartTotal, isAllImmediateStock, province, city, and address
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, cart.some(line => line.product.fulfillmentMode === "supplier"), province, city);
-  }, [postalCode, cartTotal, isAllImmediateStock, cart, province, city]);
+    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, cart.some(line => line.product.fulfillmentMode === "supplier"), province, city, address);
+  }, [postalCode, cartTotal, isAllImmediateStock, cart, province, city, address]);
 
   const selectedShippingOption = useMemo(() => {
     if (!shippingCalculation.isValid || shippingCalculation.options.length === 0) return null;
@@ -296,6 +315,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setProvince,
       city,
       setCity,
+      address,
+      setAddress,
       shippingCost,
       shippingCalculation,
       isAllImmediateStock,
@@ -320,13 +341,14 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       toggleFavorite,
       updateQuantity,
       selectedProduct,
-      setSelectedProduct,
       postalCode,
       setPostalCode,
       province,
       setProvince,
       city,
       setCity,
+      address,
+      setAddress,
       shippingCost,
       shippingCalculation,
       isAllImmediateStock,

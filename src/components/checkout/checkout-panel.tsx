@@ -10,10 +10,19 @@ import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import { trackAdsEvent } from "@/lib/analytics";
 import {
   CORREO_ARGENTINO_PROVINCES,
+  getProvinceByCode,
   inferProvinceFromPostalCode,
 } from "@/lib/correo-argentino/provinces";
 
-export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: { profile: Profile | null; checkoutEnabled: boolean; mercadoPagoEnabled: boolean }) {
+export function CheckoutPanel({
+  profile,
+  checkoutEnabled,
+  mercadoPagoEnabled,
+}: {
+  profile: Profile | null;
+  checkoutEnabled: boolean;
+  mercadoPagoEnabled: boolean;
+}) {
   const {
     cart,
     cartTotal,
@@ -24,18 +33,22 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
     setProvince,
     city,
     setCity,
+    address,
+    setAddress,
+    shippingCost,
     shippingCalculation,
     selectedShippingOption,
     setSelectedShippingOptionId,
   } = useCommerce();
 
-  const [address, setAddress] = useState("");
   const [paymentMethod, setPayment] = useState<CheckoutInput["paymentMethod"]>("transferencia");
   const [coupon, setCoupon] = useState("");
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [quotedKey, setQuotedKey] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState<Awaited<ReturnType<typeof createOrderAction>> | null>(null);
+  const [customerEmail, setCustomerEmail] = useState(profile?.email || "");
+  const [copiedCode, setCopiedCode] = useState(false);
   const [pending, startTransition] = useTransition();
   const requestId = useRef("");
   const initiated = useRef(false);
@@ -52,7 +65,7 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
   };
 
   const key = JSON.stringify(input);
-  const validQuote = quote && key === quotedKey;
+  const validQuote = quote !== null && key === quotedKey;
   const pickup = selectedShippingOption?.type === "pickup";
 
   useEffect(() => {
@@ -62,9 +75,28 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
     }
   }, [cart.length, cartTotal]);
 
+  // Recotización reactiva automática en segundo plano cuando cambia cualquier dato
+  useEffect(() => {
+    if (!cart.length || !checkoutEnabled || !shippingCalculation.isValid) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await quoteOrderAction(input);
+        if (response.ok) {
+          setQuote(response.quote);
+          setQuotedKey(JSON.stringify(input));
+          if (!requestId.current) requestId.current = crypto.randomUUID();
+        }
+      } catch {
+        // En segundo plano no bloqueamos la UI con errores temporales
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [key, cart.length, checkoutEnabled, shippingCalculation.isValid]);
+
   const refreshQuote = () => startTransition(async () => {
     setError("");
-    setQuote(null);
     try {
       const response = await quoteOrderAction(input);
       if (response.ok) {
@@ -81,43 +113,140 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
 
   const field = "mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-950 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600 text-sm";
 
+  // Pantalla de confirmación y experiencia post-venta
   if (result) return (
-    <section className="mx-auto max-w-2xl space-y-5 px-4 py-12">
-      <h1 className="text-3xl font-bold">Pedido registrado</h1>
-      <p>Tu pedido está pendiente de pago o confirmación. Guardá este código:</p>
-      <p className="break-all rounded-xl bg-sky-50 p-4 font-mono font-bold text-sky-950 text-lg">{result.trackingCode}</p>
-      <p>Total a abonar: <strong className="text-xl text-zinc-950">{formatCurrency(result.total)}</strong></p>
-      <p className="text-sm text-zinc-600">Reserva válida hasta {new Date(result.expiresAt).toLocaleString("es-AR")}. No transfieras después de ese plazo sin consultarnos.</p>
-      {quote?.shippingQuotedSeparately && (
-        <p className="rounded-xl bg-sky-50 p-4 text-sm text-sky-900">
-          El total corresponde a los productos. Enviamos a todo el país: MYA coordinará con vos el costo y plazo del envío, que se abona por separado.
+    <section className="mx-auto max-w-3xl space-y-6 px-4 py-12 animate-in fade-in duration-300">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 sm:p-8 text-center shadow-xs">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md">
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h1 className="mt-4 text-3xl font-black text-emerald-950">¡Pedido registrado con éxito!</h1>
+        <p className="mt-1 text-sm text-emerald-800">
+          Guardá tu código único de seguimiento para rastrear tu paquete en todo momento:
         </p>
-      )}
-      {result.paymentError && <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">{result.paymentError}</p>}
-      {result.initPoint && (
-        <a className="block rounded-xl bg-sky-700 p-4 text-center font-bold text-white hover:bg-sky-800 transition-colors shadow-sm" href={result.initPoint}>
-          Continuar y pagar en Mercado Pago
-        </a>
-      )}
+        <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-white px-5 py-3 border border-emerald-300 shadow-xs">
+          <span className="font-mono text-2xl font-black text-sky-950 tracking-wider">{result.trackingCode}</span>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(result.trackingCode);
+              setCopiedCode(true);
+              setTimeout(() => setCopiedCode(false), 2500);
+            }}
+            className="rounded-lg bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-900 transition cursor-pointer"
+          >
+            {copiedCode ? "✓ ¡Copiado!" : "Copiar"}
+          </button>
+        </div>
+      </div>
+
+      {/* Detalle del Pedido y Entrega */}
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs space-y-4">
+        <h2 className="text-lg font-bold text-zinc-950">Detalle de la Orden</h2>
+        <div className="grid sm:grid-cols-2 gap-4 text-sm bg-zinc-50 rounded-xl p-4 border border-zinc-100">
+          <div>
+            <span className="text-xs text-zinc-500 block uppercase font-semibold">Total a abonar</span>
+            <strong className="text-2xl text-zinc-950 font-black">{formatCurrency(result.total)}</strong>
+          </div>
+          <div>
+            <span className="text-xs text-zinc-500 block uppercase font-semibold">Método de entrega</span>
+            <span className="text-sm font-bold text-sky-900 block">{selectedShippingOption?.name || "Correo Argentino"} ({selectedShippingOption?.carrier || "Paq.ar"})</span>
+            <span className="text-xs text-zinc-600 block mt-0.5">Plazo estimado: {selectedShippingOption?.estimatedDays || "2 a 5 días hábiles"}</span>
+          </div>
+          {address && (
+            <div className="sm:col-span-2 border-t border-zinc-200 pt-3">
+              <span className="text-xs text-zinc-500 block uppercase font-semibold">Dirección de entrega</span>
+              <span className="text-sm text-zinc-800 font-medium">{address}, {city}{province ? `, Prov. ${province}` : ""}, CP {postalCode}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Paso a paso post-venta */}
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs space-y-4">
+        <h2 className="text-lg font-bold text-zinc-950">¿Qué pasa ahora? (Paso a paso post-venta)</h2>
+        <div className="grid gap-3 sm:grid-cols-2 text-xs">
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-600 font-bold text-white mb-2">1</span>
+            <strong className="text-zinc-900 block text-sm">Acreditación del Pago</strong>
+            <p className="mt-1 text-zinc-600">
+              {paymentMethod === "transferencia"
+                ? "Enviás el comprobante por WhatsApp para validar el ingreso en nuestra cuenta bancaria."
+                : "Se confirma de forma instantánea a través de Mercado Pago."}
+            </p>
+          </div>
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-600 font-bold text-white mb-2">2</span>
+            <strong className="text-zinc-900 block text-sm">Preparación y Embalaje</strong>
+            <p className="mt-1 text-zinc-600">
+              Embalamos tus productos en nuestro depósito central de Tandil con protección de burbuja y rotulado de seguridad.
+            </p>
+          </div>
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-600 font-bold text-white mb-2">3</span>
+            <strong className="text-zinc-900 block text-sm">Despacho Correo Argentino</strong>
+            <p className="mt-1 text-zinc-600">
+              Generamos el rótulo oficial Paq.ar y el cartero de Correo Argentino admite la encomienda para iniciar el transporte.
+            </p>
+          </div>
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-600 font-bold text-white mb-2">4</span>
+            <strong className="text-zinc-900 block text-sm">Seguimiento en Vivo</strong>
+            <p className="mt-1 text-zinc-600">
+              Obtenés el número de guía oficial para consultar el recorrido paso a paso en nuestra web o en Correo Argentino hasta la entrega.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Datos para completar el pago */}
       {paymentMethod === "transferencia" && (
-        <div className="rounded-xl border p-4 bg-zinc-50/50">
-          <p className="break-all">CVU: <strong>{siteConfig.bankTransfer.cvu}</strong></p>
-          <p className="mt-2 text-sm text-zinc-600">La transferencia se confirma después de verificar la acreditación.</p>
+        <div className="rounded-2xl border border-zinc-200 p-5 bg-zinc-50 space-y-3">
+          <p className="font-bold text-sm text-zinc-900">Datos para la Transferencia Bancaria:</p>
+          <div className="bg-white p-3 rounded-xl border font-mono text-sm space-y-1">
+            <p>CVU: <strong>{siteConfig.bankTransfer.cvu}</strong></p>
+            <p>Alias: <strong>{siteConfig.bankTransfer.alias || "MYA.IMPORTACIONES"}</strong></p>
+            <p>Titular: <strong>MYA Importaciones</strong></p>
+          </div>
           <a
-            className="mt-4 block rounded-xl bg-emerald-600 p-3 text-center font-bold text-white hover:bg-emerald-700 transition-colors"
-            href={getWhatsAppUrl(`Hola MYA, hice la transferencia del pedido ${result.trackingCode} por ${formatCurrency(result.total)}. Adjunto el comprobante para que verifiquen la acreditación.`)}
+            className="block rounded-xl bg-emerald-600 p-3.5 text-center font-bold text-white hover:bg-emerald-700 transition shadow-xs text-sm"
+            href={getWhatsAppUrl(`Hola MYA, realicé la transferencia del pedido ${result.trackingCode} por ${formatCurrency(result.total)} con destino a ${city}, ${province}. Adjunto el comprobante.`)}
             target="_blank"
             rel="noopener noreferrer"
           >
-            Enviar comprobante por WhatsApp
+            Enviar comprobante por WhatsApp →
           </a>
-          <p className="mt-2 text-xs text-zinc-600">Se abrirá el chat con el pedido escrito. Adjuntá la foto o PDF del comprobante antes de enviar. El pedido seguirá pendiente hasta que confirmemos el ingreso del dinero.</p>
         </div>
       )}
-      <div className="pt-2 flex flex-col sm:flex-row gap-3">
-        <Link href={`/seguimiento?code=${result.trackingCode}`} className="block text-sky-700 font-semibold underline">Consultar estado con mi email</Link>
-        <span className="hidden sm:inline text-zinc-300">•</span>
-        <a href={getWhatsAppUrl(`Hola MYA! Consulto por mi pedido ${result.trackingCode}.`)} target="_blank" rel="noopener noreferrer" className="block text-sky-700 font-semibold underline">Contactar a MYA</a>
+
+      {result.initPoint && (
+        <a className="block rounded-xl bg-sky-700 p-4 text-center font-bold text-white hover:bg-sky-800 transition shadow-sm" href={result.initPoint}>
+          Continuar y pagar en Mercado Pago →
+        </a>
+      )}
+
+      {result.paymentError && (
+        <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900 text-sm">{result.paymentError}</p>
+      )}
+
+      {/* Enlaces de Seguimiento y Soporte */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Link
+          href={`/seguimiento?code=${result.trackingCode}&email=${encodeURIComponent(customerEmail)}`}
+          className="flex-1 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white p-3.5 text-center font-bold text-sm shadow-xs transition"
+        >
+          Ver seguimiento de mi envío en vivo →
+        </Link>
+        <a
+          href={getWhatsAppUrl(`Hola MYA! Consulto por el estado de mi compra ${result.trackingCode}.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl border border-zinc-300 hover:bg-zinc-100 p-3.5 text-center font-semibold text-zinc-800 text-sm transition"
+        >
+          Consultar por WhatsApp
+        </a>
       </div>
     </section>
   );
@@ -155,8 +284,11 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
           className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_380px]"
           onSubmit={e => {
             e.preventDefault();
-            if (!validQuote || !checkoutEnabled || pending) return;
+            if (!checkoutEnabled || pending) return;
             const form = new FormData(e.currentTarget);
+            const emailInput = String(form.get("email") ?? "").trim();
+            setCustomerEmail(emailInput);
+
             startTransition(async () => {
               setError("");
               try {
@@ -166,12 +298,12 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
                   city: city.trim() || String(form.get("city") ?? "").trim(),
                   address: address.trim() || String(form.get("address") ?? "").trim(),
                   name: String(form.get("name") ?? "").trim(),
-                  email: String(form.get("email") ?? "").trim(),
+                  email: emailInput,
                   phone: String(form.get("phone") ?? "").trim(),
                   notes: String(form.get("notes") ?? "").trim(),
                   acceptSeparateShipping: form.get("separate_shipping") === "on",
-                  requestId: requestId.current,
-                  expectedTotal: quote!.total,
+                  requestId: requestId.current || crypto.randomUUID(),
+                  expectedTotal: quote?.total ?? (cartTotal + shippingCost),
                 });
                 setResult(response);
                 clearCart();
@@ -184,7 +316,7 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
           <div className="space-y-6 rounded-2xl border bg-white p-5 sm:p-7 shadow-xs">
             <div>
               <h2 className="text-xl font-bold text-zinc-950">1. Datos de entrega (Correo Argentino)</h2>
-              <p className="text-xs text-zinc-500 mt-1">Ingresá tu ubicación para calcular el costo de envío a tu domicilio o sucursal.</p>
+              <p className="text-xs text-zinc-500 mt-1">Ingresá tu ubicación para calcular el costo de envío en tiempo real a tu domicilio o sucursal.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -196,6 +328,13 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
                   onChange={e => {
                     const code = e.target.value;
                     setProvince(code);
+                    if (code && postalCode) {
+                      const prov = getProvinceByCode(code);
+                      const inferred = inferProvinceFromPostalCode(postalCode);
+                      if (prov && inferred && inferred.code !== code) {
+                        setPostalCode(prov.defaultPostalCode || "");
+                      }
+                    }
                   }}
                   required
                 >
@@ -216,14 +355,14 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
                   onChange={e => {
                     const val = e.target.value;
                     setPostalCode(val);
-                    if (!province) {
-                      const inferred = inferProvinceFromPostalCode(val);
-                      if (inferred) setProvince(inferred.code);
+                    const inferred = inferProvinceFromPostalCode(val);
+                    if (inferred) {
+                      setProvince(inferred.code);
                     }
                   }}
                   required
                   maxLength={12}
-                  placeholder="Ej. 7000 o 1425"
+                  placeholder="Ej. 7000, 1425, 5000..."
                   autoComplete="postal-code"
                 />
               </label>
@@ -239,7 +378,7 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
                   onChange={e => setCity(e.target.value)}
                   required
                   maxLength={120}
-                  placeholder="Ej. Tandil, Córdoba, Rosario..."
+                  placeholder="Ej. Tandil, CABA, Córdoba, Rosario..."
                 />
               </label>
 
@@ -305,7 +444,17 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
               </label>
               <label className="block">
                 <span className="font-semibold text-xs text-zinc-700">Email</span>
-                <input className={field} name="email" type="email" autoComplete="email" required maxLength={254} defaultValue={profile?.email} placeholder="Para enviarte el seguimiento" />
+                <input
+                  className={field}
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  maxLength={254}
+                  value={customerEmail}
+                  onChange={e => setCustomerEmail(e.target.value)}
+                  placeholder="Para enviarte el seguimiento"
+                />
               </label>
               <label className="block">
                 <span className="font-semibold text-xs text-zinc-700">Teléfono / WhatsApp</span>
@@ -355,48 +504,46 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
               type="button"
               disabled={pending || !checkoutEnabled}
               onClick={refreshQuote}
-              className="w-full rounded-xl bg-sky-50 border border-sky-600 p-3 font-bold text-sky-800 hover:bg-sky-100 transition-colors disabled:opacity-40 text-sm"
+              className="w-full rounded-xl bg-sky-50 border border-sky-600 p-3 font-bold text-sky-800 hover:bg-sky-100 transition-colors disabled:opacity-40 text-sm cursor-pointer"
             >
               {pending ? "Calculando total…" : "Calcular total con envío Correo Argentino"}
             </button>
 
-            {validQuote && (
-              <div aria-live="polite" className="space-y-2 rounded-xl bg-zinc-50 p-4 text-sm border border-zinc-200">
-                <div className="flex justify-between text-zinc-600">
-                  <span>Productos:</span>
-                  <span>{formatCurrency(quote.subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-zinc-600">
-                  <span>Envío ({selectedShippingOption?.name || "Correo Argentino"}):</span>
-                  <span>{quote.shippingQuotedSeparately ? "A cotizar por separado" : formatCurrency(quote.shipping)}</span>
-                </div>
-                {quote.discount > 0 && (
-                  <div className="flex justify-between text-emerald-700 font-semibold">
-                    <span>Descuento ({quote.promotion}):</span>
-                    <span>−{formatCurrency(quote.discount)}</span>
-                  </div>
-                )}
-                {quote.couponMessage && (
-                  <p className="text-xs text-amber-700">{quote.couponMessage}</p>
-                )}
-                <div className="border-t border-zinc-200 pt-2 flex justify-between text-lg font-black text-zinc-950">
-                  <span>{quote.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
-                  <span>{formatCurrency(quote.total)}</span>
-                </div>
+            {/* Desglose dinámico en tiempo real */}
+            <div aria-live="polite" className="space-y-2 rounded-xl bg-zinc-50 p-4 text-sm border border-zinc-200">
+              <div className="flex justify-between text-zinc-600">
+                <span>Productos:</span>
+                <span>{formatCurrency(quote?.subtotal ?? cartTotal)}</span>
               </div>
-            )}
+              <div className="flex justify-between text-zinc-600">
+                <span>Envío ({selectedShippingOption?.name || "Correo Argentino"}):</span>
+                <span>{quote?.shippingQuotedSeparately ? "A cotizar por separado" : formatCurrency(quote?.shipping ?? shippingCost)}</span>
+              </div>
+              {shippingCalculation.isValid && (
+                <p className="text-[11px] text-sky-800 font-medium">
+                  📍 Destino: {shippingCalculation.zoneName} ({selectedShippingOption?.estimatedDays})
+                </p>
+              )}
+              {(quote?.discount ?? 0) > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold">
+                  <span>Descuento ({quote?.promotion}):</span>
+                  <span>−{formatCurrency(quote!.discount)}</span>
+                </div>
+              )}
+              {quote?.couponMessage && (
+                <p className="text-xs text-amber-700">{quote.couponMessage}</p>
+              )}
+              <div className="border-t border-zinc-200 pt-2 flex justify-between text-lg font-black text-zinc-950">
+                <span>{quote?.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
+                <span>{formatCurrency(quote?.total ?? (cartTotal + shippingCost))}</span>
+              </div>
+            </div>
 
             {validQuote && quote.shippingQuotedSeparately && (
               <label className="flex items-start gap-2 rounded-xl bg-sky-50 p-3 text-xs text-sky-900 border border-sky-100">
                 <input className="mt-0.5" type="checkbox" name="separate_shipping" required />
                 <span>Entiendo que este pago corresponde a los productos y que el envío a domicilio se cotiza y abona por separado, coordinándolo con MYA.</span>
               </label>
-            )}
-
-            {!validQuote && (
-              <p className="text-xs text-zinc-500 text-center">
-                Completá tu provincia y domicilio, y presioná &quot;Calcular total&quot; para obtener el importe final.
-              </p>
             )}
 
             {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200">{error}</p>}
@@ -407,8 +554,8 @@ export function CheckoutPanel({ profile, checkoutEnabled, mercadoPagoEnabled }: 
 
             <button
               type="submit"
-              disabled={pending || !validQuote || !checkoutEnabled}
-              className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base"
+              disabled={pending || !checkoutEnabled || (!validQuote && !shippingCalculation.isValid)}
+              className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base cursor-pointer"
             >
               {pending ? "Procesando pedido…" : "Confirmar pedido"}
             </button>

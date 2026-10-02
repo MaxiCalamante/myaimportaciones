@@ -108,3 +108,53 @@ test('Correo Argentino calculates actual rates for domicile and branches by prov
   }
 });
 
+test('Shipping rate dynamically adapts when user changes postal code, address, or city without getting stuck', () => {
+  const previousPolicy = process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY;
+  delete process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY;
+  try {
+    // 1. Changing CP from 7000 to 5000 (Cordoba) while previous province was B MUST compute Cordoba (Centro/Litoral $8600)
+    const cordobaOverride = calculateShipping('5000', 20000, true, false, 'B', '');
+    assert.equal(cordobaOverride.isValid, true);
+    assert.equal(cordobaOverride.zoneId, 'centro_litoral');
+    const cordobaHome = cordobaOverride.options.find(o => o.id === 'correo_domicilio');
+    assert.equal(cordobaHome?.price, 8600);
+
+    // 2. Changing CP to 8300 (Neuquen) while previous province was B MUST compute Patagonia ($12500)
+    const neuquenOverride = calculateShipping('8300', 20000, true, false, 'B', '');
+    assert.equal(neuquenOverride.isValid, true);
+    assert.equal(neuquenOverride.zoneId, 'patagonia');
+    const patagoniaHome = neuquenOverride.options.find(o => o.id === 'correo_domicilio');
+    assert.equal(patagoniaHome?.price, 12500);
+
+    // 3. Changing CP to 1425 (CABA) while previous province was B MUST compute CABA ($6800)
+    const cabaOverride = calculateShipping('1425', 20000, true, false, 'B', '');
+    assert.equal(cabaOverride.isValid, true);
+    assert.equal(cabaOverride.zoneId, 'caba');
+    const cabaHome = cabaOverride.options.find(o => o.id === 'correo_domicilio');
+    assert.equal(cabaHome?.price, 6800);
+
+    // 4. Changing CP to 1640 (Martinez, GBA) MUST compute GBA ($7200)
+    const gbaOverride = calculateShipping('1640', 20000, true, false, 'B', '');
+    assert.equal(gbaOverride.isValid, true);
+    assert.equal(gbaOverride.zoneId, 'gba');
+    const gbaHome = gbaOverride.options.find(o => o.id === 'correo_domicilio');
+    assert.equal(gbaHome?.price, 7200);
+
+    // 5. Entering address or city text (e.g. Rosario, Bariloche, Tandil) without CP resolves dynamically
+    const rosarioText = calculateShipping('', 20000, true, false, '', 'Rosario', 'San Martín 1200');
+    assert.equal(rosarioText.isValid, true);
+    assert.equal(rosarioText.zoneId, 'centro_litoral');
+
+    const barilocheText = calculateShipping('', 20000, true, false, '', 'Bariloche', 'Mitre 450');
+    assert.equal(barilocheText.isValid, true);
+    assert.equal(barilocheText.zoneId, 'patagonia');
+
+    const tandilText = calculateShipping('', 20000, true, false, '', 'Tandil', 'Belgrano 500');
+    assert.equal(tandilText.isValid, true);
+    assert.equal(tandilText.zoneId, 'local_tandil');
+  } finally {
+    if (previousPolicy === undefined) delete process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY;
+    else process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY = previousPolicy;
+  }
+});
+

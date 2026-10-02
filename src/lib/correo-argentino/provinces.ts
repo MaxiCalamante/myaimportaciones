@@ -2,6 +2,7 @@ export interface CorreoArgentinoProvince {
   code: string; // ISO 3166-2 letter code (A-Z)
   name: string;
   zone: "caba" | "buenos_aires_interior" | "centro_litoral" | "cuyo_noa" | "patagonia";
+  defaultPostalCode: string;
 }
 
 /**
@@ -9,30 +10,30 @@ export interface CorreoArgentinoProvince {
  * según la especificación de Correo Argentino - API 2.0 (ISO 3166-2).
  */
 export const CORREO_ARGENTINO_PROVINCES: readonly CorreoArgentinoProvince[] = [
-  { code: "C", name: "Ciudad Autónoma de Buenos Aires (CABA)", zone: "caba" },
-  { code: "B", name: "Provincia de Buenos Aires", zone: "buenos_aires_interior" },
-  { code: "X", name: "Córdoba", zone: "centro_litoral" },
-  { code: "S", name: "Santa Fe", zone: "centro_litoral" },
-  { code: "E", name: "Entre Ríos", zone: "centro_litoral" },
-  { code: "L", name: "La Pampa", zone: "centro_litoral" },
-  { code: "M", name: "Mendoza", zone: "cuyo_noa" },
-  { code: "J", name: "San Juan", zone: "cuyo_noa" },
-  { code: "D", name: "San Luis", zone: "cuyo_noa" },
-  { code: "T", name: "Tucumán", zone: "cuyo_noa" },
-  { code: "A", name: "Salta", zone: "cuyo_noa" },
-  { code: "Y", name: "Jujuy", zone: "cuyo_noa" },
-  { code: "K", name: "Catamarca", zone: "cuyo_noa" },
-  { code: "F", name: "La Rioja", zone: "cuyo_noa" },
-  { code: "G", name: "Santiago del Estero", zone: "cuyo_noa" },
-  { code: "H", name: "Chaco", zone: "cuyo_noa" },
-  { code: "P", name: "Formosa", zone: "cuyo_noa" },
-  { code: "W", name: "Corrientes", zone: "cuyo_noa" },
-  { code: "N", name: "Misiones", zone: "cuyo_noa" },
-  { code: "Q", name: "Neuquén", zone: "patagonia" },
-  { code: "R", name: "Río Negro", zone: "patagonia" },
-  { code: "U", name: "Chubut", zone: "patagonia" },
-  { code: "Z", name: "Santa Cruz", zone: "patagonia" },
-  { code: "V", name: "Tierra del Fuego", zone: "patagonia" },
+  { code: "C", name: "Ciudad Autónoma de Buenos Aires (CABA)", zone: "caba", defaultPostalCode: "1000" },
+  { code: "B", name: "Provincia de Buenos Aires", zone: "buenos_aires_interior", defaultPostalCode: "1900" },
+  { code: "X", name: "Córdoba", zone: "centro_litoral", defaultPostalCode: "5000" },
+  { code: "S", name: "Santa Fe", zone: "centro_litoral", defaultPostalCode: "2000" },
+  { code: "E", name: "Entre Ríos", zone: "centro_litoral", defaultPostalCode: "3100" },
+  { code: "L", name: "La Pampa", zone: "centro_litoral", defaultPostalCode: "6300" },
+  { code: "M", name: "Mendoza", zone: "cuyo_noa", defaultPostalCode: "5500" },
+  { code: "J", name: "San Juan", zone: "cuyo_noa", defaultPostalCode: "5400" },
+  { code: "D", name: "San Luis", zone: "cuyo_noa", defaultPostalCode: "5700" },
+  { code: "T", name: "Tucumán", zone: "cuyo_noa", defaultPostalCode: "4000" },
+  { code: "A", name: "Salta", zone: "cuyo_noa", defaultPostalCode: "4400" },
+  { code: "Y", name: "Jujuy", zone: "cuyo_noa", defaultPostalCode: "4600" },
+  { code: "K", name: "Catamarca", zone: "cuyo_noa", defaultPostalCode: "4700" },
+  { code: "F", name: "La Rioja", zone: "cuyo_noa", defaultPostalCode: "5300" },
+  { code: "G", name: "Santiago del Estero", zone: "cuyo_noa", defaultPostalCode: "4200" },
+  { code: "H", name: "Chaco", zone: "cuyo_noa", defaultPostalCode: "3500" },
+  { code: "P", name: "Formosa", zone: "cuyo_noa", defaultPostalCode: "3600" },
+  { code: "W", name: "Corrientes", zone: "cuyo_noa", defaultPostalCode: "3400" },
+  { code: "N", name: "Misiones", zone: "cuyo_noa", defaultPostalCode: "3300" },
+  { code: "Q", name: "Neuquén", zone: "patagonia", defaultPostalCode: "8300" },
+  { code: "R", name: "Río Negro", zone: "patagonia", defaultPostalCode: "8400" },
+  { code: "U", name: "Chubut", zone: "patagonia", defaultPostalCode: "9120" },
+  { code: "Z", name: "Santa Cruz", zone: "patagonia", defaultPostalCode: "9400" },
+  { code: "V", name: "Tierra del Fuego", zone: "patagonia", defaultPostalCode: "9410" },
 ] as const;
 
 export function getProvinceByCode(code: string): CorreoArgentinoProvince | undefined {

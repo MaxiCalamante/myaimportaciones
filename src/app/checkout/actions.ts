@@ -51,7 +51,7 @@ async function resolveQuote(input: CheckoutInput) {
   });
   const supplierDelivery = products.some(p => p.fulfillment_mode === "supplier");
   if (!isShippingPaidSeparately() && supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
-  const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery, input.province, input.city);
+  const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery, input.province, input.city, input.address);
   const option = shipping.options.find(o => o.id === input.shippingOptionId);
   const shippingQuotedSeparately = isShippingPaidSeparately() && option?.id === "delivery_quote_separately";
   if (option?.requiresQuote && !shippingQuotedSeparately) throw new Error("Confirmemos la tarifa y el plazo de envío para tu destino antes del pago. Envianos el carrito por WhatsApp.");

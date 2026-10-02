@@ -28,20 +28,22 @@ function getStepIndex(status: string): number {
   }
 }
 
-export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string }) {
+export function OrderTrackerClient({ initialCode = "", initialEmail = "" }: { initialCode?: string; initialEmail?: string }) {
   const [code, setCode] = useState(initialCode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [order, setOrder] = useState<TrackingOrder | null>(null);
   const [searched, setSearched] = useState(false);
+  const [copiedGuide, setCopiedGuide] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const handleSearch = (searchCode: string) => {
+  const handleSearch = (searchCode: string, searchEmail: string = email) => {
     const trimmed = searchCode.trim();
+    const trimmedEmail = searchEmail.trim();
     if (!trimmed) return;
 
     setSearched(true);
     startTransition(async () => {
-      const res = await lookupOrderAction(trimmed, email);
+      const res = await lookupOrderAction(trimmed, trimmedEmail);
       setOrder(res);
       if (res && ["paid", "preparing", "shipped", "delivered"].includes(res.status)) {
         try {
@@ -54,6 +56,13 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
       }
     });
   };
+
+  // Auto-search on mount if both code and email are provided (e.g. from checkout redirect)
+  useState(() => {
+    if (initialCode.trim() && initialEmail.trim()) {
+      handleSearch(initialCode.trim(), initialEmail.trim());
+    }
+  });
 
   const currentStep = order ? getStepIndex(order.status) : 0;
   const isCancelled = order?.status === "cancelled";
@@ -120,7 +129,6 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
 
       {order && (
         <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden animate-in fade-in duration-300">
-          {order.carrier_tracking_code && <p className="p-4">Guía del transporte: <strong>{order.carrier_tracking_code}</strong></p>}
           {/* Header */}
           <div className="bg-zinc-950 text-white p-6 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -201,30 +209,62 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
 
           {/* Details & Items */}
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Courier quick tracking if shipped */}
-            {order.status === "shipped" && (
-              <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 text-sky-900">
-                  <Truck className="h-4 w-4 text-sky-600 shrink-0" />
-                  <span>Tu pedido ya fue despachado desde nuestro depósito central en Tandil.</span>
+            {/* Courier quick tracking if guide is available */}
+            {order.carrier_tracking_code ? (
+              <div className="rounded-2xl border-2 border-sky-300 bg-sky-50/90 p-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-md bg-sky-700 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-white">
+                        Correo Argentino Paq.ar
+                      </span>
+                      <span className="text-xs font-semibold text-sky-900">Despacho Oficial</span>
+                    </div>
+                    <p className="mt-2 text-xs text-sky-800">
+                      Tu paquete fue admitido y despachado por <strong>Correo Argentino</strong> desde Tandil hacia tu localidad.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-zinc-600">Número de Guía (TN):</span>
+                      <span className="rounded-lg bg-white px-3 py-1 font-mono text-sm font-black text-sky-950 border border-sky-200">
+                        {order.carrier_tracking_code}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (order.carrier_tracking_code) {
+                            navigator.clipboard.writeText(order.carrier_tracking_code);
+                            setCopiedGuide(true);
+                            setTimeout(() => setCopiedGuide(false), 2000);
+                          }
+                        }}
+                        className="rounded-lg bg-sky-100 hover:bg-sky-200 px-3 py-1 text-xs font-bold text-sky-800 transition cursor-pointer"
+                      >
+                        {copiedGuide ? "✓ ¡Copiado!" : "Copiar Guía"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <a
+                      href="https://www.correoargentino.com.ar/formularios/e-commerce"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-700 hover:bg-sky-800 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
+                    >
+                      <Truck className="h-4 w-4" />
+                      Rastrear en Correo Argentino
+                    </a>
+                  </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <a
-                    href="https://www.correoargentino.com.ar/formularios/e-commerce"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg bg-white border border-sky-300 text-sky-900 font-bold hover:bg-sky-100 transition text-[11px]"
-                  >
-                    Rastreo Correo Arg
-                  </a>
-                  <a
-                    href="https://www.andreani.com/#!/personas"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg bg-white border border-sky-300 text-sky-900 font-bold hover:bg-sky-100 transition text-[11px]"
-                  >
-                    Rastreo Andreani
-                  </a>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-700 flex items-start gap-3">
+                <Package className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-zinc-900">Preparación y Despacho por Correo Argentino</p>
+                  <p className="mt-0.5 text-zinc-600">
+                    Estamos embalando tus productos con protección anti-impacto en nuestro depósito central de Tandil. En cuanto Correo Argentino retire la encomienda, se generará tu número de guía oficial para que sigas el viaje en tiempo real.
+                  </p>
                 </div>
               </div>
             )}

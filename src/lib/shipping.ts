@@ -77,17 +77,18 @@ interface ZoneDefinition {
   homeDays: string;
 }
 
-function resolveZone(cleanCp: string, provinceCode?: string, city?: string): ZoneDefinition | null {
-  const upper = cleanCp.toUpperCase();
-  const upperCity = (city || "").toUpperCase();
+function resolveZone(cleanCp: string, provinceCode?: string, city?: string, address?: string): ZoneDefinition | null {
+  const upperCp = cleanCp.toUpperCase();
+  const upperCity = (city || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const upperAddress = (address || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const fullText = `${upperCp} ${upperCity} ${upperAddress}`;
 
-  // 1. Detección rápida de Tandil (Sede Central de MYA Importaciones)
-  if (
-    upper.includes("TANDIL") ||
-    upperCity.includes("TANDIL") ||
-    cleanCp === "7000" ||
-    cleanCp === "B7000"
-  ) {
+  // 1. Detección de Tandil (Sede Central de MYA Importaciones)
+  // Aplica si el CP es 7000/B7000 O si la ciudad/dirección menciona Tandil,
+  // salvo que se haya seleccionado explícitamente una provincia distinta de Buenos Aires.
+  const isTandilMentioned = upperCity.includes("TANDIL") || upperAddress.includes("TANDIL") || upperCp.includes("TANDIL");
+  const isCp7000 = upperCp === "7000" || upperCp === "B7000";
+  if ((isTandilMentioned || isCp7000) && (!provinceCode || provinceCode === "B")) {
     return {
       id: "local_tandil",
       name: "Tandil (Local)",
@@ -99,10 +100,20 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
     };
   }
 
-  // 2. Mapeo oficial de Correo Argentino por Código de Provincia (ISO 3166-2: A-Z)
-  const prov = provinceCode ? getProvinceByCode(provinceCode) : inferProvinceFromPostalCode(cleanCp);
-  if (prov) {
-    if (prov.code === "C") {
+  // 2. Extracción numérica y prefijo del Código Postal
+  const numMatch = cleanCp.match(/\d{4}/);
+  const cpNum = numMatch ? parseInt(numMatch[0], 10) : null;
+
+  // 3. Inferencia de provincia por Código Postal (si tiene al menos 4 dígitos)
+  const inferredFromCp = cleanCp.length >= 4 ? inferProvinceFromPostalCode(cleanCp) : null;
+
+  // Si el CP indica claramente una provincia (ej. 5000 es Córdoba, 1425 es CABA, 8300 es Neuquén),
+  // tiene prioridad para no quedar atrapado en una provincia desactualizada.
+  const activeProv = inferredFromCp || (provinceCode ? getProvinceByCode(provinceCode) : null);
+
+  // 4. Si identificamos provincia (por CP o por selector)
+  if (activeProv) {
+    if (activeProv.code === "C") {
       return {
         id: "caba",
         name: "CABA",
@@ -113,10 +124,12 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
         homeDays: "24 a 48 hs hábiles",
       };
     }
-    if (prov.code === "B") {
-      const numMatch = cleanCp.match(/\d{4}/);
-      const cpNum = numMatch ? parseInt(numMatch[0], 10) : null;
-      if (cpNum && cpNum >= 1500 && cpNum <= 1999) {
+
+    if (activeProv.code === "B") {
+      const isGbaText = /AVELLANEDA|QUILMES|LANUS|LOMAS DE ZAMORA|BANFIELD|TEMPERLEY|MORON|CASTELAR|HAEDO|RAMOS MEJIA|SAN JUSTO|LA MATANZA|SAN ISIDRO|VICENTE LOPEZ|OLIVOS|FLORIDA|MARTINEZ|SAN FERNANDO|TIGRE|SAN MARTIN|TRES DE FEBRERO|CASEROS|HURLINGHAM|ITUZAINGO|MORENO|MERLO|BERAZATEGUI|FLORENCIO VARELA|ESTEBAN ECHEVERRIA|EZEIZA|ALMIRANTE BROWN|ADROGUE|BURZACO|GBA|CONURBANO/i.test(fullText);
+      const isGbaCp = cpNum !== null && cpNum >= 1500 && cpNum <= 1999;
+
+      if (isGbaCp || isGbaText) {
         return {
           id: "gba",
           name: "Gran Buenos Aires (GBA)",
@@ -127,12 +140,14 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
           homeDays: "48 a 72 hs hábiles",
         };
       }
+
       let loc = "Interior Provincia de Buenos Aires";
-      if (cpNum && cpNum >= 7600 && cpNum <= 7610) loc = "Mar del Plata, Buenos Aires";
-      else if (cpNum && cpNum >= 8000 && cpNum <= 8010) loc = "Bahía Blanca, Buenos Aires";
-      else if (cpNum && cpNum === 7400) loc = "Olavarría, Buenos Aires";
-      else if (cpNum && cpNum === 7300) loc = "Azul, Buenos Aires";
-      else if (cpNum && cpNum === 7630) loc = "Necochea, Buenos Aires";
+      if ((cpNum && cpNum >= 7600 && cpNum <= 7610) || fullText.includes("MAR DEL PLATA")) loc = "Mar del Plata, Buenos Aires";
+      else if ((cpNum && cpNum >= 8000 && cpNum <= 8010) || fullText.includes("BAHIA BLANCA")) loc = "Bahía Blanca, Buenos Aires";
+      else if (cpNum === 7400 || fullText.includes("OLAVARRIA")) loc = "Olavarría, Buenos Aires";
+      else if (cpNum === 7300 || fullText.includes("AZUL")) loc = "Azul, Buenos Aires";
+      else if (cpNum === 7630 || fullText.includes("NECOCHEA")) loc = "Necochea, Buenos Aires";
+      else if (fullText.includes("LA PLATA")) loc = "La Plata, Buenos Aires";
 
       return {
         id: "buenos_aires_interior",
@@ -144,33 +159,36 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
         homeDays: "48 a 72 hs hábiles",
       };
     }
-    if (prov.zone === "centro_litoral") {
+
+    if (activeProv.zone === "centro_litoral") {
       return {
         id: "centro_litoral",
-        name: `Centro y Litoral (${prov.name})`,
-        location: prov.name,
+        name: `Centro y Litoral (${activeProv.name})`,
+        location: activeProv.name,
         baseBranchPrice: 6900,
         baseHomePrice: 8600,
         branchDays: "3 a 5 días hábiles",
         homeDays: "2 a 4 días hábiles",
       };
     }
-    if (prov.zone === "cuyo_noa") {
+
+    if (activeProv.zone === "cuyo_noa") {
       return {
         id: "cuyo_noa",
-        name: `Cuyo y NOA (${prov.name})`,
-        location: prov.name,
+        name: `Cuyo y NOA (${activeProv.name})`,
+        location: activeProv.name,
         baseBranchPrice: 7800,
         baseHomePrice: 9800,
         branchDays: "3 a 6 días hábiles",
         homeDays: "3 a 5 días hábiles",
       };
     }
-    if (prov.zone === "patagonia") {
+
+    if (activeProv.zone === "patagonia") {
       return {
         id: "patagonia",
-        name: `Patagonia (${prov.name})`,
-        location: prov.name,
+        name: `Patagonia (${activeProv.name})`,
+        location: activeProv.name,
         baseBranchPrice: 9400,
         baseHomePrice: 12500,
         branchDays: "4 a 7 días hábiles",
@@ -179,73 +197,8 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
     }
   }
 
-  // 3. Fallbacks de nombres de ciudad en texto libre
-  if (upper.includes("CABA") || upper.includes("CAPITAL") || upper.includes("PALERMO") || upper.includes("BELGRANO") || upper.includes("RECOLETA")) {
-    return {
-      id: "caba",
-      name: "CABA",
-      location: "Ciudad Autónoma de Buenos Aires",
-      baseBranchPrice: 5400,
-      baseHomePrice: 6800,
-      branchDays: "2 a 3 días hábiles",
-      homeDays: "24 a 48 hs hábiles",
-    };
-  }
-  if (upper.includes("ROSARIO")) {
-    return {
-      id: "centro_litoral",
-      name: "Centro y Litoral",
-      location: "Rosario, Santa Fe",
-      baseBranchPrice: 6900,
-      baseHomePrice: 8600,
-      branchDays: "3 a 5 días hábiles",
-      homeDays: "2 a 4 días hábiles",
-    };
-  }
-  if (upper.includes("CORDOBA")) {
-    return {
-      id: "centro_litoral",
-      name: "Centro y Litoral",
-      location: "Córdoba Capital",
-      baseBranchPrice: 6900,
-      baseHomePrice: 8600,
-      branchDays: "3 a 5 días hábiles",
-      homeDays: "2 a 4 días hábiles",
-    };
-  }
-  if (upper.includes("MENDOZA")) {
-    return {
-      id: "cuyo_noa",
-      name: "Cuyo y NOA",
-      location: "Mendoza Capital",
-      baseBranchPrice: 7800,
-      baseHomePrice: 9800,
-      branchDays: "3 a 6 días hábiles",
-      homeDays: "3 a 5 días hábiles",
-    };
-  }
-
-  // 4. Fallback numérico por CP
-  const numMatch = cleanCp.match(/\d{4}/);
-  const letterPrefix = cleanCp.match(/^[A-Z]/)?.[0];
-  const cpNum = numMatch ? parseInt(numMatch[0], 10) : null;
-
-  if (cpNum && cpNum >= 5300 && cpNum <= 5799 && (!letterPrefix || ["M", "J", "F", "D"].includes(letterPrefix))) return resolveZone("MENDOZA");
-  if (cpNum === 8000 && !letterPrefix) return resolveZone("B8000");
-
-  if (cpNum === 7000 || (letterPrefix === "B" && cpNum === 7000)) {
-    return {
-      id: "local_tandil",
-      name: "Tandil (Local)",
-      location: "Tandil, Buenos Aires (Sede Central)",
-      baseBranchPrice: 0,
-      baseHomePrice: 2500,
-      branchDays: "Hoy mismo",
-      homeDays: "En el día / 24 hs",
-    };
-  }
-
-  if ((cpNum && cpNum >= 1000 && cpNum <= 1499) || letterPrefix === "C") {
+  // 5. Fallback por detección de texto en dirección / localidad
+  if (/CABA|CAPITAL FEDERAL|BUENOS AIRES CAPITAL|PALERMO|BELGRANO|RECOLETA|CABALLITO|ALMAGRO|FLORES|VILLA URQUIZA/i.test(fullText)) {
     return {
       id: "caba",
       name: "CABA",
@@ -257,54 +210,11 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
     };
   }
 
-  if (cpNum && cpNum >= 1500 && cpNum <= 1999) {
-    return {
-      id: "gba",
-      name: "Gran Buenos Aires (GBA)",
-      location: "Conurbano Bonaerense / GBA",
-      baseBranchPrice: 5800,
-      baseHomePrice: 7200,
-      branchDays: "2 a 4 días hábiles",
-      homeDays: "48 a 72 hs hábiles",
-    };
-  }
-
-  if (
-    letterPrefix === "B" ||
-    (cpNum && ((cpNum >= 2700 && cpNum <= 2999) || (cpNum >= 6000 && cpNum <= 7999)))
-  ) {
-    let loc = "Interior Provincia de Buenos Aires";
-    if (cpNum && cpNum >= 7600 && cpNum <= 7610) loc = "Mar del Plata, Buenos Aires";
-    else if (cpNum && cpNum >= 8000 && cpNum <= 8010) loc = "Bahía Blanca, Buenos Aires";
-    else if (cpNum && cpNum === 7400) loc = "Olavarría, Buenos Aires";
-    else if (cpNum && cpNum === 7300) loc = "Azul, Buenos Aires";
-    else if (cpNum && cpNum === 7630) loc = "Necochea, Buenos Aires";
-
-    return {
-      id: "buenos_aires_interior",
-      name: "Interior de Buenos Aires",
-      location: loc,
-      baseBranchPrice: 6200,
-      baseHomePrice: 7800,
-      branchDays: "2 a 4 días hábiles",
-      homeDays: "48 a 72 hs hábiles",
-    };
-  }
-
-  if (
-    ["S", "X", "E", "W", "N", "H", "P"].includes(letterPrefix || "") ||
-    (cpNum && ((cpNum >= 2000 && cpNum <= 2699) || (cpNum >= 3000 && cpNum <= 3999) || (cpNum >= 5000 && cpNum <= 5999)))
-  ) {
-    let loc = "Región Centro y Litoral";
-    if (cpNum && cpNum >= 2000 && cpNum <= 2010) loc = "Rosario, Santa Fe";
-    else if (cpNum && cpNum >= 3000 && cpNum <= 3010) loc = "Santa Fe Capital";
-    else if (cpNum && cpNum >= 5000 && cpNum <= 5010) loc = "Córdoba Capital";
-    else if (cpNum && cpNum >= 3100 && cpNum <= 3110) loc = "Paraná, Entre Ríos";
-
+  if (/ROSARIO|SANTA FE|CORDOBA|PARANA|CONCORDIA|CORRIENTES|POSADAS|RESISTENCIA|FORMOSA/i.test(fullText)) {
     return {
       id: "centro_litoral",
       name: "Centro y Litoral",
-      location: loc,
+      location: "Región Centro y Litoral",
       baseBranchPrice: 6900,
       baseHomePrice: 8600,
       branchDays: "3 a 5 días hábiles",
@@ -312,21 +222,11 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
     };
   }
 
-  if (
-    ["M", "J", "D", "T", "A", "Y", "G", "K", "F"].includes(letterPrefix || "") ||
-    (cpNum && (cpNum >= 4000 && cpNum <= 4999)) ||
-    (cpNum && (cpNum >= 5300 && cpNum <= 5799))
-  ) {
-    let loc = "Región Cuyo & Noroeste (NOA)";
-    if (cpNum && cpNum >= 5500 && cpNum <= 5510) loc = "Mendoza Capital";
-    else if (cpNum && cpNum >= 4000 && cpNum <= 4010) loc = "San Miguel de Tucumán";
-    else if (cpNum && cpNum >= 4400 && cpNum <= 4410) loc = "Salta Capital";
-    else if (cpNum && cpNum >= 5400 && cpNum <= 5410) loc = "San Juan Capital";
-
+  if (/MENDOZA|SAN JUAN|SAN LUIS|SALTA|TUCUMAN|SAN MIGUEL DE TUCUMAN|JUJUY|CATAMARCA|LA RIOJA|SANTIAGO DEL ESTERO/i.test(fullText)) {
     return {
       id: "cuyo_noa",
       name: "Cuyo y NOA",
-      location: loc,
+      location: "Región Cuyo y NOA",
       baseBranchPrice: 7800,
       baseHomePrice: 9800,
       branchDays: "3 a 6 días hábiles",
@@ -334,20 +234,11 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
     };
   }
 
-  if (
-    ["Q", "R", "U", "Z", "V"].includes(letterPrefix || "") ||
-    (cpNum && cpNum >= 8000 && cpNum <= 9999)
-  ) {
-    let loc = "Región Patagonia";
-    if (cpNum && cpNum >= 8300 && cpNum <= 8310) loc = "Neuquén Capital";
-    else if (cpNum && cpNum >= 8400 && cpNum <= 8410) loc = "San Carlos de Bariloche";
-    else if (cpNum && cpNum >= 9000 && cpNum <= 9010) loc = "Comodoro Rivadavia, Chubut";
-    else if (cpNum && cpNum >= 9410 && cpNum <= 9420) loc = "Ushuaia / Río Grande, Tierra del Fuego";
-
+  if (/NEUQUEN|BARILOCHE|SAN CARLOS DE BARILOCHE|COMODORO|TRELEW|MADRYN|RIO GALLEGOS|USHUAIA|RIO GRANDE|SANTA ROSA|VIEDMA/i.test(fullText)) {
     return {
       id: "patagonia",
       name: "Patagonia",
-      location: loc,
+      location: "Región Patagonia",
       baseBranchPrice: 9400,
       baseHomePrice: 12500,
       branchDays: "4 a 7 días hábiles",
@@ -355,7 +246,26 @@ function resolveZone(cleanCp: string, provinceCode?: string, city?: string): Zon
     };
   }
 
+  // 6. Fallback numérico por CP
   if (cpNum && cpNum >= 1000 && cpNum <= 9999) {
+    if (cpNum >= 1000 && cpNum <= 1499) {
+      return { id: "caba", name: "CABA", location: "CABA", baseBranchPrice: 5400, baseHomePrice: 6800, branchDays: "2 a 3 días hábiles", homeDays: "24 a 48 hs hábiles" };
+    }
+    if (cpNum >= 1500 && cpNum <= 1999) {
+      return { id: "gba", name: "Gran Buenos Aires (GBA)", location: "GBA", baseBranchPrice: 5800, baseHomePrice: 7200, branchDays: "2 a 4 días hábiles", homeDays: "48 a 72 hs hábiles" };
+    }
+    if ((cpNum >= 2700 && cpNum <= 2999) || (cpNum >= 6000 && cpNum <= 7999) || (cpNum >= 8000 && cpNum <= 8199)) {
+      return { id: "buenos_aires_interior", name: "Interior de Buenos Aires", location: "Provincia de Buenos Aires", baseBranchPrice: 6200, baseHomePrice: 7800, branchDays: "2 a 4 días hábiles", homeDays: "48 a 72 hs hábiles" };
+    }
+    if ((cpNum >= 2000 && cpNum <= 2699) || (cpNum >= 3000 && cpNum <= 3999) || (cpNum >= 5000 && cpNum <= 5299) || (cpNum >= 5800 && cpNum <= 5999)) {
+      return { id: "centro_litoral", name: "Centro y Litoral", location: "Centro y Litoral", baseBranchPrice: 6900, baseHomePrice: 8600, branchDays: "3 a 5 días hábiles", homeDays: "2 a 4 días hábiles" };
+    }
+    if ((cpNum >= 4000 && cpNum <= 4999) || (cpNum >= 5300 && cpNum <= 5799)) {
+      return { id: "cuyo_noa", name: "Cuyo y NOA", location: "Cuyo y NOA", baseBranchPrice: 7800, baseHomePrice: 9800, branchDays: "3 a 6 días hábiles", homeDays: "3 a 5 días hábiles" };
+    }
+    if (cpNum >= 8200 && cpNum <= 9999) {
+      return { id: "patagonia", name: "Patagonia", location: "Patagonia", baseBranchPrice: 9400, baseHomePrice: 12500, branchDays: "4 a 7 días hábiles", homeDays: "3 a 6 días hábiles" };
+    }
     return {
       id: "argentina_general",
       name: "Interior de Argentina",
@@ -376,11 +286,12 @@ export function calculateShipping(
   isAllImmediateStock: boolean = false,
   supplierDelivery: boolean = false,
   provinceCode?: string,
-  city?: string
+  city?: string,
+  address?: string
 ): ShippingCalculation {
   const cleanCp = (rawPostalCode || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-  if ((!cleanCp || cleanCp.length < 4) && !provinceCode) {
+  if ((!cleanCp || cleanCp.length < 4) && !provinceCode && !city?.trim() && !address?.trim()) {
     return {
       isValid: false,
       postalCode: rawPostalCode,
@@ -395,7 +306,7 @@ export function calculateShipping(
     };
   }
 
-  const zone = resolveZone(cleanCp, provinceCode, city);
+  const zone = resolveZone(cleanCp, provinceCode, city, address);
   if (!zone) {
     return {
       isValid: false,
