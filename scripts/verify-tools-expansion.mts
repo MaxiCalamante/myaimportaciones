@@ -41,7 +41,7 @@ for (const p of payload.products) {
   const url = `https://myaimportaciones.vercel.app/producto/${p.slug}`;
   const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
   const html = await response.text();
-  const structured = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(m => JSON.parse(m[1])).find(d => d['@type'] === 'Product');
+  const structured = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1])).find(d => d['@type'] === 'Product');
   if (!response.ok || !structured || structured.sku !== p.sku || Number(structured.offers.price) !== p.retail_price) throw new Error(`Public route mismatch: ${p.model}`);
   if (html.includes('totalherramientasoficial.com.py/produto/') || html.includes('source_document')) throw new Error('Private supplier information exposed');
   routes.push({ model: p.model, url, status: response.status, price: Number(structured.offers.price), structuredData: true });
