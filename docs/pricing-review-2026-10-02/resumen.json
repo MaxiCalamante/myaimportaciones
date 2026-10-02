@@ -1,0 +1,21 @@
+{
+  "fecha": "2026-10-02",
+  "total": 215,
+  "publicados": 170,
+  "borradores": 45,
+  "mayorista_actual": 214,
+  "referencia_ML": 125,
+  "propuestas": 89,
+  "propuestas_publicados": 85,
+  "pendientes": 126,
+  "sin_ML": 90,
+  "objetivo_no_cubre_compra": 3,
+  "propuestas_subas": 29,
+  "propuestas_bajas": 56,
+  "cotizacion": 1550,
+  "descuento_ML": 10,
+  "precios_modificados_en_tienda": 85,
+  "nota": "85 precios publicados con autorización expresa y comprobados en la API pública. Referencias ML indexadas; gastos sin confirmar. Un producto agregado durante la revisión se auditó sin modificarlo.",
+  "productos_agregados_durante_revision": 1,
+  "precios_verificados_api_publica": 85
+}

@@ -1,0 +1,21 @@
+# Precios de MYA: decisión del dueño del 02/10/2026
+
+El precio comercial debe aprovechar el margen disponible en el mercado. El dueño eligió 10% por debajo de Mercado Libre. Un recargo fijo de 100% sobre compra puede dejar margen sin aprovechar y tampoco garantiza competitividad.
+
+1. Leer todos los productos actuales de la base, incluyendo publicados y borradores. Conservar identidad, estado, stock y costos históricos.
+2. Verificar en la ficha directa del proveedor la cotización vigente y su moneda. Leer el producto principal por SKU/ID; nunca usar un recomendado. Registrar URL, fecha, método y costo. Cuando hay alternativas equivalentes, comparar precio, disponibilidad, condiciones y costo de despacho antes de cambiar el proveedor.
+3. Convertir USD a ARS con la cotización indicada o confirmada para esa operación. ARS 1550/USD fue la base indicada el 02/10/2026; no es una constante permanente.
+4. Buscar publicaciones argentinas del mismo producto. Revisar marca, fórmula, modelo, tamaño, versión, color, pack, baterías, cargador y accesorios. Excluir referencias internacionales, falsos equivalentes, recargas diferentes y packs distintos. No usar cuotas, importes sin impuestos, precios tachados ni descuentos condicionados como precio principal.
+5. Usar una referencia competitiva entre los comparables encontrados, sin escoger una publicación cara sólo para subir el margen. Registrar la fuente y la fecha; las búsquedas indexadas pueden tener demora y no certifican el mínimo absoluto de Mercado Libre.
+6. Proponer `precio_ML × 0,90`. Redondear hacia abajo a un precio comercial; en la revisión del 02/10 se usaron múltiplos de ARS 100. El precio final debe seguir al menos 10% por debajo de la referencia.
+7. Calcular compra ARS y diferencia venta−compra. Cuando se conocen todos los gastos, calcular piso y contribución después de flete, internación, comisiones, embalaje y otros variables. Si el objetivo queda bajo el piso o deja una contribución insuficiente, señalar el problema; no aumentar el precio mientras se afirma conservar el 10% de ventaja.
+8. Si falta un precio mayorista, un equivalente suficiente, la composición del kit o una cotización vigente de ML, dejar el caso pendiente con su motivo. Un dato desconocido no es cero. No llamar ganancia neta a una diferencia antes de gastos.
+9. Preparar una tabla completa con precio actual, costo de compra, fuente ML, precio propuesto, diferencia, cambio y pendientes. Distinguir propuestas, datos publicados y verificaciones en vivo. Una propuesta para un borrador no autoriza su activación.
+
+El criterio nuevo guía futuras propuestas y reemplaza como regla general el recargo aproximado del 100% y ML menos 5%. No borrar las tablas previamente autorizadas ni sobrescribir costos de compra por estimaciones. Mantener costos, cantidades del proveedor y enlaces mayoristas en superficies privadas.
+
+## Evidencia del 02/10/2026
+
+`pricing-review-2026-10-02/catalog-before.json` conserva el estado de los 214 productos. `supplier-live.json` y los HTML conservan las consultas directas; `market-*.txt` conserva las búsquedas ML. `productos.csv` incluye todas las filas, aun cuando no existe propuesta suficiente. `revision.html` permite buscar y filtrar.
+
+La Collagen Jelly Cream 50 ml tiene precio MYA ARS 30.900 y cotización directa Atacado USD 9,99. La consulta indexada del mayorista mostraba USD 14,50; se descartó frente a la ficha directa. Mercado Libre tiene referencias inferiores a los ARS 59.999 aportados como ejemplo. No extender ese precio ML ni ese recargo a otros tamaños o productos.

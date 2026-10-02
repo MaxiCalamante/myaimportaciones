@@ -1,0 +1,84 @@
+{
+  "checkedAt": "2026-10-02T20:17:14.044Z",
+  "published": 5,
+  "supplierStockNotOwnStock": true,
+  "unknownExpensesRecorded": true,
+  "media": [
+    {
+      "model": "TAPLI2015",
+      "width": 1024,
+      "height": 1024,
+      "ok": true
+    },
+    {
+      "model": "TOPLI202548",
+      "width": 1024,
+      "height": 933,
+      "ok": true
+    },
+    {
+      "model": "THT571001",
+      "width": 1024,
+      "height": 956,
+      "ok": true
+    },
+    {
+      "model": "TLL3012165",
+      "width": 1024,
+      "height": 1023,
+      "ok": true
+    },
+    {
+      "model": "TH217068",
+      "width": 1024,
+      "height": 1024,
+      "ok": true
+    },
+    {
+      "model": "TH217068",
+      "width": 1024,
+      "height": 1080,
+      "ok": true
+    }
+  ],
+  "routes": [
+    {
+      "model": "TAPLI2015",
+      "url": "https://myaimportaciones.vercel.app/producto/total-pulidora-20v-150-mm-tapli2015",
+      "status": 200,
+      "price": 207000,
+      "structuredData": true
+    },
+    {
+      "model": "TOPLI202548",
+      "url": "https://myaimportaciones.vercel.app/producto/total-lustradora-orbital-20v-254-mm-topli202548",
+      "status": 200,
+      "price": 152100,
+      "structuredData": true
+    },
+    {
+      "model": "THT571001",
+      "url": "https://myaimportaciones.vercel.app/producto/total-cortadora-de-ceramicos-1000-mm-tht571001",
+      "status": 200,
+      "price": 240100,
+      "structuredData": true
+    },
+    {
+      "model": "TLL3012165",
+      "url": "https://myaimportaciones.vercel.app/producto/total-nivel-laser-20v-12-lineas-35-m-con-2-baterias-tll3012165",
+      "status": 200,
+      "price": 405000,
+      "structuredData": true
+    },
+    {
+      "model": "TH217068",
+      "url": "https://myaimportaciones.vercel.app/producto/total-martillo-demoledor-1700w-50j-th217068",
+      "status": 200,
+      "price": 539100,
+      "structuredData": true
+    }
+  ],
+  "originalProductsPreserved": 215,
+  "concurrentChanges": 0,
+  "pricingBasis": "10% below indexed Argentine Mercado Libre references for the same model and kit, rounded down to ARS100; search indexes may lag; freight and other expenses unknown."
+}

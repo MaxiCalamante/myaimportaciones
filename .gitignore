@@ -38,6 +38,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Tool expansion: private supplier quotes, margins and import payloads.
+docs/tools-expansion-2026-10-02/*
+!docs/tools-expansion-2026-10-02/README.md
+!docs/tools-expansion-2026-10-02/verification.json
+
 # Supplier downloads and inspection caches; manifests and final reports stay tracked.
 docs/supplier-import-2026-10-01/atacado*.html
 docs/supplier-import-2026-10-01/star*.html

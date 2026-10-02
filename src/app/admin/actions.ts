@@ -1,4 +1,5 @@
 "use server";
+import { AdminFormError, runAdminFormAction } from "@/lib/admin-action-result";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { readAdminProducts } from "@/lib/admin-catalog-read";
@@ -153,17 +154,20 @@ function refreshCatalog() {
 }
 async function checkProductCategory(db: Awaited<ReturnType<typeof getAdminClient>>, categoryId: string, parentId: string) {
   const { data, error } = await db.from("categories").select("id, parent_id").eq("id", categoryId).single();
-  if (error || !data || (parentId && categoryId !== parentId && data.parent_id !== parentId)) throw new Error("La categoría seleccionada no existe o no pertenece al rubro elegido.");
+  if (error || !data || (parentId && categoryId !== parentId && data.parent_id !== parentId)) throw new AdminFormError("La categoría seleccionada no existe o no pertenece al rubro elegido.");
 }
 export async function createProductAction(formData: FormData) {
+  return runAdminFormAction(() => createProduct(formData));
+}
+async function createProduct(formData: FormData) {
   const db = await getAdminClient();
   const { fields, slug, stock } = parseProductForm(formData, true);
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: match, error: slugError } = await db.from("products").select("id").eq("slug", slug).maybeSingle();
-  if (slugError) throw new Error("No se pudo verificar el enlace del producto.");
+  if (slugError) throw new AdminFormError("No se pudo verificar el enlace del producto.");
   const finalSlug = match ? `${slug}-${crypto.randomUUID().slice(0, 8)}` : slug;
   const { urls, paths } = await prepareProductImages(db, formData);
-  if (fields.is_active && !urls.length) throw new Error("Agregá al menos una foto antes de publicar.");
+  if (fields.is_active && !urls.length) throw new AdminFormError("Agregá al menos una foto antes de publicar.");
   const { data, error } = await db.from("products").insert({
     ...fields, slug: finalSlug, stock: stock ?? 0,
     stock_verified_at: fields.fulfillment_mode === "own_stock" && stock ? new Date().toISOString() : null,
@@ -172,27 +176,30 @@ export async function createProductAction(formData: FormData) {
   }).select("id, slug").single();
   if (error || !data) {
     if (paths.length) await db.storage.from("product-images").remove(paths);
-    throw new Error(error?.code === "23505" ? "Ya existe un producto con ese enlace o SKU. Revisá el catálogo." : "No se pudo guardar el producto. Revisá los datos y tu conexión.");
+    throw new AdminFormError(error?.code === "23505" ? "Ya existe un producto con ese enlace o SKU. Revisá el catálogo." : "No se pudo guardar el producto. Revisá los datos y tu conexión.");
   }
   refreshCatalog();
   return { success: true, id: data.id, slug: data.slug };
 }
 export async function updateProductAction(formData: FormData) {
+  return runAdminFormAction(() => updateProduct(formData));
+}
+async function updateProduct(formData: FormData) {
   const db = await getAdminClient();
   const id = validId(getString(formData, "id"));
   const { fields } = parseProductForm(formData, false);
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: matches, error: readError } = await readAdminProducts(db, { ids: [id], size: 1 });
   const existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null } | undefined;
-  if (readError || !existing) throw new Error("El producto ya no está disponible para editar. Recargá el panel.");
-  if (formData.has("stock") && Number(formData.get("stock")) !== existing.stock) throw new Error("Verificá el conteo físico desde Operaciones para proteger las reservas.");
+  if (readError || !existing) throw new AdminFormError("El producto ya no está disponible para editar. Recargá el panel.");
+  if (formData.has("stock") && Number(formData.get("stock")) !== existing.stock) throw new AdminFormError("Verificá el conteo físico desde Operaciones para proteger las reservas.");
   const gallery = [...new Set([existing.image_url, ...(existing.image_urls ?? [])].filter(Boolean))] as string[];
   const { urls, paths } = await prepareProductImages(db, formData, gallery);
-  if (fields.is_active && !urls.length) throw new Error("Agregá al menos una foto antes de publicar.");
+  if (fields.is_active && !urls.length) throw new AdminFormError("Agregá al menos una foto antes de publicar.");
   try {
     if (existing.fulfillment_mode !== fields.fulfillment_mode) {
       const { error } = await db.rpc("set_product_fulfillment_v1", { product_id_input: id, mode_input: fields.fulfillment_mode, available_input: fields.supplier_available });
-      if (error) throw new Error("No se pudo cambiar la modalidad. Resolvé las reservas pendientes antes de cambiarla.");
+      if (error) throw new AdminFormError("No se pudo cambiar la modalidad. Resolvé las reservas pendientes antes de cambiarla.");
     }
     const { fulfillment_mode: mode, ...update } = fields;
     void mode;
@@ -200,7 +207,7 @@ export async function updateProductAction(formData: FormData) {
       image_url: urls[0] || null, image_urls: urls,
       ...(existing.source_url !== fields.source_url ? { supplier_last_checked_at: null, supplier_stock_status: "unknown" } : {}),
     }).eq("id", id).select("id").single();
-    if (error || !data) throw new Error("No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
+    if (error || !data) throw new AdminFormError("No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
   } catch (error) {
     if (paths.length) await db.storage.from("product-images").remove(paths);
     throw error;

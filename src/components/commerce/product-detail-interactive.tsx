@@ -3,20 +3,14 @@ import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/c
 
 import React, { useState, useMemo } from "react";
 import {
-  CreditCard,
   Heart,
-  Landmark,
   MessageCircle,
-  PackageCheck,
-  Receipt,
   ShoppingCart,
   Truck,
-  Wallet,
   Share2,
   Copy,
   Check,
   ReceiptText,
-  ShieldCheck,
   Zap,
   Clock,
 } from "lucide-react";
@@ -103,7 +97,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   const whatsappMessage = `Hola MYA Importaciones! Me interesa el producto "${product.title}" (${channel === "wholesale" ? "precio mayorista" : "precio minorista"}). ¿Tienen disponibilidad para envío?`;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       {/* Channel Switcher */}
       {WHOLESALE_ENABLED && <div className="flex rounded-xl bg-zinc-100 p-1 border border-zinc-200">
         <button
@@ -138,13 +132,13 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
       }
       {/* Price Section */}
-      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-5 space-y-4">
-        <div className="flex items-baseline justify-between">
-          <div>
+      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">
               {channel === "wholesale" ? "Precio por bulto cerrado" : "Precio en pesos"}
             </p>
-            <div className="mt-1 flex items-baseline gap-3">
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
                 {formatCurrency(price)}
               </span>
@@ -156,17 +150,17 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             </div>
 
           </div>
-          <div className="text-right">
+          <div className="flex flex-wrap items-center gap-2 sm:max-w-[12rem] sm:justify-end sm:text-right">
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
               isVerifiedStock(product) ? "text-emerald-700" : "text-red-600"
             }`}>
-              <span className={`h-2 w-2 rounded-full ${
+              <span className={`h-2 w-2 shrink-0 rounded-full ${
                 isVerifiedStock(product) ? "bg-emerald-500 animate-pulse" : "bg-red-500"
               }`} />
               {isVerifiedStock(product) ? "Disponible" : "Consultar disponibilidad"}
             </span>
             <span
-              className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border mt-1 ${shippingTimeInfo.badgeClass}`}
+              className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border ${shippingTimeInfo.badgeClass}`}
               title={shippingTimeInfo.shippingTimeDescription}
             >
               {isImmediate ? "Stock en Tandil" : "Disponibilidad a confirmar"}
@@ -198,46 +192,55 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         )}
 
         {/* Quantity and Actions */}
-        <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex items-center rounded-xl border border-zinc-300 bg-white h-12 self-start sm:self-auto">
+        <div className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-3 pt-2 sm:grid-cols-[auto_minmax(0,1fr)_3rem]">
+          <div className="col-span-2 flex items-center justify-between sm:col-span-1 sm:block">
+            <span className="text-xs font-semibold text-zinc-600 sm:hidden">Cantidad</span>
+          <div className="flex h-12 shrink-0 items-center rounded-xl border border-zinc-300 bg-white">
             <button
               onClick={handleDecrement}
-              className="h-full px-4 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer"
+              className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
               type="button"
+              aria-label="Reducir cantidad"
+              disabled={quantity <= (channel === "wholesale" ? product.wholesaleMinQuantity : 1)}
             >
               -
             </button>
-            <span className="w-12 text-center text-sm font-bold text-zinc-900">
+            <span aria-live="polite" aria-atomic="true" className="w-9 text-center text-sm font-bold text-zinc-900">
               {quantity}
             </span>
             <button
               onClick={handleIncrement}
-              className="h-full px-4 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer"
+              className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
               type="button"
+              aria-label="Aumentar cantidad"
+              disabled={quantity >= purchasableQuantity(product)}
             >
               +
             </button>
+          </div>
           </div>
 
           <button
             onClick={handleAddToCart}
             disabled={!isVerifiedStock(product)}
-            className="flex-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-6 text-sm font-bold text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-md disabled:opacity-50"
+            className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-3 text-sm font-bold leading-snug text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
             type="button"
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-4 w-4 shrink-0" />
             {!isVerifiedStock(product) ? "Disponibilidad a confirmar" : added ? "¡Agregado al carrito!" : "Agregar al carrito"}
           </button>
 
           <button
             onClick={() => toggleFavorite(product.id)}
-            className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition cursor-pointer ${
+            className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
               favorite
                 ? "bg-red-50 border-red-200 text-red-600"
                 : "bg-white border-zinc-300 text-zinc-600 hover:text-zinc-950"
             }`}
             type="button"
-            aria-label="Favorito"
+            aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+            aria-pressed={favorite}
+            title={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
           >
             <Heart className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} />
           </button>
@@ -257,7 +260,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         </div>
 
         {/* Share & Copy Link */}
-        <div className="flex items-center gap-2 pt-2 border-t border-zinc-200/60">
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-200/60">
           <button
             type="button"
             onClick={handleCopyLink}
@@ -312,7 +315,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <span className="font-bold text-zinc-900 flex items-center gap-1.5">
             <Truck className="h-4 w-4 text-sky-600" />
             Calcular costo de envío:
@@ -326,7 +329,8 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             placeholder="Ingresá tu Código Postal (ej: 7000, 1425 o B1640)"
             value={postalCode}
             onChange={(e) => setPostalCode(e.target.value)}
-            className="h-10 w-full rounded-xl border border-zinc-300 px-3 pr-8 text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400 font-medium"
+            aria-label="Código postal para calcular el envío"
+            className="h-11 w-full rounded-xl border border-zinc-300 px-3 pr-8 text-base sm:text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400 font-medium"
           />
           {postalCode && (
             <button
@@ -426,22 +430,22 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       <TrustGuaranteeBadges variant="compact" />
 
       {/* Mobile Sticky Add-to-Cart Bar */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 px-4 py-2.5 shadow-lg">
+      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-30 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 px-4 py-2.5 shadow-lg">
         <div className="flex items-center justify-between gap-3">
           <div>
             <span className="text-[10px] text-zinc-500 font-semibold uppercase block">
               {channel === "wholesale" ? "Mayorista" : "Minorista"}
             </span>
-            <span className="text-base font-black text-zinc-950">{formatCurrency(price)}</span>
+            <span className="whitespace-nowrap text-base font-black text-zinc-950">{formatCurrency(price)}</span>
           </div>
           <button
             onClick={handleAddToCart}
             disabled={!isVerifiedStock(product)}
-            className="flex-1 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-md disabled:opacity-50"
+            className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50"
             type="button"
           >
-            <ShoppingCart className="h-4 w-4" />
-            {added ? "¡Agregado!" : "Agregar al Carrito"}
+            <ShoppingCart className="h-4 w-4 shrink-0" />
+            {!isVerifiedStock(product) ? "Consultar disponibilidad" : added ? "¡Agregado!" : "Agregar al carrito"}
           </button>
         </div>
       </div>

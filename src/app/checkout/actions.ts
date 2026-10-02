@@ -4,23 +4,25 @@ import { limitCommerceRequest } from "@/lib/request-limit";
 import { createHash } from "node:crypto";
 import { createCommerceService } from "@/lib/supabase/service";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { calculateShipping } from "@/lib/shipping";
+import { calculateShipping, isShippingPaidSeparately } from "@/lib/shipping";
 import { priceOrder, type PricedItem } from "@/lib/order-pricing";
 import { createMercadoPagoPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 export interface CheckoutInput {
   lines: { productId: string; quantity: number; channel: "retail" | "wholesale" }[];
-  paymentMethod: "transferencia" | "mercado_pago" | "efectivo";
+  paymentMethod: "transferencia" | "mercado_pago";
   postalCode: string; shippingOptionId: string; coupon: string;
 }
 export interface OrderInput extends CheckoutInput {
   name: string; email: string; phone: string; address: string; city: string; notes: string;
   requestId: string; expectedTotal: number;
+  acceptSeparateShipping: boolean;
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function resolveQuote(input: CheckoutInput) {
   if (process.env.COMMERCE_CHECKOUT_ENABLED !== "true") throw new Error("Las compras online están en preparación. Consultanos para comprar.");
   if (!input || !Array.isArray(input.lines) || !input.lines.length || input.lines.length > 50) throw new Error("El carrito no es válido.");
-  if (!["transferencia", "mercado_pago", "efectivo"].includes(input.paymentMethod)) throw new Error("Medio de pago inválido.");
+  if (!["transferencia", "mercado_pago"].includes(input.paymentMethod)) throw new Error("Medio de pago inválido.");
+  if (input.paymentMethod === "mercado_pago" && !isMercadoPagoConfigured()) throw new Error("Mercado Pago no está disponible. Elegí transferencia.");
   if (typeof input.postalCode !== "string" || input.postalCode.length > 12 || typeof input.coupon !== "string" || input.coupon.length > 30) throw new Error("Revisá código postal y cupón.");
   const ids = new Set<string>();
   for (const line of input.lines) {
@@ -38,22 +40,22 @@ async function resolveQuote(input: CheckoutInput) {
     if (!p.is_active || p.is_wholesale_only || /smartphone|telefon|tecnologia|celular/i.test(category?.slug ?? "") || (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity))) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
     const cost = costs?.find(c => c.product_id === p.id);
     const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
-    if (!fresh) throw new Error(`El precio final de ${p.title} necesita verificación. Consultanos para continuar.`);
-    return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: Number(cost.landed_cost), variableCost: Number(cost.variable_cost ?? 0) + Number(p.retail_price) * Number(cost.payment_fee_percent ?? 0) / 100, minimumContribution: Number(cost.minimum_contribution ?? 0), beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
+    // Charge the published server price. Unknown costs disable discounts, not the purchase.
+    return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: fresh ? Number(cost.landed_cost) : null, variableCost: fresh ? Number(cost.variable_cost ?? 0) + Number(p.retail_price) * Number(cost.payment_fee_percent ?? 0) / 100 : 0, minimumContribution: fresh ? Number(cost.minimum_contribution ?? 0) : 0, beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
   });
   const supplierDelivery = products.some(p => p.fulfillment_mode === "supplier");
-  if (supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
+  if (!isShippingPaidSeparately() && supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
   const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery);
   const option = shipping.options.find(o => o.id === input.shippingOptionId);
-  if (option?.requiresQuote) throw new Error("Confirmemos la tarifa y el plazo de envío para tu destino antes del pago. Envianos el carrito por WhatsApp.");
+  const shippingQuotedSeparately = isShippingPaidSeparately() && option?.id === "delivery_quote_separately";
+  if (option?.requiresQuote && !shippingQuotedSeparately) throw new Error("Confirmemos la tarifa y el plazo de envío para tu destino antes del pago. Envianos el carrito por WhatsApp.");
   if (!shipping.isValid || !option) throw new Error("Elegí un destino y una opción de entrega válidos.");
-  if (input.paymentMethod === "efectivo" && option.id !== "pickup_tandil") throw new Error("El efectivo está disponible al retirar en Tandil.");
-  if (option.type !== "pickup") {
+  if (option.type !== "pickup" && !shippingQuotedSeparately) {
     if (process.env.COMMERCE_SHIPPING_ENABLED !== "true") throw new Error("El envío necesita confirmación de tarifa. Consultanos por WhatsApp para coordinar la entrega.");
     const weight = products.reduce((sum, p) => sum + Number(p.specifications?.peso_kg ?? 0) * input.lines.find(l => l.productId === p.id)!.quantity, 0);
     if (products.some(p => !(Number(p.specifications?.peso_kg) > 0)) || weight > 2) throw new Error("Este pedido necesita cotización de envío por peso o volumen. Consultanos por WhatsApp para coordinar la entrega.");
   }
-  return { db, items, quote: priceOrder(items, input.paymentMethod, input.coupon, option.price, input.postalCode), option };
+  return { db, items, quote: { ...priceOrder(items, input.paymentMethod, input.coupon, option.price, input.postalCode), shippingQuotedSeparately }, option };
 }
 export async function quoteOrderAction(input: CheckoutInput) {
   try { await limitCommerceRequest("quote"); return { ok: true as const, quote: (await resolveQuote(input)).quote }; }
@@ -62,6 +64,7 @@ export async function quoteOrderAction(input: CheckoutInput) {
 export async function createOrderAction(input: OrderInput) {
   await limitCommerceRequest("order");
   if (!uuid.test(input.requestId)) throw new Error("Identificador de pedido inválido.");
+  if (isShippingPaidSeparately() && input.acceptSeparateShipping !== true) throw new Error("Confirmá que el envío se cotiza y abona por separado.");
   for (const [key, max] of [["name",120],["email",254],["phone",40],["address",300],["city",120],["notes",1000]] as const) {
     if (typeof input[key] !== "string" || input[key].length > max) throw new Error("Revisá tus datos de contacto.");
   }
@@ -83,7 +86,7 @@ export async function createOrderAction(input: OrderInput) {
   if (option.type !== "pickup" && (!input.address.trim() || !input.city.trim())) throw new Error("Completá domicilio o sucursal exacta y localidad.");
   if (quote.total !== input.expectedTotal) throw new Error("El precio cambió. Actualizá el resumen antes de confirmar.");
   const { data: order, error } = await db.rpc("create_retail_order_v2", {
-    payload: { request_id: input.requestId, request_hash: requestHash, profile_id: user?.id ?? null, name: input.name.trim(), email: input.email.toLowerCase().trim(), phone: input.phone.trim(), address: option.type === "pickup" ? "Retiro coordinado en Tandil" : `${input.address}, ${input.city}, ${input.postalCode}`, notes: input.notes, payment: input.paymentMethod, items, subtotal: quote.subtotal, discount: quote.discount, shipping: quote.shipping, total: quote.total, shipping_option: option.id, promotion: quote.promotion },
+    payload: { request_id: input.requestId, request_hash: requestHash, profile_id: user?.id ?? null, name: input.name.trim(), email: input.email.toLowerCase().trim(), phone: input.phone.trim(), address: option.type === "pickup" ? "Retiro coordinado en Tandil" : `${input.address}, ${input.city}, ${input.postalCode}`, notes: [input.notes, quote.shippingQuotedSeparately ? "Envío a cotizar y abonar por separado. El pago de este pedido corresponde únicamente a los productos." : ""].filter(Boolean).join("\n"), payment: input.paymentMethod, items, subtotal: quote.subtotal, discount: quote.discount, shipping: quote.shipping, total: quote.total, shipping_option: option.id, promotion: quote.promotion },
   });
   if (error || !order) throw new Error("No pudimos reservar el pedido. Actualizá disponibilidad e intentá nuevamente.");
   let initPoint: string | undefined = order.payment_url ?? undefined;

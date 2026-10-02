@@ -180,7 +180,7 @@ export function SiteHeader({
               className="absolute left-1/2 top-1/2 h-16 w-16 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain sm:h-20 sm:w-20"
             />
           </div>
-          <span className={`text-[12px] font-bold tracking-tight sm:text-sm ${isWholesale ? "text-white" : "text-slate-800"}`}>importaciones</span>
+          <span className={`hidden text-[12px] font-bold tracking-tight min-[360px]:inline sm:text-sm ${isWholesale ? "text-white" : "text-slate-800"}`}>importaciones</span>
           {isWholesale && <span className="hidden rounded-full border border-amber-400/40 px-2 py-1 text-[10px] font-semibold text-amber-300 xl:block">Mayorista</span>}
         </Link>
 

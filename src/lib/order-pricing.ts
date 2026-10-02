@@ -10,6 +10,7 @@ export interface PricedItem {
 }
 
 export interface OrderQuote {
+  shippingQuotedSeparately?: boolean;
   subtotal: number;
   discount: number;
   shipping: number;

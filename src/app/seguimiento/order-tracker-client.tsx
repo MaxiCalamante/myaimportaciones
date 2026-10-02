@@ -240,7 +240,7 @@ export function OrderTrackerClient({ initialCode = "" }: { initialCode?: string 
                 <p className="font-semibold text-zinc-500 uppercase tracking-wider">Entrega</p>
                 <p className="text-zinc-800 font-medium mt-0.5">{order.shipping_address}</p>
                 <p className="text-sky-700 font-semibold mt-0.5">
-                  Envío: {order.shipping_amount === 0 ? "Bonificado / Retiro en depósito" : formatCurrency(order.shipping_amount)}
+                  Envío: {order.shipping_option === "delivery_quote_separately" ? "A cotizar y abonar por separado. El total corresponde a los productos." : order.shipping_amount === 0 ? "Bonificado / Retiro en depósito" : formatCurrency(order.shipping_amount)}
                 </p>
               </div>
             </div>

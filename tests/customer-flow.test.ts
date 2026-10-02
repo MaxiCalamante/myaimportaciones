@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { safeAuthNext } from '../src/lib/auth-navigation';
 import { parseFavoriteIds } from '../src/lib/browser-commerce';
 import { purchasableQuantity, isVerifiedStock } from '../src/lib/commerce-policy';
-import { calculateShipping, isProductImmediateStock } from '../src/lib/shipping';
+import { calculateShipping, isProductImmediateStock, getProductShippingTimeInfo } from '../src/lib/shipping';
 test('login keeps internal destination and rejects external redirect tricks', () => {
   assert.equal(safeAuthNext('/checkout?step=shipping'), '/checkout?step=shipping');
   for (const value of ['https://evil.test','//evil.test','/%2fevil.test','/\\evil.test','/%5cevil.test','/\nevil.test','/%0aevil.test','/%zz', null]) assert.equal(safeAuthNext(value), '/cuenta');
@@ -39,4 +39,29 @@ test('unconfigured supplier delivery is a quote, never free or local pickup', ()
     assert.equal(quote.options[0].requiresQuote,false);
     assert.equal(calculateShipping('7000',54900,false,true).options[0].requiresQuote,true);
   } finally { if(previous===undefined) delete process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON; else process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON=previous; }
+});
+
+test('separately quoted nationwide shipping never becomes free or invents delivery time', () => {
+  const previous = process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY;
+  process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY = 'quote_separately';
+  try {
+    for (const postcode of ['7000', '1425', '1800', '5000', '5500', '9410']) {
+      for (const supplier of [true, false]) {
+        const quote = calculateShipping(postcode, 54900, !supplier, supplier);
+        assert.equal(quote.isValid, true);
+        assert.equal(quote.options.length, 1);
+        assert.equal(quote.options[0].id, 'delivery_quote_separately');
+        assert.equal(quote.options[0].requiresQuote, true);
+        assert.equal(quote.options[0].isFree, false);
+        assert.equal(quote.options[0].price, 0);
+        assert.equal(quote.options[0].type, 'domicilio');
+        assert.match(quote.options[0].estimatedDays, /por separado/);
+      }
+    }
+    assert.match(getProductShippingTimeInfo({fulfillmentMode:'supplier',supplierAvailable:true}).shippingTimeDescription, /por separado/);
+    assert.equal(calculateShipping('invalid', 54900, false, true).isValid, false);
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY;
+    else process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY = previous;
+  }
 });

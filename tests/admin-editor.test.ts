@@ -5,6 +5,44 @@ import { mapProduct, type DbProduct } from "../src/lib/catalog-data";
 import { parseSupplier } from "../src/lib/suppliers";
 import { prepareProductImages } from "../src/lib/admin-media";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { AdminFormError, runAdminFormAction } from "../src/lib/admin-action-result";
+
+test("product validation errors cross the production boundary as readable results and allow correction", async () => {
+  const input = form();
+  input.set("specifications", "Contenido 50 ml");
+  const result = JSON.parse(JSON.stringify(await runAdminFormAction(async () => parseProductForm(input, true))));
+  assert.deepEqual(result, { success: false, error: "Escribí cada especificación como Nombre: valor." });
+  assert.equal(input.get("title"), "Producto real");
+  input.set("specifications", "Contenido: 50 ml");
+  const corrected = await runAdminFormAction(async () => parseProductForm(input, true));
+  assert.equal(corrected.success, true);
+  if (corrected.success) assert.deepEqual(corrected.data.fields.specifications, { Contenido: "50 ml" });
+});
+
+test("unsupported image URLs return upload guidance before any storage write", async () => {
+  let uploads = 0;
+  const db = { storage: { from: () => ({ upload: async () => { uploads++; return { error: null }; } }) } } as unknown as SupabaseClient;
+  const input = form(); input.set("custom_image_url", "https://unsupported.test/photo.jpg");
+  const result = await runAdminFormAction(() => prepareProductImages(db, input));
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { success: false, error: "La imagen usa un dominio no admitido. Descargá la foto y subila desde galería." });
+  assert.equal(uploads, 0);
+  input.set("custom_image_url", "https://cdn.shopify.com/photo.jpg");
+  const corrected = await runAdminFormAction(() => prepareProductImages(db, input));
+  assert.equal(corrected.success, true);
+  if (corrected.success) assert.deepEqual(corrected.data.urls, ["https://cdn.shopify.com/photo.jpg"]);
+});
+
+test("admin save results preserve safe auth errors but do not expose unexpected server details", async (t) => {
+  const session = await runAdminFormAction(async () => { throw new AdminFormError("Iniciá sesión para administrar la tienda."); });
+  assert.equal(session.success, false);
+  if (!session.success) assert.match(session.error, /Iniciá sesión/);
+  const log = t.mock.method(console, "error", () => {});
+  const unexpected = await runAdminFormAction(async () => { throw new Error("private database connection details"); });
+  assert.equal(unexpected.success, false);
+  if (!unexpected.success) assert.doesNotMatch(unexpected.error, /private|database/);
+  assert.equal(log.mock.callCount(), 1);
+  assert.deepEqual(await runAdminFormAction(async () => ({ id: "saved-id" })), { success: true, data: { id: "saved-id" } });
+});
 
 function form() {
   const f = new FormData();

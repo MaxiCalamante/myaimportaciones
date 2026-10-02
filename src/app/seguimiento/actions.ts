@@ -18,6 +18,7 @@ export interface TrackingOrder {
   payment_method: string;
   subtotal_amount: number;
   shipping_amount: number;
+  shipping_option: string | null;
   total_amount: number;
   shipping_name: string;
   shipping_phone: string;
@@ -32,6 +33,6 @@ export async function lookupOrderAction(code: string, email: string): Promise<Tr
   if (!hasCommerceService() || !code || code.length > 80 || !email || email.length > 254) return null;
   try { await limitCommerceRequest("tracking"); } catch { return null; }
   const db = createCommerceService();
-  const { data, error } = await db.from("orders").select("id,status,customer_tier,payment_method,subtotal_amount,shipping_amount,total_amount,shipping_name,shipping_phone,shipping_address,tracking_code,carrier_tracking_code,created_at,items:order_items(id,product_title,quantity,unit_price,product_id)").eq("tracking_code", code.trim().toUpperCase()).eq("customer_email", email.trim().toLowerCase()).maybeSingle();
+  const { data, error } = await db.from("orders").select("id,status,customer_tier,payment_method,subtotal_amount,shipping_amount,shipping_option,total_amount,shipping_name,shipping_phone,shipping_address,tracking_code,carrier_tracking_code,created_at,items:order_items(id,product_title,quantity,unit_price,product_id)").eq("tracking_code", code.trim().toUpperCase()).eq("customer_email", email.trim().toLowerCase()).maybeSingle();
   return error || !data ? null : data as unknown as TrackingOrder;
 }

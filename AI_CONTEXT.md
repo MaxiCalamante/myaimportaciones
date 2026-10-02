@@ -1,6 +1,16 @@
 # MYA Importaciones — contexto vigente
 
-Actualizado el 22/09/2026. La sección del 22/09 prevalece sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+Actualizado el 02/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+
+## Precios: decisión del dueño del 02/10/2026
+
+Para revisar el catálogo y las próximas cargas, el dueño eligió expresamente **10% más barato que Mercado Libre: equilibrio**. Fijar propuestas por producto con una publicación argentina equivalente (marca, fórmula/modelo, tamaño, versión, color, pack y accesorios), buscando aprovechar el margen disponible sin usar un recargo fijo de compra como único criterio. No elegir una publicación cara para aparentar competitividad. Este criterio sustituye como política general los anteriores ML menos 5% y recargo aproximado del 100%; preservar sus costos y evidencias como históricos.
+
+Usar una cotización de trabajo indicada/confirmada para cada revisión. El dueño indicó ARS 1550/USD para esta revisión; no mantenerla fija en futuras cargas. Diferenciar costo informado, cotización actual del proveedor y costo real puesto. Venta menos compra no es ganancia neta; restan flete, impuestos, comisiones, embalaje y otros gastos. Sin equivalente suficiente, dejar el precio pendiente de revisión y documentar el motivo. No inventar precios ML ni convertir estimaciones en costos verificados.
+
+Revisión de hoy: `docs/pricing-review-2026-10-02/revision.html`, `productos.csv` y `resumen.json`. Se leyeron inicialmente 214 productos (169 publicados, 45 borradores); durante la revisión se agregó Bare Vanilla y también se auditó sin modificarlo. Cierre: 215 productos, 170 publicados, 45 borradores, 214 con cotización actual del proveedor. Referencias ML de búsqueda indexadas, objetivos al 90% con redondeo hacia abajo a ARS 100 y pendientes explícitos.
+
+El dueño autorizó expresamente **publicar las 85 propuestas para productos ya activos**: 29 subas y 56 bajas. Aplicadas y comprobadas las 85 en la API pública; se verificaron por HTTP las fichas de Jelly Cream 50 ml (ARS 45.400), Anua Cleansing Oil 200 ml (ARS 41.900) y Total TG1262306 (ARS 337.200). La operación modificó sólo `retail_price` y `updated_at`; se comprobaron sin cambios las otras 129 filas de la lectura inicial y todos los costos. Bare Vanilla quedó fuera del lote autorizado y sin cambios. Respaldos antes/después y SQL transaccional con control de concurrencia en la carpeta de revisión. No requiere despliegue de aplicación. Hay 126 casos pendientes y 4 propuestas de borradores que no se activaron. Ver `docs/POLITICA-DE-PRECIOS.md` para futuras cargas.
 
 ## Decisiones del dueño
 

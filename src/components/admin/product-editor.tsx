@@ -57,8 +57,12 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
     photos.forEach(photo => form.append("images", photo.file));
     setError("");
     startTransition(async () => {
-      try { if (product) await updateProductAction(form); else await createProductAction(form); onSaved(); }
-      catch (err) { setError(err instanceof Error ? err.message : "No se pudo guardar. Probá nuevamente."); }
+      try {
+        const result = product ? await updateProductAction(form) : await createProductAction(form);
+        if (!result.success) { setError(result.error); return; }
+        onSaved();
+      }
+      catch { setError("No se pudo guardar. Revisá tu conexión y probá nuevamente."); }
     });
   }
   return <dialog ref={dialog} aria-labelledby="product-editor-title" onCancel={event => { event.preventDefault(); if (!pending && !processing) onClose(); }} className="fixed inset-0 m-auto max-h-[92dvh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto rounded-2xl border-0 bg-white p-0 text-zinc-950 shadow-2xl backdrop:bg-black/60 sm:w-[calc(100%-3rem)]">

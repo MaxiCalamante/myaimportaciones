@@ -1,0 +1,36 @@
+{
+  "updated": 85,
+  "unchanged_original": 129,
+  "new_during_review": 1,
+  "total_reviewed": 215,
+  "all_costs_unchanged": true,
+  "all_categories_unchanged": true,
+  "other_product_fields_unchanged": true,
+  "public_verification": {
+    "public_api_matched": 85,
+    "active_count": 170,
+    "product_pages": [
+      {
+        "id": "d74e93dd-5b99-5035-a870-bbf8eb15f29a",
+        "title": "Medicube Collagen Jelly Cream 50 ml",
+        "url": "https://myaimportaciones.vercel.app/producto/medicube-collagen-jelly-cream-50-ml-81",
+        "public_price": 45400.0,
+        "http_status": 200
+      },
+      {
+        "id": "7fe8fc66-20f2-53c9-8fd6-add40f101b01",
+        "title": "Anua Heartleaf Pore Control Cleansing Oil 200 ml",
+        "url": "https://myaimportaciones.vercel.app/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+        "public_price": 41900.0,
+        "http_status": 200
+      },
+      {
+        "id": "af768185-6a29-50b4-911b-871af946609c",
+        "title": "Total Amoladora angular 2600W 230mm TG1262306",
+        "url": "https://myaimportaciones.vercel.app/producto/total-amoladora-angular-2600w-230mm-tg1262306",
+        "public_price": 337200.0,
+        "http_status": 200
+      }
+    ]
+  }
+}

@@ -443,7 +443,8 @@ Logística / Despacho: +${calcShippingPercent}%
 
     startTransition(async () => {
       try {
-        await updateProductAction(formData);
+        const result = await updateProductAction(formData);
+        if (!result.success) { alert(result.error); return; }
         setEditingProduct(null);
       } catch (err: unknown) {
         alert("Error al guardar el producto: " + (err instanceof Error ? err.message : "Error inesperado"));

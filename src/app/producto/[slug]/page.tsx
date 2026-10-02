@@ -153,7 +153,7 @@ export default async function ProductPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-4 pb-24 sm:px-6 sm:pt-8 md:pb-8 lg:px-8">
         {/* Breadcrumb */}
         <nav aria-label="Ubicación del producto" className="mb-6 flex items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap">
           <Link href="/" className="hover:text-zinc-900 transition flex items-center gap-1">
@@ -171,12 +171,12 @@ export default async function ProductPage({ params }: Props) {
         </nav>
 
         {/* Product Grid */}
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid gap-6 sm:gap-10 lg:grid-cols-2">
           {/* Left Column: Image */}
           <ProductGallery title={product.title} image={product.imageUrl} images={product.imageUrls} />
 
           {/* Right Column: Info & Actions */}
-          <div className="flex flex-col justify-center space-y-6">
+          <div className="flex min-w-0 flex-col justify-center space-y-4 sm:space-y-6">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
                 <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}

@@ -26,12 +26,16 @@ export interface ShippingCalculation {
 
 export const FREE_SHIPPING_THRESHOLD = Number.POSITIVE_INFINITY; // No uncosted free shipping campaign.
 
+export function isShippingPaidSeparately() {
+  return process.env.NEXT_PUBLIC_SHIPPING_PAYMENT_POLICY === "quote_separately";
+}
+
 export function isProductImmediateStock(product?: { stock?: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean; tags?: string[] } | null): boolean {
   return Boolean(product?.fulfillmentMode !== "supplier" && product?.stockVerifiedAt && Number(product.stock) > 0);
 }
 export function getProductShippingTimeInfo(product?: { stock?: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean; tags?: string[] } | null) {
   const isImmediate = isProductImmediateStock(product);
-  if (product?.fulfillmentMode === "supplier") return { isImmediate: false, badgeText: product.supplierAvailable ? "Disponible" : "Consultar disponibilidad", deliveryText: "Envío a domicilio", shippingTimeDescription: "Confirmamos tarifa y plazo de entrega según tu destino antes del pago.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "Según destino" };
+  if (product?.fulfillmentMode === "supplier") return { isImmediate: false, badgeText: product.supplierAvailable ? "Disponible" : "Consultar disponibilidad", deliveryText: "Envío a domicilio", shippingTimeDescription: isShippingPaidSeparately() ? "Envíos a todo el país. El envío se cotiza y abona por separado; coordinamos costo y plazo con vos." : "Confirmamos tarifa y plazo de entrega según tu destino antes del pago.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "Según destino" };
   return { isImmediate, badgeText: isImmediate ? "Stock confirmado" : "Consultar disponibilidad", deliveryText: "Entrega a coordinar", shippingTimeDescription: isImmediate ? "Coordinamos retiro o despacho desde Tandil." : "Consulta disponibilidad y plazo antes de comprar.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "A coordinar" };
 }
 
@@ -300,6 +304,12 @@ export function calculateShipping(
 
   const freeShippingQualified = false;
   const options: ShippingOption[] = [];
+
+  if (isShippingPaidSeparately()) return {
+    isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
+    freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: isAllImmediateStock,
+    options: [{ id: "delivery_quote_separately", name: "Envío a domicilio a todo el país", carrier: "Transporte a coordinar con MYA", type: "domicilio", price: 0, originalPrice: 0, isFree: false, requiresQuote: true, estimatedDays: "Costo y plazo a coordinar; envío abonado por separado" }],
+  };
 
   if (supplierDelivery) {
     let amount: unknown;

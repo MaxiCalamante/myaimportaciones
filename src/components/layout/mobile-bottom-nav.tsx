@@ -20,7 +20,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const isTracking = pathname?.startsWith(orderPath);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-lg safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 pb-[env(safe-area-inset-bottom)] shadow-lg">
       <nav className="flex items-center justify-around h-16 px-2">
         {/* Home */}
         <Link
