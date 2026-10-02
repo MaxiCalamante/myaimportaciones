@@ -113,23 +113,23 @@ export function RetailHighlights() {
   const items = [
     { 
       icon: BadgePercent, 
-      title: "Precio claro",
-      desc: "El total y las promociones disponibles se confirman antes de comprar"
+      title: "Cuotas y Descuentos",
+      desc: "Hasta 3 y 6 cuotas con Mercado Pago y descuento por transferencia"
     },
     { 
       icon: Truck, 
-      title: "Envíos a Todo el País",
-      desc: "Opciones de entrega según destino y producto"
+      title: "Envíos Correo Argentino",
+      desc: "A domicilio o sucursal en todo el país con seguimiento en vivo"
     },
     { 
       icon: ShieldCheck, 
-      title: "Atención posventa",
-      desc: "Consultá condiciones de garantía y cambios de cada producto"
+      title: "Garantía y Factura",
+      desc: "Factura oficial de compra y respaldo posventa garantizado"
     },
     { 
       icon: Warehouse, 
-      title: "Comprá por unidad",
-      desc: "Belleza y herramientas para uso personal o profesional"
+      title: "Atención desde Tandil",
+      desc: "Despacho directo y asesoramiento personalizado por WhatsApp"
     },
   ];
 

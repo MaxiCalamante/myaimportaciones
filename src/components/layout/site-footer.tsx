@@ -79,13 +79,13 @@ export function SiteFooter() {
         <div>
           <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Catálogos & Rubros</h3>
           <div className="mt-4 grid gap-2 text-sm">
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/?category=cosmetica-coreana"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/catalogo?category=cosmetica-coreana"}>
               Cosmética Coreana (K-Beauty)
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=herramientas-equipamiento" : "/?category=herramientas-equipamiento"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=herramientas-equipamiento" : "/catalogo?category=herramientas-equipamiento"}>
               Herramientas Total Tools & Wadfow
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cuidado-capilar" : "/?category=cuidado-capilar"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cuidado-capilar" : "/catalogo?category=cuidado-capilar"}>
               Tratamientos Capilares & Karseell
             </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/catalogo"}>

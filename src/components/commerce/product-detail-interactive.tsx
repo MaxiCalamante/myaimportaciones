@@ -13,6 +13,8 @@ import {
   ReceiptText,
   Zap,
   Clock,
+  CreditCard,
+  ShieldCheck,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -34,6 +36,9 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     setCartOpen,
     postalCode,
     setPostalCode,
+    province,
+    city,
+    address,
     selectedShippingOptionId,
     setSelectedShippingOptionId,
   } = useCommerce();
@@ -60,8 +65,16 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(product), [product]);
 
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, price * quantity, isImmediate, product.fulfillmentMode === "supplier");
-  }, [postalCode, price, quantity, isImmediate, product.fulfillmentMode]);
+    return calculateShipping(
+      postalCode,
+      price * quantity,
+      isImmediate,
+      product.fulfillmentMode === "supplier",
+      province,
+      city,
+      address
+    );
+  }, [postalCode, price, quantity, isImmediate, product.fulfillmentMode, province, city, address]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -152,10 +165,10 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:max-w-[12rem] sm:justify-end sm:text-right">
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
-              isVerifiedStock(product) ? "text-emerald-700" : "text-red-600"
+              isVerifiedStock(product) ? "text-emerald-700" : "text-amber-600"
             }`}>
               <span className={`h-2 w-2 shrink-0 rounded-full ${
-                isVerifiedStock(product) ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+                isVerifiedStock(product) ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
               }`} />
               {isVerifiedStock(product) ? "Disponible" : "Consultar disponibilidad"}
             </span>
@@ -163,7 +176,11 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
               className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border ${shippingTimeInfo.badgeClass}`}
               title={shippingTimeInfo.shippingTimeDescription}
             >
-              {isImmediate ? "Stock en Tandil" : "Disponibilidad a confirmar"}
+              {isImmediate
+                ? "Stock en Tandil"
+                : isVerifiedStock(product)
+                ? "Envío Correo Argentino"
+                : "Disponibilidad a confirmar"}
             </span>
             {channel === "wholesale" && (
               <p className="text-[11px] font-semibold text-amber-700 mt-1">
@@ -173,7 +190,22 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           </div>
         </div>
 
-        {channel === "retail" && <p className="text-xs text-emerald-800">Por transferencia puede haber un descuento adicional si los costos del producto lo permiten. El total exacto se calcula antes de confirmar el pedido.</p>}
+        {channel === "retail" && (
+          <div className="rounded-xl bg-gradient-to-r from-emerald-50/90 to-sky-50/70 border border-emerald-200/70 p-3 space-y-1.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-1 text-emerald-950 font-bold">
+              <span className="flex items-center gap-1.5">
+                <CreditCard className="h-4 w-4 text-emerald-700" />
+                Hasta 3 y 6 cuotas con Mercado Pago
+              </span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                Todas las tarjetas
+              </span>
+            </div>
+            <p className="text-zinc-600 text-[11px] leading-relaxed">
+              Aboná con tarjeta de crédito, débito o saldo en cuenta. Además, tenés un <strong className="text-emerald-800 font-semibold">descuento especial abonando por Transferencia Bancaria directa</strong> (se aplica antes de confirmar el pedido).
+            </p>
+          </div>
+        )}
 
         {/* Wholesale Reseller Profit Demonstration */}
         {channel === "wholesale" && product.retailPrice > product.wholesalePrice && (
@@ -411,18 +443,24 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       </div>
 
       {/* Payment methods & Invoicing perks */}
-      <div className="rounded-2xl border border-zinc-200 p-4 space-y-2.5 text-xs text-zinc-600 bg-white">
-        <div className="flex items-center gap-2 font-semibold text-zinc-800">
-          <ReceiptText className="h-4 w-4 text-zinc-500" />
-          <span>Facturación: consultá el comprobante correspondiente a tu compra</span>
+      <div className="rounded-2xl border border-zinc-200 p-4 space-y-3 text-xs text-zinc-600 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-zinc-800">
+          <div className="flex items-center gap-2">
+            <ReceiptText className="h-4 w-4 text-zinc-500" />
+            <span>Facturación: emitimos comprobante oficial con tu compra</span>
+          </div>
+          <span className="text-[11px] text-zinc-400 font-medium">IVA incluido</span>
         </div>
-        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-100">
-          <span className="font-semibold text-zinc-500">Medios de pago:</span>
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-100">
+          <span className="font-semibold text-zinc-500">Medios aceptados:</span>
           {product.paymentMethods.map((m) => (
             <span key={m} className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-700 uppercase">
               {formatPaymentMethod(m)}
             </span>
           ))}
+          <span className="rounded-md bg-sky-50 text-sky-800 px-2 py-0.5 text-[10px] font-bold uppercase border border-sky-100">
+            Mercado Pago
+          </span>
         </div>
       </div>
 

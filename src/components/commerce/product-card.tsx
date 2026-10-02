@@ -100,7 +100,7 @@ export function ProductCard({
             className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${shippingInfo.badgeClass}`}
             title={shippingInfo.shippingTimeDescription}
           >
-            {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Disponible · entrega a coordinar" : "Disponibilidad a confirmar"}
+            {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Envío Correo Argentino" : "Disponibilidad a confirmar"}
           </span>
         </div>
 

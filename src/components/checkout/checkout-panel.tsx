@@ -49,6 +49,7 @@ export function CheckoutPanel({
   const [result, setResult] = useState<Awaited<ReturnType<typeof createOrderAction>> | null>(null);
   const [customerEmail, setCustomerEmail] = useState(profile?.email || "");
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const requestId = useRef("");
   const initiated = useRef(false);
@@ -205,10 +206,36 @@ export function CheckoutPanel({
       {paymentMethod === "transferencia" && (
         <div className="rounded-2xl border border-zinc-200 p-5 bg-zinc-50 space-y-3">
           <p className="font-bold text-sm text-zinc-900">Datos para la Transferencia Bancaria:</p>
-          <div className="bg-white p-3 rounded-xl border font-mono text-sm space-y-1">
-            <p>CVU: <strong>{siteConfig.bankTransfer.cvu}</strong></p>
-            <p>Alias: <strong>{siteConfig.bankTransfer.alias || "MYA.IMPORTACIONES"}</strong></p>
-            <p>Titular: <strong>MYA Importaciones</strong></p>
+          <div className="bg-white p-4 rounded-xl border border-zinc-200 text-xs sm:text-sm space-y-2">
+            <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
+              <span className="text-zinc-600">CVU: <strong className="font-mono text-zinc-950 select-all">{siteConfig.bankTransfer.cvu}</strong></span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(siteConfig.bankTransfer.cvu);
+                  setCopiedBankField("cvu");
+                  setTimeout(() => setCopiedBankField(null), 2000);
+                }}
+                className="shrink-0 px-2.5 py-1 text-xs rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-semibold transition cursor-pointer"
+              >
+                {copiedBankField === "cvu" ? "✓ Copiado" : "Copiar CVU"}
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
+              <span className="text-zinc-600">Alias: <strong className="font-mono text-zinc-950 select-all">{siteConfig.bankTransfer.alias || "MYA.IMPORTACIONES"}</strong></span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(siteConfig.bankTransfer.alias || "MYA.IMPORTACIONES");
+                  setCopiedBankField("alias");
+                  setTimeout(() => setCopiedBankField(null), 2000);
+                }}
+                className="shrink-0 px-2.5 py-1 text-xs rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-semibold transition cursor-pointer"
+              >
+                {copiedBankField === "alias" ? "✓ Copiado" : "Copiar Alias"}
+              </button>
+            </div>
+            <p className="text-zinc-600 pt-0.5">Titular: <strong className="text-zinc-900">MYA Importaciones</strong></p>
           </div>
           <a
             className="block rounded-xl bg-emerald-600 p-3.5 text-center font-bold text-white hover:bg-emerald-700 transition shadow-xs text-sm"

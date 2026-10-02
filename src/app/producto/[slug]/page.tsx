@@ -131,7 +131,7 @@ export default async function ProductPage({ params }: Props) {
         "@type": "ListItem",
         position: 2,
         name: product.categoryName,
-        item: `${siteConfig.appUrl}/?category=${category?.slug || ""}`,
+        item: `${siteConfig.appUrl}/catalogo?category=${category?.slug || ""}`,
       },
       {
         "@type": "ListItem",
@@ -161,7 +161,7 @@ export default async function ProductPage({ params }: Props) {
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
           <Link
-            href={`/?category=${category?.slug || ""}`}
+            href={`/catalogo?category=${category?.slug || ""}`}
             className="hover:text-zinc-900 transition"
           >
             {product.categoryName}
