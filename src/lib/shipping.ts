@@ -1,3 +1,8 @@
+import {
+  getProvinceByCode,
+  inferProvinceFromPostalCode,
+} from "@/lib/correo-argentino/provinces";
+
 export interface ShippingOption {
   requiresQuote?: boolean;
   id: string;
@@ -33,10 +38,33 @@ export function isShippingPaidSeparately() {
 export function isProductImmediateStock(product?: { stock?: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean; tags?: string[] } | null): boolean {
   return Boolean(product?.fulfillmentMode !== "supplier" && product?.stockVerifiedAt && Number(product.stock) > 0);
 }
+
 export function getProductShippingTimeInfo(product?: { stock?: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean; tags?: string[] } | null) {
   const isImmediate = isProductImmediateStock(product);
-  if (product?.fulfillmentMode === "supplier") return { isImmediate: false, badgeText: product.supplierAvailable ? "Disponible" : "Consultar disponibilidad", deliveryText: "Envío a domicilio", shippingTimeDescription: isShippingPaidSeparately() ? "Envíos a todo el país. El envío se cotiza y abona por separado; coordinamos costo y plazo con vos." : "Confirmamos tarifa y plazo de entrega según tu destino antes del pago.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "Según destino" };
-  return { isImmediate, badgeText: isImmediate ? "Stock confirmado" : "Consultar disponibilidad", deliveryText: "Entrega a coordinar", shippingTimeDescription: isImmediate ? "Coordinamos retiro o despacho desde Tandil." : "Consulta disponibilidad y plazo antes de comprar.", badgeClass: "bg-sky-50 text-sky-800 border-sky-200", pillClass: "bg-sky-600 text-white", estimatedDays: "A coordinar" };
+  if (product?.fulfillmentMode === "supplier") {
+    return {
+      isImmediate: false,
+      badgeText: product.supplierAvailable ? "Disponible" : "Consultar disponibilidad",
+      deliveryText: "Envío Correo Argentino a domicilio",
+      shippingTimeDescription: isShippingPaidSeparately()
+        ? "Envíos a todo el país. El envío se cotiza y abona por separado; coordinamos costo y plazo con vos."
+        : "Confirmamos tarifa y plazo de entrega por Correo Argentino antes del pago.",
+      badgeClass: "bg-sky-50 text-sky-800 border-sky-200",
+      pillClass: "bg-sky-600 text-white",
+      estimatedDays: "2 a 5 días hábiles",
+    };
+  }
+  return {
+    isImmediate,
+    badgeText: isImmediate ? "Stock confirmado" : "Consultar disponibilidad",
+    deliveryText: "Entrega a coordinar",
+    shippingTimeDescription: isImmediate
+      ? "Coordinamos retiro en depósito o despacho desde Tandil."
+      : "Consulta disponibilidad y plazo antes de comprar.",
+    badgeClass: "bg-sky-50 text-sky-800 border-sky-200",
+    pillClass: "bg-sky-600 text-white",
+    estimatedDays: "A coordinar",
+  };
 }
 
 interface ZoneDefinition {
@@ -49,11 +77,17 @@ interface ZoneDefinition {
   homeDays: string;
 }
 
-function resolveZone(cleanCp: string): ZoneDefinition | null {
+function resolveZone(cleanCp: string, provinceCode?: string, city?: string): ZoneDefinition | null {
   const upper = cleanCp.toUpperCase();
+  const upperCity = (city || "").toUpperCase();
 
-  // Fast city name detection
-  if (upper.includes("TANDIL")) {
+  // 1. Detección rápida de Tandil (Sede Central de MYA Importaciones)
+  if (
+    upper.includes("TANDIL") ||
+    upperCity.includes("TANDIL") ||
+    cleanCp === "7000" ||
+    cleanCp === "B7000"
+  ) {
     return {
       id: "local_tandil",
       name: "Tandil (Local)",
@@ -64,6 +98,88 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
       homeDays: "En el día / 24 hs",
     };
   }
+
+  // 2. Mapeo oficial de Correo Argentino por Código de Provincia (ISO 3166-2: A-Z)
+  const prov = provinceCode ? getProvinceByCode(provinceCode) : inferProvinceFromPostalCode(cleanCp);
+  if (prov) {
+    if (prov.code === "C") {
+      return {
+        id: "caba",
+        name: "CABA",
+        location: "Ciudad Autónoma de Buenos Aires",
+        baseBranchPrice: 5400,
+        baseHomePrice: 6800,
+        branchDays: "2 a 3 días hábiles",
+        homeDays: "24 a 48 hs hábiles",
+      };
+    }
+    if (prov.code === "B") {
+      const numMatch = cleanCp.match(/\d{4}/);
+      const cpNum = numMatch ? parseInt(numMatch[0], 10) : null;
+      if (cpNum && cpNum >= 1500 && cpNum <= 1999) {
+        return {
+          id: "gba",
+          name: "Gran Buenos Aires (GBA)",
+          location: "Conurbano Bonaerense / GBA",
+          baseBranchPrice: 5800,
+          baseHomePrice: 7200,
+          branchDays: "2 a 4 días hábiles",
+          homeDays: "48 a 72 hs hábiles",
+        };
+      }
+      let loc = "Interior Provincia de Buenos Aires";
+      if (cpNum && cpNum >= 7600 && cpNum <= 7610) loc = "Mar del Plata, Buenos Aires";
+      else if (cpNum && cpNum >= 8000 && cpNum <= 8010) loc = "Bahía Blanca, Buenos Aires";
+      else if (cpNum && cpNum === 7400) loc = "Olavarría, Buenos Aires";
+      else if (cpNum && cpNum === 7300) loc = "Azul, Buenos Aires";
+      else if (cpNum && cpNum === 7630) loc = "Necochea, Buenos Aires";
+
+      return {
+        id: "buenos_aires_interior",
+        name: "Interior de Buenos Aires",
+        location: loc,
+        baseBranchPrice: 6200,
+        baseHomePrice: 7800,
+        branchDays: "2 a 4 días hábiles",
+        homeDays: "48 a 72 hs hábiles",
+      };
+    }
+    if (prov.zone === "centro_litoral") {
+      return {
+        id: "centro_litoral",
+        name: `Centro y Litoral (${prov.name})`,
+        location: prov.name,
+        baseBranchPrice: 6900,
+        baseHomePrice: 8600,
+        branchDays: "3 a 5 días hábiles",
+        homeDays: "2 a 4 días hábiles",
+      };
+    }
+    if (prov.zone === "cuyo_noa") {
+      return {
+        id: "cuyo_noa",
+        name: `Cuyo y NOA (${prov.name})`,
+        location: prov.name,
+        baseBranchPrice: 7800,
+        baseHomePrice: 9800,
+        branchDays: "3 a 6 días hábiles",
+        homeDays: "3 a 5 días hábiles",
+      };
+    }
+    if (prov.zone === "patagonia") {
+      return {
+        id: "patagonia",
+        name: `Patagonia (${prov.name})`,
+        location: prov.name,
+        baseBranchPrice: 9400,
+        baseHomePrice: 12500,
+        branchDays: "4 a 7 días hábiles",
+        homeDays: "3 a 6 días hábiles",
+      };
+    }
+  }
+
+  // 3. Fallbacks de nombres de ciudad en texto libre
   if (upper.includes("CABA") || upper.includes("CAPITAL") || upper.includes("PALERMO") || upper.includes("BELGRANO") || upper.includes("RECOLETA")) {
     return {
       id: "caba",
@@ -109,16 +225,14 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // Extract numerical component
+  // 4. Fallback numérico por CP
   const numMatch = cleanCp.match(/\d{4}/);
   const letterPrefix = cleanCp.match(/^[A-Z]/)?.[0];
-
   const cpNum = numMatch ? parseInt(numMatch[0], 10) : null;
 
   if (cpNum && cpNum >= 5300 && cpNum <= 5799 && (!letterPrefix || ["M", "J", "F", "D"].includes(letterPrefix))) return resolveZone("MENDOZA");
   if (cpNum === 8000 && !letterPrefix) return resolveZone("B8000");
 
-  // 1. Local Tandil (Headquarters of MYA Importaciones)
   if (cpNum === 7000 || (letterPrefix === "B" && cpNum === 7000)) {
     return {
       id: "local_tandil",
@@ -131,7 +245,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 2. CABA (Capital Federal)
   if ((cpNum && cpNum >= 1000 && cpNum <= 1499) || letterPrefix === "C") {
     return {
       id: "caba",
@@ -144,7 +257,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 3. GBA / Gran Buenos Aires
   if (cpNum && cpNum >= 1500 && cpNum <= 1999) {
     return {
       id: "gba",
@@ -157,7 +269,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 4. Interior de la Provincia de Buenos Aires
   if (
     letterPrefix === "B" ||
     (cpNum && ((cpNum >= 2700 && cpNum <= 2999) || (cpNum >= 6000 && cpNum <= 7999)))
@@ -180,7 +291,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 5. Centro & Litoral (Santa Fe, CÃ³rdoba, Entre RÃ­os, etc.)
   if (
     ["S", "X", "E", "W", "N", "H", "P"].includes(letterPrefix || "") ||
     (cpNum && ((cpNum >= 2000 && cpNum <= 2699) || (cpNum >= 3000 && cpNum <= 3999) || (cpNum >= 5000 && cpNum <= 5999)))
@@ -202,7 +312,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 6. Cuyo & NOA (Mendoza, San Juan, TucumÃ¡n, Salta, etc.)
   if (
     ["M", "J", "D", "T", "A", "Y", "G", "K", "F"].includes(letterPrefix || "") ||
     (cpNum && (cpNum >= 4000 && cpNum <= 4999)) ||
@@ -225,7 +334,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // 7. Patagonia (NeuquÃ©n, RÃ­o Negro, Chubut, Santa Cruz, Tierra del Fuego)
   if (
     ["Q", "R", "U", "Z", "V"].includes(letterPrefix || "") ||
     (cpNum && cpNum >= 8000 && cpNum <= 9999)
@@ -247,7 +355,6 @@ function resolveZone(cleanCp: string): ZoneDefinition | null {
     };
   }
 
-  // Generic fallback if 4-digit code provided
   if (cpNum && cpNum >= 1000 && cpNum <= 9999) {
     return {
       id: "argentina_general",
@@ -267,11 +374,13 @@ export function calculateShipping(
   rawPostalCode: string,
   cartTotal: number = 0,
   isAllImmediateStock: boolean = false,
-  supplierDelivery: boolean = false
+  supplierDelivery: boolean = false,
+  provinceCode?: string,
+  city?: string
 ): ShippingCalculation {
-  const cleanCp = rawPostalCode.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const cleanCp = (rawPostalCode || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-  if (!cleanCp || cleanCp.length < 4) {
+  if ((!cleanCp || cleanCp.length < 4) && !provinceCode) {
     return {
       isValid: false,
       postalCode: rawPostalCode,
@@ -286,7 +395,7 @@ export function calculateShipping(
     };
   }
 
-  const zone = resolveZone(cleanCp);
+  const zone = resolveZone(cleanCp, provinceCode, city);
   if (!zone) {
     return {
       isValid: false,
@@ -315,14 +424,49 @@ export function calculateShipping(
     let amount: unknown;
     try { amount = JSON.parse(process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON ?? "{}")[zone.id]; } catch {}
     const confirmed = typeof amount === "number" && Number.isFinite(amount) && amount >= 0 && amount <= 1000000;
-    return {
-      isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
-      freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: false,
-      options: [{ id: "supplier_delivery", name: "Envío a domicilio", carrier: "Transporte a coordinar", type: "domicilio", price: confirmed ? amount as number : 0, originalPrice: confirmed ? amount as number : 0, isFree: confirmed && amount === 0, requiresQuote: !confirmed, estimatedDays: "Plazo según destino, a confirmar antes del pago" }],
-    };
+
+    if (confirmed) {
+      options.push({
+        id: "correo_domicilio",
+        name: "Envío Estándar a Domicilio",
+        carrier: "Correo Argentino Paq.ar",
+        type: "domicilio",
+        price: amount as number,
+        originalPrice: amount as number,
+        isFree: amount === 0,
+        requiresQuote: false,
+        estimatedDays: zone.homeDays || "2 a 5 días hábiles",
+        badge: "Correo Argentino",
+      });
+      options.push({
+        id: "correo_sucursal",
+        name: "Retiro en Sucursal más cercana",
+        carrier: "Correo Argentino Sucursal",
+        type: "sucursal",
+        price: Math.max(0, Math.round(((amount as number) * 0.8) / 100) * 100),
+        originalPrice: Math.max(0, Math.round(((amount as number) * 0.8) / 100) * 100),
+        isFree: false,
+        requiresQuote: false,
+        estimatedDays: zone.branchDays || "3 a 5 días hábiles",
+        badge: "Económico",
+      });
+      return {
+        isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
+        freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: false,
+        options,
+      };
+    }
+
+    if (process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON !== undefined) {
+      return {
+        isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
+        freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: false,
+        options: [{ id: "supplier_delivery", name: "Envío a domicilio", carrier: "Transporte a coordinar", type: "domicilio", price: 0, originalPrice: 0, isFree: false, requiresQuote: true, estimatedDays: "Plazo según destino, a confirmar antes del pago" }],
+      };
+    }
   }
 
-  // Special options for Tandil headquarters
+  // Opciones de Correo Argentino y entregas locales
   if (zone.id === "local_tandil") {
     options.push({
       id: "pickup_tandil",
@@ -355,7 +499,7 @@ export function calculateShipping(
     options.push({
       id: "correo_domicilio",
       name: "Envío a Domicilio",
-      carrier: "Correo Argentino Clásico",
+      carrier: "Correo Argentino Paq.ar",
       price: freeShippingQualified ? 0 : 5200,
       originalPrice: 5200,
       isFree: freeShippingQualified,
@@ -366,7 +510,7 @@ export function calculateShipping(
       type: "domicilio",
     });
   } else {
-    // 1. Correo Argentino a Sucursal (opciÃ³n econÃ³mica)
+    // 1. Correo Argentino a Sucursal (opción económica)
     const branchPrice = freeShippingQualified ? 0 : zone.baseBranchPrice;
     options.push({
       id: "correo_sucursal",
@@ -382,12 +526,12 @@ export function calculateShipping(
       type: "sucursal",
     });
 
-    // 2. Correo Argentino a Domicilio
+    // 2. Correo Argentino a Domicilio (opción principal)
     const homePrice = freeShippingQualified ? 0 : zone.baseHomePrice;
     options.push({
       id: "correo_domicilio",
       name: "Envío Estándar a Domicilio",
-      carrier: "Correo Argentino a Domicilio",
+      carrier: "Correo Argentino Paq.ar",
       price: homePrice,
       originalPrice: zone.baseHomePrice,
       isFree: freeShippingQualified,
@@ -398,7 +542,7 @@ export function calculateShipping(
       type: "domicilio",
     });
 
-    // 3. Andreani ExprÃ©s Prioritario (para mayor velocidad)
+    // 3. Andreani Exprés Prioritario (para mayor velocidad)
     const expressPrice = Math.round((zone.baseHomePrice * 1.25) / 100) * 100;
     options.push({
       id: "andreani_express",
@@ -423,7 +567,7 @@ export function calculateShipping(
     zoneId: zone.id,
     zoneName: zone.name,
     locationName: zone.location,
-    options: options.map(option => ({ ...option, estimatedDays: option.type === "pickup" ? "A coordinar" : "Estimado sujeto a confirmacion del transportista", badge: undefined })),
+    options,
     freeShippingQualified,
     freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
     remainingForFreeShipping: Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal),

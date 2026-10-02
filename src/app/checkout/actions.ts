@@ -10,10 +10,16 @@ import { createMercadoPagoPreference, isMercadoPagoConfigured } from "@/lib/merc
 export interface CheckoutInput {
   lines: { productId: string; quantity: number; channel: "retail" | "wholesale" }[];
   paymentMethod: "transferencia" | "mercado_pago";
-  postalCode: string; shippingOptionId: string; coupon: string;
+  postalCode: string;
+  province?: string;
+  city?: string;
+  address?: string;
+  shippingOptionId: string;
+  coupon: string;
 }
 export interface OrderInput extends CheckoutInput {
   name: string; email: string; phone: string; address: string; city: string; notes: string;
+  province?: string;
   requestId: string; expectedTotal: number;
   acceptSeparateShipping: boolean;
 }
@@ -45,15 +51,19 @@ async function resolveQuote(input: CheckoutInput) {
   });
   const supplierDelivery = products.some(p => p.fulfillment_mode === "supplier");
   if (!isShippingPaidSeparately() && supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
-  const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery);
+  const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery, input.province, input.city);
   const option = shipping.options.find(o => o.id === input.shippingOptionId);
   const shippingQuotedSeparately = isShippingPaidSeparately() && option?.id === "delivery_quote_separately";
   if (option?.requiresQuote && !shippingQuotedSeparately) throw new Error("Confirmemos la tarifa y el plazo de envío para tu destino antes del pago. Envianos el carrito por WhatsApp.");
   if (!shipping.isValid || !option) throw new Error("Elegí un destino y una opción de entrega válidos.");
   if (option.type !== "pickup" && !shippingQuotedSeparately) {
     if (process.env.COMMERCE_SHIPPING_ENABLED !== "true") throw new Error("El envío necesita confirmación de tarifa. Consultanos por WhatsApp para coordinar la entrega.");
-    const weight = products.reduce((sum, p) => sum + Number(p.specifications?.peso_kg ?? 0) * input.lines.find(l => l.productId === p.id)!.quantity, 0);
-    if (products.some(p => !(Number(p.specifications?.peso_kg) > 0)) || weight > 2) throw new Error("Este pedido necesita cotización de envío por peso o volumen. Consultanos por WhatsApp para coordinar la entrega.");
+    const weight = products.reduce((sum, p) => {
+      const declared = Number(p.specifications?.peso_kg);
+      const itemWeight = Number.isFinite(declared) && declared > 0 ? declared : 0.3;
+      return sum + itemWeight * input.lines.find(l => l.productId === p.id)!.quantity;
+    }, 0);
+    if (weight > 25) throw new Error("Este pedido supera los 25 kg (límite estándar de Correo Argentino). Consultanos por WhatsApp para coordinar la entrega.");
   }
   return { db, items, quote: { ...priceOrder(items, input.paymentMethod, input.coupon, option.price, input.postalCode), shippingQuotedSeparately }, option };
 }
@@ -86,7 +96,7 @@ export async function createOrderAction(input: OrderInput) {
   if (option.type !== "pickup" && (!input.address.trim() || !input.city.trim())) throw new Error("Completá domicilio o sucursal exacta y localidad.");
   if (quote.total !== input.expectedTotal) throw new Error("El precio cambió. Actualizá el resumen antes de confirmar.");
   const { data: order, error } = await db.rpc("create_retail_order_v2", {
-    payload: { request_id: input.requestId, request_hash: requestHash, profile_id: user?.id ?? null, name: input.name.trim(), email: input.email.toLowerCase().trim(), phone: input.phone.trim(), address: option.type === "pickup" ? "Retiro coordinado en Tandil" : `${input.address}, ${input.city}, ${input.postalCode}`, notes: [input.notes, quote.shippingQuotedSeparately ? "Envío a cotizar y abonar por separado. El pago de este pedido corresponde únicamente a los productos." : ""].filter(Boolean).join("\n"), payment: input.paymentMethod, items, subtotal: quote.subtotal, discount: quote.discount, shipping: quote.shipping, total: quote.total, shipping_option: option.id, promotion: quote.promotion },
+    payload: { request_id: input.requestId, request_hash: requestHash, profile_id: user?.id ?? null, name: input.name.trim(), email: input.email.toLowerCase().trim(), phone: input.phone.trim(), address: option.type === "pickup" ? "Retiro coordinado en Tandil" : `${input.address}, ${input.city}${input.province ? `, Prov. ${input.province}` : ""}, CP ${input.postalCode}`, notes: [input.notes, quote.shippingQuotedSeparately ? "Envío a cotizar y abonar por separado. El pago de este pedido corresponde únicamente a los productos." : ""].filter(Boolean).join("\n"), payment: input.paymentMethod, items, subtotal: quote.subtotal, discount: quote.discount, shipping: quote.shipping, total: quote.total, shipping_option: option.id, promotion: quote.promotion },
   });
   if (error || !order) throw new Error("No pudimos reservar el pedido. Actualizá disponibilidad e intentá nuevamente.");
   let initPoint: string | undefined = order.payment_url ?? undefined;

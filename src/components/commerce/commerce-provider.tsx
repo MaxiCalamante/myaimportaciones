@@ -46,6 +46,10 @@ interface CommerceContextValue {
   setSelectedProduct: (product: Product | null) => void;
   postalCode: string;
   setPostalCode: (code: string) => void;
+  province: string;
+  setProvince: (code: string) => void;
+  city: string;
+  setCity: (city: string) => void;
   shippingCost: number;
   shippingCalculation: ShippingCalculation;
   isAllImmediateStock: boolean;
@@ -61,6 +65,8 @@ const CommerceContext = createContext<CommerceContextValue | null>(null);
 const cartKey = "mm-cart";
 
 const postalCodeKey = "mya_postal_code";
+const provinceKey = "mya_province";
+const cityKey = "mya_city";
 const shippingOptionKey = "mya_shipping_option";
 
 export function CommerceProvider({ children }: { children: ReactNode }) {
@@ -69,6 +75,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [postalCode, setPostalCodeState] = useState("");
+  const [province, setProvinceState] = useState("");
+  const [city, setCityState] = useState("");
   const [selectedShippingOptionId, setSelectedShippingOptionIdState] = useState("correo_domicilio");
   const hydrated = useRef(false);
 
@@ -78,6 +86,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         const storedCart = window.localStorage.getItem(cartKey);
 
         const storedPostalCode = window.localStorage.getItem(postalCodeKey);
+        const storedProvince = window.localStorage.getItem(provinceKey);
+        const storedCity = window.localStorage.getItem(cityKey);
         const storedShippingOption = window.localStorage.getItem(shippingOptionKey);
 
         if (storedCart) {
@@ -87,6 +97,12 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
         if (storedPostalCode) {
           setPostalCodeState(storedPostalCode);
+        }
+        if (storedProvince) {
+          setProvinceState(storedProvince);
+        }
+        if (storedCity) {
+          setCityState(storedCity);
         }
 
         if (storedShippingOption) {
@@ -107,6 +123,28 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         window.localStorage.setItem(postalCodeKey, code);
       } else {
         window.localStorage.removeItem(postalCodeKey);
+      }
+    } catch {}
+  }, []);
+
+  const setProvince = useCallback((code: string) => {
+    setProvinceState(code);
+    try {
+      if (code) {
+        window.localStorage.setItem(provinceKey, code);
+      } else {
+        window.localStorage.removeItem(provinceKey);
+      }
+    } catch {}
+  }, []);
+
+  const setCity = useCallback((val: string) => {
+    setCityState(val);
+    try {
+      if (val) {
+        window.localStorage.setItem(cityKey, val);
+      } else {
+        window.localStorage.removeItem(cityKey);
       }
     } catch {}
   }, []);
@@ -202,10 +240,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     return cart.length > 0 && cart.every((line) => isProductImmediateStock(line.product));
   }, [cart]);
 
-  // Dynamic shipping calculation based on postalCode, cartTotal, and isAllImmediateStock
+  // Dynamic shipping calculation based on postalCode, cartTotal, isAllImmediateStock, province, and city
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, cart.some(line => line.product.fulfillmentMode === "supplier"));
-  }, [postalCode, cartTotal, isAllImmediateStock, cart]);
+    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, cart.some(line => line.product.fulfillmentMode === "supplier"), province, city);
+  }, [postalCode, cartTotal, isAllImmediateStock, cart, province, city]);
 
   const selectedShippingOption = useMemo(() => {
     if (!shippingCalculation.isValid || shippingCalculation.options.length === 0) return null;
@@ -254,6 +292,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setSelectedProduct,
       postalCode,
       setPostalCode,
+      province,
+      setProvince,
+      city,
+      setCity,
       shippingCost,
       shippingCalculation,
       isAllImmediateStock,
@@ -281,6 +323,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setSelectedProduct,
       postalCode,
       setPostalCode,
+      province,
+      setProvince,
+      city,
+      setCity,
       shippingCost,
       shippingCalculation,
       isAllImmediateStock,
