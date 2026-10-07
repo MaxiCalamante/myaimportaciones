@@ -31,7 +31,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
   ].slice(0, 4);
 
   return <>
-    {slides.length > 0 ? <StoreHero slides={slides} /> : <header className="mx-auto max-w-7xl px-4 pt-10 text-center sm:px-6"><p className="text-xs font-bold uppercase tracking-widest text-sky-700">MyA importaciones · Tandil</p><h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-950 sm:text-5xl">Encontrá lo que estás buscando</h1><p className="mt-3 text-sm text-zinc-600">Cosmética, cuidado capilar y herramientas con atención cercana.</p></header>}
+    {slides.length > 0 ? <StoreHero slides={slides} /> : <header className="mx-auto max-w-7xl px-4 pt-10 text-center sm:px-6"><p className="text-xs font-bold uppercase tracking-widest text-sky-700">MyA importaciones · Tandil</p><h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-950 sm:text-5xl">Encontrá lo que estás buscando</h1><p className="mt-3 text-sm text-zinc-600">Cosmética Coreana (K-Beauty original), cuidado capilar, fragancias y herramientas profesionales con atención directa de Máximo y Agustina.</p></header>}
     {retailProducts.length > 0 && <RetailHighlights />}
     {retailProducts.length > 0 && <CategoryStrip categories={navigationCategories} />}
     {(error || !retailProducts.length) && <EmptyCatalog error={error} />}

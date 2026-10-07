@@ -3,15 +3,52 @@ const appUrl = configuredAppUrl === "https://tienda-mayorista-minorista.vercel.a
   ? "https://myaimportaciones.vercel.app"
   : configuredAppUrl;
 
+export interface WhatsAppContact {
+  id: "maximo" | "agustina";
+  name: string;
+  role: string;
+  phone: string;
+  whatsappNumber: string;
+  avatarText: string;
+  badge: string;
+  specialty: string;
+}
+
+export const whatsappContacts: WhatsAppContact[] = [
+  {
+    id: "maximo",
+    name: "Máximo",
+    role: "Ventas y Consultas Generales",
+    phone: "+54 9 249 463-8919",
+    whatsappNumber: "5492494638919",
+    avatarText: "M",
+    badge: "Ventas & Envíos",
+    specialty: "Herramientas industriales, logística, envíos a todo el país y pagos.",
+  },
+  {
+    id: "agustina",
+    name: "Agustina",
+    role: "Ventas y Asesoramiento",
+    phone: "+54 9 2494 25-1541",
+    whatsappNumber: "5492494251541",
+    avatarText: "A",
+    badge: "Skincare & Capilar",
+    specialty: "Cosmética coreana (K-Beauty), Kérastase, Shiseido, fragancias y rutinas.",
+  },
+];
+
 export const siteConfig = {
   brandName: "MyA importaciones",
   shortName: "MyA",
   tagline: "Desde Tandil a todo el país",
   description:
-    "Tienda oficial de MyA importaciones en Argentina. Cosmética Coreana (K-Beauty), herramientas industriales Total y Wadfow con envíos a todo el país.",
+    "Tienda oficial de MyA importaciones en Argentina. Cosmética Coreana (K-Beauty original), cuidado capilar Kérastase y Shiseido, tratamientos Karseell, fragancias Victoria's Secret y herramientas profesionales Total Tools y Wadfow con envíos a todo el país.",
   email: "maximocalamante14@gmail.com",
   phone: "+54 9 249 463-8919",
+  phoneAgustina: "+54 9 2494 25-1541",
   whatsappNumber: "5492494638919",
+  whatsappNumberAgustina: "5492494251541",
+  whatsappContacts,
   instagram: "https://www.instagram.com/_myaimportaciones/",
   instagramHandle: "@_myaimportaciones",
   location: "Tandil, Buenos Aires, Argentina",
@@ -30,6 +67,11 @@ export const siteConfig = {
 
 export function getWhatsAppUrl(text: string, phone = siteConfig.whatsappNumber) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+export function getContactWhatsAppUrl(contactId: "maximo" | "agustina", text: string) {
+  const contact = whatsappContacts.find((c) => c.id === contactId) || whatsappContacts[0];
+  return getWhatsAppUrl(text, contact.whatsappNumber);
 }
 
 export const heroImageUrl = "/logo.png";

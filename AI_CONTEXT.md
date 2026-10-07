@@ -2,6 +2,26 @@
 
 Actualizado el 07/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
 
+## Atención por WhatsApp Dual y Mejora Integral de Copywriting — 07/10/2026
+
+Por requerimiento expreso del dueño:
+- **WhatsApp con Selección de Asesor (Máximo y Agustina):**
+  - **Máximo:** Teléfono `+54 9 249 463-8919` (`5492494638919`). Especialidad: Ventas generales, logística, herramientas industriales, pagos y pedidos.
+  - **Agustina:** Teléfono `+54 9 2494 25-1541` (`5492494251541`). Especialidad: Skincare (K-Beauty), cuidado capilar (Kérastase, Shiseido, Karseell), fragancias (Victoria's Secret) y asesoramiento de rutinas.
+  - **Componente `WhatsAppContactModal` (`src/components/commerce/whatsapp-modal.tsx`):**
+    - Se despliega al hacer clic o tocar en cualquier punto de contacto de WhatsApp: botón flotante de escritorio, botón del menú inferior móvil (`MobileBottomNav`), botón de la ficha de producto ("Consultar o Pedir por WhatsApp"), barra sticky móvil, carrito lateral (`CartDrawer`), footer y checkout.
+    - Presenta un modal moderno, accesible y responsive donde el cliente elige directamente entre Máximo o Agustina.
+    - Conserva y transmite el mensaje contextualizado (producto seleccionado con título y enlace, detalle del carrito o consulta general).
+- **Mejora Integral de Textos y Copywriting del Sitio:**
+  - Enriquecimiento del posicionamiento de marca con base en la identidad real (Máximo & Agustina, importaciones directas desde Tandil, Buenos Aires).
+  - Destacados de portada (`RetailHighlights`): Pagos Seguros & Cuotas, Envíos a Todo el País por Correo Argentino, Productos 100% Originales y Atención Directa Máximo & Agustina.
+  - Franja de categorías (`CategoryStrip`): títulos, badges y conteos descriptivos por rubro (K-Beauty Original, Cuidado Capilar & Fragancias, Herramientas Profesionales).
+  - Pie de página (`SiteFooter`), condiciones de compra (`/condiciones`), catálogo (`/catalogo`) y metadata SEO actualizados con los nuevos canales de contacto y propuesta de valor auténtica.
+- **Validación técnica:**
+  - `npm run type-check`: 0 errores.
+  - `npm test`: 52/52 pruebas unitarias aprobadas.
+  - `npm run build`: compilación de producción de 35 rutas exitosa en Next.js Turbopack.
+
 ## Carga y actualización de cosméticos, cuidado capilar y fragancias — 07/10/2026
 
 Se procesó la solicitud de carga de productos desde Atacado USA (pág. 5) y Star Company (Kérastase, Shiseido, Dr. Althea y Victoria's Secret):

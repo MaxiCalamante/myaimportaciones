@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Mail, MapPin, Phone, MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site";
+import { useCommerce } from "@/components/commerce/commerce-provider";
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -26,6 +27,7 @@ function InstagramIcon({ className }: { className?: string }) {
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { openWhatsApp } = useCommerce();
   const isWholesale = pathname?.startsWith("/mayorista");
 
   return (
@@ -51,7 +53,7 @@ export function SiteFooter() {
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
               ? "Tu distribuidor directo de confianza. Abastecemos a comercios, ferreterías y revendedores con Cosmética Coreana (K-Beauty original), tratamientos capilares Karseell y herramientas industriales Total y Wadfow con precios diferenciales por bulto cerrado."
-              : "Cosmética coreana, cuidado capilar y herramientas. Atención desde Tandil y opciones de entrega según tu compra."}
+              : "Tu tienda de confianza en importaciones directas. Cosmética coreana (K-Beauty original), cuidado capilar premium, fragancias y herramientas profesionales. Atención humana desde Tandil por Máximo y Agustina con envíos a toda la Argentina."}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <a
@@ -63,15 +65,14 @@ export function SiteFooter() {
               <InstagramIcon className="h-4 w-4" />
               {siteConfig.instagramHandle}
             </a>
-            <a
-              href={`https://wa.me/${siteConfig.whatsappNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            <button
+              type="button"
+              onClick={() => openWhatsApp("Hola MYA Importaciones! Quisiera hacer una consulta.")}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer"
             >
               <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </a>
+              WhatsApp (Máximo o Agustina)
+            </button>
           </div>
         </div>
 
@@ -115,16 +116,13 @@ export function SiteFooter() {
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/#ofertas">
                   Más para descubrir
                 </Link>
-                <a
-                  className="text-amber-400/90 hover:text-amber-300 transition-colors"
-                  href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(
-                    "Hola MYA Importaciones! Quisiera consultar por un producto."
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => openWhatsApp("Hola MYA Importaciones! Quisiera consultar por un producto.")}
+                  className="inline-flex min-h-11 items-center text-left text-amber-400/90 hover:text-amber-300 transition-colors cursor-pointer"
                 >
                   Consultas sobre productos
-                </a>
+                </button>
               </>
             )}
             <Link className="text-zinc-400 hover:text-white" href="/condiciones">Condiciones, envíos y devoluciones</Link>
@@ -143,11 +141,37 @@ export function SiteFooter() {
         <div>
           <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Contacto & Envíos</h2>
           <div className="mt-4 grid gap-3 text-sm text-zinc-400">
-            <span className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-sky-400" />
-              <a href={`tel:${siteConfig.phone.replace(/[^+0-9]/g, "")}`} className="inline-flex min-h-11 items-center hover:text-white">{siteConfig.phone}</a>
-            </span>
-            <span className="flex items-center gap-2">
+            <div>
+              <p className="text-xs font-bold text-zinc-300">Máximo (Ventas & Envíos)</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Phone className="h-3.5 w-3.5 text-sky-400" />
+                <a href={`tel:${siteConfig.phone.replace(/[^+0-9]/g, "")}`} className="hover:text-white text-xs">{siteConfig.phone}</a>
+                <button
+                  type="button"
+                  onClick={() => openWhatsApp("Hola Máximo! Quería hacerte una consulta.")}
+                  className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded hover:bg-emerald-500/30 font-semibold cursor-pointer ml-1"
+                >
+                  Wpp
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-zinc-300">Agustina (Ventas & Asesoramiento)</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Phone className="h-3.5 w-3.5 text-pink-400" />
+                <a href={`tel:${siteConfig.phoneAgustina.replace(/[^+0-9]/g, "")}`} className="hover:text-white text-xs">{siteConfig.phoneAgustina}</a>
+                <button
+                  type="button"
+                  onClick={() => openWhatsApp("Hola Agustina! Quería hacerte una consulta sobre skincare o cosmética.")}
+                  className="text-[10px] bg-pink-500/20 text-pink-400 px-1.5 py-0.5 rounded hover:bg-pink-500/30 font-semibold cursor-pointer ml-1"
+                >
+                  Wpp
+                </button>
+              </div>
+            </div>
+
+            <span className="flex items-center gap-2 pt-1 border-t border-zinc-900">
               <Mail className="h-4 w-4 text-sky-400" />
               <a href={`mailto:${siteConfig.email}`} className="inline-flex min-h-11 break-all items-center hover:text-white">{siteConfig.email}</a>
             </span>
@@ -156,7 +180,7 @@ export function SiteFooter() {
               {siteConfig.location}
             </span>
             <div className="border-t border-zinc-900 pt-2.5 mt-1 text-xs text-zinc-400 space-y-1">
-              <p>Consultá las opciones de entrega disponibles para tu destino.</p>
+              <p>Despachos por Correo Argentino a todo el país.</p>
             </div>
           </div>
         </div>

@@ -39,6 +39,7 @@ export function CheckoutPanel({
     shippingCalculation,
     selectedShippingOption,
     setSelectedShippingOptionId,
+    openWhatsApp,
   } = useCommerce();
 
   const [paymentMethod, setPayment] = useState<CheckoutInput["paymentMethod"]>("transferencia");
@@ -243,14 +244,13 @@ export function CheckoutPanel({
             </div>
             <p className="text-zinc-600 pt-0.5">Titular: <strong className="text-zinc-900">MYA Importaciones</strong></p>
           </div>
-          <a
-            className="block rounded-xl bg-emerald-600 p-3.5 text-center font-bold text-white hover:bg-emerald-700 transition shadow-xs text-sm"
-            href={getWhatsAppUrl(`Hola MYA, realicé la transferencia del pedido ${result.trackingCode} por ${formatCurrency(result.total)} con destino a ${city}, ${province}. Adjunto el comprobante.`)}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            className="w-full block rounded-xl bg-emerald-600 p-3.5 text-center font-bold text-white hover:bg-emerald-700 transition shadow-xs text-sm cursor-pointer"
+            onClick={() => openWhatsApp(`Hola MYA, realicé la transferencia del pedido ${result.trackingCode} por ${formatCurrency(result.total)} con destino a ${city}, ${province}. Adjunto el comprobante.`)}
           >
             Enviar comprobante por WhatsApp →
-          </a>
+          </button>
         </div>
       )}
 
@@ -272,14 +272,13 @@ export function CheckoutPanel({
         >
           Ver seguimiento de mi envío en vivo →
         </Link>
-        <a
-          href={getWhatsAppUrl(`Hola MYA! Consulto por el estado de mi compra ${result.trackingCode}.`)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-xl border border-zinc-300 hover:bg-zinc-100 p-3.5 text-center font-semibold text-zinc-800 text-sm transition"
+        <button
+          type="button"
+          onClick={() => openWhatsApp(`Hola MYA! Consulto por el estado de mi compra ${result.trackingCode}.`)}
+          className="rounded-xl border border-zinc-300 hover:bg-zinc-100 p-3.5 text-center font-semibold text-zinc-800 text-sm transition cursor-pointer"
         >
           Consultar por WhatsApp
-        </a>
+        </button>
       </div>
     </section>
   );
@@ -291,7 +290,7 @@ export function CheckoutPanel({
 
       {!checkoutEnabled && (
         <div role="status" className="my-5 rounded-xl bg-amber-50 p-4 text-amber-900 border border-amber-200">
-          La compra online está en preparación. <a className="underline font-bold" href={getWhatsAppUrl("Hola MYA! Quisiera consultar disponibilidad y entrega de un producto.")} target="_blank" rel="noopener noreferrer">Consultanos por WhatsApp</a> antes de realizar un pago.
+          La compra online está en preparación. <button type="button" onClick={() => openWhatsApp("Hola MYA! Quisiera consultar disponibilidad y entrega de un producto.")} className="underline font-bold cursor-pointer">Consultanos por WhatsApp</button> antes de realizar un pago.
         </div>
       )}
 
@@ -302,7 +301,7 @@ export function CheckoutPanel({
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
             <h2 className="text-xl font-bold text-zinc-950">Coordiná tu compra</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">Confirmamos disponibilidad, costo y plazo de entrega por Correo Argentino según tu destino antes de indicarte cómo pagar.</p>
-            <a className="mt-6 block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700" target="_blank" rel="noopener noreferrer" href={getWhatsAppUrl(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}.`)}>Consultar este carrito por WhatsApp</a>
+            <button type="button" onClick={() => openWhatsApp(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}.`)} className="mt-6 w-full block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700 cursor-pointer">Consultar este carrito por WhatsApp</button>
             <Link href="/catalogo" className="mt-4 inline-block text-sm font-semibold text-sky-700 underline underline-offset-2">Seguir viendo productos</Link>
           </div>
           <aside className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
@@ -579,7 +578,7 @@ export function CheckoutPanel({
               </label>
             )}
 
-            {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200"><p>{error}</p><a className="mt-2 inline-block font-semibold underline" href={getWhatsAppUrl(`Hola, necesito coordinar mi pedido: ${cart.map(line => `${line.quantity} × ${line.product.title}`).join(", ")}. Destino: ${city}, CP ${postalCode}.`)} target="_blank" rel="noopener noreferrer">Coordinar el pedido por WhatsApp</a></div>}
+            {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200"><p>{error}</p><button type="button" onClick={() => openWhatsApp(`Hola, necesito coordinar mi pedido: ${cart.map(line => `${line.quantity} × ${line.product.title}`).join(", ")}. Destino: ${city}, CP ${postalCode}.`)} className="mt-2 inline-block font-semibold underline cursor-pointer text-left">Coordinar el pedido por WhatsApp</button></div>}
 
             <p className="text-[11px] text-zinc-500 text-center">
               Al confirmar aceptás las <Link href="/condiciones" className="underline">condiciones de compra</Link> y <Link href="/privacidad" className="underline">privacidad</Link>.

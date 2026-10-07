@@ -62,6 +62,10 @@ interface CommerceContextValue {
   volumeDiscountPercentage: number;
   volumeDiscountAmount: number;
   retailUnitsCount: number;
+  whatsappModalOpen: boolean;
+  whatsappModalMessage: string;
+  openWhatsApp: (message?: string) => void;
+  closeWhatsApp: () => void;
 }
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
@@ -86,7 +90,20 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const [city, setCityState] = useState("");
   const [address, setAddressState] = useState("");
   const [selectedShippingOptionId, setSelectedShippingOptionIdState] = useState("correo_domicilio");
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
+  const [whatsappModalMessage, setWhatsappModalMessage] = useState("");
   const hydrated = useRef(false);
+
+  const openWhatsApp = useCallback((msg?: string) => {
+    setWhatsappModalMessage(
+      msg || "Hola MYA Importaciones! Estuve viendo su tienda online y quería hacer una consulta."
+    );
+    setWhatsappModalOpen(true);
+  }, []);
+
+  const closeWhatsApp = useCallback(() => {
+    setWhatsappModalOpen(false);
+  }, []);
 
   useEffect(() => {
     let busy = false;
@@ -366,6 +383,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       volumeDiscountPercentage,
       volumeDiscountAmount,
       retailUnitsCount,
+      whatsappModalOpen,
+      whatsappModalMessage,
+      openWhatsApp,
+      closeWhatsApp,
     }),
     [
       addToCart,
@@ -398,6 +419,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       volumeDiscountPercentage,
       volumeDiscountAmount,
       retailUnitsCount,
+      whatsappModalOpen,
+      whatsappModalMessage,
+      openWhatsApp,
+      closeWhatsApp,
     ],
   );
 

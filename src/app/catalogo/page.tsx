@@ -10,7 +10,11 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import type { Product } from "@/lib/types";
 
-export const metadata = { title: "Catálogo minorista", description: "Encontrá productos por categoría, marca y precio. Consultá disponibilidad y entrega." };
+export const metadata = {
+  title: "Catálogo de productos | MyA importaciones",
+  description:
+    "Explorá nuestro catálogo de Cosmética Coreana (K-Beauty original), cuidado capilar, fragancias y herramientas profesionales Total Tools con envíos a todo el país.",
+};
 type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; min?: string; max?: string };
 const pageSize = 24;
 
@@ -130,7 +134,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             {category?.name ?? "Todos los productos"}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-zinc-500 max-w-2xl">
-            {category?.description || "Encontrá los mejores productos originales con entrega y envíos a todo el país."}
+            {category?.description || "Encontrá productos 100% auténticos importados con envíos a todo el país y atención personalizada desde Tandil."}
           </p>
         </div>
         <div className="mt-1 sm:mt-0 flex items-center">
@@ -212,7 +216,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             : "Sin resultados"}
         </span>
         <span className="hidden sm:inline text-xs text-zinc-500">
-          Envíos a todo el país · Disponibilidad en cada producto
+          Envíos por Correo Argentino a todo el país · Atención Máximo & Agustina
         </span>
       </div>
 

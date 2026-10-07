@@ -10,6 +10,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { getStorefrontData } from "@/lib/storefront";
 import { siteConfig } from "@/lib/site";
 import { WhatsAppFloatingButton } from "@/components/commerce/whatsapp-button";
+import { WhatsAppContactModal } from "@/components/commerce/whatsapp-modal";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { AnalyticsConsent } from "@/components/analytics/consent";
 import { MarketingScripts } from "@/components/analytics/marketing-scripts";
@@ -42,10 +43,13 @@ export const metadata: Metadata = {
     "Dr Althea",
     "Celimax",
     "Karseell colágeno",
+    "Kérastase Argentina",
+    "Shiseido Fino Hair Mask",
+    "Victoria's Secret Body Mist",
     "Herramientas Total Tools",
     "Herramientas Wadfow",
-
-    "Distribución mayorista y minorista",
+    "Importaciones Tandil",
+    "Máximo y Agustina",
   ],
   icons: {
     icon: "/icon.png",
@@ -149,6 +153,7 @@ export default async function RootLayout({
           <CartDrawer checkoutEnabled={process.env.COMMERCE_CHECKOUT_ENABLED === "true"} />
           <ProductDetailsModal />
           <WhatsAppFloatingButton />
+          <WhatsAppContactModal />
           <MobileBottomNav signedIn={Boolean(profile)} />
           <Suspense fallback={null}>
             <MarketingScripts />

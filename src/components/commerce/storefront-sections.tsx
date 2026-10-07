@@ -113,23 +113,23 @@ export function RetailHighlights() {
   const items = [
     { 
       icon: BadgePercent, 
-      title: "Medios de pago",
-      desc: "Transferencia y Mercado Pago; cuotas según las condiciones del medio de pago"
+      title: "Pagos Seguros & Cuotas",
+      desc: "Mercado Pago con todas las tarjetas y descuento especial abonando por transferencia."
     },
     { 
       icon: Truck, 
-      title: "Envíos Correo Argentino",
-      desc: "A domicilio o sucursal en todo el país con seguimiento en vivo"
+      title: "Envíos a Todo el País",
+      desc: "Despachos por Correo Argentino a domicilio o sucursal con seguimiento online."
     },
     { 
       icon: ShieldCheck, 
-      title: "Atención posventa",
-      desc: "Consultá las condiciones de garantía y comprobante de cada producto"
+      title: "Productos 100% Originales",
+      desc: "Importaciones legítimas con empaque de origen, soporte posventa y trazabilidad."
     },
     { 
       icon: Warehouse, 
-      title: "Atención desde Tandil",
-      desc: "Despacho directo y asesoramiento personalizado por WhatsApp"
+      title: "Atención Máximo & Agustina",
+      desc: "Atención directa desde Tandil: respondemos tus dudas al instante por WhatsApp."
     },
   ];
 
@@ -163,23 +163,23 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
       return {
         badge: "Total Tools & Wadfow",
         tagClass: "bg-blue-600 text-white",
-        count: "Para casa y taller",
+        count: "Línea profesional y para el hogar",
         bgHover: "hover:border-blue-300 hover:shadow-blue-50/50",
       };
     }
     if (slug.includes("cosmetica")) {
       return {
-        badge: "K-Beauty",
+        badge: "K-Beauty Original",
         tagClass: "bg-pink-600 text-white",
-        count: "Cuidado de la piel",
+        count: "Skincare coreano y salud de la piel",
         bgHover: "hover:border-pink-300 hover:shadow-pink-50/50",
       };
     }
     if (slug.includes("capilar")) {
       return {
-        badge: "Karseell & Tratamientos",
+        badge: "Kérastase, Fino & Karseell",
         tagClass: "bg-amber-700 text-white",
-        count: "Tratamientos intensivos",
+        count: "Tratamientos capilares y fragancias",
         bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
       };
     }
@@ -204,7 +204,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
               ¿Qué estás buscando?
             </h2>
             <p className="mt-1 text-sm text-zinc-600 max-w-2xl">
-              Elegí tu rubro y encontrá productos, precios y disponibilidad.
+              Explorá cosmética coreana original, cuidado capilar premium, fragancias y herramientas profesionales con los mejores precios.
             </p>
           </div>
           <Link

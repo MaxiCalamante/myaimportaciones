@@ -3,10 +3,10 @@ import { MapPin, MessageCircle, PackageCheck, Truck } from "lucide-react";
 
 export function TrustGuaranteeBadges({ variant = "full" }: { variant?: "full" | "compact" }) {
   const items = [
-    { icon: MapPin, title: "Atención desde Tandil", text: "Retiro coordinado y consultas antes de comprar." },
-    { icon: PackageCheck, title: "Disponibilidad clara", text: "Diferenciamos stock confirmado de productos a consultar." },
-    { icon: Truck, title: "Entrega según tu destino", text: "Revisá costos y condiciones antes de confirmar." },
-    { icon: MessageCircle, title: "Atención personal", text: "Te ayudamos a elegir y acompañamos tu compra." },
+    { icon: MapPin, title: "Atención desde Tandil", text: "Retiro coordinado y asesoramiento cercano antes de comprar." },
+    { icon: PackageCheck, title: "Productos 100% Originales", text: "Importación directa con empaque de origen y disponibilidad verificada." },
+    { icon: Truck, title: "Envíos a todo el país", text: "Despachos por Correo Argentino con seguimiento online en tiempo real." },
+    { icon: MessageCircle, title: "Máximo & Agustina", text: "Atención personalizada por WhatsApp para responder tus dudas antes y después de comprar." },
   ];
   return <section className={variant === "compact" ? "rounded-2xl border p-4" : "bg-slate-100 py-12"}>
     <div className="mx-auto max-w-7xl px-4"><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

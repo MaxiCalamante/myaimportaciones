@@ -1,21 +1,21 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { getWhatsAppUrl } from "@/lib/site";
+import { useCommerce } from "@/components/commerce/commerce-provider";
 
 export function WhatsAppFloatingButton() {
   const pathname = usePathname();
+  const { openWhatsApp } = useCommerce();
   const message = "Hola MYA Importaciones! Estuve viendo su tienda online y quería hacer una consulta.";
 
   if (pathname?.startsWith("/admin")) return null;
 
   return (
-    <a
-      href={getWhatsAppUrl(message)}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Contactar por WhatsApp"
-      className="group fixed bottom-6 right-6 z-40 hidden size-14 items-center justify-center rounded-full bg-[#128C7E] text-white shadow-lg shadow-black/15 transition-[background-color,transform,box-shadow] duration-200 hover:scale-105 hover:bg-[#0e7569] hover:shadow-xl active:scale-95 md:flex"
+    <button
+      type="button"
+      onClick={() => openWhatsApp(message)}
+      aria-label="Contactar por WhatsApp (Máximo o Agustina)"
+      className="group fixed bottom-6 right-6 z-40 hidden size-14 items-center justify-center rounded-full bg-[#128C7E] text-white shadow-lg shadow-black/15 transition-[background-color,transform,box-shadow] duration-200 hover:scale-105 hover:bg-[#0e7569] hover:shadow-xl active:scale-95 md:flex cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]"
     >
       {/* WhatsApp brand glyph from Simple Icons, kept square to preserve its proportions. */}
       <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor" className="size-7 shrink-0">
@@ -24,6 +24,6 @@ export function WhatsAppFloatingButton() {
       <span aria-hidden="true" className="pointer-events-none absolute right-full mr-3 translate-x-1 whitespace-nowrap rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-md transition-[opacity,transform] duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
         Consultas por WhatsApp
       </span>
-    </a>
+    </button>
   );
 }

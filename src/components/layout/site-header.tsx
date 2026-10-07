@@ -18,6 +18,7 @@ import {
   Droplets,
   LayoutGrid,
   ArrowRight,
+  MessageCircle,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -43,7 +44,7 @@ export function SiteHeader({
   const [apiResults, setApiResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [completedSearch, setCompletedSearch] = useState("");
-  const { cartCount, favoritesCount, setCartOpen, setSelectedProduct } = useCommerce();
+  const { cartCount, favoritesCount, setCartOpen, setSelectedProduct, openWhatsApp } = useCommerce();
 
   // Cancel stale searches so a slower previous response cannot replace the current query.
   useEffect(() => {
@@ -827,6 +828,22 @@ export function SiteHeader({
             >
               Descubrí más productos
             </Link>
+
+            <button
+              type="button"
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition cursor-pointer text-left ${
+                isWholesale
+                  ? "text-emerald-400 hover:bg-zinc-900"
+                  : "text-emerald-700 hover:bg-emerald-50"
+              }`}
+              onClick={() => {
+                setOpen(false);
+                openWhatsApp("Hola MYA Importaciones! Quisiera hacer una consulta.");
+              }}
+            >
+              <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>Consultas por WhatsApp (Máximo o Agustina)</span>
+            </button>
 
             {isWholesale ? (
               <div className="border-t border-zinc-800 my-2 pt-2">

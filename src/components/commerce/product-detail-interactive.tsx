@@ -40,6 +40,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     address,
     selectedShippingOptionId,
     setSelectedShippingOptionId,
+    openWhatsApp,
   } = useCommerce();
   const [quantity, setQuantity] = useState(1);
   const [channel, setChannel] = useState<"retail" | "wholesale">(
@@ -283,15 +284,14 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
         {/* WhatsApp Direct Order Button */}
         <div>
-          <a
-            href={getWhatsAppUrl(whatsappMessage)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 px-3 py-2.5 text-white text-xs sm:text-sm font-bold transition shadow-sm"
+          <button
+            type="button"
+            onClick={() => openWhatsApp(whatsappMessage)}
+            className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 px-3 py-2.5 text-white text-xs sm:text-sm font-bold transition shadow-sm cursor-pointer"
           >
             <MessageCircle className="h-4 w-4" />
             Consultar o Pedir por WhatsApp
-          </a>
+          </button>
         </div>
 
         {/* Share & Copy Link */}
@@ -481,15 +481,26 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             </span>
             <span className="whitespace-nowrap text-base font-black text-zinc-950">{formatCurrency(price)}</span>
           </div>
-          {!isVerifiedStock(product) ? <a href={getWhatsAppUrl(whatsappMessage)} target="_blank" rel="noopener noreferrer" className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-emerald-800"><MessageCircle className="h-4 w-4 shrink-0" />Consultar disponibilidad</a> : <button
-            onClick={handleAddToCart}
-            disabled={!isVerifiedStock(product)}
-            className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50"
-            type="button"
-          >
-            <ShoppingCart className="h-4 w-4 shrink-0" />
-            {!isVerifiedStock(product) ? "Consultar disponibilidad" : added ? "¡Agregado!" : "Agregar al carrito"}
-          </button>}
+          {!isVerifiedStock(product) ? (
+            <button
+              type="button"
+              onClick={() => openWhatsApp(whatsappMessage)}
+              className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-emerald-800 cursor-pointer"
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" />
+              Consultar disponibilidad
+            </button>
+          ) : (
+            <button
+              onClick={handleAddToCart}
+              disabled={!isVerifiedStock(product)}
+              className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50"
+              type="button"
+            >
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              {added ? "¡Agregado!" : "Agregar al carrito"}
+            </button>
+          )}
         </div>
       </div>
     </div>

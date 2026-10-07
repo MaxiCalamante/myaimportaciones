@@ -8,7 +8,7 @@ import { getWhatsAppUrl } from "@/lib/site";
 
 export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
-  const { cartCount, setCartOpen } = useCommerce();
+  const { cartCount, setCartOpen, openWhatsApp } = useCommerce();
 
   // Hide on admin routes
   if (pathname?.startsWith("/admin")) {
@@ -74,16 +74,15 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
           <span className="text-[10px] mt-1">{signedIn ? "Mis pedidos" : "Seguimiento"}</span>
         </Link>
 
-        {/* Direct WhatsApp */}
-        <a
-          href={getWhatsAppUrl("Hola MYA Importaciones! Quisiera hacer una consulta.")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-col items-center justify-center flex-1 h-full text-emerald-700 font-semibold hover:text-emerald-800 transition"
+        {/* WhatsApp Modal Trigger (Máximo o Agustina) */}
+        <button
+          type="button"
+          onClick={() => openWhatsApp("Hola MYA Importaciones! Quisiera hacer una consulta.")}
+          className="flex flex-col items-center justify-center flex-1 h-full text-emerald-700 font-semibold hover:text-emerald-800 transition cursor-pointer"
         >
           <MessageCircle className="h-5 w-5" />
           <span className="text-[10px] mt-1">WhatsApp</span>
-        </a>
+        </button>
       </nav>
     </div>
   );
