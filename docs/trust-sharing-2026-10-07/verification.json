@@ -1,0 +1,110 @@
+[
+  {
+    "width": 320,
+    "path": "/",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 320,
+    "path": "/producto/body-splash-victoria-s-secret-bare-vanilla-250ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 320,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 390,
+    "path": "/",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 390,
+    "path": "/producto/body-splash-victoria-s-secret-bare-vanilla-250ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 390,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 768,
+    "path": "/",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 768,
+    "path": "/producto/body-splash-victoria-s-secret-bare-vanilla-250ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 768,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 1440,
+    "path": "/",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 1440,
+    "path": "/producto/body-splash-victoria-s-secret-bare-vanilla-250ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "width": 1440,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "overflow": false,
+    "clipped": false
+  },
+  {
+    "bot": "WhatsApp/2.24.1",
+    "path": "/",
+    "title": "MYA Importaciones | Desde Tandil a todo el país",
+    "image": "https://myaimportaciones.vercel.app/compartir"
+  },
+  {
+    "bot": "WhatsApp/2.24.1",
+    "path": "/producto/body-splash-victoria-s-secret-bare-vanilla-250ml",
+    "title": "BODY SPLASH VICTORIA'S SECRET BARE VANILLA 250ML · $ 35.000 ARS | MYA Importaciones",
+    "image": "https://atacadousa.com.py/3142-large_default/body-splash-victoria-s-secret-bare-vanilla-250ml.jpg"
+  },
+  {
+    "bot": "WhatsApp/2.24.1",
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "title": "Anua Heartleaf Pore Control Cleansing Oil 200 ml · $ 41.900 ARS | MYA Importaciones",
+    "image": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-8.jpg"
+  },
+  {
+    "bot": "facebookexternalhit/1.1",
+    "path": "/",
+    "title": "MYA Importaciones | Desde Tandil a todo el país",
+    "image": "https://myaimportaciones.vercel.app/compartir"
+  },
+  {
+    "bot": "facebookexternalhit/1.1",
+    "path": "/producto/body-splash-victoria-s-secret-bare-vanilla-250ml",
+    "title": "BODY SPLASH VICTORIA'S SECRET BARE VANILLA 250ML · $ 35.000 ARS | MYA Importaciones",
+    "image": "https://atacadousa.com.py/3142-large_default/body-splash-victoria-s-secret-bare-vanilla-250ml.jpg"
+  },
+  {
+    "bot": "facebookexternalhit/1.1",
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "title": "Anua Heartleaf Pore Control Cleansing Oil 200 ml · $ 41.900 ARS | MYA Importaciones",
+    "image": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-cosmetics-20261001-8.jpg"
+  }
+]

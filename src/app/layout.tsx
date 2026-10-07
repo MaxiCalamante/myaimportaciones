@@ -29,7 +29,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.appUrl),
   title: {
-    default: "MyA importaciones | Cosmética Coreana y Herramientas Industriales",
+    default: siteConfig.shareTitle,
     template: "%s | MyA importaciones",
   },
   description: siteConfig.description,
@@ -61,22 +61,22 @@ export const metadata: Metadata = {
     locale: "es_AR",
     url: siteConfig.appUrl,
     siteName: siteConfig.brandName,
-    title: "MyA importaciones | Cosmética Coreana y Herramientas Industriales",
+    title: siteConfig.shareTitle,
     description: siteConfig.description,
     images: [
       {
-        url: "/og-image.png",
+        url: "/compartir",
         width: 1200,
-        height: 1200,
+        height: 630,
         alt: "MyA importaciones",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MyA importaciones | Importación Directa",
+    title: siteConfig.shareTitle,
     description: siteConfig.description,
-    images: ["/og-image.png"],
+    images: ["/compartir"],
   },
   robots: {
     index: true,

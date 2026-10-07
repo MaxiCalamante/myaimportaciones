@@ -41,8 +41,9 @@ export const siteConfig = {
   brandName: "MyA importaciones",
   shortName: "MyA",
   tagline: "Desde Tandil a todo el país",
+  shareTitle: "MYA Importaciones | Desde Tandil a todo el país",
   description:
-    "Tienda oficial de MyA importaciones en Argentina. Cosmética Coreana (K-Beauty original), cuidado capilar Kérastase y Shiseido, tratamientos Karseell, fragancias Victoria's Secret y herramientas profesionales Total Tools y Wadfow con envíos a todo el país.",
+    "Descubrí productos originales de importación para vos, tu hogar y tu negocio. Atención personalizada de Máximo y Agustina desde Tandil y envíos a toda la Argentina.",
   email: "maximocalamante14@gmail.com",
   phone: "+54 9 249 463-8919",
   phoneAgustina: "+54 9 2494 25-1541",

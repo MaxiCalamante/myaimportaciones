@@ -8,6 +8,7 @@ import { siteConfig } from "@/lib/site";
 import { ProductDetailInteractive } from "@/components/commerce/product-detail-interactive";
 import { ProductCard } from "@/components/commerce/product-card";
 import { isVerifiedStock } from "@/lib/commerce-policy";
+import { formatCurrency } from "@/lib/format";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -25,13 +26,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = product.title;
-  const description =
-    product.description ||
-    `Conocé ${product.title} en MYA Importaciones. Consultá disponibilidad y entrega para tu destino.`;
+  const price = `${formatCurrency(product.retailPrice)} ARS`;
+  const shareTitle = `${title} · ${price} | MYA Importaciones`;
+  const description = `${price}. ${product.description?.replace(/\s+/g, " ").trim().slice(0, 180) || `Conocé ${product.title} en MYA Importaciones.`} Consultá disponibilidad y entrega.`;
 
-  const imageUrl = product.imageUrl?.startsWith("http")
-    ? product.imageUrl
-    : `${siteConfig.appUrl}${product.imageUrl}`;
+  const imageUrl = new URL(product.imageUrl || siteConfig.logoUrl, `${siteConfig.appUrl}/`).href;
 
   return {
     title,
@@ -49,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       "Envíos a todo el país",
     ],
     openGraph: {
-      title,
+      title: shareTitle,
       description,
       url: `${siteConfig.appUrl}/producto/${product.slug}`,
       siteName: siteConfig.brandName,
@@ -58,17 +57,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [
         {
           url: imageUrl,
-          width: 800,
-          height: 800,
           alt: product.title,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: shareTitle,
       description,
       images: [imageUrl],
+    },
+    other: {
+      "product:price:amount": product.retailPrice.toString(),
+      "product:price:currency": "ARS",
     },
   };
 }

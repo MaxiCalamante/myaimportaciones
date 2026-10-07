@@ -211,7 +211,7 @@ export function SiteHeader({
     <header ref={headerRef} className={`${headerClass} ${open ? "z-[46]" : ""}`}>
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
         <Link className="group flex shrink-0 items-center gap-1.5" href={isWholesale ? "/mayorista" : "/"} aria-label={brandName}>
-          <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200 transition group-hover:scale-105 sm:h-11 sm:w-20">
+          <div className="relative h-10 w-14 shrink-0 overflow-hidden transition group-hover:scale-105 sm:h-11 sm:w-20">
             <Image
               src="/mya-mark-white.png"
               alt=""
@@ -220,7 +220,6 @@ export function SiteHeader({
               className="absolute left-1/2 top-1/2 h-16 w-16 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain sm:h-20 sm:w-20"
             />
           </div>
-          <span className={`hidden text-[12px] font-bold tracking-tight min-[360px]:inline sm:text-sm ${isWholesale ? "text-white" : "text-slate-800"}`}>importaciones</span>
           {isWholesale && <span className="hidden rounded-full border border-amber-400/40 px-2 py-1 text-[10px] font-semibold text-amber-300 xl:block">Mayorista</span>}
         </Link>
 
