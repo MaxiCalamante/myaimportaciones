@@ -61,7 +61,7 @@ export function StoreHero({ slides = defaultCarouselSlides, preview = false }: {
               <h2 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
                 {slide.title}
               </h2>
-              <p className="mt-5 max-w-xl text-base leading-7 text-zinc-150 sm:text-lg">
+              <p className="mt-5 max-w-xl text-base leading-7 text-zinc-200 sm:text-lg">
                 {slide.description}
               </p>
               {slide.btnText && slide.btnLink && <div className="mt-8 flex flex-col gap-3 sm:flex-row">

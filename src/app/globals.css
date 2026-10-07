@@ -33,6 +33,57 @@ textarea {
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+@layer base {
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #0369a1;
+    outline-offset: 3px;
+  }
+  button:not(:disabled), summary { cursor: pointer; }
+}
+
+.storefront-shell { min-height: 100dvh; }
+.content-page {
+  margin: 2rem auto;
+  border: 1px solid #e4e4e7;
+  border-radius: 1.5rem;
+  background: white;
+  padding: 1.5rem;
+  color: #3f3f46;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.content-page h1 { color: #09090b; line-height: 1.2; letter-spacing: -0.025em; }
+.content-page h2 { padding-top: 1rem; color: #18181b; }
+.content-page a { color: #0369a1; text-underline-offset: 3px; }
+.content-page label { font-size: 0.875rem; font-weight: 600; }
+.content-page :is(input, textarea) { background: #fff; border-color: #d4d4d8; font-weight: 400; }
+.content-page textarea { min-height: 8rem; resize: vertical; }
+.content-page button { min-height: 3rem; font-weight: 600; }
+.catalog-controls button { min-height: 2.75rem; }
+.catalog-controls button > svg { flex-shrink: 0; }
+.catalog-controls button[class*="rounded-full"] { max-width: 100%; }
+
+@media (min-width: 640px) {
+  .content-page { padding: 2.5rem; }
+}
+@media (max-width: 767px) {
+  .storefront-shell { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  .storefront-shell:has([data-product-page]) { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)); }
+  .storefront-shell:has([data-product-page]) .privacy-banner { bottom: calc(9.5rem + env(safe-area-inset-bottom)); }
+  :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]) { font-size: 1rem; }
+  .content-page { margin: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Custom scrollbar utility for sleek scrollable areas */
@@ -106,6 +157,8 @@ html {
   }
   .admin-card-table td[data-label] button {
     max-width: 100%;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
   }
   .admin-cost-table { min-width: 0 !important; }
   .admin-cost-table thead { display: none; }

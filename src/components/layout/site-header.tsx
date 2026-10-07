@@ -42,6 +42,7 @@ export function SiteHeader({
   const [searchQuery, setSearchQuery] = useState("");
   const [apiResults, setApiResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [completedSearch, setCompletedSearch] = useState("");
   const { cartCount, favoritesCount, setCartOpen, setSelectedProduct } = useCommerce();
 
   // Cancel stale searches so a slower previous response cannot replace the current query.
@@ -56,13 +57,14 @@ export function SiteHeader({
         const json = res.ok ? await res.json() : { results: [] };
         if (!controller.signal.aborted) setApiResults(json.results || []);
       } catch { if (!controller.signal.aborted) setApiResults([]); }
-      finally { if (!controller.signal.aborted) setIsSearching(false); }
+      finally { if (!controller.signal.aborted) { setIsSearching(false); setCompletedSearch(trimmed); } }
     }, 180);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [searchQuery]);
 
   // Combine server results or client fallback
-  const searchResults = apiResults.length > 0
+  const searchPending = searchQuery.trim().length >= 2 && (isSearching || completedSearch !== searchQuery.trim());
+  const searchResults = apiResults.length > 0 && completedSearch === searchQuery.trim()
     ? apiResults
     : searchQuery.trim() === ""
     ? []
@@ -90,6 +92,43 @@ export function SiteHeader({
   const [hoveredParentId, setHoveredParentId] = useState<string | null>(null);
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open && !categoriesMenuOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+        setCategoriesMenuOpen(false);
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setCategoriesMenuOpen(false);
+        if (open) menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open, categoriesMenuOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const resize = () => { if (window.innerWidth >= 1280) setOpen(false); };
+    window.addEventListener("resize", resize);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("resize", resize);
+    };
+  }, [open]);
 
   const activeParentCategory =
     mainCategories.find((c) => c.id === hoveredParentId) || mainCategories[0];
@@ -164,11 +203,11 @@ export function SiteHeader({
   ) : null;
 
   const iconButtonClass = isWholesale
-    ? "h-9 w-9 shrink-0 place-items-center rounded-xl text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors sm:h-10 sm:w-10"
-    : "h-9 w-9 shrink-0 place-items-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors sm:h-10 sm:w-10";
+    ? "size-11 shrink-0 place-items-center rounded-xl text-zinc-300 hover:bg-zinc-800 hover:text-white grid transition-colors"
+    : "size-11 shrink-0 place-items-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 grid transition-colors";
 
   return (
-    <header className={headerClass}>
+    <header ref={headerRef} className={`${headerClass} ${open ? "z-[46]" : ""}`}>
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
         <Link className="group flex shrink-0 items-center gap-1.5" href={isWholesale ? "/mayorista" : "/"} aria-label={brandName}>
           <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200 transition group-hover:scale-105 sm:h-11 sm:w-20">
@@ -184,8 +223,8 @@ export function SiteHeader({
           {isWholesale && <span className="hidden rounded-full border border-amber-400/40 px-2 py-1 text-[10px] font-semibold text-amber-300 xl:block">Mayorista</span>}
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-1 xl:flex">
-          <Link className={linkClass} href="/">
+        <nav aria-label="Navegación principal" className="ml-4 hidden items-center gap-1 xl:flex">
+          <Link aria-current={pathname === "/" ? "page" : undefined} className={`${linkClass} ${pathname === "/" ? "bg-sky-50 text-sky-800" : ""}`} href="/">
             Inicio
           </Link>
 
@@ -248,6 +287,7 @@ export function SiteHeader({
                           <div
                             key={category.id}
                             onMouseEnter={() => setHoveredParentId(category.id)}
+                            onFocus={() => setHoveredParentId(category.id)}
                             className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                               isSelected
                                 ? isWholesale
@@ -387,7 +427,7 @@ export function SiteHeader({
 
         {/* Búsqueda */}
         <div className="relative ml-auto hidden w-full max-w-xs md:block">
-          <div className={`flex h-10 items-center gap-2 rounded-lg border px-3 ${
+          <div className={`flex h-11 items-center gap-2 rounded-xl border pl-3 pr-0 focus-within:ring-2 focus-within:ring-sky-500/30 ${
             isWholesale
               ? "border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500"
               : "border-zinc-200 bg-zinc-50 text-zinc-900 placeholder:text-zinc-400"
@@ -403,17 +443,17 @@ export function SiteHeader({
               onKeyDown={(e) => { if (e.key === "Enter") showSearchResults(); }}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="text-zinc-400 hover:text-zinc-650 cursor-pointer">
+              <button type="button" aria-label="Borrar búsqueda" onClick={() => setSearchQuery("")} className="grid size-11 shrink-0 place-items-center rounded-xl text-zinc-500 hover:text-zinc-700">
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
 
           {/* Results Dropdown */}
-          {searchQuery.trim() !== "" && searchResults.length > 0 && (
-            <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-2 shadow-2xl z-50 animate-in fade-in duration-100 ${
+          {searchQuery.trim().length >= 2 && !searchPending && searchResults.length > 0 && (
+            <div className={`absolute left-0 right-0 mt-2 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-xl border p-2 shadow-xl z-50 animate-in fade-in duration-100 ${
               isWholesale
-                ? "border-zinc-850 bg-zinc-900 text-zinc-100"
+                ? "border-zinc-800 bg-zinc-900 text-zinc-100"
                 : "border-zinc-200 bg-white text-zinc-900"
             }`}>
               <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-100/10 mb-1">
@@ -433,7 +473,9 @@ export function SiteHeader({
                           : "hover:bg-zinc-100 text-zinc-800"
                       }`}
                     >
-                      <img
+                      <Image
+                        width={32}
+                        height={32}
                         src={product.imageUrl || "/placeholder-product.svg"}
                         alt={product.title}
                         className="h-8 w-8 rounded object-contain p-0.5 bg-zinc-50 border border-zinc-100"
@@ -461,7 +503,8 @@ export function SiteHeader({
             </div>
           )}
 
-          {searchQuery.trim() !== "" && searchResults.length === 0 && !isSearching && (
+          {searchPending && <p role="status" className={`absolute left-0 right-0 z-50 mt-2 rounded-xl border p-3 text-sm shadow-lg ${isWholesale ? "border-zinc-800 bg-zinc-900 text-zinc-200" : "border-zinc-200 bg-white text-zinc-600"}`}>Buscando productos…</p>}
+          {searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchPending && (
             <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-500 ${
               isWholesale ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
             }`}>
@@ -470,10 +513,11 @@ export function SiteHeader({
           )}
         </div>
 
-        <div className="ml-auto flex items-center gap-1 md:ml-2">
+        <div className="ml-auto flex items-center gap-0 sm:gap-1 md:ml-2">
           {profile?.role === "admin" && (
             <Link
               aria-label="Panel admin"
+              onClick={() => setOpen(false)}
               className={iconButtonClass}
               href="/admin"
               title="Panel admin"
@@ -483,6 +527,7 @@ export function SiteHeader({
           )}
           <Link
             aria-label="Cuenta"
+            onClick={() => setOpen(false)}
             className={iconButtonClass}
             href={profile ? "/cuenta" : "/login"}
             title={profile ? "Mi cuenta" : "Iniciar sesión"}
@@ -491,6 +536,7 @@ export function SiteHeader({
           </Link>
           <Link
             aria-label="Favoritos"
+            onClick={() => setOpen(false)}
             className={`relative ${iconButtonClass}`}
             href="/favoritos"
             title="Favoritos"
@@ -505,7 +551,7 @@ export function SiteHeader({
           <button
             aria-label="Abrir carrito"
             className={`relative ${iconButtonClass}`}
-            onClick={() => setCartOpen(true)}
+            onClick={() => { setOpen(false); setCartOpen(true); }}
             title="Carrito"
             type="button"
           >
@@ -518,6 +564,9 @@ export function SiteHeader({
           </button>
           <button
             aria-label="Abrir menu"
+            aria-expanded={open}
+            aria-controls="mobile-site-menu"
+            ref={menuButtonRef}
             className={`xl:hidden ${iconButtonClass}`}
             onClick={() => setOpen((value) => !value)}
             type="button"
@@ -528,11 +577,11 @@ export function SiteHeader({
       </div>
 
       {open && (
-        <div className={`border-t px-4 py-3 xl:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-8 shadow-2xl ${
+        <div id="mobile-site-menu" className={`absolute inset-x-0 top-full border-t px-4 py-3 xl:hidden max-h-[calc(100dvh-8rem-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain pb-6 shadow-2xl ${
           isWholesale ? "border-zinc-800 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-900"
         }`}>
           <div className="relative mb-3">
-            <div className={`flex h-10 items-center gap-2 rounded-lg border px-3 ${
+            <div className={`flex h-11 items-center gap-2 rounded-xl border pl-3 pr-0 focus-within:ring-2 focus-within:ring-sky-500/30 ${
               isWholesale ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-zinc-50"
             }`}>
               <Search className="h-4 w-4 text-zinc-500" />
@@ -546,14 +595,14 @@ export function SiteHeader({
                 onKeyDown={(e) => { if (e.key === "Enter") showSearchResults(); }}
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="text-zinc-500 hover:text-zinc-700 cursor-pointer">
+                <button type="button" aria-label="Borrar búsqueda" onClick={() => setSearchQuery("")} className="grid size-11 shrink-0 place-items-center rounded-xl text-zinc-500 hover:text-zinc-700">
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
 
             {/* Results Dropdown Mobile */}
-            {searchQuery.trim() !== "" && searchResults.length > 0 && (
+            {searchQuery.trim().length >= 2 && !searchPending && searchResults.length > 0 && (
               <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-2 shadow-2xl z-50 max-h-60 overflow-y-auto ${
                 isWholesale
                   ? "border-zinc-800 bg-zinc-900 text-zinc-100"
@@ -569,12 +618,15 @@ export function SiteHeader({
                           setSelectedProduct(product);
                           setSearchQuery("");
                           setOpen(false);
+                          menuButtonRef.current?.focus();
                         }}
                         className={`w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition cursor-pointer ${
-                          isWholesale ? "hover:bg-zinc-800 text-zinc-200" : "hover:bg-zinc-150 text-zinc-800"
+                          isWholesale ? "hover:bg-zinc-800 text-zinc-200" : "hover:bg-zinc-200 text-zinc-800"
                         }`}
                       >
-                        <img
+                        <Image
+                          width={32}
+                          height={32}
                           src={product.imageUrl || "/placeholder-product.svg"}
                           alt={product.title}
                           className="h-8 w-8 rounded object-contain p-0.5 bg-zinc-50 border border-zinc-100"
@@ -591,7 +643,8 @@ export function SiteHeader({
               </div>
             )}
 
-            {searchQuery.trim() !== "" && searchResults.length === 0 && (
+            {searchPending && <p role="status" className={`absolute left-0 right-0 z-50 mt-2 rounded-xl border p-3 text-sm shadow-lg ${isWholesale ? "border-zinc-800 bg-zinc-900 text-zinc-200" : "border-zinc-200 bg-white text-zinc-600"}`}>Buscando productos…</p>}
+            {searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchPending && (
               <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-500 ${
                 isWholesale ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
               }`}>
@@ -778,7 +831,7 @@ export function SiteHeader({
             {isWholesale ? (
               <div className="border-t border-zinc-800 my-2 pt-2">
                 <Link
-                  className="block text-center rounded-xl px-3 py-2.5 text-xs font-semibold bg-zinc-850 text-zinc-200 border border-zinc-700"
+                  className="block text-center rounded-xl px-3 py-2.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700"
                   href="/"
                   onClick={() => setOpen(false)}
                 >

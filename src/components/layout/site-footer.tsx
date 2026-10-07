@@ -53,12 +53,12 @@ export function SiteFooter() {
               ? "Tu distribuidor directo de confianza. Abastecemos a comercios, ferreterías y revendedores con Cosmética Coreana (K-Beauty original), tratamientos capilares Karseell y herramientas industriales Total y Wadfow con precios diferenciales por bulto cerrado."
               : "Cosmética coreana, cuidado capilar y herramientas. Atención desde Tandil y opciones de entrega según tu compra."}
           </p>
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
             <a
               href={siteConfig.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-pink-500/10 border border-pink-500/20 px-3 py-1.5 text-xs font-semibold text-pink-400 hover:bg-pink-500/20 transition-colors"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-pink-500/10 border border-pink-500/20 px-3 py-1.5 text-xs font-semibold text-pink-400 hover:bg-pink-500/20 transition-colors"
             >
               <InstagramIcon className="h-4 w-4" />
               {siteConfig.instagramHandle}
@@ -67,7 +67,7 @@ export function SiteFooter() {
               href={`https://wa.me/${siteConfig.whatsappNumber}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             >
               <MessageCircle className="h-4 w-4" />
               WhatsApp
@@ -78,7 +78,7 @@ export function SiteFooter() {
         {/* Column 2: Rubros */}
         <div>
           <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Catálogos & Rubros</h3>
-          <div className="mt-4 grid gap-2 text-sm">
+          <div className="mt-4 grid text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/catalogo?category=cosmetica-coreana"}>
               Cosmética Coreana (K-Beauty)
             </Link>
@@ -97,7 +97,7 @@ export function SiteFooter() {
         {/* Column 3: Navigation */}
         <div>
           <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Navegación & Ayuda</h3>
-          <div className="mt-4 grid gap-2 text-sm">
+          <div className="mt-4 grid text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
             {isWholesale ? (
               <>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/mayorista">

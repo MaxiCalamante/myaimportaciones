@@ -340,7 +340,7 @@ export function CheckoutPanel({
             });
           }}
         >
-          <div className="space-y-6 rounded-2xl border bg-white p-5 sm:p-7 shadow-xs">
+          <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7 shadow-xs">
             <div>
               <h2 className="text-xl font-bold text-zinc-950">1. Datos de entrega (Correo Argentino)</h2>
               <p className="text-xs text-zinc-500 mt-1">Ingresá tu ubicación para calcular el costo de envío en tiempo real a tu domicilio o sucursal.</p>
@@ -496,7 +496,7 @@ export function CheckoutPanel({
 
             <div className="border-t border-zinc-100 pt-5">
               <h2 className="text-xl font-bold text-zinc-950">3. Medio de pago</h2>
-              <select className={field} value={paymentMethod} onChange={e => setPayment(e.target.value as CheckoutInput["paymentMethod"])}>
+              <select aria-label="Medio de pago" className={field} value={paymentMethod} onChange={e => setPayment(e.target.value as CheckoutInput["paymentMethod"])}>
                 <option value="transferencia">Transferencia bancaria directa (con descuento extra)</option>
                 <option value="mercado_pago" disabled={!mercadoPagoEnabled}>Tarjetas y dinero en cuenta con Mercado Pago{!mercadoPagoEnabled ? " — próximamente" : ""}</option>
               </select>
@@ -509,14 +509,14 @@ export function CheckoutPanel({
             </div>
           </div>
 
-          <aside className="space-y-4 rounded-2xl border bg-white p-5 lg:sticky lg:top-24 shadow-xs">
+          <aside className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 lg:sticky lg:top-24 shadow-xs">
             <h2 className="text-xl font-bold">Resumen de compra</h2>
             <div className="divide-y divide-zinc-100 max-h-56 overflow-y-auto pr-1">
               {cart.map(l => (
                 <div key={l.product.id} className="py-2 text-xs">
-                  <div className="flex justify-between font-medium text-zinc-800">
+                  <div className="flex justify-between gap-3 font-medium text-zinc-800">
                     <span>{l.quantity} × {l.product.title}</span>
-                    <span className="font-bold text-zinc-950">{formatCurrency(l.quantity * l.product.retailPrice)}</span>
+                    <span className="shrink-0 tabular-nums font-bold text-zinc-950">{formatCurrency(l.quantity * l.product.retailPrice)}</span>
                   </div>
                 </div>
               ))}

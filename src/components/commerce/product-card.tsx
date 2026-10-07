@@ -52,10 +52,11 @@ export function ProductCard({
             quality={75}
           />
         </div>
-        {product.brand && <span className="absolute left-2 top-2 max-w-[65%] truncate rounded-lg bg-white/95 px-2 py-1 text-[10px] font-bold text-slate-800 shadow-sm sm:left-3 sm:top-3">{product.brand}</span>}
+        {product.brand && <span className="absolute left-2 top-2 max-w-[calc(100%-4rem)] truncate rounded-lg bg-white/95 px-2 py-1 text-[10px] font-bold text-slate-800 shadow-sm sm:left-3 sm:top-3">{product.brand}</span>}
       </Link>
         <button
           aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+          aria-pressed={favorite}
           className={`absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 shadow-xs transition-transform duration-150 hover:scale-105 active:scale-95 sm:right-3 sm:top-3 ${
             favorite ? "text-red-500" : "text-zinc-500 hover:text-red-500"
           }`}
@@ -108,7 +109,7 @@ export function ProductCard({
           <div className="mt-3 flex h-12 items-center justify-between rounded-lg border border-zinc-200 sm:mt-4">
             <button
               aria-label="Restar unidad"
-              className="inline-flex size-11 items-center justify-center rounded-md text-zinc-650 hover:bg-zinc-100 cursor-pointer text-sm font-semibold"
+              className="inline-flex size-11 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 cursor-pointer text-sm font-semibold"
               onClick={() => {
                 if (channel === "wholesale" && cartItem.quantity <= product.wholesaleMinQuantity) {
                   updateQuantity(product.id, channel, 0); // remove from cart
@@ -124,14 +125,14 @@ export function ProductCard({
             <button
               aria-label="Sumar unidad"
               disabled={cartItem.quantity >= purchasableQuantity(product)}
-              className="inline-flex size-11 items-center justify-center rounded-md text-zinc-650 hover:bg-zinc-100 cursor-pointer text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex size-11 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 cursor-pointer text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => updateQuantity(product.id, channel, cartItem.quantity + 1)}
               type="button"
             >
               +
             </button>
           </div>
-        ) : !isVerifiedStock(product) ? <Link href={`/producto/${product.slug}`} className="mt-3 rounded-xl bg-zinc-950 p-2.5 text-center text-xs font-semibold text-white sm:mt-4 sm:p-3 sm:text-sm">Ver disponibilidad</Link> : (
+        ) : !isVerifiedStock(product) ? <Link href={`/producto/${product.slug}`} className="mt-3 flex min-h-11 items-center justify-center rounded-xl bg-zinc-950 p-2.5 text-center text-xs font-semibold text-white sm:mt-4 sm:p-3 sm:text-sm">Ver disponibilidad</Link> : (
           <Button
             disabled={!isVerifiedStock(product)}
             className="mt-3 w-full cursor-pointer sm:mt-4"

@@ -1,7 +1,7 @@
 import { siteConfig } from "@/lib/site";
 import { isShippingPaidSeparately } from "@/lib/shipping";
 export const metadata = { title: "Condiciones de compra" };
-export default function Conditions() { return <article className="mx-auto max-w-3xl space-y-5 px-5 py-10">
+export default function Conditions() { return <article className="content-page max-w-3xl space-y-5 px-5 py-10">
   <h1 className="text-3xl font-bold">Condiciones de compra</h1>
   <h2 className="text-xl font-bold">Quién vende</h2>
   <p>MYA Importaciones, Tandil, Buenos Aires. Contacto: <a className="underline" href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>.</p>

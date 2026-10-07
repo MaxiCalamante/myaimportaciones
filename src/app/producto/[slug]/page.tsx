@@ -153,7 +153,7 @@ export default async function ProductPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <div className="mx-auto max-w-7xl px-4 pt-4 pb-24 sm:px-6 sm:pt-8 md:pb-8 lg:px-8">
+      <div data-product-page className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
         {/* Breadcrumb */}
         <nav aria-label="Ubicación del producto" className="mb-6 flex items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap">
           <Link href="/" className="hover:text-zinc-900 transition flex items-center gap-1">
@@ -184,7 +184,7 @@ export default async function ProductPage({ params }: Props) {
               <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight">
                 {product.title}
               </h1>
-              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">{[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]].filter(([, value]) => value).map(([label, value]) => <div key={label}><dt className="inline font-semibold">{label}: </dt><dd className="inline">{value}</dd></div>)}</dl>
+              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">{[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="min-w-0 break-words"><dt className="inline font-semibold">{label}: </dt><dd className="inline">{value}</dd></div>)}</dl>
               {product.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {product.tags.map((tag) => (
@@ -199,7 +199,7 @@ export default async function ProductPage({ params }: Props) {
               )}
             </div>
 
-            <p className="whitespace-pre-line text-sm sm:text-base leading-relaxed text-zinc-650">
+            <p className="whitespace-pre-line break-words text-sm sm:text-base leading-relaxed text-zinc-600">
               {product.description}
             </p>
 
@@ -212,16 +212,16 @@ export default async function ProductPage({ params }: Props) {
                 Ver otra versión: {alternativeProduct.title}
               </Link>
             )}
-          {Object.entries(product.specifications ?? {}).filter(([,v]) => v).length > 0 && <dl className="mt-6 space-y-3">{Object.entries(product.specifications ?? {}).filter(([,v]) => v).map(([k,v]) => <div key={k}><dt className="font-semibold">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line text-sm">{v}</dd></div>)}</dl>}
+          {Object.entries(product.specifications ?? {}).filter(([,v]) => v).length > 0 && <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">{Object.entries(product.specifications ?? {}).filter(([,v]) => v).map(([k,v]) => <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4"><dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd></div>)}</dl>}
           {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
 
             <div className="pt-4 border-t border-zinc-200 grid grid-cols-2 gap-4 text-xs text-zinc-500">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
                 <span>Condiciones de garantía en la ficha</span>
               </div>
               <div className="flex items-center gap-2">
-                <Truck className="h-4 w-4 text-sky-600" />
+                <Truck className="h-4 w-4 shrink-0 text-sky-600" />
                 <span>Entrega y despacho a coordinar</span>
               </div>
             </div>
@@ -234,7 +234,7 @@ export default async function ProductPage({ params }: Props) {
             <h2 className="text-2xl font-bold text-zinc-950 mb-6">
               Productos Relacionados en {product.categoryName}
             </h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {relatedProducts.map((p) => (
                 <ProductCard key={p.id} product={p} channel="retail" />
               ))}

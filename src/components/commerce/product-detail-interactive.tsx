@@ -14,7 +14,6 @@ import {
   Zap,
   Clock,
   CreditCard,
-  ShieldCheck,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -48,6 +47,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   );
   const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   const favorite = isFavorite(product.id);
 
@@ -99,11 +99,14 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     setQuantity((q) => Math.max(min, q - 1));
   };
 
-  const handleCopyLink = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(`${siteConfig.appUrl}/producto/${product.slug}`);
+  const handleCopyLink = async () => {
+    setCopyError(false);
+    try {
+      await navigator.clipboard.writeText(`${siteConfig.appUrl}/producto/${product.slug}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyError(true);
     }
   };
 
@@ -255,7 +258,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           <button
             onClick={handleAddToCart}
             disabled={!isVerifiedStock(product)}
-            className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-3 text-sm font-bold leading-snug text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+            className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-3 text-sm font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
             type="button"
           >
             <ShoppingCart className="h-4 w-4 shrink-0" />
@@ -284,7 +287,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             href={getWhatsAppUrl(whatsappMessage)}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold transition shadow-sm"
+            className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 px-3 py-2.5 text-white text-xs sm:text-sm font-bold transition shadow-sm"
           >
             <MessageCircle className="h-4 w-4" />
             Consultar o Pedir por WhatsApp
@@ -296,7 +299,8 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
           <button
             type="button"
             onClick={handleCopyLink}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition cursor-pointer"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition cursor-pointer"
+            aria-live="polite"
           >
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
             {copied ? "¡Copiado!" : "Copiar enlace"}
@@ -305,12 +309,13 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Mirá este producto en MYA Importaciones: ${product.title} - ${siteConfig.appUrl}/producto/${product.slug}`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
           >
             <Share2 className="h-3.5 w-3.5 text-emerald-600" />
             Compartir por WhatsApp
           </a>
         </div>
+        {copyError && <p role="status" className="mt-2 text-xs leading-5 text-zinc-600">No pudimos copiar el enlace. Podés copiar la dirección del navegador o compartir por WhatsApp.</p>}
       </div>
 
       {/* Shipping Cost Simulator */}
@@ -476,15 +481,15 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             </span>
             <span className="whitespace-nowrap text-base font-black text-zinc-950">{formatCurrency(price)}</span>
           </div>
-          <button
+          {!isVerifiedStock(product) ? <a href={getWhatsAppUrl(whatsappMessage)} target="_blank" rel="noopener noreferrer" className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-emerald-800"><MessageCircle className="h-4 w-4 shrink-0" />Consultar disponibilidad</a> : <button
             onClick={handleAddToCart}
             disabled={!isVerifiedStock(product)}
-            className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-sky-700 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50"
+            className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50"
             type="button"
           >
             <ShoppingCart className="h-4 w-4 shrink-0" />
             {!isVerifiedStock(product) ? "Consultar disponibilidad" : added ? "¡Agregado!" : "Agregar al carrito"}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

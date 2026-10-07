@@ -7,7 +7,7 @@ import { Search, CheckCircle2, Clock, Package, Truck, Check, AlertCircle, Messag
 import { trackAdsEvent } from "@/lib/analytics";
 import { lookupOrderAction, type TrackingOrder } from "./actions";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
-import { siteConfig, getWhatsAppUrl } from "@/lib/site";
+import { getWhatsAppUrl } from "@/lib/site";
 
 const statusSteps = [
   { id: "pending", label: "Registrado", desc: "Esperando confirmación", icon: Clock },
@@ -83,21 +83,21 @@ export function OrderTrackerClient({ initialCode = "", initialEmail = "" }: { in
         }}
         className="flex flex-col gap-2 max-w-xl mx-auto"
       >
-        <div className="relative flex-1">
+        <label className="block text-sm font-semibold text-zinc-700">Código de pedido<div className="relative mt-1.5">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
           <input
-            aria-label="Codigo de pedido" required type="text"
+            aria-label="Código de pedido" autoComplete="off" required type="text"
             placeholder="Ej: ORD-49521"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             className="h-12 w-full rounded-xl border border-zinc-300 bg-white pl-11 pr-4 text-sm font-mono font-medium text-zinc-950 placeholder:font-sans placeholder:text-zinc-400 shadow-xs outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
           />
-        </div>
-        <input aria-label="Email de la compra" required type="email" placeholder="Email de la compra" value={email} onChange={e => setEmail(e.target.value)} className="h-12 rounded-xl border p-3" />
+        </div></label>
+        <label className="mt-2 block text-sm font-semibold text-zinc-700">Email de la compra<input aria-label="Email de la compra" autoComplete="email" required type="email" placeholder="Email usado al comprar" value={email} onChange={e => setEmail(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-zinc-300 bg-white p-3 font-normal" /></label>
         <button
           type="submit"
           disabled={isPending || !code.trim()}
-          className="h-12 px-6 rounded-xl bg-zinc-950 hover:bg-zinc-800 disabled:opacity-50 text-white text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer"
+          className="mt-2 h-12 px-6 rounded-xl bg-zinc-950 hover:bg-zinc-800 disabled:opacity-50 text-white text-sm font-semibold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
         >
           {isPending ? "Buscando..." : "Consultar"}
           <ArrowRight className="h-4 w-4" />

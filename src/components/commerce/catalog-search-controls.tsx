@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useId, useRef, useTransition } from "react";
+import { useModalFocus } from "@/components/ui/use-modal-focus";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -47,6 +48,7 @@ export function CatalogSearchControls({
 }: Props) {
   const router = useRouter();
   const searchInputId = useId();
+  const [pending, startTransition] = useTransition();
 
   // Root & Subcategory resolution
   const initialRootSlug = category?.parentId
@@ -73,21 +75,8 @@ export function CatalogSearchControls({
   const [draftMax, setDraftMax] = useState(maxPrice);
   const [brandSearch, setBrandSearch] = useState("");
 
-  // Lock body scroll when drawer is open
-  useEffect(() => {
-    if (isDrawerOpen) {
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setIsDrawerOpen(false);
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.body.style.overflow = prevOverflow;
-        window.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-  }, [isDrawerOpen]);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useModalFocus(drawerRef, isDrawerOpen);
 
   // Sync draft state whenever drawer opens
   const openDrawer = () => {
@@ -165,7 +154,7 @@ export function CatalogSearchControls({
     if (nextMax) sp.set("max", nextMax);
 
     setIsDrawerOpen(false);
-    router.push(`/catalogo${sp.size ? `?${sp.toString()}` : ""}`);
+    startTransition(() => router.push(`/catalogo${sp.size ? `?${sp.toString()}` : ""}`));
   };
 
   // Mobile quick sort change
@@ -256,7 +245,8 @@ export function CatalogSearchControls({
     SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Destacados";
 
   return (
-    <div className="w-full">
+    <div className="catalog-controls w-full" aria-busy={pending}>
+      {pending && <p role="status" className="mb-2 text-xs font-semibold text-sky-700">Actualizando productos…</p>}
       {/* ========================================================================= */}
       {/* MOBILE CONTROLS (< sm)                                                    */}
       {/* ========================================================================= */}
@@ -286,7 +276,7 @@ export function CatalogSearchControls({
                 setSearchInput("");
                 if (query) navigateWithParams({ q: "" });
               }}
-              className="absolute right-3 p-1 text-zinc-400 hover:text-zinc-600"
+              className="absolute right-0 grid size-11 place-items-center rounded-xl text-zinc-500 hover:text-zinc-700"
               aria-label="Borrar búsqueda"
             >
               <X className="h-4 w-4" />
@@ -300,6 +290,8 @@ export function CatalogSearchControls({
           <button
             type="button"
             onClick={openDrawer}
+            aria-haspopup="dialog"
+            aria-expanded={isDrawerOpen}
             className={`flex h-11 flex-1 items-center justify-between rounded-xl border px-3.5 text-xs font-semibold shadow-2xs active:scale-[0.98] transition cursor-pointer ${
               activeFilterCount > 0
                 ? "border-zinc-950 bg-zinc-950 text-white"
@@ -324,9 +316,9 @@ export function CatalogSearchControls({
           </button>
 
           {/* Quick Sort selector with Native Picker overlay */}
-          <div className="relative flex-1">
-            <button
-              type="button"
+          <div className="relative flex-1 rounded-xl focus-within:ring-2 focus-within:ring-sky-600 focus-within:ring-offset-2">
+            <div
+              aria-hidden="true"
               className="flex h-11 w-full items-center justify-between rounded-xl border border-zinc-200/90 bg-white px-3.5 text-xs font-semibold text-zinc-800 shadow-2xs transition hover:bg-zinc-50"
             >
               <div className="flex items-center gap-1.5 truncate">
@@ -336,7 +328,7 @@ export function CatalogSearchControls({
                 </span>
               </div>
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-            </button>
+            </div>
             <select
               value={sort}
               onChange={(e) => handleMobileSortChange(e.target.value)}
@@ -369,6 +361,7 @@ export function CatalogSearchControls({
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-zinc-400" />
               <input
+                aria-label="Producto, marca o modelo"
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -379,7 +372,8 @@ export function CatalogSearchControls({
                 <button
                   type="button"
                   onClick={() => setSearchInput("")}
-                  className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-zinc-600"
+                  aria-label="Borrar búsqueda"
+                  className="absolute right-0 top-0 grid h-10 w-10 place-items-center rounded-xl text-zinc-500 hover:text-zinc-700"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -393,6 +387,7 @@ export function CatalogSearchControls({
               Categoría
             </label>
             <select
+              aria-label="Categoría"
               value={rootSlug}
               onChange={(e) => {
                 setRootSlug(e.target.value);
@@ -416,6 +411,7 @@ export function CatalogSearchControls({
               Subcategoría
             </label>
             <select
+              aria-label="Subcategoría"
               value={subcategorySlug}
               disabled={!subcategories.length}
               onChange={(e) => {
@@ -439,6 +435,7 @@ export function CatalogSearchControls({
               Marca
             </label>
             <select
+              aria-label="Marca"
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
               className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
@@ -462,6 +459,7 @@ export function CatalogSearchControls({
               Ordenar por
             </label>
             <select
+              aria-label="Ordenar productos"
               value={selectedSort}
               onChange={(e) => setSelectedSort(e.target.value)}
               className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
@@ -487,7 +485,8 @@ export function CatalogSearchControls({
                 placeholder="$ Mínimo"
                 value={minVal}
                 onChange={(e) => setMinVal(e.target.value)}
-                className="h-9 w-full rounded-lg border border-zinc-200 px-2.5 text-xs text-zinc-900 outline-none transition focus:border-sky-500"
+                aria-label="Precio mínimo"
+                className="h-11 w-full rounded-xl border border-zinc-200 px-2.5 text-xs text-zinc-900 outline-none transition focus:border-sky-500"
               />
             </div>
             <span className="text-xs text-zinc-400">—</span>
@@ -499,7 +498,8 @@ export function CatalogSearchControls({
                 placeholder="$ Máximo"
                 value={maxVal}
                 onChange={(e) => setMaxVal(e.target.value)}
-                className="h-9 w-full rounded-lg border border-zinc-200 px-2.5 text-xs text-zinc-900 outline-none transition focus:border-sky-500"
+                aria-label="Precio máximo"
+                className="h-11 w-full rounded-xl border border-zinc-200 px-2.5 text-xs text-zinc-900 outline-none transition focus:border-sky-500"
               />
             </div>
           </div>
@@ -516,7 +516,7 @@ export function CatalogSearchControls({
             ) : null}
             <button
               type="submit"
-              className="h-9 rounded-lg bg-sky-700 px-4 text-xs font-bold text-white transition hover:bg-sky-800 active:scale-95 cursor-pointer"
+              className="h-11 rounded-xl bg-sky-700 px-4 text-xs font-bold text-white transition hover:bg-sky-800 active:scale-95 cursor-pointer"
             >
               Aplicar filtros
             </button>
@@ -539,7 +539,7 @@ export function CatalogSearchControls({
               onClick={() => handleRemoveChip("q")}
               className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800 hover:bg-sky-100 transition active:scale-95"
             >
-              <span>&ldquo;{query}&rdquo;</span>
+              <span className="min-w-0 break-words">&ldquo;{query}&rdquo;</span>
               <X className="h-3 w-3" />
             </button>
           ) : null}
@@ -604,10 +604,13 @@ export function CatalogSearchControls({
 
           {/* Bottom Sheet Modal Container */}
           <div
+            ref={drawerRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label="Filtros del catálogo"
-            className="relative z-10 flex max-h-[88vh] w-full flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 animate-in slide-in-from-bottom"
+            onKeyDown={event => { if (event.key === "Escape") setIsDrawerOpen(false); }}
+            className="relative z-10 flex max-h-[88dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 animate-in slide-in-from-bottom"
           >
             {/* Top Drag Indicator */}
             <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-zinc-300" />
@@ -638,7 +641,7 @@ export function CatalogSearchControls({
                 <button
                   type="button"
                   onClick={() => setIsDrawerOpen(false)}
-                  className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 active:scale-95 transition cursor-pointer"
+                  className="grid size-11 shrink-0 place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 active:scale-95 transition cursor-pointer"
                   aria-label="Cerrar filtros"
                 >
                   <X className="h-5 w-5" />
@@ -647,7 +650,7 @@ export function CatalogSearchControls({
             </div>
 
             {/* Drawer Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 scrollbar-thin">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-6 scrollbar-thin">
               {/* SECTION 1: Categoría Principal */}
               <div>
                 <span className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2.5">
@@ -904,16 +907,16 @@ export function CatalogSearchControls({
             </div>
 
             {/* Drawer Footer (Sticky Bottom Action) */}
-            <div className="border-t border-zinc-100 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg flex items-center gap-3">
+            <div className="shrink-0 border-t border-zinc-100 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleApplyDraft}
-                className="flex-1 rounded-xl bg-zinc-950 py-3.5 px-4 text-center text-sm font-bold text-white shadow-md transition hover:bg-zinc-900 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 rounded-xl bg-zinc-950 py-3.5 px-4 text-center text-sm font-bold text-white shadow-md transition hover:bg-zinc-900 active:scale-[0.99] flex flex-wrap items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Aplicar filtros</span>
                 {totalCount !== undefined && totalCount > 0 ? (
                   <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-300">
-                    {totalCount} {totalCount === 1 ? "producto" : "productos"}
+                    {totalCount} actuales
                   </span>
                 ) : null}
               </button>

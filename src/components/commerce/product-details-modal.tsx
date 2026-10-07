@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { Button } from "@/components/ui/button";
 import { trackAdsEvent } from "@/lib/analytics";
+import { useModalFocus } from "@/components/ui/use-modal-focus";
 
 export function ProductDetailsModal() {
   const { selectedProduct } = useCommerce();
@@ -30,6 +31,8 @@ function ProductDetailsModalContent() {
   });
 
   const favorite = selectedProduct ? isFavorite(selectedProduct.id) : false;
+  const panel = React.useRef<HTMLDivElement>(null);
+  useModalFocus(panel, Boolean(selectedProduct));
 
   React.useEffect(() => {
     if (selectedProduct) {
@@ -93,19 +96,18 @@ function ProductDetailsModalContent() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-sm transition-opacity"
-      role="dialog"
-      aria-modal="true"
     >
       {/* Background close click */}
       <div className="absolute inset-0" onClick={() => setSelectedProduct(null)} />
 
       {/* Modal Content */}
-      <div className="relative flex flex-col md:flex-row w-full max-w-4xl max-h-[92dvh] md:max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-y-auto md:overflow-hidden border border-zinc-200 animate-in fade-in-50 zoom-in-95 duration-200">
+      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-preview-title" onKeyDown={event => { if (event.key === "Escape") setSelectedProduct(null); }} className="relative flex flex-col md:flex-row w-full max-w-4xl max-h-[92dvh] md:max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-y-auto md:overflow-hidden border border-zinc-200 animate-in fade-in-50 zoom-in-95 duration-200">
         
         {/* Close Button */}
         <button
           aria-label="Cerrar modal"
-          className="absolute right-3.5 top-3.5 z-20 p-2 rounded-full bg-white/90 border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-colors shadow-sm cursor-pointer"
+          type="button"
+          className="absolute right-3.5 top-3.5 z-20 grid size-11 place-items-center rounded-full bg-white/90 border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-colors shadow-sm cursor-pointer"
           onClick={() => setSelectedProduct(null)}
         >
           <X className="h-5 w-5" />
@@ -114,7 +116,7 @@ function ProductDetailsModalContent() {
         {/* Left: Image with Zoom */}
         <div className="relative w-full md:w-1/2 bg-white border-b md:border-b-0 md:border-r border-zinc-100 overflow-hidden min-h-[220px] sm:min-h-[280px] md:min-h-[400px] p-4 sm:p-6 flex items-center justify-center shrink-0">
           <div
-            className="w-full h-full relative cursor-zoom-in"
+            className="w-full h-52 sm:h-64 md:h-full relative cursor-zoom-in"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
@@ -131,7 +133,8 @@ function ProductDetailsModalContent() {
           </div>
           <button
             aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-            className={`absolute left-3.5 top-3.5 inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white/90 shadow-sm transition hover:scale-105 ${
+            aria-pressed={favorite}
+            className={`absolute left-3.5 top-3.5 inline-flex size-11 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 shadow-sm transition hover:scale-105 ${
               favorite ? "text-red-600" : "text-zinc-600 hover:text-red-600"
             }`}
             onClick={() => toggleFavorite(selectedProduct.id)}
@@ -147,15 +150,15 @@ function ProductDetailsModalContent() {
         </div>
 
         {/* Right: Info and Pricing */}
-        <div className="flex-1 flex flex-col p-5 sm:p-6 md:p-8 md:overflow-y-auto md:max-h-[85vh]">
+        <div className="min-w-0 flex-1 flex flex-col p-5 sm:p-6 md:p-8 md:overflow-y-auto md:max-h-[85dvh]">
           {/* Header */}
           <span className="text-xs font-semibold uppercase text-emerald-700">
             {selectedProduct.categoryName}
           </span>
-          <h2 className="mt-1 text-2xl font-extrabold text-zinc-950 tracking-tight leading-tight">
+          <h2 id="product-preview-title" className="mt-1 break-words text-2xl font-extrabold text-zinc-950 tracking-tight leading-tight">
             {selectedProduct.title}
           </h2>
-          <p className="mt-4 text-sm text-zinc-655 leading-relaxed">
+          <p className="mt-4 text-sm text-zinc-600 leading-relaxed">
             {selectedProduct.description}
           </p>
 
@@ -198,7 +201,7 @@ function ProductDetailsModalContent() {
               <div className="mt-2 grid grid-cols-2 gap-2 bg-zinc-100 p-1 rounded-xl">
                 <button
                   className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                    channel === "retail" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-650 hover:text-zinc-950"
+                    channel === "retail" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-600 hover:text-zinc-950"
                   }`}
                   onClick={() => { setChannel("retail"); setQuantity(1); }}
                 >
@@ -206,7 +209,7 @@ function ProductDetailsModalContent() {
                 </button>
                 <button
                   className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                    channel === "wholesale" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-650 hover:text-zinc-950"
+                    channel === "wholesale" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-600 hover:text-zinc-950"
                   }`}
                   onClick={() => { setChannel("wholesale"); setQuantity(selectedProduct.wholesaleMinQuantity); }}
                 >
@@ -231,21 +234,22 @@ function ProductDetailsModalContent() {
           </div>
 
           {/* Add to Cart Actions */}
-          <div className="mt-6 flex items-center gap-4">
+          <div className="mt-6 grid gap-3">
             <div className="flex items-center rounded-xl border border-zinc-200 bg-white">
               <button
                 aria-label="Restar unidad"
-                className="inline-flex h-11 w-11 items-center justify-center text-zinc-650 hover:bg-zinc-100 rounded-l-xl border-r border-zinc-200 cursor-pointer"
+                className="inline-flex h-11 w-11 items-center justify-center text-zinc-600 hover:bg-zinc-100 rounded-l-xl border-r border-zinc-200 cursor-pointer"
                 onClick={handleDecrement}
               >
                 -
               </button>
-              <span className="w-12 text-center text-sm font-bold text-zinc-900">
+              <span aria-live="polite" className="flex-1 text-center text-sm font-bold text-zinc-900">
                 {quantity}
               </span>
               <button
                 aria-label="Sumar unidad"
-                className="inline-flex h-11 w-11 items-center justify-center text-zinc-650 hover:bg-zinc-100 rounded-r-xl border-l border-zinc-200 cursor-pointer"
+                disabled={quantity >= purchasableQuantity(selectedProduct)}
+                className="inline-flex h-11 w-11 items-center justify-center text-zinc-600 hover:bg-zinc-100 rounded-r-xl border-l border-zinc-200 cursor-pointer"
                 onClick={handleIncrement}
               >
                 +
@@ -253,7 +257,7 @@ function ProductDetailsModalContent() {
             </div>
 
             <Button
-              className="flex-1 h-11 cursor-pointer flex items-center justify-center gap-2"
+              className="min-h-12 w-full cursor-pointer flex items-center justify-center gap-2"
               onClick={handleAddToCart}
               disabled={!isVerifiedStock(selectedProduct)}
               icon={<ShoppingCart className="h-4 w-4" />}

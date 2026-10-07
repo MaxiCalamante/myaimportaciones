@@ -5,9 +5,9 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "dark" | "accent";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-sky-600 text-white shadow-sm hover:bg-sky-700 focus-visible:outline-sky-600 active:scale-[0.99]",
+    "bg-sky-700 text-white shadow-sm hover:bg-sky-800 focus-visible:outline-sky-600 active:scale-[0.99]",
   accent:
-    "bg-amber-500 text-white shadow-sm hover:bg-amber-600 focus-visible:outline-amber-500 active:scale-[0.99]",
+    "bg-amber-400 text-zinc-950 shadow-sm hover:bg-amber-300 focus-visible:outline-amber-500 active:scale-[0.99]",
   secondary:
     "border border-zinc-300 bg-white text-zinc-950 hover:bg-zinc-100 focus-visible:outline-zinc-500",
   ghost:
@@ -16,7 +16,7 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const baseClass =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-60";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-center text-sm font-semibold leading-snug transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-60";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;

@@ -16,15 +16,17 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   }
 
   const isHome = pathname === "/";
+  const isCatalog = pathname === "/catalogo" || pathname?.startsWith("/producto/");
   const orderPath = signedIn ? "/cuenta" : "/seguimiento";
   const isTracking = pathname?.startsWith(orderPath);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 pb-[env(safe-area-inset-bottom)] shadow-lg">
-      <nav className="flex items-center justify-around h-16 px-2">
+      <nav aria-label="Navegación principal móvil" className="flex items-center justify-around h-16 px-2">
         {/* Home */}
         <Link
           href="/"
+          aria-current={isHome ? "page" : undefined}
           className={`flex flex-col items-center justify-center flex-1 h-full transition ${
             isHome ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
@@ -36,7 +38,8 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         {/* Catalog */}
         <Link
           href="/catalogo"
-          className="flex flex-col items-center justify-center flex-1 h-full text-zinc-600 hover:text-zinc-950 transition"
+          aria-current={isCatalog ? "page" : undefined}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition ${isCatalog ? "text-sky-700 font-bold" : "text-zinc-600 hover:text-zinc-950"}`}
         >
           <LayoutGrid className="h-5 w-5" />
           <span className="text-[10px] mt-1">Catálogo</span>
@@ -51,8 +54,8 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
           <div className="relative">
             <ShoppingBag className="h-5 w-5" />
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white shadow-xs animate-in zoom-in">
-                {cartCount}
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-sky-700 text-[9px] font-black text-white shadow-xs">
+                {cartCount > 99 ? "99+" : cartCount}
               </span>
             )}
           </div>
@@ -62,6 +65,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         {/* Order Tracking */}
         <Link
           href={orderPath}
+          aria-current={isTracking ? "page" : undefined}
           className={`flex flex-col items-center justify-center flex-1 h-full transition ${
             isTracking ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
