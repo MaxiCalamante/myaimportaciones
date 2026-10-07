@@ -77,7 +77,7 @@ export function SiteFooter() {
 
         {/* Column 2: Rubros */}
         <div>
-          <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Catálogos & Rubros</h3>
+          <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Catálogos & Rubros</h2>
           <div className="mt-4 grid text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/catalogo?category=cosmetica-coreana"}>
               Cosmética Coreana (K-Beauty)
@@ -96,7 +96,7 @@ export function SiteFooter() {
 
         {/* Column 3: Navigation */}
         <div>
-          <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Navegación & Ayuda</h3>
+          <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Navegación & Ayuda</h2>
           <div className="mt-4 grid text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
             {isWholesale ? (
               <>
@@ -141,7 +141,7 @@ export function SiteFooter() {
 
         {/* Column 4: Contact */}
         <div>
-          <h3 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Contacto & Envíos</h3>
+          <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Contacto & Envíos</h2>
           <div className="mt-4 grid gap-3 text-sm text-zinc-400">
             <span className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-sky-400" />
@@ -163,7 +163,7 @@ export function SiteFooter() {
       </div>
       
       {/* Guarantees bar & Copyright */}
-      <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 py-6 sm:px-6 lg:px-8 text-center text-xs text-zinc-500 space-y-2">
+      <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 py-6 sm:px-6 lg:px-8 text-center text-xs text-zinc-400 space-y-2">
         <p className="text-zinc-400 font-medium">
           Precios en pesos argentinos · Consultá entrega y condiciones de compra
         </p>

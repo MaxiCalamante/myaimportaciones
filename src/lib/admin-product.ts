@@ -1,3 +1,4 @@
+import { supplierUrl } from "./supplier-url";
 import { AdminFormError } from "./admin-action-result";
 import type { PaymentMethod } from "./types";
 
@@ -11,6 +12,10 @@ export function slugifyProduct(value: string) {
 export function validId(value: string) {
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)) throw new AdminFormError("Identificador inválido.");
   return value;
+}
+function checkedSupplierUrl(value: string) {
+  try { return supplierUrl(value); }
+  catch (error) { throw new AdminFormError(error instanceof Error ? error.message : "Proveedor inválido."); }
 }
 export function httpsUrl(value: string, label = "Enlace") {
   if (!value) return "";
@@ -94,7 +99,7 @@ export function parseProductForm(form: FormData, creating: boolean) {
     title, category_id: categoryId, description: text(form, "description", 10000) || null,
     retail_price: retailPrice, wholesale_price: number(form, "wholesale_price", 0, 9999999999.99), wholesale_min_qty: minimum,
     brand: text(form, "brand") || null, model: text(form, "model") || null, sku: text(form, "sku", 100) || null,
-    source_url: httpsUrl(text(form, "source_url", 2000), "Proveedor") || null,
+    source_url: text(form, "source_url", 2000) ? checkedSupplierUrl(text(form, "source_url", 2000)) : null,
     supplier_live_price: rawCost ? number(form, "supplier_live_price", 0, 9999999999.99) : null,
     fulfillment_mode: mode as "supplier" | "own_stock", supplier_available: mode === "supplier" && form.get("supplier_available") === "on",
     payment_methods: methods.length ? [...new Set(methods)] as PaymentMethod[] : ["transferencia"] as PaymentMethod[],

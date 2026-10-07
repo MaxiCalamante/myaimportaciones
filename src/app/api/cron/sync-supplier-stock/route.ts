@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   if (!cronSecret || !hasCommerceService()) return NextResponse.json({ error: "Sincronización no configurada" }, { status: 503 });
   if (authHeader !== `Bearer ${cronSecret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const limit = Number(req.nextUrl.searchParams.get("limit") || 30);
+  const limit = Number(req.nextUrl.searchParams.get("limit") || 100);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) return NextResponse.json({ error: "Límite inválido" }, { status: 400 });
 
   try {

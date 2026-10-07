@@ -198,14 +198,14 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             <div className="flex flex-wrap items-center justify-between gap-1 text-emerald-950 font-bold">
               <span className="flex items-center gap-1.5">
                 <CreditCard className="h-4 w-4 text-emerald-700" />
-                Hasta 3 y 6 cuotas con Mercado Pago
+                Cuotas según tu medio de pago
               </span>
               <span className="text-[10px] font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
                 Todas las tarjetas
               </span>
             </div>
             <p className="text-zinc-600 text-[11px] leading-relaxed">
-              Aboná con tarjeta de crédito, débito o saldo en cuenta. Además, tenés un <strong className="text-emerald-800 font-semibold">descuento especial abonando por Transferencia Bancaria directa</strong> (se aplica antes de confirmar el pedido).
+              Aboná con tarjeta de crédito, débito o saldo en cuenta. También podés elegir transferencia bancaria. Si tu pedido tiene una promoción disponible, la verás en el resumen antes de confirmar.
             </p>
           </div>
         )}
@@ -357,7 +357,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             <Truck className="h-4 w-4 text-sky-600" />
             Calcular costo de envío:
           </span>
-          <span className="text-[10px] text-zinc-400">Envíos a todo el país</span>
+          <span className="text-[10px] text-zinc-600">Envíos a todo el país</span>
         </div>
 
         <div className="relative">
@@ -452,9 +452,9 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-zinc-800">
           <div className="flex items-center gap-2">
             <ReceiptText className="h-4 w-4 text-zinc-500" />
-            <span>Facturación: emitimos comprobante oficial con tu compra</span>
+            <span>Consultá el comprobante disponible para tu compra</span>
           </div>
-          <span className="text-[11px] text-zinc-400 font-medium">IVA incluido</span>
+          <span className="text-[11px] text-zinc-600 font-medium">IVA incluido</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-100">
           <span className="font-semibold text-zinc-500">Medios aceptados:</span>

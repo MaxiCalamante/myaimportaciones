@@ -127,4 +127,9 @@ docs/catalog-audit/*-refresh*.sql
 docs/catalog-audit/cost-import-*.sql
 __pycache__/
 
+# Private historical supplier and financial evidence must never be published.
+docs/catalog-audit/
+docs/pricing-review-2026-10-02/
+docs/pricing-review/
+
 .vercel

@@ -1,4 +1,5 @@
 "use server";
+import { siteConfig } from "@/lib/site";
 
 import { safeAuthNext } from "@/lib/auth-navigation";
 import { redirect } from "next/navigation";
@@ -29,7 +30,7 @@ export async function signInAction(formData: FormData) {
     if (error.message === "Invalid login credentials") {
       return { error: "El email o la contraseña son incorrectos." };
     }
-    return { error: error.code === "email_not_confirmed" ? "Tu cuenta todavía requiere una configuración de acceso. Contactanos por WhatsApp para ayudarte." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
+    return { error: error.code === "email_not_confirmed" ? "Confirmá tu cuenta desde el enlace que enviamos a tu email. Revisá también la carpeta de spam." : "No pudimos completar la solicitud. Revisá tus datos e intentá nuevamente." };
   }
 
   return { redirectTo: next };
@@ -49,6 +50,7 @@ export async function signUpAction(formData: FormData) {
     email,
     password,
     options: {
+      emailRedirectTo: `${siteConfig.appUrl}/auth/callback?next=${encodeURIComponent(next)}`,
       data: {
         full_name: fullName,
         customer_tier: customerTier,
@@ -60,7 +62,27 @@ export async function signUpAction(formData: FormData) {
     return { error: "No pudimos crear la cuenta. Revisá tus datos e intentá nuevamente." };
   }
 
-  return data.session ? { redirectTo: next } : { error: "El registro inmediato todavía no está habilitado. Contactanos por WhatsApp para activar tu cuenta." };
+  return data.session ? { redirectTo: next } : { message: "Revisá tu email para confirmar la cuenta. Si no llega, revisá la carpeta de spam antes de reintentar." };
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = getString(formData, "email").toLowerCase();
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Ingresá un email válido." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${siteConfig.appUrl}/auth/callback?next=/restablecer-clave` });
+  if (error) return { error: "No pudimos enviar el enlace. Esperá unos minutos e intentá nuevamente." };
+  return { message: "Si el email corresponde a una cuenta, vas a recibir un enlace de recuperación. Revisá también la carpeta de spam." };
+}
+
+export async function updatePasswordAction(formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8 || password.length > 128 || password !== formData.get("confirm_password")) return { error: "Usá entre 8 y 128 caracteres y repetí la misma contraseña." };
+  const supabase = await createServerSupabaseClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: "El enlace venció. Solicitá otro enlace de recuperación." };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: "No pudimos guardar la contraseña. Solicitá otro enlace o elegí una contraseña más segura." };
+  return { message: "Contraseña actualizada. Ya podés ingresar con la nueva contraseña." };
 }
 
 export async function signOutAction() {

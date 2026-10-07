@@ -259,9 +259,9 @@ export function CatalogWithFilters({
       <div className="flex items-center justify-between border-b pb-3 border-zinc-200">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="h-4 w-4 text-zinc-700" />
-          <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-800">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-800">
             Filtros
-          </h3>
+          </h2>
           {activeFiltersCount > 0 && (
             <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
               {activeFiltersCount}

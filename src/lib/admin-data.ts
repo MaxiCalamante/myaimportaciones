@@ -1,6 +1,7 @@
 import { getAdminClient } from "./admin-auth";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { getStorefrontData } from "@/lib/storefront";
+import { readAllPages } from "./read-all-pages";
 import type {
   AdminDashboardData,
   CustomerSummary,
@@ -60,6 +61,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     { data: customersData, error: customersError },
     { data: ordersData, error: ordersError },
     { data: stockLogsData, error: logsError },
+    orderMetrics,
   ] = await Promise.all([
     getStorefrontData({ admin: true }),
     supabase
@@ -83,6 +85,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       .select("id, product_id, change_amount, previous_stock, new_stock, reason, created_at, products(title)")
       .order("created_at", { ascending: false })
       .limit(50),
+    readAllPages<{ profile_id: string | null; status: string; total_amount: number }>((from, to) => supabase.from("orders").select("profile_id,status,total_amount").order("id").range(from, to)),
   ]);
 
   if (customersCountError || ordersCountError || customersError || ordersError || logsError) throw new Error("No se pudieron leer todos los datos del panel. Recargá o revisá los permisos.");
@@ -95,8 +98,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       role: customer.role ?? "customer",
       customerTier: customer.customer_tier ?? "retail",
       createdAt: customer.created_at,
-      ordersCount: 0,
-      totalSpent: 0,
+      ordersCount: orderMetrics.filter(order => order.profile_id === customer.id).length,
+      totalSpent: orderMetrics.filter(order => order.profile_id === customer.id && ["paid", "preparing", "shipped", "delivered"].includes(order.status)).reduce((sum, order) => sum + Number(order.total_amount), 0),
       businessName: customer.business_name ?? undefined,
       cuit: customer.cuit ?? undefined,
       isApprovedWholesale: customer.is_approved_wholesale ?? false,
@@ -138,7 +141,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     },
   );
 
-  const revenue = orders.filter(order => ["paid", "preparing", "shipped", "delivered"].includes(order.status)).reduce((sum, order) => sum + order.total, 0);
+  const revenue = orderMetrics.filter(order => ["paid", "preparing", "shipped", "delivered"].includes(order.status)).reduce((sum, order) => sum + Number(order.total_amount), 0);
 
   const stockLogs = (stockLogsData ?? []).map((log) => {
     const product = Array.isArray(log.products) ? log.products[0] : log.products;

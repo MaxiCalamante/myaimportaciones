@@ -311,7 +311,7 @@ export function CatalogSearchControls({
                 {activeFilterCount}
               </span>
             ) : (
-              <span className="text-[11px] font-normal text-zinc-400">Afinar</span>
+              <span className="text-[11px] font-normal text-zinc-600">Afinar</span>
             )}
           </button>
 

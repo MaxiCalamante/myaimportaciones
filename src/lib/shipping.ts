@@ -354,12 +354,12 @@ export function calculateShipping(
         name: "Retiro en Sucursal más cercana",
         carrier: "Correo Argentino Sucursal",
         type: "sucursal",
-        price: Math.max(0, Math.round(((amount as number) * 0.8) / 100) * 100),
-        originalPrice: Math.max(0, Math.round(((amount as number) * 0.8) / 100) * 100),
+        price: 0,
+        originalPrice: 0,
         isFree: false,
-        requiresQuote: false,
+        requiresQuote: true,
         estimatedDays: zone.branchDays || "3 a 5 días hábiles",
-        badge: "Económico",
+        badge: "A cotizar",
       });
       return {
         isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,

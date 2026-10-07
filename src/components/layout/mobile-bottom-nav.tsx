@@ -79,7 +79,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
           href={getWhatsAppUrl("Hola MYA Importaciones! Quisiera hacer una consulta.")}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-col items-center justify-center flex-1 h-full text-emerald-600 font-semibold hover:text-emerald-700 transition"
+          className="flex flex-col items-center justify-center flex-1 h-full text-emerald-700 font-semibold hover:text-emerald-800 transition"
         >
           <MessageCircle className="h-5 w-5" />
           <span className="text-[10px] mt-1">WhatsApp</span>

@@ -20,6 +20,7 @@ import {
   type ShippingOption,
 } from "@/lib/shipping";
 import { trackAdsEvent } from "@/lib/analytics";
+import { reconcileCart } from "@/lib/cart-reconcile";
 
 export interface CartLine {
   product: Product;
@@ -74,6 +75,9 @@ const shippingOptionKey = "mya_shipping_option";
 
 export function CommerceProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartLine[]>([]);
+  const cartRef = useRef(cart);
+  const [cartNotice, setCartNotice] = useState("");
+  useEffect(() => { cartRef.current = cart; }, [cart]);
   const { favoriteIds, favoritesReady, toggleFavorite, favoriteError } = useFavorites();
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -85,15 +89,51 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const hydrated = useRef(false);
 
   useEffect(() => {
+    let busy = false;
+    let disposed = false;
+    const refresh = async () => {
+      if (busy || disposed || !hydrated.current || document.visibilityState === "hidden") return;
+      const ids = [...new Set(cartRef.current.map(line => line.product.id))];
+      if (!ids.length) return;
+      busy = true;
+      try {
+        const products: Product[] = [];
+        for (let i = 0; i < ids.length; i += 50) {
+          const response = await fetch(`/api/favorites/products?ids=${ids.slice(i, i + 50).join(",")}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+          if (!response.ok) throw new Error("No disponible");
+          const batch: unknown = await response.json();
+          if (!Array.isArray(batch)) throw new Error("Respuesta inválida");
+          products.push(...batch);
+        }
+        if (!disposed) {
+          const reviewed = cartRef.current.filter(line => ids.includes(line.product.id));
+          const updated = reconcileCart(reviewed, products);
+          if (updated.length !== reviewed.length || updated.some((line, index) => line.quantity !== reviewed[index].quantity || line.product.retailPrice !== reviewed[index].product.retailPrice)) {
+            setCartNotice("Actualizamos precios y disponibilidad de tu carrito. Revisá tu selección antes de continuar.");
+          }
+          // Preserve items and quantities changed while a request was in flight.
+          setCart(current => [...reconcileCart(current.filter(line => ids.includes(line.product.id)), products), ...current.filter(line => !ids.includes(line.product.id))]);
+        }
+      } catch { /* Checkout independently validates prices and stock if this refresh is unavailable. */ }
+      finally { busy = false; }
+    };
+    const timer = window.setTimeout(refresh, 300);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { disposed = true; window.clearTimeout(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, []);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
         const storedCart = window.localStorage.getItem(cartKey);
+        for (const key of [postalCodeKey, provinceKey, cityKey, addressKey, shippingOptionKey]) window.localStorage.removeItem(key);
 
-        const storedPostalCode = window.localStorage.getItem(postalCodeKey);
-        const storedProvince = window.localStorage.getItem(provinceKey);
-        const storedCity = window.localStorage.getItem(cityKey);
-        const storedAddress = window.localStorage.getItem(addressKey);
-        const storedShippingOption = window.localStorage.getItem(shippingOptionKey);
+        const storedPostalCode = window.sessionStorage.getItem(postalCodeKey);
+        const storedProvince = window.sessionStorage.getItem(provinceKey);
+        const storedCity = window.sessionStorage.getItem(cityKey);
+        const storedAddress = window.sessionStorage.getItem(addressKey);
+        const storedShippingOption = window.sessionStorage.getItem(shippingOptionKey);
 
         if (storedCart) {
           const parsed: unknown = JSON.parse(storedCart);
@@ -128,9 +168,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     setPostalCodeState(code);
     try {
       if (code) {
-        window.localStorage.setItem(postalCodeKey, code);
+        window.sessionStorage.setItem(postalCodeKey, code);
       } else {
-        window.localStorage.removeItem(postalCodeKey);
+        window.sessionStorage.removeItem(postalCodeKey);
       }
     } catch {}
   }, []);
@@ -139,9 +179,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     setProvinceState(code);
     try {
       if (code) {
-        window.localStorage.setItem(provinceKey, code);
+        window.sessionStorage.setItem(provinceKey, code);
       } else {
-        window.localStorage.removeItem(provinceKey);
+        window.sessionStorage.removeItem(provinceKey);
       }
     } catch {}
   }, []);
@@ -150,9 +190,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     setCityState(val);
     try {
       if (val) {
-        window.localStorage.setItem(cityKey, val);
+        window.sessionStorage.setItem(cityKey, val);
       } else {
-        window.localStorage.removeItem(cityKey);
+        window.sessionStorage.removeItem(cityKey);
       }
     } catch {}
   }, []);
@@ -161,9 +201,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     setAddressState(val);
     try {
       if (val) {
-        window.localStorage.setItem(addressKey, val);
+        window.sessionStorage.setItem(addressKey, val);
       } else {
-        window.localStorage.removeItem(addressKey);
+        window.sessionStorage.removeItem(addressKey);
       }
     } catch {}
   }, []);
@@ -172,7 +212,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     setSelectedShippingOptionIdState(id);
     try {
       if (id) {
-        window.localStorage.setItem(shippingOptionKey, id);
+        window.sessionStorage.setItem(shippingOptionKey, id);
       }
     } catch {}
   }, []);
@@ -362,7 +402,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CommerceContext.Provider value={value}>{favoriteError && <div role="alert" className="fixed bottom-20 left-4 right-4 z-[100] rounded-xl bg-amber-100 p-3 text-sm">{favoriteError}</div>}{children}</CommerceContext.Provider>
+    <CommerceContext.Provider value={value}>{(favoriteError || cartNotice) && <div role="status" className="fixed bottom-20 left-4 right-4 z-[100] sm:left-auto sm:max-w-xl flex items-center gap-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-950"><span className="flex-1">{favoriteError || cartNotice}</span>{cartNotice && <button type="button" onClick={() => setCartNotice("")} className="min-h-11 px-3 font-semibold underline">Entendido</button>}</div>}{children}</CommerceContext.Provider>
   );
 }
 

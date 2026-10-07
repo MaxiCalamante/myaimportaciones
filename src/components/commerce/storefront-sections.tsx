@@ -113,8 +113,8 @@ export function RetailHighlights() {
   const items = [
     { 
       icon: BadgePercent, 
-      title: "Cuotas y Descuentos",
-      desc: "Hasta 3 y 6 cuotas con Mercado Pago y descuento por transferencia"
+      title: "Medios de pago",
+      desc: "Transferencia y Mercado Pago; cuotas según las condiciones del medio de pago"
     },
     { 
       icon: Truck, 
@@ -123,8 +123,8 @@ export function RetailHighlights() {
     },
     { 
       icon: ShieldCheck, 
-      title: "Garantía y Factura",
-      desc: "Factura oficial de compra y respaldo posventa garantizado"
+      title: "Atención posventa",
+      desc: "Consultá las condiciones de garantía y comprobante de cada producto"
     },
     { 
       icon: Warehouse, 
@@ -178,7 +178,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
     if (slug.includes("capilar")) {
       return {
         badge: "Karseell & Tratamientos",
-        tagClass: "bg-amber-600 text-white",
+        tagClass: "bg-amber-700 text-white",
         count: "Tratamientos intensivos",
         bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
       };
@@ -264,7 +264,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                     {/* Curated Subcategories Preview */}
                     {subs.length > 0 && (
                       <div className="mt-4 pt-3 border-t border-zinc-100">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mb-2">
                           Subcategorías destacadas:
                         </p>
                         <div className="flex flex-wrap gap-1.5">

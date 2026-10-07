@@ -80,20 +80,26 @@ export function CheckoutPanel({
   useEffect(() => {
     if (!cart.length || !checkoutEnabled || !shippingCalculation.isValid) return;
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const response = await quoteOrderAction(input);
+        if (cancelled) return;
         if (response.ok) {
+          setError("");
           setQuote(response.quote);
           setQuotedKey(JSON.stringify(input));
           if (!requestId.current) requestId.current = crypto.randomUUID();
+        } else {
+          setQuote(null);
+          setError(response.error);
         }
       } catch {
         // En segundo plano no bloqueamos la UI con errores temporales
       }
     }, 350);
 
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [key, cart.length, checkoutEnabled, shippingCalculation.isValid]);
 
   const refreshQuote = () => startTransition(async () => {
@@ -343,7 +349,7 @@ export function CheckoutPanel({
           <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7 shadow-xs">
             <div>
               <h2 className="text-xl font-bold text-zinc-950">1. Datos de entrega (Correo Argentino)</h2>
-              <p className="text-xs text-zinc-500 mt-1">Ingresá tu ubicación para calcular el costo de envío en tiempo real a tu domicilio o sucursal.</p>
+              <p className="text-xs text-zinc-500 mt-1">Ingresá tu ubicación para consultar las opciones de entrega. Si el envío requiere cotización, confirmamos costo y plazo antes de cobrarlo.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -497,7 +503,7 @@ export function CheckoutPanel({
             <div className="border-t border-zinc-100 pt-5">
               <h2 className="text-xl font-bold text-zinc-950">3. Medio de pago</h2>
               <select aria-label="Medio de pago" className={field} value={paymentMethod} onChange={e => setPayment(e.target.value as CheckoutInput["paymentMethod"])}>
-                <option value="transferencia">Transferencia bancaria directa (con descuento extra)</option>
+                <option value="transferencia">Transferencia bancaria directa</option>
                 <option value="mercado_pago" disabled={!mercadoPagoEnabled}>Tarjetas y dinero en cuenta con Mercado Pago{!mercadoPagoEnabled ? " — próximamente" : ""}</option>
               </select>
               {paymentMethod === "transferencia" && (
@@ -540,29 +546,29 @@ export function CheckoutPanel({
             <div aria-live="polite" className="space-y-2 rounded-xl bg-zinc-50 p-4 text-sm border border-zinc-200">
               <div className="flex justify-between text-zinc-600">
                 <span>Productos:</span>
-                <span>{formatCurrency(quote?.subtotal ?? cartTotal)}</span>
+                <span>{formatCurrency(validQuote ? quote.subtotal : cartTotal)}</span>
               </div>
               <div className="flex justify-between text-zinc-600">
                 <span>Envío ({selectedShippingOption?.name || "Correo Argentino"}):</span>
-                <span>{quote?.shippingQuotedSeparately ? "A cotizar por separado" : formatCurrency(quote?.shipping ?? shippingCost)}</span>
+                <span>{!validQuote ? "A confirmar" : quote.shippingQuotedSeparately ? "A cotizar por separado" : formatCurrency(quote.shipping)}</span>
               </div>
               {shippingCalculation.isValid && (
                 <p className="text-[11px] text-sky-800 font-medium">
                   📍 Destino: {shippingCalculation.zoneName} ({selectedShippingOption?.estimatedDays})
                 </p>
               )}
-              {(quote?.discount ?? 0) > 0 && (
+              {validQuote && quote.discount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-semibold">
                   <span>Descuento ({quote?.promotion}):</span>
                   <span>−{formatCurrency(quote!.discount)}</span>
                 </div>
               )}
-              {quote?.couponMessage && (
+              {validQuote && quote.couponMessage && (
                 <p className="text-xs text-amber-700">{quote.couponMessage}</p>
               )}
               <div className="border-t border-zinc-200 pt-2 flex justify-between text-lg font-black text-zinc-950">
-                <span>{quote?.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
-                <span>{formatCurrency(quote?.total ?? (cartTotal + shippingCost))}</span>
+                <span>{!validQuote ? "Subtotal de productos:" : quote.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
+                <span>{formatCurrency(validQuote ? quote.total : cartTotal)}</span>
               </div>
             </div>
 
@@ -573,7 +579,7 @@ export function CheckoutPanel({
               </label>
             )}
 
-            {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200">{error}</p>}
+            {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200"><p>{error}</p><a className="mt-2 inline-block font-semibold underline" href={getWhatsAppUrl(`Hola, necesito coordinar mi pedido: ${cart.map(line => `${line.quantity} × ${line.product.title}`).join(", ")}. Destino: ${city}, CP ${postalCode}.`)} target="_blank" rel="noopener noreferrer">Coordinar el pedido por WhatsApp</a></div>}
 
             <p className="text-[11px] text-zinc-500 text-center">
               Al confirmar aceptás las <Link href="/condiciones" className="underline">condiciones de compra</Link> y <Link href="/privacidad" className="underline">privacidad</Link>.
@@ -581,7 +587,7 @@ export function CheckoutPanel({
 
             <button
               type="submit"
-              disabled={pending || !checkoutEnabled || (!validQuote && !shippingCalculation.isValid)}
+              disabled={pending || !checkoutEnabled || !validQuote}
               className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base cursor-pointer"
             >
               {pending ? "Procesando pedido…" : "Confirmar pedido"}

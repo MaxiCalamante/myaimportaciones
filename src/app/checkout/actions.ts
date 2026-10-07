@@ -60,7 +60,8 @@ async function resolveQuote(input: CheckoutInput) {
     if (process.env.COMMERCE_SHIPPING_ENABLED !== "true") throw new Error("El envío necesita confirmación de tarifa. Consultanos por WhatsApp para coordinar la entrega.");
     const weight = products.reduce((sum, p) => {
       const declared = Number(p.specifications?.peso_kg);
-      const itemWeight = Number.isFinite(declared) && declared > 0 ? declared : 0.3;
+      if (!Number.isFinite(declared) || declared <= 0) throw new Error(`El envío de ${p.title} necesita peso y tarifa confirmados. Consultanos por WhatsApp para coordinarlo.`);
+      const itemWeight = declared;
       return sum + itemWeight * input.lines.find(l => l.productId === p.id)!.quantity;
     }, 0);
     if (weight > 25) throw new Error("Este pedido supera los 25 kg (límite estándar de Correo Argentino). Consultanos por WhatsApp para coordinar la entrega.");

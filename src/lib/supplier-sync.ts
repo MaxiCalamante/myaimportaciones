@@ -1,6 +1,8 @@
 import { getAdminClient } from "@/lib/admin-auth";
 import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { readAllPages } from "@/lib/read-all-pages";
+import { fetchSupplierPage, readSupplierHtml, supplierUrl } from "./supplier-url";
+import { parsePrestashopAvailability } from "./prestashop-availability";
 import { parseTotalAvailability } from "@/lib/total-availability";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -27,10 +29,7 @@ export async function checkSupplierProductAvailability(
     if (sku && brand && /total|wadfow/i.test(brand)) {
       const searchUrl = `https://www.totalherramientasoficial.com.py/produtos?busca=${encodeURIComponent(sku)}`;
       try {
-        const res = await fetch(searchUrl, {
-          headers: { "User-Agent": USER_AGENT },
-          signal: AbortSignal.timeout(12000),
-        });
+        const res = await fetchSupplierPage(searchUrl, USER_AGENT);
         if (!res.ok) {
           return {
             available: false,
@@ -39,7 +38,7 @@ export async function checkSupplierProductAvailability(
             checkedUrl: searchUrl,
           };
         }
-        const html = await res.text();
+        const html = await readSupplierHtml(res);
         return { ...parseTotalAvailability(html, sku), checkedUrl: searchUrl };
       } catch (err: unknown) {
         return {
@@ -59,10 +58,7 @@ export async function checkSupplierProductAvailability(
   }
 
   try {
-    const res = await fetch(targetUrl, {
-      headers: { "User-Agent": USER_AGENT },
-      signal: AbortSignal.timeout(12000),
-    });
+    const res = await fetchSupplierPage(targetUrl, USER_AGENT);
 
     if (res.status === 404) {
       return {
@@ -82,69 +78,14 @@ export async function checkSupplierProductAvailability(
       };
     }
 
-    const html = await res.text();
+    const html = await readSupplierHtml(res);
 
-    // Check specific scrapers based on URL domain
-    if (targetUrl.includes("totalherramientasoficial.com.py")) {
+    const host = new URL(supplierUrl(targetUrl)).hostname;
+    if (host === "totalherramientasoficial.com.py" || host === "www.totalherramientasoficial.com.py") {
       return { ...parseTotalAvailability(html, sku), checkedUrl: targetUrl };
     }
-
-    if (targetUrl.includes("atacadousa.com.py")) {
-      const isOut = /esgotado|indispon[íi]vel|sem estoque|fora de estoque|out of stock|agotado/i.test(html);
-      const priceMatch = html.match(/class="[^"]*current-price-value[^"]*"[^>]*>([\s\S]*?)<\/span>/i) || html.match(/\$\s*([0-9.,]+)/);
-      let price: number | null = null;
-      if (priceMatch) {
-        const raw = priceMatch[1].replace(".", "").replace(",", ".").trim();
-        const num = parseFloat(raw);
-        if (!isNaN(num) && num > 0) price = num;
-      }
-
-      if (isOut) {
-        return {
-          available: false,
-          status: "out_of_stock",
-          livePrice: price,
-          currency: "USD",
-          message: "Agotado en Atacado USA",
-          checkedUrl: targetUrl,
-        };
-      }
-      if (price === null) {
-        return {
-          available: false,
-          status: "error",
-          message: "No se pudo confirmar disponibilidad ni precio en Atacado USA",
-          checkedUrl: targetUrl,
-        };
-      }
-
-      return {
-        available: true,
-        status: "in_stock",
-        livePrice: price,
-        currency: "USD",
-        message: `En stock en Atacado USA (${price ? "USD " + price.toFixed(2) : "Disponible"})`,
-        checkedUrl: targetUrl,
-      };
-    }
-
-    // Generic fallback for any other supplier website
-    const isOutGeneric = /esgotado|indispon[íi]vel|sem estoque|fora de estoque|out of stock|agotado|sin stock|no disponible/i.test(html);
-    if (isOutGeneric) {
-      return {
-        available: false,
-        status: "out_of_stock",
-        message: "Mayorista indica sin stock / agotado",
-        checkedUrl: targetUrl,
-      };
-    }
-
-    return {
-      available: false,
-      status: "error",
-      message: "El sitio del proveedor no ofrece una señal de stock verificable",
-      checkedUrl: targetUrl,
-    };
+    const name = host.endsWith("atacadousa.com.py") ? "Atacado USA" : "Star Company";
+    return { ...parsePrestashopAvailability(html, name), checkedUrl: targetUrl };
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : "Error al conectar con la web del proveedor";
     return {
@@ -199,6 +140,7 @@ export async function runBatchSupplierStockSync(options?: {
   limit?: number;
   onlySupplierMode?: boolean;
   client?: SupabaseClient;
+  timeBudgetMs?: number;
 }): Promise<{
   total: number;
   checked: number;
@@ -217,6 +159,9 @@ export async function runBatchSupplierStockSync(options?: {
   const limit = options?.limit ?? 25;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("El límite de verificación debe estar entre 1 y 100.");
   const supabase = options?.client ?? await getAdminClient();
+  const timeBudgetMs = options?.timeBudgetMs ?? 43_000;
+  if (!Number.isFinite(timeBudgetMs) || timeBudgetMs < 0 || timeBudgetMs > 43_000) throw new Error("Presupuesto de verificación inválido.");
+  const startedAt = Date.now();
   type SyncProduct = { id: string; title: string; sku: string; brand: string; source_url: string; fulfillment_mode: string; supplier_available: boolean; supplier_last_checked_at: string | null; is_active: boolean };
   let products: SyncProduct[];
   if (options?.client) {
@@ -247,6 +192,8 @@ export async function runBatchSupplierStockSync(options?: {
   // Process with concurrency pool of 4 to be polite to the supplier server
   const concurrency = 4;
   for (let i = 0; i < products.length; i += concurrency) {
+    // Leave time for the final supplier timeout and database writes within the route's 60s limit.
+    if (Date.now() - startedAt >= timeBudgetMs) break;
     const chunk = products.slice(i, i + concurrency);
     const chunkPromises = chunk.map(async (p) => {
       const check = await checkSupplierProductAvailability(p.source_url, p.sku, p.brand);
