@@ -1,6 +1,22 @@
 # MYA Importaciones — contexto vigente
 
-Actualizado el 02/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+Actualizado el 07/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+
+## Carga y actualización de cosméticos, cuidado capilar y fragancias — 07/10/2026
+
+Se procesó la solicitud de carga de productos desde Atacado USA (pág. 5) y Star Company (Kérastase, Shiseido, Dr. Althea y Victoria's Secret):
+- **Catálogo total:** 324 productos (306 activos y 18 borradores).
+- **85 productos nuevos agregados** con imágenes subidas y alojadas en Supabase Storage (`product-images`), costos de origen USD y precios de venta fijados bajo la regla oficial:
+  - **Kérastase (18 productos):** shampoos (Bain Lumière, Ultra-Violet, Chroma Respect, Chronologiste, Densifique, Fluidealiste, Satin Riche, Force Architecte, Thérapiste, Divalent), acondicionadores (Cicaflash, Curl Manifesto, Fluidealiste, Ciment Anti-Usure) y máscaras capilares (Chroma Filler, Curl Manifesto, Maskératine, Force Architecte). Precios: $76.100 a $136.800 ARS.
+  - **Shiseido / Fino / Tsubaki (22 productos):** Fino Hair Mask 230g ($48.600 ARS), Fino Hair Oil 70ml ($57.100 ARS), Fino Pink Oil Serum 70ml ($71.100 ARS), Fino Shampoo y Acondicionador 550ml ($71.100 ARS), Shampoos y Acondicionadores Tsubaki 450ml ($71.100 - $119.700 ARS), Mascarillas Tsubaki 160g ($67.400 ARS), Tsubaki Hair Water 210ml ($58.500 ARS), repuestos 300ml ($40.500 ARS) y kits ($211.500 ARS).
+  - **Dr. Althea (7 productos nuevos + 3 existentes):** 147 Barrier Cream 50ml ($52.200 ARS), Aqua Marine Watery Cream 50ml ($63.900 ARS), PDRN Reju 5000 20g ($55.800 ARS), Pure Retinol 0.15% 20g ($52.200 ARS), Bubble Clean 140ml ($49.500 ARS), Gentle Retinol 0.1% 30ml ($67.500 ARS) y 345 Relief Cream Mist 60ml ($42.300 ARS).
+  - **Karseell (4 productos nuevos + 4 existentes):** Maca Essence Oil 50ml ($21.100 ARS), Maca Power Collagen Mask 500ml ($28.800 ARS), Kit Maca Essence 500ml+50ml ($47.600 ARS), Travel Set ($28.800 ARS).
+  - **Victoria's Secret (29 productos nuevos + 2 existentes):** Body Mists 250ml estándar ($33.300 ARS), Shimmer Mists 250ml ($38.700 ARS), Body Lotions 236ml ($38.700 ARS), Shimmer Lotions 236ml ($40.500 ARS), Kit Pure Seduction 2pcs ($62.400 ARS) y Kit The Best of Shimmer 4pcs ($85.500 ARS).
+  - **Atacado USA Skincare (5 productos):** Medicube Collagen Night Wrapping Mask 75ml ($54.000 ARS), Zero Pore One Day Cream 50ml ($57.200 ARS), AGE-R PDRN Booster Gel 300ml ($38.200 ARS), Celimax Retinal Shot 15ml ($44.900 ARS), Lilyeve Brush Ampoule 100ml ($76.500 ARS).
+- **1 borrador activado:**
+  - `MYA-KB-091` SKIN1004 Madagascar Centella Tone Brightening Cleansing Gel Foam 125 ml ($37.700 ARS).
+- **Criterio de precios aplicado:** Cotización Dólar Blue venta ARS 1.555/USD. Regla del dueño: al menos 10% por debajo de referencias verificadas en el mercado argentino (Mercado Libre, Regy Beauty, Paula Distribuidora, Prestia, SkinFree, etc.), redondeando hacia abajo a múltiplos de ARS 100. Todos los productos verificados con margen positivo y sostenible (>45% promedio).
+
 
 ## Precios: decisión del dueño del 02/10/2026
 
