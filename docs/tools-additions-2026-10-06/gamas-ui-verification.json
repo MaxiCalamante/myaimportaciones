@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-10-06T14:54:00Z",
+  "viewport": { "width": 390, "height": 844 },
+  "tiersVisible": ["TSDLI08025", "TDLI205582", "TIRLI2028"],
+  "pricesVisible": { "TSDLI08025": 86400, "TDLI205582": 122900, "TIRLI2028": 230900 },
+  "horizontalOverflow": false,
+  "documentScrollWidth": 375,
+  "industrialDesktopScreenshot": "atornillador-industrial.png"
+}

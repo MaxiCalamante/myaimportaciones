@@ -38,6 +38,31 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Private supplier and database evidence for the authorized tools expansion.
+docs/tools-rubros-2026-10-06/*
+!docs/tools-rubros-2026-10-06/README.md
+!docs/tools-rubros-2026-10-06/verification.json
+!docs/tools-rubros-2026-10-06/catalogo-publicado.png
+
+
+# Supplier quotes, private costs and one-time catalog payloads.
+docs/tools-additions-2026-10-06/*
+!docs/tools-additions-2026-10-06/README.md
+!docs/tools-additions-2026-10-06/verification.json
+!docs/tools-additions-2026-10-06/media-verification.json
+!docs/tools-additions-2026-10-06/ui-verification.json
+!docs/tools-additions-2026-10-06/catalogo-publicado.png
+!docs/tools-additions-2026-10-06/gamas-verification.json
+!docs/tools-additions-2026-10-06/gamas-ui-verification.json
+!docs/tools-additions-2026-10-06/atornillador-industrial.png
+docs/tools-opportunities-2026-10-06/*
+!docs/tools-opportunities-2026-10-06/README.md
+docs/tools-percutores-2026-10-06/*
+!docs/tools-percutores-2026-10-06/README.md
+!docs/tools-percutores-2026-10-06/verification.json
+!docs/tools-percutores-2026-10-06/ui-verification.json
+!docs/tools-percutores-2026-10-06/percutores-publicados.png
+
 # Tool expansion: private supplier quotes, margins and import payloads.
 docs/tools-expansion-2026-10-02/*
 !docs/tools-expansion-2026-10-02/README.md
@@ -78,6 +103,13 @@ docs/cosmetics-completion-2026-10-01/*
 !docs/cosmetics-completion-2026-10-01/ficha-corregida-publicada.jpg
 
 # typescript
+docs/tools-jack3-2026-10-06/*
+!docs/tools-jack3-2026-10-06/README.md
+!docs/tools-jack3-2026-10-06/verification.json
+!docs/tools-jack3-2026-10-06/propuesta-carrito.png
+!docs/tools-jack3-2026-10-06/carrito-publicado.png
+!docs/tools-jack3-2026-10-06/activation-verification.json
+
 docs/tools-selection-2026-10-01/*
 !docs/tools-selection-2026-10-01/README.md
 !docs/tools-selection-2026-10-01/verification.json

@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-10-06T16:54:35.314Z",
+  "productsBefore": 223,
+  "productsAfter": 224,
+  "added": 1,
+  "updated": 2,
+  "otherProductsAndExistingCostsPreserved": true,
+  "routes": [
+    {
+      "model": "TIDLI12206",
+      "tier": "Baja / entrada",
+      "price": 73300,
+      "url": "https://myaimportaciones.vercel.app/producto/total-taladro-percutor-y-atornillador-12v-20nm-tidli12206",
+      "status": 200
+    },
+    {
+      "model": "TIDLI20558",
+      "tier": "Media",
+      "price": 166900,
+      "url": "https://myaimportaciones.vercel.app/producto/total-taladro-percutor-brushless-20v-55nm-tidli20558",
+      "status": 200
+    },
+    {
+      "model": "TIDLI20668",
+      "tier": "Profesional",
+      "price": 185900,
+      "url": "https://myaimportaciones.vercel.app/producto/total-taladro-percutor-brushless-20v-66nm-tidli20668",
+      "status": 200
+    }
+  ],
+  "catalogUrl": "https://myaimportaciones.vercel.app/catalogo?q=percutor%20y%20atornillador",
+  "image": {
+    "width": 1024,
+    "height": 978,
+    "decoded": true
+  },
+  "industrialPending": "96/136/166 Nm exhausted in supplier; 110V kit excluded",
+  "entryContributionBeforeExpenses": 11268.25
+}

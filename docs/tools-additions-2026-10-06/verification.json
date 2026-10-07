@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-10-06T14:43:24.367Z",
+  "published": 3,
+  "supplierStockNotOwnStock": true,
+  "unknownExpensesRecorded": true,
+  "media": [
+    {
+      "model": "TSDLI08025",
+      "width": 1024,
+      "height": 1024,
+      "ok": true
+    },
+    {
+      "model": "TSDLI08025",
+      "width": 1024,
+      "height": 895,
+      "ok": true
+    },
+    {
+      "model": "THT10821",
+      "width": 1024,
+      "height": 1024,
+      "ok": true
+    },
+    {
+      "model": "THT10821",
+      "width": 1024,
+      "height": 663,
+      "ok": true
+    },
+    {
+      "model": "THT10834",
+      "width": 1024,
+      "height": 1024,
+      "ok": true
+    }
+  ],
+  "routes": [
+    {
+      "model": "TSDLI08025",
+      "url": "https://myaimportaciones.vercel.app/producto/total-atornillador-articulado-8v-6nm-con-17-accesorios-tsdli08025",
+      "status": 200,
+      "price": 86400,
+      "structuredData": true
+    },
+    {
+      "model": "THT10821",
+      "url": "https://myaimportaciones.vercel.app/producto/total-gato-hidraulico-carrito-2-toneladas-tht10821",
+      "status": 200,
+      "price": 116300,
+      "structuredData": true
+    },
+    {
+      "model": "THT10834",
+      "url": "https://myaimportaciones.vercel.app/producto/total-gato-hidraulico-carrito-perfil-bajo-3-toneladas-doble-bomba-tht10834",
+      "status": 200,
+      "price": 350900,
+      "structuredData": true
+    }
+  ],
+  "originalProductsPreserved": 220,
+  "concurrentChanges": 0,
+  "pricingBasis": "10% below exact-model Argentine Mercado Libre product pages verified in browser on 2026-10-06, rounded down to ARS100; USD costs converted at blue sale ARS1545; freight and other expenses unknown."
+}

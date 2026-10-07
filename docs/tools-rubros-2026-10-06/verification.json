@@ -1,0 +1,349 @@
+{
+  "checkedAt": "2026-10-06T17:38:33.314Z",
+  "productsBefore": 225,
+  "productsAfter": 234,
+  "added": 9,
+  "activated": 4,
+  "gamaUpdates": 6,
+  "unchangedProductsAndCostsPreserved": true,
+  "categoriesPreserved": true,
+  "noDuplicateIdentities": true,
+  "routes": [
+    {
+      "model": "WHP3A14",
+      "gama": "entrada",
+      "price": 141900,
+      "url": "https://myaimportaciones.vercel.app/producto/wadfow-hidrolavadora-1400w-110bar-whp3a14",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TGT11316",
+      "gama": "entrada Total",
+      "price": 216600,
+      "url": "https://myaimportaciones.vercel.app/producto/total-hidrolavadora-1400w-130bar-tgt11316",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TGT11376",
+      "gama": "intermedia",
+      "price": 278100,
+      "url": "https://myaimportaciones.vercel.app/producto/total-hidrolavadora-2000w-160bar-tgt11376",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TGT11226",
+      "gama": "superior con inducción",
+      "price": 414100,
+      "url": "https://myaimportaciones.vercel.app/producto/total-hidrolavadora-de-induccion-2000w-150bar-tgt11226",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TVC14122",
+      "gama": "entrada compacta",
+      "price": 168300,
+      "url": "https://myaimportaciones.vercel.app/producto/total-aspiradora-seco-y-humedo-12l-800w-tvc14122",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TAPLI1676",
+      "gama": "especializada compacta",
+      "price": 180400,
+      "url": "https://myaimportaciones.vercel.app/producto/total-mini-pulidora-brushless-16v-76mm-kit-2-baterias-tapli1676",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TL7508226",
+      "gama": "entrada con cable",
+      "price": 124300,
+      "url": "https://myaimportaciones.vercel.app/producto/total-cepillo-electrico-para-madera-750w-82mm-tl7508226",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TRLI20401",
+      "gama": "intermedia inalámbrica",
+      "price": 195300,
+      "url": "https://myaimportaciones.vercel.app/producto/total-cepillo-inalambrico-para-madera-20v-82mm-sin-bateria-trli20401",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TMLI2022",
+      "gama": "intermedia versátil",
+      "price": 96700,
+      "url": "https://myaimportaciones.vercel.app/producto/total-multiherramienta-oscilante-20v-sin-bateria-tmli2022",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TFBLI20021",
+      "gama": "4Ah",
+      "price": 72300,
+      "url": "https://myaimportaciones.vercel.app/producto/total-bateria-p20s-20v-4ah-tfbli20021",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TLL156601",
+      "gama": "entrada",
+      "price": 120500,
+      "url": "https://myaimportaciones.vercel.app/producto/total-nivel-laser-verde-2-lineas-35m-tll156601",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TLL306502",
+      "gama": "intermedia 360°",
+      "price": 145800,
+      "url": "https://myaimportaciones.vercel.app/producto/total-nivel-laser-verde-360-35m-tll306502",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TMT5110004",
+      "gama": "avanzada Smart",
+      "price": 83600,
+      "url": "https://myaimportaciones.vercel.app/producto/total-multimetro-smart-true-rms-1000v-9999-cuentas-tmt5110004",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TOPLI202548",
+      "gama": "Entrada / lustrado",
+      "price": 152100,
+      "url": "https://myaimportaciones.vercel.app/producto/total-lustradora-orbital-20v-254-mm-topli202548",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TAPLI2015",
+      "gama": "Intermedia / pulido",
+      "price": 207000,
+      "url": "https://myaimportaciones.vercel.app/producto/total-pulidora-20v-150-mm-tapli2015",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "WVR2A30",
+      "gama": "Intermedia / tanque 30 L",
+      "price": 183900,
+      "url": "https://myaimportaciones.vercel.app/producto/wadfow-aspiradora-seco-y-humedo-30l-1200w-wvr2a30",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "WVR4A35",
+      "gama": "Mayor capacidad / tanque 35 L",
+      "price": 203900,
+      "url": "https://myaimportaciones.vercel.app/producto/wadfow-aspiradora-seco-y-humedo-35l-1100w-wvr4a35",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TR111216",
+      "gama": "Profesional 1600 W",
+      "price": 229700,
+      "url": "https://myaimportaciones.vercel.app/producto/total-fresadora-industrial-1600w-tr111216",
+      "status": 200,
+      "optimizedImageDecoded": true
+    },
+    {
+      "model": "TR111226",
+      "gama": "Mayor potencia 2200 W",
+      "price": 288900,
+      "url": "https://myaimportaciones.vercel.app/producto/total-fresadora-industrial-2200w-tr111226",
+      "status": 200,
+      "optimizedImageDecoded": true
+    }
+  ],
+  "catalogs": [
+    {
+      "query": "Hidrolavadora",
+      "url": "https://myaimportaciones.vercel.app/catalogo?q=Hidrolavadora",
+      "verifiedProducts": [
+        "WHP3A14",
+        "TGT11316",
+        "TGT11376",
+        "TGT11226"
+      ]
+    },
+    {
+      "query": "Cepillo",
+      "url": "https://myaimportaciones.vercel.app/catalogo?q=Cepillo",
+      "verifiedProducts": [
+        "TL7508226",
+        "TRLI20401"
+      ]
+    },
+    {
+      "query": "Nivel láser",
+      "url": "https://myaimportaciones.vercel.app/catalogo?q=Nivel%20l%C3%A1ser",
+      "verifiedProducts": [
+        "TLL156601",
+        "TLL306502"
+      ]
+    },
+    {
+      "query": "Mini pulidora",
+      "url": "https://myaimportaciones.vercel.app/catalogo?q=Mini%20pulidora",
+      "verifiedProducts": [
+        "TAPLI1676"
+      ]
+    },
+    {
+      "query": "Multiherramienta",
+      "url": "https://myaimportaciones.vercel.app/catalogo?q=Multiherramienta",
+      "verifiedProducts": [
+        "TMLI2022"
+      ]
+    },
+    {
+      "query": "Multímetro",
+      "url": "https://myaimportaciones.vercel.app/catalogo?q=Mult%C3%ADmetro",
+      "verifiedProducts": [
+        "TMT5110004"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "model": "WHP3A14",
+      "index": 0,
+      "width": 1024,
+      "height": 1045,
+      "decoded": true
+    },
+    {
+      "model": "WHP3A14",
+      "index": 1,
+      "width": 1024,
+      "height": 1024,
+      "decoded": true
+    },
+    {
+      "model": "TGT11316",
+      "index": 0,
+      "width": 1024,
+      "height": 1024,
+      "decoded": true
+    },
+    {
+      "model": "TGT11376",
+      "index": 0,
+      "width": 1024,
+      "height": 1076,
+      "decoded": true
+    },
+    {
+      "model": "TGT11226",
+      "index": 0,
+      "width": 1024,
+      "height": 997,
+      "decoded": true
+    },
+    {
+      "model": "TGT11226",
+      "index": 1,
+      "width": 1024,
+      "height": 1082,
+      "decoded": true
+    },
+    {
+      "model": "TVC14122",
+      "index": 0,
+      "width": 1024,
+      "height": 1024,
+      "decoded": true
+    },
+    {
+      "model": "TAPLI1676",
+      "index": 0,
+      "width": 1024,
+      "height": 1024,
+      "decoded": true
+    },
+    {
+      "model": "TAPLI1676",
+      "index": 1,
+      "width": 1024,
+      "height": 966,
+      "decoded": true
+    },
+    {
+      "model": "TL7508226",
+      "index": 0,
+      "width": 1024,
+      "height": 1024,
+      "decoded": true
+    },
+    {
+      "model": "TL7508226",
+      "index": 1,
+      "width": 1024,
+      "height": 760,
+      "decoded": true
+    },
+    {
+      "model": "TRLI20401",
+      "index": 0,
+      "width": 1024,
+      "height": 883,
+      "decoded": true
+    },
+    {
+      "model": "TMLI2022",
+      "index": 0,
+      "width": 1024,
+      "height": 850,
+      "decoded": true
+    },
+    {
+      "model": "TFBLI20021",
+      "index": 0,
+      "width": 1024,
+      "height": 614,
+      "decoded": true
+    },
+    {
+      "model": "TFBLI20021",
+      "index": 1,
+      "width": 1024,
+      "height": 777,
+      "decoded": true
+    },
+    {
+      "model": "TLL156601",
+      "index": 0,
+      "width": 1024,
+      "height": 955,
+      "decoded": true
+    },
+    {
+      "model": "TLL306502",
+      "index": 0,
+      "width": 1024,
+      "height": 1024,
+      "decoded": true
+    },
+    {
+      "model": "TLL306502",
+      "index": 1,
+      "width": 1024,
+      "height": 1036,
+      "decoded": true
+    },
+    {
+      "model": "TMT5110004",
+      "index": 0,
+      "width": 1024,
+      "height": 1045,
+      "decoded": true
+    }
+  ]
+}

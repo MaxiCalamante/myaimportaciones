@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-06T14:51:33.595Z",
+  "products": 223,
+  "tiers": [
+    {
+      "model": "TSDLI08025",
+      "tier": "Baja",
+      "price": 86400,
+      "url": "https://myaimportaciones.vercel.app/producto/total-atornillador-articulado-8v-6nm-con-17-accesorios-tsdli08025",
+      "status": 200
+    },
+    {
+      "model": "TDLI205582",
+      "tier": "Media",
+      "price": 122900,
+      "url": "https://myaimportaciones.vercel.app/producto/total-taladro-atornillador-brushless-20v-55nm-tdli205582",
+      "status": 200
+    },
+    {
+      "model": "TIRLI2028",
+      "tier": "Industrial de alta potencia",
+      "price": 230900,
+      "url": "https://myaimportaciones.vercel.app/producto/total-atornillador-de-impacto-brushless-20v-285nm-tirli2028",
+      "status": 200
+    }
+  ],
+  "unchangedPricesCostsStockAndOtherProducts": true
+}

@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-06T14:42:24.733Z",
+  "mobile": [
+    {
+      "photoLoaded": true,
+      "priceText": "$ 86.400",
+      "scrollWidth": 375,
+      "title": "Total Atornillador articulado 8V 6Nm con 17 accesorios TSDLI08025",
+      "url": "https://myaimportaciones.vercel.app/producto/total-atornillador-articulado-8v-6nm-con-17-accesorios-tsdli08025",
+      "width": 390
+    },
+    {
+      "photoLoaded": true,
+      "priceText": "$ 116.300",
+      "scrollWidth": 375,
+      "title": "Total Gato hidráulico carrito 2 toneladas THT10821",
+      "url": "https://myaimportaciones.vercel.app/producto/total-gato-hidraulico-carrito-2-toneladas-tht10821",
+      "width": 390
+    },
+    {
+      "photoLoaded": true,
+      "priceText": "$ 350.900",
+      "scrollWidth": 375,
+      "title": "Total Gato hidráulico carrito perfil bajo 3 toneladas doble bomba THT10834",
+      "url": "https://myaimportaciones.vercel.app/producto/total-gato-hidraulico-carrito-perfil-bajo-3-toneladas-doble-bomba-tht10834",
+      "width": 390
+    }
+  ],
+  "galleryDialogVerified": true,
+  "catalogGatosCount": 2
+}

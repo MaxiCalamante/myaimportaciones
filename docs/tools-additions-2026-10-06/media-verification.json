@@ -1,0 +1,32 @@
+[
+  {
+    "model": "TSDLI08025",
+    "width": 1024,
+    "height": 1024,
+    "ok": true
+  },
+  {
+    "model": "TSDLI08025",
+    "width": 1024,
+    "height": 895,
+    "ok": true
+  },
+  {
+    "model": "THT10821",
+    "width": 1024,
+    "height": 1024,
+    "ok": true
+  },
+  {
+    "model": "THT10821",
+    "width": 1024,
+    "height": 663,
+    "ok": true
+  },
+  {
+    "model": "THT10834",
+    "width": 1024,
+    "height": 1024,
+    "ok": true
+  }
+]
