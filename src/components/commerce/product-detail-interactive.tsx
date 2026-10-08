@@ -16,6 +16,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
+import { ElectronicsPrice } from "./electronics-price";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import {
   calculateShipping,
@@ -165,7 +166,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
                 </span>
               )}
             </div>
-
+            {channel === "retail" && <ElectronicsPrice product={product} detail />}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:max-w-[12rem] sm:justify-end sm:text-right">
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
@@ -463,9 +464,9 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
               {formatPaymentMethod(m)}
             </span>
           ))}
-          <span className="rounded-md bg-sky-50 text-sky-800 px-2 py-0.5 text-[10px] font-bold uppercase border border-sky-100">
+          {!product.paymentMethods.includes("mercado_pago") && <span className="rounded-md bg-sky-50 text-sky-800 px-2 py-0.5 text-[10px] font-bold uppercase border border-sky-100">
             Mercado Pago
-          </span>
+          </span>}
         </div>
       </div>
 

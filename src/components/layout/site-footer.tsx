@@ -53,7 +53,7 @@ export function SiteFooter() {
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
               ? "Tu distribuidor directo de confianza. Abastecemos a comercios, ferreterías y revendedores con Cosmética Coreana (K-Beauty original), tratamientos capilares Karseell y herramientas industriales Total y Wadfow con precios diferenciales por bulto cerrado."
-              : "Tu tienda de confianza en importaciones directas. Cosmética coreana (K-Beauty original), cuidado capilar premium, fragancias y herramientas profesionales. Atención humana desde Tandil por Máximo y Agustina con envíos a toda la Argentina."}
+              : "Tu tienda de confianza en importaciones. Electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas. Atención de Máximo y Agustina desde Tandil con envíos a toda la Argentina."}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <a
@@ -92,6 +92,7 @@ export function SiteFooter() {
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/catalogo"}>
               Explorar productos
             </Link>
+            {!isWholesale && <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=electronica">Electrónica Apple & Samsung</Link>}
           </div>
         </div>
 

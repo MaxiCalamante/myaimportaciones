@@ -16,7 +16,7 @@ export function invalidateAdminStorefrontCache(): void {}
 export const getPublicFacetProducts = cache(async (): Promise<CatalogFacetProduct[]> => {
   if (!hasSupabaseConfig()) return [];
   const db = await createServerSupabaseClient();
-  return readAllPages((from, to) => db.from("products").select("category_id,brand")
+  return readAllPages((from, to) => db.from("products").select("category_id,brand,model")
     .eq("is_active", true).eq("is_wholesale_only", false).order("id").range(from, to));
 });
 
@@ -92,7 +92,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(c => mapCategory(c, options?.admin));
   const excluded = new Set(categories.filter(c => isExcludedCategory(c.slug)).map(c => c.id));
   categories.forEach(c => { if (c.parentId && excluded.has(c.parentId)) excluded.add(c.id); });
-  const products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin)).filter(p => options?.admin || (!excluded.has(p.categoryId) && !/iphone|smartphone|celular/i.test(p.title)));
+  const products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin)).filter(p => options?.admin || !excluded.has(p.categoryId));
 
   const result: StorefrontData = {
     categories: options?.admin ? categories : categories.filter(c => !c.wholesaleOnly && !excluded.has(c.id)),
@@ -118,7 +118,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || /iphone|smartphone|celular/i.test(data.title) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
+  if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
 
   return mapProduct(data as unknown as DbProduct);
 }

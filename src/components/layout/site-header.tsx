@@ -17,6 +17,7 @@ import {
   Sparkles,
   Droplets,
   LayoutGrid,
+  Smartphone,
   ArrowRight,
   MessageCircle,
 } from "lucide-react";
@@ -155,6 +156,7 @@ export function SiteHeader({
   };
 
   const getCategoryIcon = (slug: string, className = "h-4 w-4") => {
+    if (slug.startsWith("electronica")) return <Smartphone className={className} />;
     if (slug.includes("herramienta")) return <Wrench className={className} />;
     if (slug.includes("cosmetica")) return <Sparkles className={className} />;
     if (slug.includes("capilar")) return <Droplets className={className} />;

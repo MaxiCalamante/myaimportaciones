@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-10-08T14:37:35.154Z",
+  "concurrentChanges": [
+    {
+      "table": "products",
+      "id": "b648df64-1622-59e6-bf7f-1a820ce1d008",
+      "title": "Total Fresadora industrial 2200W TR111226",
+      "change": "missing"
+    },
+    {
+      "table": "product_costs",
+      "id": "b648df64-1622-59e6-bf7f-1a820ce1d008",
+      "change": "missing"
+    }
+  ],
+  "added": 2,
+  "reports": [
+    {
+      "model": "THTFX12151",
+      "url": "https://myaimportaciones.vercel.app/producto/total-mango-de-fuerza-articulado-1-2-375-mm-thtfx12151",
+      "price": 24200,
+      "purchase": 12614.99,
+      "publicPage": true,
+      "optimizedImage": true,
+      "search": true,
+      "privateCostNotExposed": true
+    },
+    {
+      "model": "THPTW1425N8",
+      "url": "https://myaimportaciones.vercel.app/producto/total-torquimetro-1-4-5-25-nm-estuche-thptw1425n8",
+      "price": 89900,
+      "purchase": 44827.41,
+      "publicPage": true,
+      "optimizedImage": true,
+      "search": true,
+      "privateCostNotExposed": true
+    }
+  ]
+}

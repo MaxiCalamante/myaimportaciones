@@ -92,6 +92,10 @@ export default async function ProductPage({ params }: Props) {
     .slice(0, 4);
 
   const brandName = product.brand;
+  const itemCondition = /CPO|reacondicionado/i.test(product.specifications?.["Condición"] ?? "")
+    ? "https://schema.org/RefurbishedCondition"
+    : /activado/i.test(product.specifications?.["Condición"] ?? "")
+      ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition";
 
   const productJsonLd = {
     "@context": "https://schema.org/",
@@ -101,7 +105,7 @@ export default async function ProductPage({ params }: Props) {
     description: product.description,
     sku: product.sku || product.id,
     ...(product.model ? { mpn: product.model } : {}),
-    itemCondition: "https://schema.org/NewCondition",
+    itemCondition,
     ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
     offers: {
       "@type": "Offer",
@@ -110,7 +114,7 @@ export default async function ProductPage({ params }: Props) {
       price: product.retailPrice,
 
       availability: isVerifiedStock(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      itemCondition: "https://schema.org/NewCondition",
+      itemCondition,
       seller: {
         "@type": "Organization",
         name: siteConfig.brandName,

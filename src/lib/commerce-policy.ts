@@ -3,8 +3,9 @@ export const WHOLESALE_ENABLED = false;
 export const MAX_ORDER_QUANTITY = 100;
 export const MAX_ORDER_LINES = 50;
 
+const EXCLUDED_CATEGORY_SLUGS: readonly string[] = [];
 export function isExcludedCategory(slug: string) {
-  return /smartphone|telefon|tecnologia|celular/i.test(slug);
+  return EXCLUDED_CATEGORY_SLUGS.includes(slug);
 }
 
 export function purchasableQuantity(product: { stock: number; stockVerifiedAt?: string | null; fulfillmentMode?: string; supplierAvailable?: boolean }) {

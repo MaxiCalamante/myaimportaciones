@@ -48,6 +48,8 @@ export const metadata: Metadata = {
     "Victoria's Secret Body Mist",
     "Herramientas Total Tools",
     "Herramientas Wadfow",
+    "Apple Samsung Argentina",
+    "Smartphones tablets MacBook iMac",
     "Importaciones Tandil",
     "Máximo y Agustina",
   ],

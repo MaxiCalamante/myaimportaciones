@@ -159,6 +159,12 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
     categories.filter((category) => category.parentId === parentId);
 
   const getCategoryTheme = (slug: string) => {
+    if (slug === "electronica") return {
+      badge: "Apple & Samsung",
+      tagClass: "bg-sky-100 text-sky-900",
+      count: "Smartphones, tablets y computadoras",
+      bgHover: "hover:border-sky-300 hover:shadow-sky-50/50",
+    };
     if (slug.includes("herramienta")) {
       return {
         badge: "Total Tools & Wadfow",
@@ -204,7 +210,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
               ¿Qué estás buscando?
             </h2>
             <p className="mt-1 text-sm text-zinc-600 max-w-2xl">
-              Explorá cosmética coreana original, cuidado capilar premium, fragancias y herramientas profesionales con los mejores precios.
+              Explorá electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas.
             </p>
           </div>
           <Link
@@ -216,7 +222,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
           </Link>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={`grid gap-6 sm:grid-cols-2 ${visibleCategories.length === 4 ? "xl:grid-cols-4" : "lg:grid-cols-3"}`}>
           {visibleCategories.map((category) => {
             const subs = getSubcategories(category.id);
             const theme = getCategoryTheme(category.slug);
@@ -235,7 +241,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
                   >
                     <Image
                       alt={category.name}
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      className={`${category.slug === "electronica" ? "object-contain p-4" : "object-cover"} transition-transform duration-700 group-hover:scale-105`}
                       fill
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                       src={initialImg}

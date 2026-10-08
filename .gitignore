@@ -38,6 +38,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Private electronics supplier lists, purchase costs, comparable evidence and snapshots.
+docs/electronics-atacado-2026-10-08/*
+!docs/electronics-atacado-2026-10-08/README.md
+!docs/electronics-atacado-2026-10-08/verification.json
+!docs/electronics-atacado-2026-10-08/ui-verification.json
+docs/iphones-atacado-2026-10-08/
+
 # Private supplier and database evidence for the authorized tools expansion.
 docs/tools-rubros-2026-10-06/*
 !docs/tools-rubros-2026-10-06/README.md

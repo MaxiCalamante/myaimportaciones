@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-08T17:14:11.992Z",
+  "environment": "local production build",
+  "widths": [
+    320,
+    390,
+    1440
+  ],
+  "horizontalOverflow": false,
+  "jsErrors": 0,
+  "verified": [
+    "brand filter",
+    "model/family filter",
+    "clear all",
+    "empty search zzzzsynthetic",
+    "exact variant detail and color photo",
+    "ARS and USD equivalent",
+    "cart price",
+    "checkout summary without order",
+    "favorites retrieval"
+  ],
+  "testCartCleaned": true,
+  "testFavoriteCleaned": true,
+  "productionVerified": true,
+  "productionBase": "https://myaimportaciones.vercel.app",
+  "productionWidths": [320, 390, 1440],
+  "productionHorizontalOverflow": false,
+  "productionJsErrors": 0,
+  "productionVerifiedInteractions": ["Samsung brand filter", "Galaxy A27 family filter", "three exact color variants", "detail photo and both currencies"],
+  "productionOrdersCreated": 0,
+  "productionCartOrFavoritesChanged": false
+}

@@ -1,0 +1,17 @@
+# Private supplier/financial evidence is local-only.
+docs
+scripts
+tests
+scratch
+*.log
+.next-dev.*.log
+AI_CONTEXT.md
+CLAUDE.md
+.git
+.next
+node_modules
+.env*
+*.tsbuildinfo
+*.xlsx
+*.xls
+*.csv

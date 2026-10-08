@@ -21,6 +21,7 @@ type Props = {
   brandsByCategory: Record<string, { brand: string; count: number }[]>;
   query: string;
   brand: string;
+  family?: string;
   sort: string;
   minPrice: string;
   maxPrice: string;
@@ -41,6 +42,7 @@ export function CatalogSearchControls({
   brandsByCategory,
   query,
   brand,
+  family = "",
   sort,
   minPrice,
   maxPrice,
@@ -127,6 +129,7 @@ export function CatalogSearchControls({
     (brand ? 1 : 0) +
     (minPrice || maxPrice ? 1 : 0) +
     (sort ? 1 : 0) +
+    (family ? 1 : 0) +
     (query ? 1 : 0);
 
   // Navigate helper
@@ -134,6 +137,7 @@ export function CatalogSearchControls({
     q?: string;
     category?: string;
     brand?: string;
+    family?: string;
     sort?: string;
     min?: string;
     max?: string;
@@ -149,6 +153,8 @@ export function CatalogSearchControls({
     if (nextQ) sp.set("q", nextQ);
     if (nextCategory) sp.set("category", nextCategory);
     if (nextBrand) sp.set("brand", nextBrand);
+    const nextFamily = params.family ?? (nextCategory === (category?.slug ?? "") && nextBrand === brand && nextQ === query.trim() ? family : "");
+    if (nextFamily) sp.set("family", nextFamily);
     if (nextSort) sp.set("sort", nextSort);
     if (nextMin) sp.set("min", nextMin);
     if (nextMax) sp.set("max", nextMax);
@@ -170,7 +176,7 @@ export function CatalogSearchControls({
   };
 
   // Clear single filter chip
-  const handleRemoveChip = (key: "q" | "brand" | "price" | "sort") => {
+  const handleRemoveChip = (key: "q" | "brand" | "price" | "sort" | "family") => {
     if (key === "q") {
       setSearchInput("");
       navigateWithParams({ q: "" });
@@ -184,6 +190,8 @@ export function CatalogSearchControls({
     } else if (key === "sort") {
       setSelectedSort("");
       navigateWithParams({ sort: "" });
+    } else if (key === "family") {
+      navigateWithParams({ family: "" });
     }
   };
 
@@ -198,6 +206,7 @@ export function CatalogSearchControls({
     navigateWithParams({
       q: "",
       brand: "",
+      family: "",
       sort: "",
       min: "",
       max: "",
@@ -552,6 +561,12 @@ export function CatalogSearchControls({
             >
               <span>Marca: {brand}</span>
               <X className="h-3 w-3" />
+            </button>
+          ) : null}
+
+          {family ? (
+            <button type="button" onClick={() => handleRemoveChip("family")} className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-200">
+              <span>Modelo: {family}</span><X className="h-3 w-3" />
             </button>
           ) : null}
 

@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-08T16:58:10.634Z",
+  "records": 137,
+  "publicEligible": 47,
+  "drafts": 90,
+  "photosChecked": 86,
+  "ownStock": 0,
+  "pricesCurrencies": [
+    "ARS",
+    "USD"
+  ],
+  "databaseVerified": true,
+  "productionFrontendVerified": true,
+  "productionCheckedAt": "2026-10-08T17:16:44.086Z",
+  "productRoutesVerified": 47,
+  "privateCostReadDenied": true,
+  "supplierFieldReadDenied": true,
+  "finalDeploymentId": "dpl_DkeyNM1jrhDJxLmKKod3wRqi9qCB",
+  "finalHomepageVerified": true
+}

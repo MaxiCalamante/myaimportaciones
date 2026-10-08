@@ -9,5 +9,5 @@ export async function GET(request: Request) {
   const db = await createServerSupabaseClient();
   const { data, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name)`).in("id", ids).eq("is_active", true).eq("is_wholesale_only", false);
   if (error) return NextResponse.json({ error: "No disponible" }, { status: 503 });
-  return NextResponse.json(data.filter(p => !/iphone|smartphone|celular/i.test(p.title)).map(p => mapProduct(p)), { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json(data.map(p => mapProduct(p)), { headers: { "Cache-Control": "private, no-store" } });
 }

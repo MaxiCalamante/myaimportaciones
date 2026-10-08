@@ -1,7 +1,7 @@
 import type { Category } from "./types";
 
 export type BrandFacet = { brand: string; count: number };
-export type CatalogFacetProduct = { category_id: string; brand: string | null };
+export type CatalogFacetProduct = { category_id: string; brand: string | null; model?: string | null };
 
 /** Use the complete public catalog, never a page of search results, for navigation. */
 export function deriveCatalogFacets(categories: Category[], products: CatalogFacetProduct[]) {

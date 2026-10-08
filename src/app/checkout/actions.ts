@@ -43,7 +43,7 @@ async function resolveQuote(input: CheckoutInput) {
   const items: PricedItem[] = input.lines.map(line => {
     const p = products.find(p => p.id === line.productId)!;
     const category = Array.isArray(p.categories) ? p.categories[0] : p.categories;
-    if (!p.is_active || p.is_wholesale_only || /smartphone|telefon|tecnologia|celular/i.test(category?.slug ?? "") || (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity))) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+    if (!p.is_active || p.is_wholesale_only || (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity))) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
     const cost = costs?.find(c => c.product_id === p.id);
     const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
     // Charge the published server price. Unknown costs disable discounts, not the purchase.

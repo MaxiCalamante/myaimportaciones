@@ -14,7 +14,13 @@ El precio comercial debe aprovechar el margen disponible en el mercado. El dueñ
 
 El criterio nuevo guía futuras propuestas y reemplaza como regla general el recargo aproximado del 100% y ML menos 5%. No borrar las tablas previamente autorizadas ni sobrescribir costos de compra por estimaciones. Mantener costos, cantidades del proveedor y enlaces mayoristas en superficies privadas.
 
-## Evidencia del 02/10/2026
+## Electrónica Atacado USA: criterio delegado el 08/10/2026
+
+Ante equipos cuyo costo no permite el descuento habitual, el dueño delegó la decisión: "la idea es sacar la mayor rentabilidad posible pero a la vez ser competitivos con el precio". Para esta incorporación se propone 3% por debajo de una referencia argentina competitiva, redondeando hacia abajo a ARS100. Los precios menores encontrados del mismo hardware se usan como techo conservador para evitar elegir un color caro sólo para subir el margen. Una funda o cargador sin características verificadas no recibe una prima de reventa inventada.
+
+Se exige al menos 15% sobre compra antes de gastos como filtro inicial. Esto no garantiza rentabilidad neta: flete, internación, comisiones y otros gastos siguen pendientes y deben completarse en administración. Las variantes con margen insuficiente, identidad contradictoria, estado de unidad pendiente o sin comparable argentino disponible permanecen en borrador. Compra +25% es sólo una propuesta provisional para esos borradores sin comparable y no autoriza activarlos. Pesos es el precio efectivo del checkout; USD se deriva de ese precio y de la cotización guardada en la ficha. Costos y referencias mayoristas permanecen privados.
+
+## Evidencia del 02/10/2026 (archivo histórico)
 
 `pricing-review-2026-10-02/catalog-before.json` conserva el estado de los 214 productos. `supplier-live.json` y los HTML conservan las consultas directas; `market-*.txt` conserva las búsquedas ML. `productos.csv` incluye todas las filas, aun cuando no existe propuesta suficiente. `revision.html` permite buscar y filtrar.
 

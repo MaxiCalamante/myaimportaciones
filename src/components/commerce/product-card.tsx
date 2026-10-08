@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, PackageCheck, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { ElectronicsPrice } from "./electronics-price";
 import type { Product, ProductChannel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -89,6 +90,7 @@ export function ProductCard({
             <p className="text-lg font-bold tabular-nums text-zinc-950 sm:text-xl">
               {formatCurrency(price)}
             </p>
+            {channel === "retail" && <ElectronicsPrice product={product} />}
             {channel === "retail" && <p className="mt-1 text-[11px] text-emerald-800">Consultá las condiciones de compra</p>}
 
             {channel === "wholesale" ? (

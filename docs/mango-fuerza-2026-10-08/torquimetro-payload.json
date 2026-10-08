@@ -1,0 +1,66 @@
+{
+  "product": {
+    "id": "7d1a9c84-992c-4be0-b032-f53c2e529cc5",
+    "category_id": "73357dba-7849-49d7-a01f-1ecb94193a04",
+    "title": "Total Torquímetro preajustable 1/4 pulgada 5–25 Nm con estuche THPTW1425N8",
+    "slug": "total-torquimetro-1-4-5-25-nm-estuche-thptw1425n8",
+    "description": "Torquímetro manual preajustable Total con encastre de 1/4 pulgada y rango de ajuste de 5 a 25 Nm. Permite aplicar el par indicado para tornillos y tuercas compatibles, en tareas de montaje y mantenimiento. Tiene 280 mm de largo y una tolerancia de par declarada de ±3%.\nIncluye estuche plástico para transporte y guardado. Seleccioná el torque indicado por el fabricante de la pieza y verificá que esté dentro del rango de esta herramienta.\nConsultá disponibilidad y condiciones de entrega antes de comprar.",
+    "image_url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/catalog-2026-10-08-total-thptw1425n8.jpg",
+    "image_urls": [
+      "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/catalog-2026-10-08-total-thptw1425n8.jpg"
+    ],
+    "retail_price": 89900,
+    "wholesale_price": 0,
+    "wholesale_min_qty": 1,
+    "stock": 0,
+    "stock_verified_at": null,
+    "brand": "Total",
+    "model": "THPTW1425N8",
+    "sku": "598408",
+    "tags": [
+      "Total",
+      "Herramientas",
+      "Torquímetro",
+      "Llave dinamométrica",
+      "Taller",
+      "Torque"
+    ],
+    "is_active": true,
+    "is_featured": false,
+    "is_wholesale_only": false,
+    "source_url": "https://www.totalherramientasoficial.com.py/produto/total-llave-dinamometrica-preajustable-525nm---thptw1425n8-57169.html",
+    "fulfillment_mode": "supplier",
+    "supplier_available": true,
+    "supplier_last_checked_at": "2026-10-08T14:36:32.262Z",
+    "supplier_stock_status": "in_stock",
+    "supplier_live_price": 44827.41,
+    "specifications": {
+      "Gama": "Industrial",
+      "Tipo": "Manual preajustable",
+      "Encastre": "1/4 pulgada",
+      "Rango de torque": "5–25 Nm",
+      "Longitud": "280 mm",
+      "Tolerancia de par": "±3%",
+      "Incluye": "Torquímetro y estuche plástico"
+    },
+    "warranty_terms": "Consultá las condiciones de garantía y posventa de MYA antes de confirmar la compra."
+  },
+  "cost": {
+    "product_id": "7d1a9c84-992c-4be0-b032-f53c2e529cc5",
+    "origin_cost": 44827.41,
+    "currency": "ARS",
+    "exchange_rate": 1,
+    "freight_per_unit": 0,
+    "other_landed_cost": 0,
+    "variable_cost": 0,
+    "payment_fee_percent": 0,
+    "minimum_contribution": 0,
+    "expenses_confirmed": false,
+    "supplier_url": "https://www.totalherramientasoficial.com.py/produto/total-llave-dinamometrica-preajustable-525nm---thptw1425n8-57169.html",
+    "verified_at": "2026-10-08T14:36:32.262Z",
+    "ml_price": 99900,
+    "ml_url": "https://articulo.mercadolibre.com.ar/MLA-2155355561-torquimetro-14-5-25nm-3-l280mm-estuche-industrial-_JM",
+    "ml_checked_at": "2026-10-08T14:36:32.262Z",
+    "source_document": "Alta solicitada por el dueño el08/10/2026. Proveedor navegador ficha principal THPTW1425N8 SKU598408 disponible. Precio CON IVA USD26,40 / BRL136,49. Costo BRL136,49 × ARS328,43 por real (misma cotización indicada para esta operación) = ARS44827.41. Guardado convertido en ARS, exchange_rate1 porque esquema no admite BRL. Referencia ML exacta verificada en navegador, modelo THPTW1425N8, Total, encastre1/4, rango5-25Nm,280mm, estuche, vendedor AJC MOTOS-RODAMIENTOS OK, última unidad, ARS99900 con impuestos. Venta ARS89900, ML×0,90 redondeo hacia abajo a ARS100. Diferencia antes de gastos ARS45072.59, no ganancia neta. Flete, internación y comisiones pendientes; ceros requeridos no son gastos gratuitos; expenses_confirmed=false. Stock físico propio0. Costos y fuentes privados."
+  }
+}

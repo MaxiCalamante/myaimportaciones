@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
 import { getStorefrontData, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
-import { deriveCatalogFacets, type BrandFacet } from "@/lib/catalog-facets";
+import { deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "@/lib/catalog-facets";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import type { Product } from "@/lib/types";
@@ -13,15 +13,16 @@ import type { Product } from "@/lib/types";
 export const metadata = {
   title: "Catálogo de productos | MyA importaciones",
   description:
-    "Explorá nuestro catálogo de Cosmética Coreana (K-Beauty original), cuidado capilar, fragancias y herramientas profesionales Total Tools con envíos a todo el país.",
+    "Explorá electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas. Encontrá modelos, colores y precios en MyA importaciones.",
 };
-type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; min?: string; max?: string };
+type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };
 const pageSize = 24;
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<CatalogParams> }) {
   const params = await searchParams;
   const q = (params.q ?? "").replace(/[^\p{L}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " ").slice(0, 100);
   const brand = (params.brand ?? "").trim().slice(0, 80);
+  const family = (params.family ?? "").trim().slice(0, 100);
   const sort = ["price_asc", "price_desc", "name_asc"].includes(params.sort ?? "") ? params.sort! : "";
   const minPrice = /^\d{1,12}$/.test(params.min ?? "") ? params.min! : "";
   const maxPrice = /^\d{1,12}$/.test(params.max ?? "") ? params.max! : "";
@@ -33,11 +34,13 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   let products: Product[] = [], count = 0, failed = Boolean(catalogError);
   let brands: { brand: string; count: number }[] = [];
   let brandsByCategory: Record<string, BrandFacet[]> = {};
+  let facetProducts: CatalogFacetProduct[] = [];
 
   if (hasSupabaseConfig()) {
     const db = await createServerSupabaseClient();
     try {
-      const facets = deriveCatalogFacets(visibleCategories, await getPublicFacetProducts());
+      facetProducts = await getPublicFacetProducts();
+      const facets = deriveCatalogFacets(visibleCategories, facetProducts);
       visibleCategories = facets.categories;
       brands = facets.brands;
       brandsByCategory = facets.brandsByCategory;
@@ -50,6 +53,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     if (ids.length) {
       let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
       if (brand) query = query.eq("brand", brand);
+      if (family) query = query.eq("model", family);
       if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`);
       if (minPrice) query = query.gte("retail_price", Number(minPrice));
       if (maxPrice) query = query.lte("retail_price", Number(maxPrice));
@@ -63,6 +67,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     const matching = fallback.filter(product => {
       if (category && product.categoryId !== category.id && !visibleCategories.some(c => c.id === product.categoryId && c.parentId === category.id)) return false;
       if (brand && product.brand !== brand) return false;
+      if (family && product.model !== family) return false;
       if (q && ![product.title, product.brand, product.model, product.sku, product.description].some(value => value?.toLocaleLowerCase("es").includes(q.toLocaleLowerCase("es")))) return false;
       if (minPrice && product.retailPrice < Number(minPrice)) return false;
       if (maxPrice && product.retailPrice > Number(maxPrice)) return false;
@@ -71,7 +76,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     matching.sort((a, b) => sort === "price_asc" ? a.retailPrice - b.retailPrice : sort === "price_desc" ? b.retailPrice - a.retailPrice : sort === "name_asc" ? a.title.localeCompare(b.title, "es") : Number(b.featured) - Number(a.featured) || a.title.localeCompare(b.title, "es"));
     count = matching.length;
     products = matching.slice((page - 1) * pageSize, page * pageSize);
-    const facets = deriveCatalogFacets(visibleCategories, fallback.map(p => ({ category_id: p.categoryId, brand: p.brand ?? null })));
+    facetProducts = fallback.map(p => ({ category_id: p.categoryId, brand: p.brand ?? null, model: p.model }));
+    const facets = deriveCatalogFacets(visibleCategories, facetProducts);
     visibleCategories = facets.categories;
     brands = facets.brands;
     brandsByCategory = facets.brandsByCategory;
@@ -79,10 +85,16 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   const pages = Math.ceil(count / pageSize);
   const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
-  function catalogUrl(next: { category?: string; page?: number }) {
+  const electronics = root?.slug === "electronica";
+  const familyIds = new Set(category ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id) : []);
+  const families = electronics ? [...new Set(facetProducts.filter(p => familyIds.has(p.category_id) && (!brand || p.brand === brand)).map(p => p.model).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })) : [];
+  function catalogUrl(next: { category?: string; page?: number; family?: string; brand?: string }) {
     const query = new URLSearchParams();
     if (q) query.set("q", q);
-    if (brand && next.category === category?.slug) query.set("brand", brand);
+    const nextBrand = next.brand ?? (next.category === category?.slug ? brand : "");
+    if (nextBrand) query.set("brand", nextBrand);
+    const nextFamily = next.family ?? (next.category === category?.slug && next.brand === undefined ? family : "");
+    if (nextFamily) query.set("family", nextFamily);
     if (next.category) query.set("category", next.category);
     if (sort) query.set("sort", sort);
     if (minPrice) query.set("min", minPrice);
@@ -189,14 +201,29 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       )}
 
       {/* Search and Filters Controls */}
+      {electronics && (
+        <div className="mb-4 space-y-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-3 sm:p-4">
+          <nav aria-label="Marcas de electrónica" className="flex flex-wrap gap-2">
+            {["", "Apple", "Samsung"].map(value => (
+              <Link key={value} href={catalogUrl({ category: category?.slug, brand: value, family: "" })} aria-current={brand === value ? "page" : undefined} className={`rounded-full px-4 py-2 text-xs font-semibold ${brand === value ? "bg-zinc-950 text-white" : "border border-zinc-200 bg-white text-zinc-700"}`}>{value || "Todas las marcas"}</Link>
+            ))}
+          </nav>
+          <nav aria-label="Modelos y gamas" className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
+            <Link href={catalogUrl({ category: category?.slug, family: "" })} aria-current={!family ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${!family ? "bg-sky-700 text-white" : "border border-zinc-200 bg-white text-zinc-700"}`}>Todos los modelos</Link>
+            {families.map(value => <Link key={value} href={catalogUrl({ category: category?.slug, family: value })} aria-current={family === value ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${family === value ? "bg-sky-700 text-white" : "border border-zinc-200 bg-white text-zinc-700"}`}>{value}</Link>)}
+          </nav>
+          {family && <p className="text-sm font-semibold text-sky-900">Modelo: {family}</p>}
+        </div>
+      )}
       <CatalogSearchControls
-        key={JSON.stringify([category?.slug, q, brand, sort, minPrice, maxPrice])}
+        key={JSON.stringify([category?.slug, q, brand, family, sort, minPrice, maxPrice])}
         categories={visibleCategories}
         category={category}
         brands={brands}
         brandsByCategory={brandsByCategory}
         query={q}
         brand={brand}
+        family={family}
         sort={sort}
         minPrice={minPrice}
         maxPrice={maxPrice}

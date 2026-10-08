@@ -1,0 +1,68 @@
+{
+  "product": {
+    "id": "d13a1183-61a3-4e53-a6f8-4347dfdfc9f8",
+    "category_id": "73357dba-7849-49d7-a01f-1ecb94193a04",
+    "title": "Total Mango de fuerza articulado 1/2 pulgada 375 mm THTFX12151",
+    "slug": "total-mango-de-fuerza-articulado-1-2-375-mm-thtfx12151",
+    "description": "Mango de fuerza articulado Total para trabajar con tubos y bocallaves de encastre de 1/2 pulgada. Su cabezal articulado permite orientar el tubo según el acceso a la tuerca o al tornillo. Tiene 375 mm de largo (15 pulgadas) y está fabricado en acero al cromo vanadio (Cr-V), con acabado cromado.\nIncluye un mango de fuerza; los tubos y bocallaves se venden por separado.\nConsultá disponibilidad y condiciones de entrega antes de comprar.",
+    "image_url": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/catalog-2026-10-08-total-thtfx12151.jpg",
+    "image_urls": [
+      "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/catalog-2026-10-08-total-thtfx12151.jpg"
+    ],
+    "retail_price": 24200,
+    "wholesale_price": 0,
+    "wholesale_min_qty": 1,
+    "stock": 0,
+    "stock_verified_at": null,
+    "brand": "Total",
+    "model": "THTFX12151",
+    "sku": "456517",
+    "tags": [
+      "Total",
+      "Herramientas",
+      "Mango de fuerza",
+      "Llave flexible",
+      "Articulado",
+      "Automotor",
+      "Taller"
+    ],
+    "is_active": true,
+    "is_featured": false,
+    "is_wholesale_only": false,
+    "source_url": "https://www.totalherramientasoficial.com.py/produto/total-cheve-flexivel--thtfx12151-12-40719.html",
+    "fulfillment_mode": "supplier",
+    "supplier_available": true,
+    "supplier_last_checked_at": "2026-10-08T14:34:35.210Z",
+    "supplier_stock_status": "in_stock",
+    "supplier_live_price": 12614.99,
+    "specifications": {
+      "Gama": "Industrial",
+      "Encastre": "1/2 pulgada",
+      "Longitud": "375 mm (15 pulgadas)",
+      "Cabezal": "Articulado",
+      "Material": "Acero al cromo vanadio (Cr-V)",
+      "Acabado": "Cromado",
+      "Incluye": "1 mango de fuerza",
+      "Bocallaves": "No incluidas"
+    },
+    "warranty_terms": "Consultá las condiciones de garantía y posventa de MYA antes de confirmar la compra."
+  },
+  "cost": {
+    "product_id": "d13a1183-61a3-4e53-a6f8-4347dfdfc9f8",
+    "origin_cost": 12614.99,
+    "currency": "ARS",
+    "exchange_rate": 1,
+    "freight_per_unit": 0,
+    "other_landed_cost": 0,
+    "variable_cost": 0,
+    "payment_fee_percent": 0,
+    "minimum_contribution": 0,
+    "expenses_confirmed": false,
+    "supplier_url": "https://www.totalherramientasoficial.com.py/produto/total-cheve-flexivel--thtfx12151-12-40719.html",
+    "verified_at": "2026-10-08T14:34:35.210Z",
+    "ml_price": 26999,
+    "ml_url": "https://www.mercadolibre.com.ar/mango-de-fuerza-375mm-articulado-12-total-thtfx12151/up/MLAU220077032?wid=MLA1152296611",
+    "ml_checked_at": "2026-10-08T14:34:35.210Z",
+    "source_document": "Alta solicitada por el dueño el 08/10/2026. Costo indicado R$38,41 × ARS328,43/BRL = ARS12614,9863, redondeado ARS12614,99. Se guarda convertido en ARS porque el esquema admite ARS/USD/PYG, manteniendo el original BRL y FX en esta nota. Prevalece el costo de la operación indicado por el dueño sobre la cotización diferente del sitio. Proveedor verificado disponible; foto exacta con 375mm, especificaciones corroboradas con catálogo Total Argentina. ML exacto THTFX12151, 375mm, encastre1/2, HL HERRAMIENTAS, stock disponible4, ARS26999 con impuestos; ficha verificada en navegador el08/10/2026. Venta ARS24200 = referencia ×0,90 redondeada hacia abajo a ARS100. Diferencia ARS11585,01 antes de gastos, no ganancia neta. Gastos pendientes y ceros obligatorios no significan gastos gratuitos. Sin stock físico propio confirmado. Fuentes y costos privados."
+  }
+}
