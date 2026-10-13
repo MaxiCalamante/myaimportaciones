@@ -1,5 +1,6 @@
 "use server";
 import { AdminFormError, runAdminFormAction } from "@/lib/admin-action-result";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { readAdminProducts } from "@/lib/admin-catalog-read";
@@ -535,6 +536,7 @@ export async function updateOrderStatusAction(
   if (error) {
     throw new Error(`Error al actualizar estado del pedido: ${error.message}`);
   }
+  scheduleTransactionalEmails(orderId);
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/cuenta");

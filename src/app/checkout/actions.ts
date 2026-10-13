@@ -1,5 +1,6 @@
 "use server";
 import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
 import { limitCommerceRequest } from "@/lib/request-limit";
 import { createHash } from "node:crypto";
 import { createCommerceService } from "@/lib/supabase/service";
@@ -91,6 +92,7 @@ export async function createOrderAction(input: OrderInput) {
   if (existing) {
     if (existing.status === "cancelled" || Date.parse(existing.reservation_expires_at) < Date.now()) throw new Error("La reserva anterior venció. Consultanos con el código antes de volver a comprar.");
     if (existing.request_hash !== requestHash) throw new Error("El intento anterior tiene otros datos. Revisá el pedido antes de continuar.");
+    scheduleTransactionalEmails(existing.id);
     return { trackingCode: existing.tracking_code as string, total: Number(existing.total_amount), initPoint: existing.payment_url as string | undefined, expiresAt: existing.reservation_expires_at as string, paymentError: existing.payment_method === "mercado_pago" && !existing.payment_url ? "Pedido reservado. Contactanos con el código para recuperar el pago." : undefined };
   }
   const { db, items, quote, option } = await resolveQuote(input);
@@ -100,6 +102,7 @@ export async function createOrderAction(input: OrderInput) {
     payload: { request_id: input.requestId, request_hash: requestHash, profile_id: user?.id ?? null, name: input.name.trim(), email: input.email.toLowerCase().trim(), phone: input.phone.trim(), address: option.type === "pickup" ? "Retiro coordinado en Tandil" : `${input.address}, ${input.city}${input.province ? `, Prov. ${input.province}` : ""}, CP ${input.postalCode}`, notes: [input.notes, quote.shippingQuotedSeparately ? "Envío a cotizar y abonar por separado. El pago de este pedido corresponde únicamente a los productos." : ""].filter(Boolean).join("\n"), payment: input.paymentMethod, items, subtotal: quote.subtotal, discount: quote.discount, shipping: quote.shipping, total: quote.total, shipping_option: option.id, promotion: quote.promotion },
   });
   if (error || !order) throw new Error("No pudimos reservar el pedido. Actualizá disponibilidad e intentá nuevamente.");
+  scheduleTransactionalEmails(order.id);
   let initPoint: string | undefined = order.payment_url ?? undefined;
   if (input.paymentMethod === "mercado_pago" && !initPoint) {
     const payment = await createMercadoPagoPreference({ trackingCode: order.tracking_code, orderId: order.id, total: Number(order.total_amount), expiresAt: order.reservation_expires_at, payerEmail: input.email, payerName: input.name });

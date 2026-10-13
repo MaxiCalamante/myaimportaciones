@@ -13,15 +13,7 @@ ON CONFLICT (id) DO UPDATE SET
   description = EXCLUDED.description,
   image_url = EXCLUDED.image_url,
   display_order = EXCLUDED.display_order;
-INSERT INTO public.categories (id, name, slug, parent_id, description, image_url, is_wholesale_only, display_order)
-VALUES ('10000000-0000-0000-0000-000000000002', 'Smartphones & Tecnología', 'smartphones-tecnologia', null, 'Teléfonos Apple iPhone y dispositivos tecnológicos importados directos de fábrica con garantía y accesorios.', 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80', false, 2)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  slug = EXCLUDED.slug,
-  parent_id = EXCLUDED.parent_id,
-  description = EXCLUDED.description,
-  image_url = EXCLUDED.image_url,
-  display_order = EXCLUDED.display_order;
+
 INSERT INTO public.categories (id, name, slug, parent_id, description, image_url, is_wholesale_only, display_order)
 VALUES ('10000000-0000-0000-0000-000000000003', 'Herramientas & Equipamiento', 'herramientas-equipamiento', null, 'Línea oficial de herramientas industriales Total Tools & Wadfow para talleres, obras y el hogar.', 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=900&q=80', false, 3)
 ON CONFLICT (id) DO UPDATE SET
@@ -409,7 +401,7 @@ ON CONFLICT (slug) DO UPDATE SET
   is_featured = EXCLUDED.is_featured,
   is_active = true;
 INSERT INTO public.products (id, category_id, title, slug, description, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, is_active)
-VALUES ('20000000-0000-0000-0000-000000000023', '10000000-0000-0000-0000-000000000002', 'Apple iPhone 13 128GB - Meia Noite / Black', 'apple-iphone-13-128gb-meia-noite-black', 'Apple iPhone 13 128GB liberado de fábrica. Pantalla Super Retina XDR OLED 6.1", chip A15 Bionic, cámara doble 12MP y batería al 100%.', 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80', 680000, 545000, 2, 15, ARRAY['transferencia', 'tarjeta', 'mercado_pago', 'efectivo']::public.payment_method[], ARRAY['apple', 'iphone', 'smartphone', 'tecnologia']::text[], true, false, true)
+VALUES ('20000000-0000-0000-0000-000000000023', 'cfa5bcfb-99e3-48cf-ab99-3e8c728dfb27', 'Apple iPhone 13 128GB - Meia Noite / Black', 'apple-iphone-13-128gb-meia-noite-black', 'Apple iPhone 13 128GB liberado de fábrica. Pantalla Super Retina XDR OLED 6.1", chip A15 Bionic, cámara doble 12MP y batería al 100%.', 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80', 680000, 545000, 2, 15, ARRAY['transferencia', 'tarjeta', 'mercado_pago', 'efectivo']::public.payment_method[], ARRAY['apple', 'iphone', 'smartphone', 'tecnologia']::text[], true, false, true)
 ON CONFLICT (slug) DO UPDATE SET
   category_id = EXCLUDED.category_id,
   title = EXCLUDED.title,
@@ -424,7 +416,7 @@ ON CONFLICT (slug) DO UPDATE SET
   is_featured = EXCLUDED.is_featured,
   is_active = true;
 INSERT INTO public.products (id, category_id, title, slug, description, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, is_active)
-VALUES ('20000000-0000-0000-0000-000000000024', '10000000-0000-0000-0000-000000000002', 'Apple iPhone 13 Pro Max 256GB - Sierra Blue', 'apple-iphone-13-pro-max-256gb-sierra-blue', 'Apple iPhone 13 Pro Max 256GB. Pantalla ProMotion 120Hz de 6.7", triple cámara con sensor LiDAR, zoom óptico 3x y chasis de acero inoxidable.', 'https://images.unsplash.com/photo-1591337676887-a217a6970a8a?auto=format&fit=crop&w=900&q=80', 895000, 740000, 2, 10, ARRAY['transferencia', 'tarjeta', 'mercado_pago', 'efectivo']::public.payment_method[], ARRAY['apple', 'iphone', 'pro-max', 'tecnologia']::text[], true, false, true)
+VALUES ('20000000-0000-0000-0000-000000000024', 'cfa5bcfb-99e3-48cf-ab99-3e8c728dfb27', 'Apple iPhone 13 Pro Max 256GB - Sierra Blue', 'apple-iphone-13-pro-max-256gb-sierra-blue', 'Apple iPhone 13 Pro Max 256GB. Pantalla ProMotion 120Hz de 6.7", triple cámara con sensor LiDAR, zoom óptico 3x y chasis de acero inoxidable.', 'https://images.unsplash.com/photo-1591337676887-a217a6970a8a?auto=format&fit=crop&w=900&q=80', 895000, 740000, 2, 10, ARRAY['transferencia', 'tarjeta', 'mercado_pago', 'efectivo']::public.payment_method[], ARRAY['apple', 'iphone', 'pro-max', 'tecnologia']::text[], true, false, true)
 ON CONFLICT (slug) DO UPDATE SET
   category_id = EXCLUDED.category_id,
   title = EXCLUDED.title,
@@ -439,7 +431,7 @@ ON CONFLICT (slug) DO UPDATE SET
   is_featured = EXCLUDED.is_featured,
   is_active = true;
 INSERT INTO public.products (id, category_id, title, slug, description, image_url, retail_price, wholesale_price, wholesale_min_qty, stock, payment_methods, tags, is_featured, is_wholesale_only, is_active)
-VALUES ('20000000-0000-0000-0000-000000000025', '10000000-0000-0000-0000-000000000002', 'Apple iPhone 12 128GB - White', 'apple-iphone-12-128gb-white', 'Apple iPhone 12 128GB liberado. Pantalla OLED 6.1", conectividad 5G, chip A14 Bionic, compatible con MagSafe.', 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&w=900&q=80', 495000, 395000, 2, 20, ARRAY['transferencia', 'tarjeta', 'mercado_pago', 'efectivo']::public.payment_method[], ARRAY['apple', 'iphone', 'oportunidad']::text[], false, false, true)
+VALUES ('20000000-0000-0000-0000-000000000025', 'cfa5bcfb-99e3-48cf-ab99-3e8c728dfb27', 'Apple iPhone 12 128GB - White', 'apple-iphone-12-128gb-white', 'Apple iPhone 12 128GB liberado. Pantalla OLED 6.1", conectividad 5G, chip A14 Bionic, compatible con MagSafe.', 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&w=900&q=80', 495000, 395000, 2, 20, ARRAY['transferencia', 'tarjeta', 'mercado_pago', 'efectivo']::public.payment_method[], ARRAY['apple', 'iphone', 'oportunidad']::text[], false, false, true)
 ON CONFLICT (slug) DO UPDATE SET
   category_id = EXCLUDED.category_id,
   title = EXCLUDED.title,

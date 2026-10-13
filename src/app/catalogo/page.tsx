@@ -1,6 +1,7 @@
 import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
 import { EmptyCatalog } from "@/components/commerce/empty-catalog";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -20,6 +21,9 @@ const pageSize = 24;
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<CatalogParams> }) {
   const params = await searchParams;
+  if (params.category === "smartphones-tecnologia") {
+    redirect("/catalogo?category=electronica");
+  }
   const q = (params.q ?? "").replace(/[^\p{L}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " ").slice(0, 100);
   const brand = (params.brand ?? "").trim().slice(0, 80);
   const family = (params.family ?? "").trim().slice(0, 100);

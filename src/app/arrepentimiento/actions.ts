@@ -1,5 +1,6 @@
 "use server";
 import { limitCommerceRequest } from "@/lib/request-limit";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
 import { createCommerceService, hasCommerceService } from "@/lib/supabase/service";
 export async function withdrawalAction(form: FormData) {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
@@ -12,6 +13,7 @@ export async function withdrawalAction(form: FormData) {
   const db = createCommerceService();
   const { data, error } = await db.from("withdrawal_requests").upsert({ request_key: key, email, order_code: code, reason }, { onConflict: "request_key", ignoreDuplicates: true }).select("reference").maybeSingle();
   if (error) throw new Error("No pudimos registrar tu solicitud. Enviala al email de contacto.");
+  scheduleTransactionalEmails();
   if (data) return data.reference as string;
   const { data: previous } = await db.from("withdrawal_requests").select("reference").eq("request_key", key).eq("email", email).single();
   if (!previous) throw new Error("No pudimos recuperar la constancia. Contactanos.");

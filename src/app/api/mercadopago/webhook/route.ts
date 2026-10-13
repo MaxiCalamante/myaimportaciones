@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
+import { getEmailConfig } from "@/lib/email-config";
 import { getMercadoPagoPaymentDetails } from "@/lib/mercadopago";
 import { verifyPaymentSignature } from "@/lib/payment-signature";
 import { createCommerceService } from "@/lib/supabase/service";
@@ -15,8 +17,10 @@ export async function POST(req: NextRequest) {
     if (!payment) return NextResponse.json({ error: "Payment lookup failed" }, { status: 503 });
     if (String(payment.collector_id) !== collector || payment.currency_id !== "ARS" || (process.env.NODE_ENV === "production" && !payment.live_mode)) return NextResponse.json({ error: "Payment mismatch" }, { status: 400 });
     const db = createCommerceService();
-    const { error } = await db.rpc("reconcile_retail_payment_v2", { order_id_input: payment.external_reference, payment_id_input: String(payment.id), amount_input: payment.transaction_amount, status_input: payment.status });
+    const reconcile = getEmailConfig().enabled ? "reconcile_retail_payment_with_emails_v1" : "reconcile_retail_payment_v2";
+    const { error } = await db.rpc(reconcile, { order_id_input: payment.external_reference, payment_id_input: String(payment.id), amount_input: payment.transaction_amount, status_input: payment.status });
     if (error) return NextResponse.json({ error: "Reconciliation failed" }, { status: 503 });
+    scheduleTransactionalEmails(payment.external_reference);
     return NextResponse.json({ received: true });
   } catch { return NextResponse.json({ error: "Processing failed" }, { status: 503 }); }
 }

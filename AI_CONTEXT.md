@@ -1,6 +1,24 @@
 # MYA Importaciones — contexto vigente
 
-Actualizado el 07/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+Actualizado el 08/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
+
+## Eliminación de la Categoría Vacía "Smartphones & Tecnología" — 08/10/2026
+
+Por requerimiento expreso del dueño ("Borra la categoría smartphones y tecnología porque al final terminé subiendo todo en la categoría electrónica y quedó como medio colgado"):
+- **Eliminación en Supabase:** Se eliminó el registro de categoría raíz `10000000-0000-0000-0000-000000000002` (`smartphones-tecnologia`). No contenía productos ni subcategorías asociadas (los 84 smartphones y variantes tecnológicas cargadas pertenecen a la categoría raíz `electronica` y su subcategoría `electronica-smartphones`).
+- **Alineación de Categorías Raíz:** Se reorganizó el orden (`display_order`) para dejar exactamente 4 categorías principales simétricas:
+  1. Cosmética facial y corporal (`cosmetica-coreana`, order 1)
+  2. Electrónica (`electronica`, order 2)
+  3. Herramientas y equipamiento (`herramientas-equipamiento`, order 3)
+  4. Cuidado del cabello (`cuidado-capilar`, order 4)
+- **Redirección y Limpieza de Código:**
+  - Redirección automática en `/catalogo?category=smartphones-tecnologia` hacia `/catalogo?category=electronica`.
+  - Actualización del selector en el modal de proveedores en el panel de administración.
+  - Actualización de `seed.sql` y creación de la migración `20261008144600_remove_smartphones_tecnologia_category.sql`.
+- **Validación técnica:**
+  - `npm test`: 54/54 pruebas aprobadas.
+  - `npm run type-check`: 0 errores.
+  - `npm run build`: compilación limpia en Next.js Turbopack (36 rutas).
 
 ## Atención por WhatsApp Dual y Mejora Integral de Copywriting — 07/10/2026
 

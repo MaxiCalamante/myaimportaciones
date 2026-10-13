@@ -161,7 +161,7 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
   const getCategoryTheme = (slug: string) => {
     if (slug === "electronica") return {
       badge: "Apple & Samsung",
-      tagClass: "bg-sky-100 text-sky-900",
+      tagClass: "bg-sky-600 text-white",
       count: "Smartphones, tablets y computadoras",
       bgHover: "hover:border-sky-300 hover:shadow-sky-50/50",
     };

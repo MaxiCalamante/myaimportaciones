@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu, Images } from "lucide-react";
+import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu, Images, Mail } from "lucide-react";
 import { useRef } from "react";
 
 const sections = [
@@ -12,6 +12,7 @@ const sections = [
   { href: "/admin/operaciones", label: "Operaciones", icon: Boxes },
   { href: "/admin/costos", label: "Stock y costos", icon: ChartNoAxesCombined },
   { href: "/admin/estado", label: "Estado de la tienda", icon: Activity },
+  { href: "/admin/emails", label: "Emails", icon: Mail },
 ];
 
 export function AdminSectionNav() {
