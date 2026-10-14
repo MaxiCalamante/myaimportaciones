@@ -22,3 +22,12 @@ test('Only post and reel links from Instagram are accepted',()=>{
   assert.equal(postKey('https://www.instagram.com/p/DeIpHXtkYyf/?igsh=x'),'DeIpHXtkYyf');
   assert.throws(()=>postKey('https://evil.test/p/DeIpHXtkYyf/'));
 });
+
+import { reelPhotoKeys } from '../src/lib/giveaway/server/photo-keys';
+test('Public animation signs only released eligible identities and trusted profile photos',()=>{
+ const photo='https://scontent.cdninstagram.com/alma.jpg';
+ const comments=[{id:'1',username:'alma',text:'',timestamp:null,avatar:photo},{id:'2',username:'hidden',text:'',timestamp:null,avatar:photo},{id:'3',username:'unsafe',text:'',timestamp:null,avatar:'https://evil.test/private'}];
+ const entries=reelPhotoKeys([{username:'alma'},{username:'unknown'},{username:'unsafe'}],comments);
+ assert.equal(entries.length,1);assert.equal(entries[0].username,'alma');assert.match(entries[0].key,/^[a-f0-9]{64}\.png$/);
+ assert.equal(JSON.stringify(entries).includes(photo),false);
+});

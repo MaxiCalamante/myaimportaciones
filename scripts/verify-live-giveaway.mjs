@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 // Local-only HTTP fixtures + real Postgres functions. Never points Next at production Supabase.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -11,6 +12,7 @@ const adminId='11111111-1111-4111-8111-111111111111',customerId='22222222-2222-4
 const db=new PGlite();
 let next,browser;
 let logs="";
+const originalTsconfig=await readFile('tsconfig.json','utf8');
 await mkdir(out,{recursive:true});
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;
   create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
@@ -20,16 +22,22 @@ await db.exec('set role service_role');
 function fakeJwt(id){return [Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:id,role:'authenticated',aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'test-only-signature'].join('.');}
 function authId(req){try{const token=(req.headers.authorization||'').replace('Bearer ','');return JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString()).sub;}catch{return null;}}
 function send(res,value,status=200,extra={}){res.writeHead(status,{'Content-Type':'application/json',...extra});res.end(JSON.stringify(value));}
+const fixturePhoto=await sharp({create:{width:96,height:96,channels:3,background:'#80b6ad'}}).png().toBuffer();
 const server=createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,databaseUrl);
+    if(url.pathname==='/storage/v1/object/sign/giveaway-avatars'&&req.method==='POST'){
+      let raw='';for await(const chunk of req)raw+=chunk;const {paths}=JSON.parse(raw);
+      return send(res,paths.map(p=>({path:p,signedURL:`/object/sign/giveaway-avatars/${p}?token=fixture-only-photo`})),200);
+    }
+    if(url.pathname.startsWith('/storage/v1/object/')){res.writeHead(200,{'Content-Type':'image/png','Access-Control-Allow-Origin':'*'});res.end(fixturePhoto);return;}
     if(url.pathname==='/auth/v1/user'){
       const id=authId(req);if(![adminId,customerId].includes(id))return send(res,{error:'unauthorized'},401);
       return send(res,{id,aud:'authenticated',role:'authenticated',email:'fixture@example.test',user_metadata:{full_name:'Cuenta de prueba'},app_metadata:{provider:'email'},created_at:new Date().toISOString()});
     }
     if(url.pathname==='/rest/v1/profiles'){const id=(url.searchParams.get('id')||'').replace('eq.','');const profile={id,full_name:'Cuenta de prueba',email:'fixture@example.test',role:id===adminId?'admin':'customer',customer_tier:'retail'};return send(res,req.headers.accept?.includes('object')?profile:[profile]);}
     if(url.pathname==='/rest/v1/giveaway_campaign'){return send(res,(await db.query('select * from giveaway_campaign where id=1')).rows[0]);}
-    if(url.pathname==='/rest/v1/giveaway_rounds'){const id=(url.searchParams.get('id')||'').replace('eq.','');const row=(await db.query('select * from giveaway_rounds where id=$1',[id])).rows[0];return row?send(res,row):send(res,{message:'not found'},404);}
+    if(url.pathname==='/rest/v1/giveaway_rounds'){const id=(url.searchParams.get('id')||'').replace('eq.','');const row=(await db.query('select * from giveaway_rounds where id=$1',[id])).rows[0];return row?send(res,url.searchParams.get('select')==='audit->draws'?{draws:row.audit.draws}:row):send(res,{message:'not found'},404);}
     if(url.pathname.startsWith('/rest/v1/rpc/')){
       let input='';for await(const chunk of req)input+=chunk;const body=input?JSON.parse(input):{};
       const fn=url.pathname.split('/').at(-1);
@@ -45,10 +53,11 @@ await new Promise(resolve=>server.listen(3115,'127.0.0.1',resolve));
 const errors=[],blocked=[];
 try{
   next=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--port','3114','--hostname','127.0.0.1'],{
-    cwd:process.cwd(),windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,NODE_OPTIONS:'--require '+JSON.stringify(path.resolve('scripts/giveaway-meta-fixture.cjs')),INSTAGRAM_ACCESS_TOKEN:'fixture-only-meta-token',NEXT_DIST_DIR:'.next-giveaway-qa',NEXT_PUBLIC_SITE_URL:base,NEXT_PUBLIC_SUPABASE_URL:databaseUrl,NEXT_PUBLIC_SUPABASE_ANON_KEY:'fixture-anon-key',SUPABASE_SERVICE_ROLE_KEY:'fixture-service-key-private-32-characters',GIVEAWAY_AUDIT_SECRET:'fixture-audit-key-private-32-characters',COMMERCE_CHECKOUT_ENABLED:'false',COMMERCE_EMAIL_ENABLED:'false',NEXT_PUBLIC_GA_MEASUREMENT_ID:'',NEXT_PUBLIC_META_PIXEL_ID:''}
+    cwd:process.cwd(),windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,NODE_OPTIONS:'--require '+JSON.stringify(path.resolve('scripts/giveaway-meta-fixture.cjs')),INSTAGRAM_ACCESS_TOKEN:'fixture-only-meta-token',NEXT_DIST_DIR:`.next-giveaway-qa/run-${process.pid}`,NEXT_PUBLIC_SITE_URL:base,NEXT_PUBLIC_SUPABASE_URL:databaseUrl,NEXT_PUBLIC_SUPABASE_ANON_KEY:'fixture-anon-key',SUPABASE_SERVICE_ROLE_KEY:'fixture-service-key-private-32-characters',GIVEAWAY_AUDIT_SECRET:'fixture-audit-key-private-32-characters',COMMERCE_CHECKOUT_ENABLED:'false',COMMERCE_EMAIL_ENABLED:'false',NEXT_PUBLIC_GA_MEASUREMENT_ID:'',NEXT_PUBLIC_META_PIXEL_ID:''}
   });
   next.stdout.on('data',b=>{logs+=b;});next.stderr.on('data',b=>{logs+=b;});
-  for(let i=0;i<180;i++){try{const r=await fetch(base+'/sorteo');if(r.ok)break;}catch{}if(next.exitCode!==null)throw new Error('Next local no inició: '+logs.slice(-1200));if(i===179)throw new Error('Tiempo agotado al iniciar Next local.');await new Promise(r=>setTimeout(r,500));}
+  for(let i=0;i<180;i++){try{const r=await fetch(base+'/sorteo',{signal:AbortSignal.timeout(15000)});if(r.ok)break;}catch{}if(next.exitCode!==null)throw new Error('Next local no inició: '+logs.slice(-1200));if(i===179)throw new Error('Tiempo agotado al iniciar Next local.');await new Promise(r=>setTimeout(r,500));}
+  console.log('Servidor de ensayo listo.');
   const cache=path.join(process.env.LOCALAPPDATA||'','ms-playwright'),installed=(await readdir(cache)).filter(d=>/^chromium-\d+$/.test(d)).sort((a,b)=>Number(b.split('-')[1])-Number(a.split('-')[1]));
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||path.join(cache,installed[0],'chrome-win64','chrome.exe')});
   async function context(viewport,authenticated=false){
@@ -64,18 +73,22 @@ try{
   await mobile.addInitScript(()=>{const original=Date.now.bind(Date);Date.now=()=>original()+7*60000;});
   await admin.goto(base+'/admin/sorteo',{waitUntil:'networkidle'});
   await admin.getByRole('heading',{name:'MYA Sorteo en vivo',exact:true}).waitFor();
+  console.log('Administrador cargado.');
   const beforeResponse=await ac.request.get(base+'/api/admin/sorteo');if(!beforeResponse.ok())throw new Error('Admin API '+beforeResponse.status()+' '+logs.slice(-3500));const beforePreview=await beforeResponse.json();
   await admin.getByRole('button',{name:'Ensayo privado',exact:true}).click();
   for(const label of ['Contador','Ruleta','Ganador']){await admin.getByRole('button',{name:label,exact:true}).click();await admin.screenshot({path:path.join(out,'ensayo-'+label.toLowerCase()+'.png'),fullPage:true});}
   await admin.getByRole('button',{name:'Ensayar animación completa',exact:true}).click();await admin.getByRole('img',{name:/Ensayo privado, sin validez.*Ganador: @demo.pilar/}).waitFor({timeout:22000});
+  console.log('Ensayo privado completo.');
   const afterPreview=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(afterPreview.revision,beforePreview.revision);assert.equal(afterPreview.round,null);assert.equal(afterPreview.snapshot,null);
   await admin.getByRole('button',{name:'Vista real',exact:true}).click();
   await admin.getByRole('button',{name:'Cargar últimos comentarios',exact:true}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();
+  console.log('Comentarios de prueba importados.');
   const imported=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(imported.snapshot.comments.length,4);assert.equal(imported.snapshot.source.kind,'instagram');assert.equal(imported.snapshot.review.valid.length,2);assert.equal(imported.snapshot.comments.filter(c=>c.avatar&&c.displayName).length,4);
   await admin.getByRole('button',{name:'Cargar últimos comentarios',exact:true}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();const refreshed=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(refreshed.snapshot.comments.length,4);
   await admin.getByLabel('Publicar el anuncio, contador y cantidad en /sorteo').check();
   for(const width of [320,390]){await admin.setViewportSize({width,height:844});await admin.screenshot({path:path.join(out,`instagram-import-${width}.png`),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
   await admin.setViewportSize({width:1440,height:1000});
+  await admin.getByLabel('Buscar participantes o comentarios').fill('fixture.flor');assert.equal(await admin.locator('tbody tr').count(),1);await admin.getByLabel('Buscar participantes o comentarios').fill('');
   await admin.getByRole('button',{name:'Guardar lista privada y anuncio'}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();await admin.screenshot({path:path.join(out,'admin-preparado.png'),fullPage:true});
   await viewer.goto(base+'/sorteo',{waitUntil:'domcontentloaded'});await mobile.goto(base+'/sorteo',{waitUntil:'domcontentloaded'});
   const denied=await vc.request.get(base+'/api/admin/sorteo');assert.equal(denied.status(),401);
@@ -85,8 +98,9 @@ try{
   const during=await (await vc.request.get(base+'/api/sorteo')).json();assert.equal(during.winner,null);assert.equal(during.participantCount,2);assert.ok(!JSON.stringify(during).includes('words'));assert.ok(!JSON.stringify(during).includes('comments'));assert.ok(!JSON.stringify(during).includes('manualExclusions'));
   await viewer.screenshot({path:path.join(out,'contador-sincronizado.png'),fullPage:true});
   await viewer.getByRole('heading',{name:'La suerte está girando…',exact:true}).waitFor({timeout:15000});await viewer.screenshot({path:path.join(out,'ruleta-publica.png'),fullPage:true});
-  const mid=await (await vc.request.get(base+'/api/sorteo')).json();assert.equal(mid.winner,null);assert.equal(mid.reel.length,2);
+  const mid=await (await vc.request.get(base+'/api/sorteo')).json();assert.equal(mid.winner,null);assert.equal(mid.reel.length,2);assert.ok(mid.reel.every(c=>c.avatar?.includes('fixture-only-photo')));await viewer.waitForFunction(()=>Number(document.querySelector('canvas')?.getAttribute('data-loaded-avatars'))===2,{timeout:5000});
   await viewer.getByRole('heading',{name:'¡Tenemos ganador!',exact:true}).waitFor({timeout:20000});await mobile.getByRole('heading',{name:'¡Tenemos ganador!',exact:true}).waitFor({timeout:10000});
+  const photoResponse=await vc.request.get(base+'/api/sorteo/foto?round='+mid.round.id);assert.equal(photoResponse.status(),200);assert.match(photoResponse.headers()['content-type'],/image\/png/);await viewer.locator('[aria-label^="Perfil de @fixture"]').getAttribute('data-loaded');
   const winner=(await viewer.getByText(/^@fixture\./,{exact:true}).innerText());assert.equal(await mobile.getByText(/^@fixture\./,{exact:true}).innerText(),winner);
   await viewer.reload({waitUntil:'domcontentloaded'});await viewer.getByRole('heading',{name:'¡Tenemos ganador!',exact:true}).waitFor();assert.equal(await viewer.getByText(/^@fixture\./,{exact:true}).innerText(),winner);
   assert.equal(await viewer.getByRole('button',{name:'INICIAR EN VIVO'}).count(),0);
@@ -95,12 +109,12 @@ try{
   const videoDownload=admin.waitForEvent('download');await admin.getByRole('button',{name:'Descargar video',exact:true}).click();const video=await videoDownload;await video.saveAs(path.join(out,'video-sorteo-fixture.mp4'));
   const pngDownload=admin.waitForEvent('download');await admin.getByRole('button',{name:'Imagen 1080 × 1920',exact:true}).click();const png=await pngDownload,pngPath=path.join(out,'ganador-fixture.png');await png.saveAs(pngPath);const pngBytes=await readFile(pngPath);assert.equal(pngBytes.readUInt32BE(16),1080);assert.equal(pngBytes.readUInt32BE(20),1920);
   const widths=[];
-  for(const width of [320,390,768,1440]){await viewer.setViewportSize({width,height:900});await viewer.screenshot({path:path.join(out,`publico-${width}.png`),fullPage:true});assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);widths.push(width);}
+  for(const width of [320,390,768,1280,1440]){await viewer.setViewportSize({width,height:900});await viewer.screenshot({path:path.join(out,`publico-${width}.png`),fullPage:true});assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);widths.push(width);}
   await admin.setViewportSize({width:390,height:844});await admin.screenshot({path:path.join(out,'admin-mobile.png'),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await viewer.addScriptTag({path:'node_modules/axe-core/axe.min.js'});const axe=await viewer.evaluate(async()=>await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
-  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
+  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
   await writeFile(path.join(out,'verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{
   await writeFile(path.join(out,'next-qa-log.txt'),logs);
-  await browser?.close();if(next&&next.exitCode===null)next.kill();await new Promise(resolve=>server.close(resolve));await db.close();
+  await browser?.close();if(next&&next.exitCode===null)next.kill();await new Promise(resolve=>server.close(resolve));await db.close();await writeFile('tsconfig.json',originalTsconfig);
 }

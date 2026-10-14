@@ -1,4 +1,5 @@
 import 'server-only';
+import { publicReelPhotos } from './public-photos';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseConfig,hasSupabaseConfig } from '@/lib/supabase/env';
 import { createCommerceService } from '@/lib/supabase/service';
@@ -28,7 +29,7 @@ export async function publicState():Promise<PublicGiveaway>{
     const {data,error}=await db.rpc('public_giveaway_v1');
     if(missing(error))return unavailable();
     if(error||!data)throw new GiveawayError('No se pudo sincronizar el sorteo. Reintentá en unos segundos.',503);
-    const result=data as PublicGiveaway;cached={value:result,until:Date.now()+200};return result;
+    const result=await publicReelPhotos(data as PublicGiveaway);cached={value:result,until:Date.now()+200};return result;
   })();
   try{return await inflight;}finally{inflight=null;}
 }

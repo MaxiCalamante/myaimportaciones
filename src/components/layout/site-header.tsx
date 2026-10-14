@@ -424,6 +424,7 @@ export function SiteHeader({
 
           {profile ? <Link className={`${linkClass} whitespace-nowrap`} href="/cuenta">Mis pedidos</Link> : <Link className={linkClass} href="/seguimiento">Seguimiento</Link>}
 
+          <Link className={`${linkClass} whitespace-nowrap`} href="/sorteo" aria-current={pathname === "/sorteo" ? "page" : undefined}>Sorteo</Link>
           {toggleChannelLink}
         </nav>
 
@@ -674,6 +675,8 @@ export function SiteHeader({
             >
               {profile ? "Mis pedidos" : "Seguimiento de pedidos"}
             </Link>
+
+            <Link className={`rounded-lg px-3 py-2 text-sm font-medium ${isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"}`} href="/sorteo" onClick={() => setOpen(false)} aria-current={pathname === "/sorteo" ? "page" : undefined}>Sorteo · Día de la Madre</Link>
 
             {/* Categorías en menú móvil: 4 Rubros Principales con subcategorías desplegables al tocar */}
             {mainCategories.length > 0 && (
