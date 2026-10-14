@@ -54,5 +54,6 @@ export const Stage=forwardRef<StageHandle,Props>(function Stage(props,ref) {
   }),[avatarUrl]);
   const currentWinner=props.winner||draw?.winner;
   const description=props.phase==='winner'&&currentWinner?`Ganador: @${currentWinner.username}. ${(props.winnerStatus||props.audit?.status)==='confirmed'?'Condiciones revisadas.':'Pendiente de revisión manual.'}`:props.phase==='countdown'?`El sorteo comienza en ${props.countdown}`:props.phase==='spinning'?'Eligiendo al ganador':`${props.participantCount??props.pool.length} participantes. Escenario del sorteo.`;
-  return <div className={`giveaway-stage-shell ${props.portrait?'giveaway-vertical':'giveaway-landscape'}`}><canvas ref={canvas} width={props.portrait?1080:1920} height={props.portrait?1920:1080} role="img" aria-label={description}/><span className="sr-only" aria-live="polite">{description}</span></div>;
+  const accessibleDescription=props.source==='demo'?`Ensayo privado, sin validez. ${description}`:description;
+  return <div className={`giveaway-stage-shell ${props.portrait?'giveaway-vertical':'giveaway-landscape'}`}><canvas ref={canvas} width={props.portrait?1080:1920} height={props.portrait?1920:1080} role="img" aria-label={accessibleDescription}/><span className="sr-only" aria-live="polite">{accessibleDescription}</span></div>;
 });

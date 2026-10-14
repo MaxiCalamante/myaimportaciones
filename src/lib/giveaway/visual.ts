@@ -1,112 +1,93 @@
 import type { Comment, SourceKind } from './types';
 export type Phase = 'idle' | 'countdown' | 'spinning' | 'winner';
 export type Visual = { phase: Phase; countdown: number; progress: number; pool: Comment[]; winner?: Comment; source?: SourceKind; status?: string; reduceMotion: boolean; elapsed: number; avatar?: HTMLImageElement; logo?: HTMLImageElement; portrait: boolean; participantCount?:number; title?:string; prize?:string };
-const ROSE = '#993b5e', INK = '#412d34', GOLD = '#af8959';
-function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number, color = INK, weight = 500, max = 900) {
-  ctx.fillStyle = color;
-  ctx.font = `${weight} ${size}px "Geist", "Segoe UI", sans-serif`;
-  while (ctx.measureText(value).width > max && size > 13) { size -= 1; ctx.font = `${weight} ${size}px "Geist", "Segoe UI", sans-serif`; }
-  ctx.fillText(value,x,y,max);
+const INK='#352d29',ROSE='#91465b',GOLD='#e5c593',PAPER='#fff9ee',MUTED='#d5c0ad';
+function text(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,size:number,color=PAPER,weight=500,max=900,serif=false){
+  ctx.fillStyle=color;
+  const font=(n:number)=>`${weight} ${n}px ${serif?'Georgia, "Times New Roman"':'"Geist", "Segoe UI"'}, sans-serif`;
+  ctx.font=font(size);while(ctx.measureText(value).width>max&&size>13){size--;ctx.font=font(size);}ctx.fillText(value,x,y,max);
 }
-function roundRect(ctx: CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r:number,fill:string) { ctx.fillStyle=fill; ctx.beginPath(); ctx.roundRect(x,y,w,h,r);ctx.fill(); }
-function spaced(ctx: CanvasRenderingContext2D,value:string,x:number,y:number,size:number,color=GOLD) {
-  ctx.font=`500 ${size}px "Geist", "Segoe UI", sans-serif`;ctx.fillStyle=color;
-  const chars=[...value], gap=4, width=chars.reduce((sum,c)=>sum+ctx.measureText(c).width+gap,0)-gap;
-  let left=x-width/2;for(const c of chars) {ctx.fillText(c,left+ctx.measureText(c).width/2,y);left+=ctx.measureText(c).width+gap;}
+function box(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r:number,fill:string){ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
+function spaced(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,size:number,color=GOLD){
+  ctx.font=`600 ${size}px "Geist", "Segoe UI", sans-serif`;ctx.fillStyle=color;const chars=[...value],gap=3.5,width=chars.reduce((n,c)=>n+ctx.measureText(c).width+gap,0)-gap;let left=x-width/2;
+  for(const c of chars){ctx.fillText(c,left+ctx.measureText(c).width/2,y);left+=ctx.measureText(c).width+gap;}
 }
-function avatar(ctx: CanvasRenderingContext2D,c:Comment,x:number,y:number,r:number,image?:HTMLImageElement) {
-  ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.clip();
-  ctx.fillStyle='#f4e1e5';ctx.fillRect(x-r,y-r,r*2,r*2);
-  if(image) { const side=Math.min(image.width,image.height);ctx.drawImage(image,(image.width-side)/2,(image.height-side)/2,side,side,x-r,y-r,r*2,r*2); }
-  else { const initials=(c.displayName || c.username.replace(/^demo\./,'')).replace(/[_\.]/g,' ').split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase(); text(ctx,initials,x,y+r*.3,r*.8,ROSE,500,r*1.7); }
-  ctx.restore();
-  ctx.strokeStyle='#cda587';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r+8,0,Math.PI*2);ctx.stroke();
+function avatar(ctx:CanvasRenderingContext2D,c:Comment,x:number,y:number,r:number,image?:HTMLImageElement){
+  ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.clip();ctx.fillStyle='#ecdaca';ctx.fillRect(x-r,y-r,r*2,r*2);
+  if(image){const side=Math.min(image.width,image.height);ctx.drawImage(image,(image.width-side)/2,(image.height-side)/2,side,side,x-r,y-r,r*2,r*2);}
+  else{const letters=(c.displayName||c.username.replace(/^(demo|fixture)\./,'')).replace(/[._]/g,' ').split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();text(ctx,letters,x,y+r*.29,r*.72,ROSE,600,r*1.7);}
+  ctx.restore();ctx.strokeStyle='#d4b48b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r+8,0,Math.PI*2);ctx.stroke();
 }
-function flowers(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,moving:boolean) {
-  for(let i=0;i<7;i++) { const x=i%2 ? w+65 : -35, y=h*(.18+i*.125), r=85+i*14;
-    ctx.save();ctx.translate(x,y);ctx.rotate(i*.8+(moving?Math.sin(t*.00016+i)*.15:0));
-    ctx.strokeStyle='rgba(164,110,123,.16)';ctx.lineWidth=1.5;
-    for(let p=0;p<6;p++) {ctx.rotate(Math.PI/3);ctx.beginPath();ctx.ellipse(r*.72,0,r,r*.4,0,0,Math.PI*2);ctx.stroke();}
-    ctx.restore(); }
-}
-function confetti(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,reduce:boolean) {
-  const colors=['#ba8092','#d9b47b','#f0ced5','#fffef9'];
-  for(let i=0;i<85;i++) {
-    const x=((i*137.51)%w), speed=55+(i%7)*17;
-    const y=reduce ? (i*173)%h : ((t/1000*speed+i*173)%(h+100))-50;
-    ctx.save();ctx.translate(x+(!reduce?Math.sin(t*.001+i)*20:0),y);ctx.rotate(i+(!reduce?t*.001:0));ctx.fillStyle=colors[i%4];ctx.fillRect(-4,-8,8+(i%3)*3,16);ctx.restore();
+function branches(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,moving:boolean){
+  ctx.strokeStyle='rgba(221,190,151,.18)';ctx.lineWidth=1.6;
+  for(let branch=0;branch<4;branch++){
+    ctx.save();ctx.translate(branch%2?w+35:-35,h*(.24+branch*.2));ctx.rotate((branch%2?-1:1)*.3+(moving?Math.sin(t*.0001+branch)*.025:0));
+    ctx.beginPath();ctx.moveTo(0,-200);ctx.quadraticCurveTo(130,0,0,220);ctx.stroke();
+    for(let p=0;p<5;p++){ctx.save();ctx.translate(35+Math.sin(p)*35,-160+p*75);ctx.rotate((p%2?-1:1)*.7);ctx.beginPath();ctx.ellipse(44,0,65,23,0,0,Math.PI*2);ctx.stroke();ctx.restore();}ctx.restore();
   }
 }
-export function renderStage(ctx:CanvasRenderingContext2D,w:number,h:number,v:Visual) {
-  ctx.save();ctx.clearRect(0,0,w,h);
-  const portrait=v.portrait;
-  // Coordenadas lógicas compartidas; exportar PNG usa siempre 1080 × 1920.
-  const W=portrait?1080:1920,H=portrait?1920:1080;ctx.scale(w/W,h/H);
-  const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#fffdf7');bg.addColorStop(.5,'#faeff0');bg.addColorStop(1,'#ecd7dd');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-  flowers(ctx,W,H,v.elapsed,!v.reduceMotion);
-  const cx=W/2, top=portrait?180:85, main=portrait?850:640;
-  ctx.textAlign='center';ctx.textBaseline='alphabetic';
-  if(v.logo) {const width=portrait?230:160,height=width*v.logo.height/v.logo.width;ctx.drawImage(v.logo,cx-width/2,top-height/2,width,height);}
-  text(ctx,'MYA IMPORTACIONES',cx,top+(portrait?112:75),portrait?25:20,INK,600);
-  spaced(ctx,'UN REGALO PARA MAMÁ',cx,top+(portrait?197:126),portrait?23:18);
-  if(v.title&&v.title!=='SORTEO DÍA DE LA MADRE'){text(ctx,v.title,cx,top+(portrait?330:233),portrait?75:60,INK,600,portrait?900:1500);}
-  else{text(ctx,'SORTEO DÍA',cx,top+(portrait?292:195),portrait?82:67,INK,600);text(ctx,'DE LA MADRE',cx,top+(portrait?386:267),portrait?82:67,INK,600);}
-  const pillY=top+(portrait?436:291);
-  roundRect(ctx,cx-157,pillY,314,51,25,'rgba(255,255,255,.72)');
-  text(ctx,`${(v.participantCount??v.pool.length).toLocaleString('es-AR')} participantes`,cx,pillY+34,22,ROSE,500);
-  if(v.phase==='idle') {
-    ctx.strokeStyle='#c3a188';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,main,portrait?112:67,0,Math.PI*2);ctx.stroke();
-    text(ctx,'✦',cx,main+(portrait?34:22),portrait?92:58,GOLD,400);
-    text(ctx,(v.participantCount??v.pool.length)?'Todo listo para la magia':'Un regalo. Muchas ilusiones.',cx,main+(portrait?204:125),portrait?36:28,INK,500);
-    text(ctx,'Una cuenta, una oportunidad.',cx,main+(portrait?263:170),portrait?27:22,'#886e76',400);
-  } else if(v.phase==='countdown') {
-    ctx.strokeStyle='#cfa8b5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,main,portrait?182:110,0,Math.PI*2);ctx.stroke();
-    text(ctx,String(v.countdown),cx,main+(portrait?69:46),portrait?220:145,ROSE,400);
-    spaced(ctx,'LA SUERTE ESTÁ POR LLEGAR',cx,main+(portrait?269:167),portrait?23:19,ROSE);
-  } else if(v.phase==='spinning' && v.reduceMotion) {
-    text(ctx,'Eligiendo un momento especial…',cx,main,portrait?38:32,ROSE,500);
-    text(ctx,'Selección segura. Una oportunidad por cuenta.',cx,main+70,portrait?25:22,'#886e76',400);
-  } else if(v.phase==='spinning') {
-    const slot=portrait?149:110, areaW=portrait?890:1100, areaH=slot*3.1;
-    const target=96, position=target*(1-Math.pow(1-Math.min(v.progress,v.winner?1:.94),5));
-    const floor=Math.floor(position), frac=position-floor;
-    roundRect(ctx,cx-areaW/2,main-areaH/2,areaW,areaH,38,'rgba(255,255,255,.65)');
-    ctx.save();ctx.beginPath();ctx.roundRect(cx-areaW/2,main-areaH/2,areaW,areaH,38);ctx.clip();
-    for(let offset=-2;offset<=3;offset++) {
-      const index=floor+offset;
-      const c=index>=target&&v.winner?v.winner:v.pool[((Math.max(0,index)*17)+index%3)%v.pool.length];
-      if(!c)continue;
-      const y=main+(offset-frac)*slot, distance=Math.abs(offset-frac);
-      ctx.globalAlpha=Math.max(.14,1-distance*.45);avatar(ctx,c,cx-areaW/2+95,y,portrait?39:31);
-      text(ctx,`@${c.username}`,cx+34,y+13,portrait?41:36,INK,600,areaW-255);
-    }
-    ctx.restore();ctx.strokeStyle=ROSE;ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(cx-areaW/2,main-slot/2,areaW,slot,26);ctx.stroke();
-    text(ctx,'Cada cuenta tiene la misma oportunidad',cx,main+areaH/2+65,portrait?25:21,'#886e76',400);
-  } else if(v.winner) {
-    const winner=v.winner, center=portrait?920:625;
-    roundRect(ctx,cx-(portrait?453:670),center-(portrait?243:184),portrait?906:1340,portrait?640:420,40,'rgba(255,255,255,.8)');
-    spaced(ctx,'¡TENEMOS GANADOR!',cx,center-(portrait?166:120),portrait?31:26,ROSE);
-    avatar(ctx,winner,cx,center-(portrait?10:8),portrait?100:64,v.avatar);
-    text(ctx,`@${winner.username}`,cx,center+(portrait?183:116),portrait?58:49,ROSE,600,portrait?816:1180);
-    if(winner.displayName)text(ctx,winner.displayName,cx,center+(portrait?237:162),portrait?29:25,'#886e76',400);
-    const snippet=winner.text.length>110?winner.text.slice(0,107)+'…':winner.text;
-    wrapText(ctx,snippet?`“${snippet}”`:'Participación importada sin comentario',cx,center+(portrait?304:202),portrait?720:1100,portrait?29:24,portrait?38:30,2);
-    if(portrait)text(ctx,v.status==='confirmed'?'Condiciones revisadas por MYA':'Condiciones pendientes de revisión manual',cx,center+457,21,'#886e76',400);
+function gift(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number){
+  ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.strokeStyle=GOLD;ctx.lineWidth=2.5;ctx.lineJoin='round';
+  ctx.beginPath();ctx.roundRect(-42,-14,84,66,5);ctx.moveTo(-48,-14);ctx.lineTo(-48,-32);ctx.lineTo(48,-32);ctx.lineTo(48,-14);ctx.closePath();ctx.moveTo(0,-32);ctx.lineTo(0,52);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,-32);ctx.bezierCurveTo(-70,-76,-45,-100,0,-32);ctx.bezierCurveTo(70,-76,45,-100,0,-32);ctx.stroke();ctx.restore();
+}
+function confetti(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,reduce:boolean){
+  const colors=['#d8b782','#b7798c','#e8d8bb','#fff4df'];
+  for(let i=0;i<64;i++){const x=(i*137.51)%w,speed=45+(i%7)*13,y=reduce?(i*173)%h:((t/1000*speed+i*173)%(h+100))-50;
+    if(x>w*.17&&x<w*.83&&y>h*.3&&y<h*.77)continue;
+    ctx.save();ctx.globalAlpha=.7;ctx.translate(x+(!reduce?Math.sin(t*.001+i)*13:0),y);ctx.rotate(i+(!reduce?t*.0007:0));ctx.fillStyle=colors[i%4];ctx.fillRect(-3,-5,5+(i%3)*2,10);ctx.restore();
+  }
+}
+export function renderStage(ctx:CanvasRenderingContext2D,w:number,h:number,v:Visual){
+  ctx.save();ctx.clearRect(0,0,w,h);const portrait=v.portrait,W=portrait?1080:1920,H=portrait?1920:1080,cx=W/2;ctx.scale(w/W,h/H);ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#302925');bg.addColorStop(.52,'#45362d');bg.addColorStop(1,'#322b27');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  branches(ctx,W,H,v.elapsed,!v.reduceMotion);
+  ctx.strokeStyle='rgba(226,196,154,.24)';ctx.lineWidth=1.2;ctx.beginPath();ctx.roundRect(26,26,W-52,H-52,28);ctx.stroke();
+  if(v.logo){const lw=portrait?170:140,lh=lw*v.logo.height/v.logo.width;ctx.drawImage(v.logo,cx-lw/2,portrait?86:38,lw,lh);}
+  spaced(ctx,'MYA IMPORTACIONES',cx,portrait?230:133,portrait?23:19);
+  if(v.title&&v.title!=='SORTEO DÍA DE LA MADRE'){text(ctx,v.title,cx,portrait?378:252,portrait?75:65,PAPER,400,portrait?920:1450,true);}
+  else{text(ctx,'Sorteo Día',cx,portrait?350:228,portrait?83:72,PAPER,400,1500,true);text(ctx,'de la Madre',cx,portrait?442:309,portrait?83:72,PAPER,400,1500,true);}
+  const pillY=portrait?492:343,count=(v.participantCount??v.pool.length).toLocaleString('es-AR');
+  box(ctx,cx-164,pillY,328,47,23,'rgba(244,228,203,.08)');text(ctx,v.source==='demo'?`${count} cuentas de ejemplo`:`${count} participantes`,cx,pillY+31,portrait?20:19,'#f0dbc0',500);
+  const main=portrait?930:643;
+  if(v.phase==='idle'){
+    ctx.strokeStyle='rgba(230,199,156,.4)';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(cx,main,portrait?139:86,0,Math.PI*2);ctx.stroke();gift(ctx,cx,main+14,portrait?1.22:.76);
+    text(ctx,'Un regalo. Muchas ilusiones.',cx,main+(portrait?226:148),portrait?43:34,PAPER,400,portrait?910:1400,true);
+    text(ctx,'Nos encontramos en el vivo.',cx,main+(portrait?293:204),portrait?27:22,MUTED,400);
+  }else if(v.phase==='countdown'){
+    const r=portrait?181:116;ctx.strokeStyle='rgba(232,209,173,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,main,r,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle=GOLD;ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,main,r,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(.01,(5-v.countdown)/5));ctx.stroke();
+    text(ctx,String(v.countdown),cx,main+(portrait?70:48),portrait?224:149,PAPER,400,600,true);spaced(ctx,'TU MOMENTO ESTÁ POR LLEGAR',cx,main+(portrait?277:175),portrait?21:18);
+  }else if(v.phase==='spinning'&&v.reduceMotion){
+    text(ctx,'La suerte está eligiendo…',cx,main,portrait?47:39,PAPER,400,portrait?900:1400,true);text(ctx,'Una oportunidad por cuenta.',cx,main+73,portrait?26:22,MUTED,400);
+  }else if(v.phase==='spinning'){
+    const slot=portrait?144:105,aw=portrait?900:1390,ah=slot*3.15,target=96,position=target*(1-Math.pow(1-Math.min(v.progress,v.winner?1:.94),5)),floor=Math.floor(position),frac=position-floor;
+    box(ctx,cx-aw/2,main-ah/2,aw,ah,24,'#fbf4e8');
+    ctx.save();ctx.beginPath();ctx.roundRect(cx-aw/2,main-ah/2,aw,ah,24);ctx.clip();
+    box(ctx,cx-aw/2+13,main-slot/2+5,aw-26,slot-10,14,'#efdfc9');
+    for(let offset=-2;offset<=3;offset++){const index=floor+offset,c=index>=target&&v.winner?v.winner:v.pool[Math.max(0,index)%v.pool.length];if(!c)continue;const y=main+(offset-frac)*slot;ctx.globalAlpha=Math.max(.15,1-Math.abs(offset-frac)*.47);avatar(ctx,c,cx-aw/2+92,y,portrait?37:29);text(ctx,`@${c.username}`,cx+46,y+13,portrait?41:39,INK,600,aw-280);}
+    ctx.restore();ctx.strokeStyle='#d9b888';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(cx-aw/2+13,main-slot/2+5,aw-26,slot-10,14);ctx.stroke();
+    text(ctx,'Una comunidad. La misma oportunidad.',cx,main+ah/2+66,portrait?27:23,MUTED,400);
+  }else if(v.winner){
+    const top=portrait?667:451,cw=portrait?904:1420,ch=portrait?755:415;
+    box(ctx,cx-cw/2,top,cw,ch,30,'#fff9ee');ctx.strokeStyle='#d8bd98';ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(cx-cw/2+13,top+13,cw-26,ch-26,21);ctx.stroke();
+    spaced(ctx,'¡TENEMOS GANADOR!',cx,top+(portrait?89:53),portrait?24:21,ROSE);
+    avatar(ctx,v.winner,cx,portrait?927:598,portrait?106:60,v.avatar);
+    text(ctx,`@${v.winner.username}`,cx,portrait?1130:718,portrait?64:56,ROSE,650,portrait?815:1280);
+    if(v.winner.displayName)text(ctx,v.winner.displayName,cx,portrait?1193:760,portrait?28:23,'#796356',400,portrait?820:1300);
+    const snippet=v.winner.text.length>100?v.winner.text.slice(0,97)+'…':v.winner.text;
+    wrapText(ctx,snippet?`“${snippet}”`:'Participación importada',cx,portrait?1274:804,portrait?745:1240,portrait?27:21,portrait?39:28,portrait?2:1,'#796356');
+    text(ctx,v.status==='confirmed'?'Condiciones revisadas por MYA':'Pendiente de revisión de las condiciones',cx,portrait?1500:922,portrait?24:20,MUTED,400,portrait?880:1450);
     confetti(ctx,W,H,v.elapsed,v.reduceMotion);
   }
-  const footer=portrait?1585:934;
-  ctx.strokeStyle='rgba(175,137,89,.45)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-180,footer-50);ctx.lineTo(cx+180,footer-50);ctx.stroke();
-  spaced(ctx,'EL PREMIO',cx,footer,portrait?23:17);
-  text(ctx,v.prize||'Travel Kit SKIN1004 Centella',cx,footer+(portrait?69:42),portrait?43:31,INK,500);
-  text(ctx,'18 DE OCTUBRE DE 2026 · @_myaimportaciones',cx,portrait?1811:1050,portrait?21:16,'#886e76',400);
-  if(v.source==='demo') { roundRect(ctx,32,32,portrait?485:355,49,24,'#993b5e');text(ctx,'DEMOSTRACIÓN · SIN VALIDEZ',portrait?274:210,65,portrait?22:17,'#fff',600); }
-  else if(v.source) { text(ctx,v.source==='instagram'?'DATOS DE META':'DATOS IMPORTADOS',cx,portrait?1865:1080-8,portrait?19:14,'#886e76',500); }
+  const footer=portrait?1618:980;ctx.strokeStyle='rgba(226,196,154,.28)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-150,footer-42);ctx.lineTo(cx+150,footer-42);ctx.stroke();spaced(ctx,'EL REGALO DE MYA',cx,footer,portrait?20:16);
+  text(ctx,v.prize||'Travel Kit SKIN1004 Centella',cx,footer+(portrait?66:47),portrait?39:29,PAPER,400,portrait?910:1500,true);
+  if(portrait)text(ctx,'18 DE OCTUBRE DE 2026 · @_myaimportaciones',cx,1805,20,MUTED,400,900);
+  if(v.source==='demo'){box(ctx,portrait?250:W-400,portrait?1835:35,portrait?580:350,43,21,'#f2ddbe');text(ctx,'ENSAYO PRIVADO · SIN VALIDEZ',portrait?540:W-225,portrait?1864:64,portrait?18:16,'#5c4731',600,portrait?550:330);}
   ctx.restore();
 }
-export function wrapText(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,width:number,size:number,lineHeight:number,maxLines:number) {
-  ctx.font=`400 ${size}px "Geist", "Segoe UI", sans-serif`;ctx.fillStyle='#886e76';
-  const words=value.split(/\s+/),lines:string[]=[];let line='';
-  for(const word of words) { const test=line?`${line} ${word}`:word;if(ctx.measureText(test).width>width&&line) {lines.push(line);line=word;}else line=test; }
-  if(line)lines.push(line);
-  lines.slice(0,maxLines).forEach((l,i)=>text(ctx,l+(i===maxLines-1&&lines.length>maxLines?'…':''),x,y+i*lineHeight,size,'#886e76',400,width));
+export function wrapText(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,width:number,size:number,lineHeight:number,maxLines:number,color='#796356'){
+  ctx.font=`400 ${size}px "Geist", "Segoe UI", sans-serif`;const words=value.split(/\s+/),lines:string[]=[];let line='';
+  for(const word of words){const next=line?`${line} ${word}`:word;if(ctx.measureText(next).width>width&&line){lines.push(line);line=word;}else line=next;}
+  if(line)lines.push(line);lines.slice(0,maxLines).forEach((v,i)=>text(ctx,v+(i===maxLines-1&&lines.length>maxLines?'…':''),x,y+i*lineHeight,size,color,400,width));
 }

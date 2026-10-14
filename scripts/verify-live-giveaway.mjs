@@ -64,6 +64,14 @@ try{
   await mobile.addInitScript(()=>{const original=Date.now.bind(Date);Date.now=()=>original()+7*60000;});
   await admin.goto(base+'/admin/sorteo',{waitUntil:'networkidle'});
   await admin.getByRole('heading',{name:'MYA Sorteo en vivo',exact:true}).waitFor();
+  await admin.getByRole('button',{name:'Ver el script completo',exact:true}).click();assert.equal(await admin.getByLabel('Código completo · listo para copiar').inputValue(),await readFile('docs/sorteos/exportar-instagram.js','utf8').then(s=>s.trimEnd()));
+  await admin.getByRole('button',{name:'Ocultar código',exact:true}).click();
+  const beforePreview=await (await ac.request.get(base+'/api/admin/sorteo')).json();
+  await admin.getByRole('button',{name:'Ensayo privado',exact:true}).click();
+  for(const label of ['Contador','Ruleta','Ganador']){await admin.getByRole('button',{name:label,exact:true}).click();await admin.screenshot({path:path.join(out,'ensayo-'+label.toLowerCase()+'.png'),fullPage:true});}
+  await admin.getByRole('button',{name:'Ensayar animación completa',exact:true}).click();await admin.getByRole('img',{name:/Ensayo privado, sin validez.*Ganador: @demo.pilar/}).waitFor({timeout:22000});
+  const afterPreview=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(afterPreview.revision,beforePreview.revision);assert.equal(afterPreview.round,null);assert.equal(afterPreview.snapshot,null);
+  await admin.getByRole('button',{name:'Vista real',exact:true}).click();
   const exported=await consoleFixture(browser);
   const scriptDenied=await vc.request.get(base+'/api/admin/sorteo/script');assert.equal(scriptDenied.status(),401);
   await admin.getByRole('button',{name:'Importar de Instagram',exact:true}).click();await admin.getByLabel('Pegá el JSON de Instagram').fill(JSON.stringify(exported));await admin.getByRole('button',{name:'Revisar comentarios de Instagram',exact:true}).click();assert.equal(await admin.getByRole('button',{name:'Guardar lista privada y anuncio',exact:true}).isEnabled(),false);await admin.getByLabel('Revisé la cobertura de los comentarios y respuestas antes de guardar esta lista.').check();
@@ -93,7 +101,7 @@ try{
   for(const width of [320,390,768,1440]){await viewer.setViewportSize({width,height:900});await viewer.screenshot({path:path.join(out,`publico-${width}.png`),fullPage:true});assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);widths.push(width);}
   await admin.setViewportSize({width:390,height:844});await admin.screenshot({path:path.join(out,'admin-mobile.png'),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await viewer.addScriptTag({path:'node_modules/axe-core/axe.min.js'});const axe=await viewer.evaluate(async()=>await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
-  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,consoleScriptCollector:true,instagramJsonImport:true,coverageReviewRequired:true,photosAndNamesPreserved:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
+  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,consoleScriptCollector:true,persistentScriptCode:true,privateRehearsalNoMutation:true,instagramJsonImport:true,coverageReviewRequired:true,photosAndNamesPreserved:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
   await writeFile(path.join(out,'verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{
   await browser?.close();if(next&&next.exitCode===null)next.kill();await new Promise(resolve=>server.close(resolve));await db.close();

@@ -12,6 +12,8 @@ El generador procesa datos aportados por el organizador y comentarios renderizad
 
 ## Exportar desde Instagram
 
+El admin conserva una biblioteca fija del script al comienzo de la página, con **Copiar script para Chrome**, **Ver el script completo**, selección manual del código y descarga `.js`. El código llega con la página protegida del admin; copiarlo no depende de otra consulta al servidor. Si el navegador impide copiar, se abre el campo para seleccionar el código y usar Ctrl+C.
+
 1. En `/admin/sorteo`, elegir **Importar de Instagram** y **Copiar script para Chrome**. También se puede descargar `docs/sorteos/exportar-instagram.js`.
 2. Abrir la publicación en su propia pestaña de Chrome. Abrir la consola con `F12` → **Console**, pegar el script y ejecutarlo.
 3. El panel de MYA reúne comentarios ya cargados. **Cargar comentarios** activa hasta 120 clics espaciados en el botón nativo de carga. También se puede desplazar el post y abrir manualmente las respuestas necesarias. **Detener carga** y **Cerrar** permiten parar.
@@ -24,6 +26,12 @@ La exportación declara siempre `loaded-comments-only`: no certifica todos los c
 El script es propio y no carga código externo. Un [ejemplo histórico de consola](https://gist.github.com/dvingerh/8eb091483e65717031cef0d02414f587) usa cookies e identificadores de consultas internas de 2017; no se incorporó a MYA. Se inspeccionó el DOM real del post el 14/10/2026 para usar el enlace de comentario, su fecha, el autor y la foto renderizada. Cambios futuros del DOM pueden requerir ajustar el extractor.
 
 Las URLs de foto se guardan en la lista privada, dentro de su hash. El admin muestra una vista previa. La página pública solicita solo la foto del ganador después de la revelación, mediante `/api/sorteo/foto?round=...`; el servidor valida el CDN, omite credenciales, rechaza redirecciones y convierte a PNG con límites de bytes y píxeles. Las fotos pueden vencer: el escenario usa iniciales si una no carga, y permite continuar la exportación PNG. Sigue disponible la asociación manual de foto.
+
+## Diseño y ensayo privado
+
+El escenario comparte el diseño de la cuenta regresiva, ruleta y resultado con los PNG y videos: fondo oscuro cálido, marco y trazos botánicos, nombres con contraste y tarjeta de ganador. La página pública agrega la foto verificada del Travel Kit Centella de cinco productos, progreso del vivo, enlaces para compartir y acceso al catálogo. Si el organizador cambia el premio, se omite esa foto para no ilustrar otra variante.
+
+En **Escenario y resultado → Ensayo privado**, el admin puede ver la previa, contador, ruleta y ganador de ejemplo, ejecutar la animación completa o cambiar entre horizontal y vertical. Las cuentas `demo.*` están rotuladas como ensayo sin validez. El ensayo vive en su propio componente y no consulta ni modifica participantes, rondas o resultados. Durante un vivo real se desactiva el ensayo y se muestra el escenario real.
 
 CSV externo: `username,text,timestamp,id,name,avatar_url` (también `usuario,comentario,fecha,nombre,foto`). Máximo 3 MB en el selector/JSON de Instagram, 4 MB en el endpoint, 50.000 comentarios. El CSV generado usa columnas JSON para conservar exactamente comentarios, nombres e IDs sin celdas de fórmula. Se puede reimportar directamente en esta herramienta.
 

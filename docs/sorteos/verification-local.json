@@ -1,9 +1,11 @@
 {
-  "at": "2026-10-14T18:02:04.137Z",
+  "at": "2026-10-14T18:48:42.397Z",
   "fixtureOnly": true,
   "tests": {
     "importAndAdmin": true,
     "consoleScriptCollector": true,
+    "persistentScriptCode": true,
+    "privateRehearsalNoMutation": true,
     "instagramJsonImport": true,
     "coverageReviewRequired": true,
     "photosAndNamesPreserved": true,
@@ -23,5 +25,5 @@
   ],
   "jsErrors": [],
   "axeViolations": [],
-  "externalBrowserRequestsBlocked": 1
+  "externalBrowserRequestsBlocked": 4
 }
