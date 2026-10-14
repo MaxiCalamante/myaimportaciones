@@ -13,12 +13,12 @@ export function publicProfile(html:string,handle:string){
 }
 export async function readProfile(handle:string){
   try{
-    const r=await fetch(`https://www.instagram.com/${encodeURIComponent(handle)}/`,{redirect:'error',cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
-    if(!r.ok||!r.body){console.info('[giveaway-profile]',{status:r.status});return null;}
+    const r=await fetch(`https://www.instagram.com/${encodeURIComponent(handle)}/`,{redirect:'manual',headers:{Accept:'text/html','Accept-Language':'es-AR,es;q=0.9,en;q=0.8'},cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
+    if(!r.ok||!r.body){console.info('[giveaway-profile]',{status:r.status,redirect:r.headers.get('location')?.split('?')[0]?.slice(0,150)});return null;}
     const reader=r.body.getReader();let html='',bytes=0;const decoder=new TextDecoder();
     try{while(bytes<180000){const {done,value}=await reader.read();if(done)break;bytes+=value.length;html+=decoder.decode(value,{stream:true});if(html.includes('</head>'))break;}}finally{await reader.cancel();}
     const profile=publicProfile(html,handle);if(!profile)console.info('[giveaway-profile]',{status:r.status,bytes,hasTitle:html.includes('og:title'),hasImage:html.includes('og:image'),hasUrl:html.includes('og:url'),headComplete:html.includes('</head>')});return profile;
-  }catch(e){console.info('[giveaway-profile]',{error:e instanceof Error?e.name:'unknown'});return null;}
+  }catch(e){console.info('[giveaway-profile]',{error:e instanceof Error?e.name:'unknown',cause:e instanceof Error&&e.cause instanceof Error?e.cause.message.slice(0,100):undefined});return null;}
 }
 export async function enrichProfiles(comments:Comment[],previous:Comment[]=[]){
   const cached=new Map(previous.filter(c=>c.avatar||c.displayName).map(c=>[c.username,c]));
