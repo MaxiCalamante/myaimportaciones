@@ -1,81 +1,30 @@
-# Sorteo de MYA integrado en la tienda
+# MYA Sorteos: conexión oficial y vivo compartido
 
-## Recorrido
+## Uso
 
-- **`/sorteo`**: página pública dentro de MYA Importaciones, con la navegación de la tienda, contador, ruleta, ganador y enlaces al catálogo. No tiene controles para importar o sortear.
-- **`/admin/sorteo`**: acceso con el administrador existente. Preparación de comentarios, revisión de reglas/exclusiones, publicación del anuncio e inicio del vivo.
-- **`/sorteo?presentacion=1`**: escenario sin controles para grabar la pantalla. Escape permite salir.
+- `/admin/sorteo`: administrador de la tienda. **Cargar últimos comentarios** obtiene los comentarios de la publicación y todas sus páginas/respuestas mediante Meta. Guarda una lista privada; no inicia el sorteo.
+- La actualización combina por ID y conserva los datos anteriores. Si falla Meta o una página de resultados, no se guarda una importación parcial. Una cuenta participa una vez según las reglas de revisión.
+- Las fotos y nombres visibles se obtienen gratuitamente de los metadatos públicos de cada perfil, sin cookies ni inicio de sesión. Se verifica que URL y usuario correspondan exactamente. Los resultados se reutilizan; ante errores se conservan los datos ya recuperados. Un nombre vacío no se inventa. Los enlaces de fotos pueden vencer; el endpoint del ganador intenta recuperar una referencia nueva del mismo perfil.
+- Ajustar condiciones, revisar exclusiones y guardar el anuncio. **Iniciar en vivo** requiere confirmación y bloquea la lista. No actualizar participantes durante una selección.
+- `/sorteo`: acceso público por enlace, sin entrada en el navbar ni sitemap y con `noindex`. No requiere cuenta para que la comunidad vea el mismo resultado. El contador y ganador se sincronizan con la base de datos.
+- `/sorteo?presentacion=1`: presentación para transmitir. El ensayo del admin utiliza datos ficticios y no modifica resultados reales.
 
-Pegá una lista `@usuario | comentario` o importá CSV. La herramienta permite **descargar el CSV preparado**, pero la lista completa se persiste en tablas privadas de Supabase. No se pone un archivo con participantes en `public/`, Git ni un endpoint descargable para visitantes.
+No se ofrecen scripts de consola ni cargas manuales de participantes. Se conserva el lector de datos históricos para no romper actas anteriores. La foto manual de un ganador sigue disponible como corrección de identidad, con confirmación y registro.
 
-El generador procesa datos aportados por el organizador y comentarios renderizados en su navegador. **No hay extracción de contraseñas, cookies, tokens ni datos privados. No se necesita la API de Meta.** Los CSV con columnas de credenciales se rechazan. Nombre visible, usuario, comentario, fecha e ID se aceptan cuando fueron aportados; no se inventan perfiles ni fotos.
+## Configuración privada
 
-## Exportar desde Instagram
+`INSTAGRAM_ACCESS_TOKEN` es un secreto del servidor, nunca `NEXT_PUBLIC_`. En producción se guarda como Secret solo en el proyecto Vercel de MYA. No guardar credenciales en Git, logs ni respuestas al navegador. El token de usuario se extendió mediante el intercambio oficial de Meta el 14/10/2026, con duración informada de 60 días. Meta puede revocarlo antes; el admin muestra un error legible y conserva la lista si vence.
 
-El admin conserva una biblioteca fija del script al comienzo de la página, con **Copiar script para Chrome**, **Ver el script completo**, selección manual del código y descarga `.js`. El código llega con la página protegida del admin; copiarlo no depende de otra consulta al servidor. Si el navegador impide copiar, se abre el campo para seleccionar el código y usar Ctrl+C.
+App: MYA Sorteos (`1730894734661446`). Cuenta: `_myaimportaciones` (`17841402381081579`). Página vinculada: MYA Importaciones (`1392079903987769`). Permisos: `instagram_basic`, `instagram_manage_comments`, `pages_read_engagement`, `pages_show_list`. Solo se utilizan consultas de lectura.
 
-1. En `/admin/sorteo`, elegir **Importar de Instagram** y **Copiar script para Chrome**. También se puede descargar `docs/sorteos/exportar-instagram.js`.
-2. Iniciar sesión en Instagram y abrir la publicación en su propia pestaña de Chrome. Abrir la consola con `F12` → **Console**, pegar el script y ejecutarlo.
-3. El panel de MYA reúne comentarios ya cargados. **Cargar comentarios** activa hasta 120 clics espaciados en el botón nativo de carga. También se puede desplazar el post y abrir manualmente las respuestas necesarias. **Detener carga** y **Cerrar** permiten parar.
-4. Si Instagram muestra el aviso de sesión para ver más comentarios, el script detiene los clics automáticamente y conserva la muestra. Iniciar sesión y volver a pulsar **Cargar comentarios**. El script no evita sus controles ni usa endpoints internos. No recargar la pestaña: la recolección vive en esa página.
-5. Registrar opcionalmente la cantidad que indica Instagram, pulsar **Copiar JSON**, volver al admin y pegarlo. **Revisar comentarios de Instagram** prepara la tabla con cuentas, nombres disponibles, fotos, fechas y exclusiones.
-6. Comparar cantidades y revisar cobertura. Confirmar la revisión, configurar el cierre y guardar la lista privada. El servidor rechaza exportaciones de otro post y cargas sin esta revisión.
+Meta no proporciona la foto de todos los comentaristas. La recuperación gratuita de perfiles es una consulta a su página pública y depende de la disponibilidad de Instagram; no usa una API de pago ni evita autenticación, restricciones de acceso o bloqueos.
 
-La exportación declara siempre `loaded-comments-only`: no certifica todos los comentarios. Contadores abreviados, filtros, comentarios ocultos y respuestas pueden impedir comparar cantidades exactas. Un contador estable no demuestra completitud. El nombre completo solo se conserva si aparece como nombre visible en el comentario; habitualmente Instagram muestra únicamente el usuario. La ausencia de nombre se informa por separado.
+## Seguridad del vivo
 
-El script es propio y no carga código externo. Un [ejemplo histórico de consola](https://gist.github.com/dvingerh/8eb091483e65717031cef0d02414f587) usa cookies e identificadores de consultas internas de 2017; no se incorporó a MYA. Se inspeccionó el DOM real del post el 14/10/2026 para usar el enlace de comentario, su fecha, el autor y la foto renderizada. Cambios futuros del DOM pueden requerir ajustar el extractor.
+Las tres tablas de la migración `20261014140000_live_giveaway.sql` usan RLS. Solo el backend autenticado como administrador ejecuta escrituras. La RPC comprueba revisión y bloqueo para evitar carreras. La lista permanece privada; los datos públicos no revelan ganador antes de la hora de la base. La selección usa aleatoriedad criptográfica con rechazo, acta firmada y registro de descalificaciones. Seguimiento, like e historia requieren revisión manual del ganador.
 
-Las URLs de foto se guardan en la lista privada, dentro de su hash. El admin muestra una vista previa. La página pública solicita solo la foto del ganador después de la revelación, mediante `/api/sorteo/foto?round=...`; el servidor valida el CDN, omite credenciales, rechaza redirecciones y convierte a PNG con límites de bytes y píxeles. Las fotos pueden vencer: el escenario usa iniciales si una no carga, y permite continuar la exportación PNG. Sigue disponible la asociación manual de foto.
+## Verificación
 
-## Diseño y ensayo privado
+Prueba real de lectura: 1.161 registros, 75 cuentas, 75 fotos descargadas correctamente y 67 nombres visibles. Los datos y capturas están en `qa-private/`, fuera de Git. Meta informó 1.074 en su contador durante la consulta; ese contador no se usa para inventar ni descartar registros.
 
-El escenario comparte el diseño de la cuenta regresiva, ruleta y resultado con los PNG y videos: fondo oscuro cálido, marco y trazos botánicos, nombres con contraste y tarjeta de ganador. La página pública agrega el arte original del post de Instagram, progreso del vivo, enlaces para compartir y acceso al catálogo. `public/sorteo/dia-de-la-madre-instagram.jpg` conserva la primera lámina de `DeIpHXtkYyf` (1080 × 1350), descargada de la publicación el 14/10/2026, sin recortes ni filtros. Se aloja en la tienda para no depender de enlaces CDN que vencen. Si el organizador cambia el premio o la publicación, se omite ese arte para no ilustrar otra campaña.
-
-Prueba real del 14/10/2026: el script ofrecido por el admin se ejecutó en esa publicación y capturó 15 comentarios, 2 cuentas únicas, 15 fechas y 15 referencias de foto (2 fotos distintas). Ambas fotos cargaron en la tabla administrativa al revisar el JSON. La sesión anónima de Instagram impidió ampliar la lista; esta muestra no se guardó como lista definitiva ni se publicó. Nombres completos: 0, porque el comentario solo mostraba el usuario. El JSON y las capturas de esta prueba permanecen en `qa-private/`, excluido de Git y de las rutas públicas.
-
-En **Escenario y resultado → Ensayo privado**, el admin puede ver la previa, contador, ruleta y ganador de ejemplo, ejecutar la animación completa o cambiar entre horizontal y vertical. Las cuentas `demo.*` están rotuladas como ensayo sin validez. El ensayo vive en su propio componente y no consulta ni modifica participantes, rondas o resultados. Durante un vivo real se desactiva el ensayo y se muestra el escenario real.
-
-CSV externo: `username,text,timestamp,id,name,avatar_url` (también `usuario,comentario,fecha,nombre,foto`). Máximo 3 MB en el selector/JSON de Instagram, 4 MB en el endpoint, 50.000 comentarios. El CSV generado usa columnas JSON para conservar exactamente comentarios, nombres e IDs sin celdas de fórmula. Se puede reimportar directamente en esta herramienta.
-
-Una cuenta participa una vez; la cuenta organizadora se excluye. Las menciones, cierre y registros sin fecha son configurables. Seguir a MYA, el like y la historia se revisan manualmente para el ganador.
-
-## Vivo compartido
-
-El administrador presiona **Iniciar en vivo**, después de guardar la lista y confirmar las reglas. El servidor usa `crypto.randomBytes` con rechazo para evitar sesgo de módulo, firma el acta y persiste una única selección. Supabase fija la línea de tiempo: cuatro segundos de preparación, cinco segundos de cuenta regresiva y 10,5 segundos de ruleta.
-
-Los visitantes consultan el mismo estado cada segundo. El reloj se calibra con la hora del servidor y `performance.now()`, evitando que una fecha incorrecta del dispositivo cambie la animación. La selección no sucede en cada celular. Recargar muestra el resultado existente; llegar tarde se incorpora al momento actual.
-
-El endpoint/RPC público omite ganador, comentario ganador y foto hasta que el reloj de la base alcanza `reveal_at`. Solo aparecen hasta 72 nombres válidos durante la animación; no se exponen la lista completa de comentarios, IDs originales, exclusiones ni entropía. Ante un error de sincronización, se conserva el estado y se espera el resultado del servidor.
-
-El horario previsto es opcional y sirve para el contador del anuncio. **No inicia automáticamente una selección**: al llegar ese horario se espera que MYA inicie el vivo. No se inventó un horario para el 18/10/2026.
-
-## Seguridad y actas
-
-Migración: `supabase/migrations/20261014140000_live_giveaway.sql`. Crea tres tablas nuevas, RLS, lectura administrativa y funciones con permisos explícitos. Los clientes anónimos y clientes de la tienda no leen los datos privados. Incluso un JWT admin no ejecuta las funciones de selección/escritura: solo el backend, después de verificar el rol, usa la clave de servicio.
-
-Las listas se bloquean mientras existe una cuenta regresiva/ruleta activa. Los inicios repetidos son idempotentes. Una descalificación requiere motivo antes de un reemplazo; el acta conserva todas las selecciones y excluye a las cuentas ya ganadoras. Preparar otra lista después de sortear registra un motivo y conserva las actas anteriores.
-
-La firma HMAC usa `GIVEAWAY_AUDIT_SECRET` si está configurada o deriva una clave con contexto desde `SUPABASE_SERVICE_ROLE_KEY`. Ambas quedan en el servidor. Si se rota esa clave, las actas anteriores conservan sus hashes/procedimiento pero requieren la clave histórica para comprobar la firma. El acta verifica el procedimiento registrado; no prueba entropía ante un tercero independiente ni impide que el propietario borre su propia base.
-
-El admin puede descargar PNG 1080×1920, video compatible con el navegador y actas JSON/CSV. El video no incluye audio y debe descargarse antes de cerrar o recargar. Las fotos manuales se asocian únicamente a la cuenta ganadora, con confirmación y hash registrados.
-
-## Activación y evidencia
-
-1. Revisar y aplicar la nueva migración en el Supabase de la tienda, con autorización del propietario.
-2. Publicar el código de la tienda en Vercel, con autorización del propietario.
-3. Entrar con el admin existente a `/admin/sorteo`, cargar los comentarios reales, revisar la hora de cierre y activar el anuncio.
-4. Compartir la URL de la tienda terminada en `/sorteo`. El día del vivo, confirmar **Iniciar en vivo**.
-
-El propietario autorizó la activación y publicación el 14/10/2026. La migración se aplicó en el proyecto Supabase de la tienda (`gqcdurxndbeeugjfworx`): RLS activo, funciones de escritura solo para el backend, campaña inicial sin publicar, cero rondas y cero eventos. Los conteos de productos, pedidos y perfiles se conservaron. El código se publica mediante el despliegue de `main` en Vercel; la disponibilidad real se comprueba después de que finalice.
-
-No se importaron participantes reales ni se inició un sorteo real durante el desarrollo. Los tests usan Postgres/PGlite y un servidor Supabase de prueba en localhost, sin participantes ni selecciones de prueba en producción.
-
-Validación: `npm test`, `npm run type-check`, `npm run build`, `npm run lint` y `npm run test:giveaway`. La excepción existente de `no-explicit-any` para verificadores históricos se extendió a cinco scripts antiguos que leen snapshots dinámicos. Las reglas estrictas se mantienen en la aplicación y en todo el código del sorteo.
-
-La revisión de publicación detectó avisos de seguridad en Next.js 16.3.6. Se actualizó Next y su configuración ESLint al parche 16.3.8, y `npm audit --omit=dev` pasó sin vulnerabilidades. Referencia del mantenedor: [aviso de seguridad y versión corregida](https://github.com/vercel/next.js/security/advisories/GHSA-3w37-wq28-93x7).
-
-La prueba del vivo usa dos navegadores, un reloj de celular adelantado siete minutos, importación real en el admin de prueba, la API real de Next y funciones reales de Postgres. Verifica privacidad, sincronización, recuperación al recargar, revisión compartida, 320/390/768/1440 px, ausencia de errores JS y axe WCAG A/AA. Las capturas privadas de QA contienen exclusivamente participantes sintéticos `fixture.*`.
-
-La extensión de Instagram pasó 95 tests y la prueba completa de recolector sintético → JSON → admin → vivo compartido. La pantalla de importación también se comprobó a 320/390 px. La inspección del post real obtuvo 15 comentarios actualmente cargados, de 2 cuentas, con 15 fotos y 15 fechas; ninguno mostraba nombre completo. Esa muestra se mantuvo local y fuera de Git, sin guardar participantes ni ejecutar una selección en producción. Es evidencia de lectura parcial del DOM, no de todos los comentarios del post.
-
-El control de evidencia pública detectó cinco snapshots financieros/de proveedores ya versionados en `docs/mango-fuerza-2026-10-08`. Se conservaron localmente y se retiraron del índice para la próxima publicación. Esto protege el árbol actual; no reescribe ni elimina contenido de commits históricos.
+`npm test`, `npm run build`, `npm run type-check`, `npm run lint` y `npm run test:giveaway`. El E2E usa Postgres/PGlite y respuestas locales de Meta/perfiles; prueba paginación, actualización sin duplicados, fotos/nombres, ensayo privado, sincronización en dos navegadores, reloj incorrecto, recuperación al recargar y 320/390/768/1440 px. No ejecuta selecciones reales en producción.

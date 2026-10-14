@@ -8,7 +8,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = catalog.filter(p => p.active && !p.wholesaleOnly);
 
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}/sorteo`, changeFrequency: "daily", priority: 0.8 },
     {
       url: baseUrl,
       lastModified: new Date(),

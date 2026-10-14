@@ -1,3 +1,4 @@
+import { readProfile } from '@/lib/giveaway/server/profiles';
 import { publicState } from '@/lib/giveaway/server/data';
 import { createCommerceService } from '@/lib/supabase/service';
 import { instagramPhoto } from '@/lib/giveaway/server/photo';
@@ -14,7 +15,8 @@ export async function GET(request: Request) {
     const draws = data?.draws as {winner?:{username?:string;avatar?:string}}[] | undefined;
     const winner = Array.isArray(draws) ? draws.at(-1)?.winner : null;
     if(winner?.username !== state.winner.username) return new Response(null,{status:204,headers});
-    const photo = await instagramPhoto(winner.avatar);
+    let photo = await instagramPhoto(winner.avatar);
+    if(!photo){const fresh=await readProfile(state.winner.username);if(fresh?.avatar)photo=await instagramPhoto(fresh.avatar);}
     if(!photo) return new Response(null,{status:204,headers});
     return new Response(new Uint8Array(photo), {headers:{...headers,'Content-Type':'image/png'}});
   } catch { return new Response(null,{status:204,headers}); }

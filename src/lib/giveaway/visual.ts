@@ -1,10 +1,10 @@
 import type { Comment, SourceKind } from './types';
 export type Phase = 'idle' | 'countdown' | 'spinning' | 'winner';
 export type Visual = { phase: Phase; countdown: number; progress: number; pool: Comment[]; winner?: Comment; source?: SourceKind; status?: string; reduceMotion: boolean; elapsed: number; avatar?: HTMLImageElement; logo?: HTMLImageElement; portrait: boolean; participantCount?:number; title?:string; prize?:string };
-const INK='#352d29',ROSE='#91465b',GOLD='#e5c593',PAPER='#fff9ee',MUTED='#d5c0ad';
+const INK='#18333a',ROSE='#246973',GOLD='#a7dfe0',PAPER='#f6faf9',MUTED='#b4c9c9';
 function text(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,size:number,color=PAPER,weight=500,max=900,serif=false){
   ctx.fillStyle=color;
-  const font=(n:number)=>`${weight} ${n}px ${serif?'Georgia, "Times New Roman"':'"Geist", "Segoe UI"'}, sans-serif`;
+  const font=(n:number)=>`${weight} ${n}px ${serif?'"Geist", "Segoe UI"':'"Geist", "Segoe UI"'}, sans-serif`;
   ctx.font=font(size);while(ctx.measureText(value).width>max&&size>13){size--;ctx.font=font(size);}ctx.fillText(value,x,y,max);
 }
 function box(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r:number,fill:string){ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
@@ -17,14 +17,6 @@ function avatar(ctx:CanvasRenderingContext2D,c:Comment,x:number,y:number,r:numbe
   if(image){const side=Math.min(image.width,image.height);ctx.drawImage(image,(image.width-side)/2,(image.height-side)/2,side,side,x-r,y-r,r*2,r*2);}
   else{const letters=(c.displayName||c.username.replace(/^(demo|fixture)\./,'')).replace(/[._]/g,' ').split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();text(ctx,letters,x,y+r*.29,r*.72,ROSE,600,r*1.7);}
   ctx.restore();ctx.strokeStyle='#d4b48b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r+8,0,Math.PI*2);ctx.stroke();
-}
-function branches(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,moving:boolean){
-  ctx.strokeStyle='rgba(221,190,151,.18)';ctx.lineWidth=1.6;
-  for(let branch=0;branch<4;branch++){
-    ctx.save();ctx.translate(branch%2?w+35:-35,h*(.24+branch*.2));ctx.rotate((branch%2?-1:1)*.3+(moving?Math.sin(t*.0001+branch)*.025:0));
-    ctx.beginPath();ctx.moveTo(0,-200);ctx.quadraticCurveTo(130,0,0,220);ctx.stroke();
-    for(let p=0;p<5;p++){ctx.save();ctx.translate(35+Math.sin(p)*35,-160+p*75);ctx.rotate((p%2?-1:1)*.7);ctx.beginPath();ctx.ellipse(44,0,65,23,0,0,Math.PI*2);ctx.stroke();ctx.restore();}ctx.restore();
-  }
 }
 function gift(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number){
   ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.strokeStyle=GOLD;ctx.lineWidth=2.5;ctx.lineJoin='round';
@@ -40,8 +32,7 @@ function confetti(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,reduce
 }
 export function renderStage(ctx:CanvasRenderingContext2D,w:number,h:number,v:Visual){
   ctx.save();ctx.clearRect(0,0,w,h);const portrait=v.portrait,W=portrait?1080:1920,H=portrait?1920:1080,cx=W/2;ctx.scale(w/W,h/H);ctx.textAlign='center';ctx.textBaseline='alphabetic';
-  const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#302925');bg.addColorStop(.52,'#45362d');bg.addColorStop(1,'#322b27');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-  branches(ctx,W,H,v.elapsed,!v.reduceMotion);
+  const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#123b43');bg.addColorStop(.52,'#1c5058');bg.addColorStop(1,'#17373e');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='rgba(226,196,154,.24)';ctx.lineWidth=1.2;ctx.beginPath();ctx.roundRect(26,26,W-52,H-52,28);ctx.stroke();
   if(v.logo){const lw=portrait?170:140,lh=lw*v.logo.height/v.logo.width;ctx.drawImage(v.logo,cx-lw/2,portrait?86:38,lw,lh);}
   spaced(ctx,'MYA IMPORTACIONES',cx,portrait?230:133,portrait?23:19);
@@ -52,14 +43,14 @@ export function renderStage(ctx:CanvasRenderingContext2D,w:number,h:number,v:Vis
   const main=portrait?930:643;
   if(v.phase==='idle'){
     ctx.strokeStyle='rgba(230,199,156,.4)';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(cx,main,portrait?139:86,0,Math.PI*2);ctx.stroke();gift(ctx,cx,main+14,portrait?1.22:.76);
-    text(ctx,'Un regalo. Muchas ilusiones.',cx,main+(portrait?226:148),portrait?43:34,PAPER,400,portrait?910:1400,true);
-    text(ctx,'Nos encontramos en el vivo.',cx,main+(portrait?293:204),portrait?27:22,MUTED,400);
+    text(ctx,'Estamos preparando el sorteo.',cx,main+(portrait?226:148),portrait?43:34,PAPER,400,portrait?910:1400,true);
+    text(ctx,'La cuenta regresiva comienza cuando MYA da inicio.',cx,main+(portrait?293:204),portrait?27:22,MUTED,400);
   }else if(v.phase==='countdown'){
     const r=portrait?181:116;ctx.strokeStyle='rgba(232,209,173,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,main,r,0,Math.PI*2);ctx.stroke();
     ctx.strokeStyle=GOLD;ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,main,r,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(.01,(5-v.countdown)/5));ctx.stroke();
-    text(ctx,String(v.countdown),cx,main+(portrait?70:48),portrait?224:149,PAPER,400,600,true);spaced(ctx,'TU MOMENTO ESTÁ POR LLEGAR',cx,main+(portrait?277:175),portrait?21:18);
+    text(ctx,String(v.countdown),cx,main+(portrait?70:48),portrait?224:149,PAPER,400,600,true);spaced(ctx,'COMENZAMOS EN',cx,main+(portrait?277:175),portrait?21:18);
   }else if(v.phase==='spinning'&&v.reduceMotion){
-    text(ctx,'La suerte está eligiendo…',cx,main,portrait?47:39,PAPER,400,portrait?900:1400,true);text(ctx,'Una oportunidad por cuenta.',cx,main+73,portrait?26:22,MUTED,400);
+    text(ctx,'Seleccionando una cuenta…',cx,main,portrait?47:39,PAPER,400,portrait?900:1400,true);text(ctx,'Una oportunidad por cuenta.',cx,main+73,portrait?26:22,MUTED,400);
   }else if(v.phase==='spinning'){
     const slot=portrait?144:105,aw=portrait?900:1390,ah=slot*3.15,target=96,position=target*(1-Math.pow(1-Math.min(v.progress,v.winner?1:.94),5)),floor=Math.floor(position),frac=position-floor;
     box(ctx,cx-aw/2,main-ah/2,aw,ah,24,'#fbf4e8');

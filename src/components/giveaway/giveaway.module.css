@@ -67,3 +67,19 @@
 .introActions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .prizeVisual.originalArtwork{aspect-ratio:4/5;max-height:none;background:#eae6dd}.prizeVisual.originalArtwork img{height:auto;max-height:none;mix-blend-mode:normal}
 .codePanel[hidden]{display:none}.adminRoot .codePanel textarea:focus-visible{outline-color:#e5c593}.accountAvatar{float:left;position:relative;display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#eddccc;color:#91465b;margin-right:12px;font-size:13px;font-weight:600}.accountAvatar img{position:absolute;inset:0;width:36px;height:36px;object-fit:cover;border-radius:50%;margin:0!important}
+
+/* Colores de MYA y una composición sobria para acompañar el vivo. */
+.publicRoot,.adminRoot{--rose:#216a73;--ink:#18343b;--muted:#52676c;--paper:#ffffff;--line:#dce7e7;--gold:#216a73}
+.publicRoot{background:#f5f9f8;border-color:#dce7e7;border-radius:14px;box-shadow:none}
+.intro h1,.audienceInfo h2,.shopInvitation h3,.adminHeading h1{font-family:var(--font-geist-sans),"Segoe UI",sans-serif;font-weight:650;letter-spacing:-1px}
+.intro h1 em{font-style:normal;color:#216a73}.intro p:not(.eyebrow){color:#52676c}.eyebrow{letter-spacing:1px}
+.adminPanel,.audienceInfo{background:#fff;border:1px solid #dce7e7;border-radius:12px;box-shadow:none}
+.scenario{border-radius:12px;border:1px solid #24525a;background:#183b43;box-shadow:none}
+.liveBar{background:#11323a;color:#e9f7f6}.scenarioFooter{background:#f1f6f5;color:#52676c}
+.roseButton{background:#216a73;color:#fff;border:1px solid #216a73;border-radius:8px;box-shadow:none}.roseButton:hover{background:#19565e}
+.outlineButton,.share{border-radius:8px;border-color:#cadcdd;background:#fff;color:#216a73}
+.apiCard{padding:22px;margin-top:24px;background:#f0f7f6;border:1px solid #cfe3e2;border-radius:10px}.apiCard h3{margin:8px 0 12px;font-size:23px}.apiCard p{max-width:60ch}.apiCard button{margin:12px 0;width:100%;min-height:48px}
+.stats{background:#f0f7f6;border-color:#dce7e7}.stats strong{color:#216a73}.accountAvatar{background:#d9eeeb;color:#216a73}
+.notice{border-color:#cfe3e2;background:#edf6f4;color:#18343b}.noticeError{background:#fff0ed;border-color:#e4bbb4;color:#8c3025}
+.prizeVisual.originalArtwork{border-radius:8px;overflow:hidden}.workflow>a>span,.sectionIndex{background:#e5f3f1;color:#216a73}.shopInvitation{border-color:#dce7e7}
+@media(max-width:540px){.publicRoot{margin:10px 8px 24px;border-radius:12px}.intro h1{font-size:34px}.apiCard{padding:18px}.adminPanel{padding:20px 16px}}

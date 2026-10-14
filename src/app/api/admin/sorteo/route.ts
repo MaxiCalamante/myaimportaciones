@@ -1,13 +1,16 @@
+import { enrichProfiles } from '@/lib/giveaway/server/profiles';
+import { readInstagramComments, mergeComments } from '@/lib/giveaway/server/instagram';
 import { randomUUID } from 'node:crypto';
 import { getAdminClient } from '@/lib/admin-auth';
 import { createCommerceService } from '@/lib/supabase/service';
-import { parseImport,reviewComments,validateRules,parseInstagramExport } from '@/lib/giveaway/participants';
+import { reviewComments,validateRules } from '@/lib/giveaway/participants';
 import { validateConfig } from '@/lib/giveaway/live';
 import { createAudit,draw,confirmWinner,disqualify,addEvent,digest } from '@/lib/giveaway/server/audit';
 import { dbError,privateState } from '@/lib/giveaway/server/data';
 import { body,checkOrigin,fail,response,GiveawayError } from '@/lib/giveaway/server/http';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
+export const maxDuration=300;
 async function admin(){const db=await getAdminClient();const {data:{user}}=await db.auth.getUser();if(!user)throw new GiveawayError('Iniciá sesión.',401);return user.id;}
 export async function GET(){try{await admin();const state=await privateState();return response(state);}catch(e){return fail(e);}}
 export async function POST(request:Request){
@@ -16,21 +19,23 @@ export async function POST(request:Request){
     if(!Number.isSafeInteger(input.revision)||input.revision<0)throw new GiveawayError('Versión inválida.');
     const current=await privateState();
     if(input.action==='redraw'&&current.round&&current.round.id!==input.roundId&&current.round.audit.draws.at(-2)?.id===input.roundId)return response(current);
-    if(input.action==='import'){
-      let config,rules,comments,exportInfo;
-      try{
-        config=validateConfig(input.config);rules=validateRules(input.rules);
-        if(!['csv','list','instagram-export','existing'].includes(input.kind))throw new Error('Elegí exportación de Instagram, CSV o lista.');
-        if(input.kind==='existing'&&!current.snapshot)throw new Error('No hay lista guardada.');
-        if(input.kind==='instagram-export'){
-          exportInfo=parseInstagramExport(String(input.text||''));
-          if(new URL(exportInfo.postUrl).pathname.replace(/\/$/,'')!==new URL(config.permalink).pathname.replace(/\/$/,''))throw new Error('Los comentarios pertenecen a otra publicación. Revisá el enlace del anuncio.');
-          if(input.coverageReviewed!==true)throw new Error('Revisá la cobertura de comentarios y respuestas antes de guardar.');
-        }
-        comments=input.kind==='existing'?current.snapshot!.comments:parseImport(String(input.text||''),input.kind);
-      }catch(e){throw new GiveawayError((e as Error).message);}
-      const sourceKind=input.kind==='existing'?current.snapshot!.source.kind:input.kind as 'csv'|'list'|'instagram-export';
-      const source=input.kind==='existing'?{...current.snapshot!.source,permalink:config.permalink}:{kind:sourceKind,label:sourceKind==='instagram-export'?'Comentarios visibles de Instagram':sourceKind==='csv'?'CSV importado':'Lista importada',permalink:config.permalink,importedAt:new Date().toISOString(),...(exportInfo?{exportedAt:exportInfo.exportedAt,coverage:exportInfo.coverage,coverageReviewed:true,reportedCount:exportInfo.reportedCount,warning:'Captura de comentarios cargados en el navegador; cobertura revisada manualmente por el organizador.'}:{})};
+    if(input.action==='sync-instagram'){
+      if(current.round&&(Date.now()<Date.parse(current.round.revealAt)||String(input.reason||'').trim().length<5))throw new GiveawayError('La lista está bloqueada. Para preparar otra después del vivo, registrá el motivo.',409);
+      if(current.revision!==input.revision)throw new GiveawayError('El estado cambió. Actualizá antes de sincronizar.',409);
+      const config=validateConfig(input.config),rules=validateRules(input.rules);
+      const fresh=await readInstagramComments(config.permalink);
+      const previous=current.snapshot?.source.kind==='instagram'&&current.snapshot.source.mediaId===fresh.mediaId?current.snapshot.comments:[];
+      const merged=mergeComments(previous,fresh.comments);
+      const comments=await enrichProfiles(merged,previous);
+      const snapshot={version:1 as const,source:{kind:'instagram' as const,label:'API oficial de Instagram',permalink:config.permalink,importedAt:new Date().toISOString(),mediaId:fresh.mediaId,reportedCount:fresh.reportedCount,warning:'Comentarios y respuestas accesibles por la API. Las actualizaciones conservan los registros ya importados por ID.'},rules,comments,review:reviewComments(comments,rules)};
+      const {error}=await db.rpc('giveaway_save_v1',{revision_input:input.revision,config_input:config,dataset_input:randomUUID(),snapshot_input:snapshot,reason_input:current.round?String(input.reason).trim().slice(0,500):'Actualización desde la API oficial de Instagram',actor_input:actor});dbError(error);
+    }else if(input.action==='import'){
+      if(input.kind!=='existing')throw new GiveawayError('La carga de participantes se realiza mediante la API de Instagram.');
+
+      if(!current.snapshot)throw new GiveawayError('No hay lista guardada.');
+      const config=validateConfig(input.config),rules=validateRules(input.rules);
+      if(config.permalink!==current.config.permalink)throw new GiveawayError('Al cambiar la publicación, cargá sus comentarios desde Instagram antes de guardar.');
+      const comments=current.snapshot.comments,source={...current.snapshot.source,permalink:config.permalink};
       const snapshot={version:1 as const,source,rules,comments,review:reviewComments(comments,rules)};
       const {error}=await db.rpc('giveaway_save_v1',{revision_input:input.revision,config_input:config,dataset_input:randomUUID(),snapshot_input:snapshot,reason_input:String(input.reason||'').slice(0,500),actor_input:actor});dbError(error);
     }else if(input.action==='start'||input.action==='redraw'){
