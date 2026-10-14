@@ -127,6 +127,15 @@ docs/tools-selection-2026-10-01/*
 !docs/tools-selection-2026-10-01/herramientas-mobile.jpg
 
 *.tsbuildinfo
+.next-giveaway-qa/
+docs/sorteos/qa-private/
+docs/sorteos/lint-local.json
+# Existing supplier/financial snapshots stay private on this machine.
+docs/mango-fuerza-2026-10-08/after.json
+docs/mango-fuerza-2026-10-08/before.json
+docs/mango-fuerza-2026-10-08/payload.json
+docs/mango-fuerza-2026-10-08/published.json
+docs/mango-fuerza-2026-10-08/torquimetro-payload.json
 next-env.d.ts
 
 # Reproducible local import batches; keep source manifests and final audit reports.

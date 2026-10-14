@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu, Images, Mail } from "lucide-react";
+import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu, Images, Mail, Gift } from "lucide-react";
 import { useRef } from "react";
 
 const sections = [
   { href: "/admin", label: "Panel", icon: LayoutDashboard },
   { href: "/admin/carrusel", label: "Carrusel", icon: Images },
+  { href: "/admin/sorteo", label: "Sorteo en vivo", icon: Gift },
   { href: "/admin/proveedores", label: "Proveedores", icon: Boxes },
   { href: "/admin/operaciones", label: "Operaciones", icon: Boxes },
   { href: "/admin/costos", label: "Stock y costos", icon: ChartNoAxesCombined },

@@ -229,6 +229,9 @@ export function SiteHeader({
           <Link aria-current={pathname === "/" ? "page" : undefined} className={`${linkClass} ${pathname === "/" ? "bg-sky-50 text-sky-800" : ""}`} href="/">
             Inicio
           </Link>
+          <Link aria-current={pathname === "/sorteo" ? "page" : undefined} className={`${linkClass} ${pathname === "/sorteo" ? "bg-rose-50 text-rose-900" : ""}`} href="/sorteo">
+            Sorteo
+          </Link>
 
           {/* Categorías Link con Dropdown estructurado y sin bug de cursor */}
           <div
@@ -663,6 +666,9 @@ export function SiteHeader({
               onClick={() => setOpen(false)}
             >
               Inicio
+            </Link>
+            <Link className="rounded-lg px-3 py-2 text-sm font-medium text-rose-900 hover:bg-rose-50" href="/sorteo" onClick={() => setOpen(false)}>
+              Sorteo en vivo
             </Link>
 
             <Link

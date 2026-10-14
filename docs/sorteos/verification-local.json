@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-14T17:19:22.773Z",
+  "fixtureOnly": true,
+  "tests": {
+    "importAndAdmin": true,
+    "guestMutationDenied": true,
+    "winnerHiddenUntilReveal": true,
+    "twoDevicesSameWinner": true,
+    "wrongDeviceClockIgnored": true,
+    "reloadKeepsWinner": true,
+    "manualReviewShared": true,
+    "privateFileNotInPublicPayload": true
+  },
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "jsErrors": [],
+  "axeViolations": [],
+  "externalBrowserRequestsBlocked": 0
+}

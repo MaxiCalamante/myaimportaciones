@@ -1,0 +1,14 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import { secureIndex } from '../src/lib/giveaway/random';
+import { createAudit,disqualify,draw,confirmWinner,addEvent } from '../src/lib/giveaway/server/audit';
+import { verifyAudit } from '../src/lib/giveaway/server/verify';
+import { DEFAULT_RULES } from '../src/lib/giveaway/types';
+process.env.GIVEAWAY_AUDIT_SECRET='test-secret-32-characters-minimum-private';
+const dataset={id:'test',source:{kind:'csv' as const,label:'CSV importado',permalink:'https://www.instagram.com/p/DeIpHXtkYyf/',importedAt:'2026-10-14T12:00:00Z'},comments:['alma','flor','juli'].map((username,i)=>({id:String(i),username,text:'con @amiga',timestamp:'2026-10-17T12:00:00Z'}))};
+test('Rechazo elimina el sesgo y registra palabras descartadas',()=>{const words=[0xffffffff,8];const r=secureIndex(3,()=>words.shift()!);assert.equal(r.index,2);assert.deepEqual(r.words,[0xffffffff,8]);assert.equal(r.ceiling,4294967295);});
+test('Cantidad y entropía inválidas se rechazan',()=>{assert.throws(()=>secureIndex(0,()=>1));assert.throws(()=>secureIndex(3,()=>-1));assert.equal(secureIndex(1,()=>0xffffffff).index,0);});
+test('Acta reproduce selección y valida firma, lista y reglas',()=>{const a=createAudit(dataset,DEFAULT_RULES);assert.equal(verifyAudit(a,true).selection,true);assert.equal(a.snapshot.review.valid.length,3);});
+test('Cambio de ganador, lista o entropía invalida el acta',()=>{const a=createAudit(dataset,DEFAULT_RULES);for(const mutate of [(x:typeof a)=>{x.draws[0].winner.username='otro';},(x:typeof a)=>{x.snapshot.comments.pop();},(x:typeof a)=>{x.draws[0].random.words[0]^=1;}]){const copy=structuredClone(a);mutate(copy);assert.throws(()=>verifyAudit(copy,true));}});
+test('Reemplazo excluye al ganador descalificado y exige motivo',()=>{const a=createAudit(dataset,DEFAULT_RULES);const first=a.draws[0].winner.username;assert.throws(()=>disqualify(a,'no'));disqualify(a,'No compartió la historia');draw(a,'No compartió la historia');assert.notEqual(a.draws[1].winner.username,first);assert.equal(a.draws[1].size,2);assert.equal(verifyAudit(a,true).chain,true);});
+test('Confirmación exige las tres comprobaciones humanas',()=>{const a=createAudit(dataset,DEFAULT_RULES);assert.throws(()=>confirmWinner(a,{follows:true,likes:false,story:true}));confirmWinner(a,{follows:true,likes:true,story:true});assert.equal(a.status,'confirmed');assert.equal(verifyAudit(a,true).signature,'verificada con clave local');assert.throws(()=>disqualify(a,'Otro motivo'));});
+test('Historial de nueva lista conserva resultado y firma',()=>{const a=createAudit(dataset,DEFAULT_RULES);addEvent(a,{type:'new-dataset',reason:'Preparar otro sorteo anunciado'});assert.equal(verifyAudit(a,true).chain,true);});
