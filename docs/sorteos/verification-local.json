@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-14T18:48:42.397Z",
+  "at": "2026-10-14T20:00:15.606Z",
   "fixtureOnly": true,
   "tests": {
     "importAndAdmin": true,
@@ -25,5 +25,5 @@
   ],
   "jsErrors": [],
   "axeViolations": [],
-  "externalBrowserRequestsBlocked": 4
+  "externalBrowserRequestsBlocked": 1
 }

@@ -59,7 +59,8 @@
       const item={id:match[2],username:user,text,timestamp};
       if(name) item.displayName=name;
       const avatar=safePhoto(image?.currentSrc || image?.getAttribute('src') || ''); if(avatar) item.avatar=avatar;
-      comments.set(item.id,item);
+      // Keep the photo/name already captured if Instagram later unloads that part of the card.
+      comments.set(item.id,{...comments.get(item.id),...item});
     }
     const rows=[...comments.values()];
     status.textContent=rows.length+' comentarios · '+new Set(rows.map(c=>c.username)).size+' cuentas · '+rows.filter(c=>c.avatar).length+' fotos · '+rows.filter(c=>c.displayName).length+' nombres completos'+(automatic?' · cargando…':'');
@@ -86,18 +87,29 @@
     const href=URL.createObjectURL(new Blob([json()],{type:'application/json'})),a=document.createElement('a');
     a.href=href;a.download='mya-comentarios-instagram-'+postPath.split('/').pop()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(href),5000);
   }
+  function loginRequired() {
+    const login=[...document.querySelectorAll('button,[role="button"]')].find(b=>!panel.contains(b) && b.getClientRects().length && /^(Iniciar sesión|Log in)$/i.test((b.textContent || '').trim()));
+    if(!login)return false;
+    for(let card=login.parentElement,depth=0;card && depth<8;card=card.parentElement,depth++) {
+      if(/Ve todos los comentarios|Ver todos los comentarios|See all comments|Log in to see more comments/i.test(card.innerText || ''))return true;
+      if(card.matches('[role="dialog"]'))return true;
+    }
+    return false;
+  }
   const loadButton=button('Cargar comentarios',async()=>{
     if(automatic) return; automatic=true; loadButton.disabled=true;
+    let blockedByLogin=false;
     // Only native "load comments" controls; no likes, follow actions, replies or private endpoints.
     for(let n=0;active && automatic && n<120;n++){
       collect();
+      if(loginRequired()){blockedByLogin=true;break;}
       const candidates=[...document.querySelectorAll('button,[role="button"]')].filter(b=>!panel.contains(b));
       const next=candidates.find(b=>/^(Cargar más comentarios|Load more comments|View more comments)$/i.test((b.getAttribute('aria-label') || b.textContent || b.querySelector('svg title')?.textContent || '').trim()) && !b.disabled);
       if(!next)break;
       next.click();await new Promise(resolve=>setTimeout(resolve,2500));
     }
     automatic=false;loadButton.disabled=false;collect();
-    note.textContent='Carga automática detenida. Revisá el post: desplazate y abrí las respuestas que deban participar. Después copiá el JSON. Un contador quieto no demuestra que estén todos.';
+    note.textContent=blockedByLogin?'Instagram pide iniciar sesión para ver más comentarios. La carga se detuvo y conserva la muestra. Iniciá sesión y volvé a pulsar Cargar comentarios. Esta lista todavía no está completa.':'Carga automática detenida. Revisá el post: desplazate y abrí las respuestas que deban participar. Después copiá el JSON. Un contador quieto no demuestra que estén todos.';
   });
   button('Copiar JSON',copyJson);button('Descargar JSON',download);button('Detener carga',()=>{automatic=false;collect();});
   function stop(){active=false;automatic=false;clearTimeout(timer);observer.disconnect();panel.remove();}

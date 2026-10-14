@@ -15,9 +15,9 @@ El generador procesa datos aportados por el organizador y comentarios renderizad
 El admin conserva una biblioteca fija del script al comienzo de la página, con **Copiar script para Chrome**, **Ver el script completo**, selección manual del código y descarga `.js`. El código llega con la página protegida del admin; copiarlo no depende de otra consulta al servidor. Si el navegador impide copiar, se abre el campo para seleccionar el código y usar Ctrl+C.
 
 1. En `/admin/sorteo`, elegir **Importar de Instagram** y **Copiar script para Chrome**. También se puede descargar `docs/sorteos/exportar-instagram.js`.
-2. Abrir la publicación en su propia pestaña de Chrome. Abrir la consola con `F12` → **Console**, pegar el script y ejecutarlo.
+2. Iniciar sesión en Instagram y abrir la publicación en su propia pestaña de Chrome. Abrir la consola con `F12` → **Console**, pegar el script y ejecutarlo.
 3. El panel de MYA reúne comentarios ya cargados. **Cargar comentarios** activa hasta 120 clics espaciados en el botón nativo de carga. También se puede desplazar el post y abrir manualmente las respuestas necesarias. **Detener carga** y **Cerrar** permiten parar.
-4. Si Instagram pide iniciar sesión o deja de cargar, resolverlo en Instagram. El script no evita sus controles ni usa endpoints internos. No recargar la pestaña: la recolección vive en esa página.
+4. Si Instagram muestra el aviso de sesión para ver más comentarios, el script detiene los clics automáticamente y conserva la muestra. Iniciar sesión y volver a pulsar **Cargar comentarios**. El script no evita sus controles ni usa endpoints internos. No recargar la pestaña: la recolección vive en esa página.
 5. Registrar opcionalmente la cantidad que indica Instagram, pulsar **Copiar JSON**, volver al admin y pegarlo. **Revisar comentarios de Instagram** prepara la tabla con cuentas, nombres disponibles, fotos, fechas y exclusiones.
 6. Comparar cantidades y revisar cobertura. Confirmar la revisión, configurar el cierre y guardar la lista privada. El servidor rechaza exportaciones de otro post y cargas sin esta revisión.
 
@@ -29,7 +29,9 @@ Las URLs de foto se guardan en la lista privada, dentro de su hash. El admin mue
 
 ## Diseño y ensayo privado
 
-El escenario comparte el diseño de la cuenta regresiva, ruleta y resultado con los PNG y videos: fondo oscuro cálido, marco y trazos botánicos, nombres con contraste y tarjeta de ganador. La página pública agrega la foto verificada del Travel Kit Centella de cinco productos, progreso del vivo, enlaces para compartir y acceso al catálogo. Si el organizador cambia el premio, se omite esa foto para no ilustrar otra variante.
+El escenario comparte el diseño de la cuenta regresiva, ruleta y resultado con los PNG y videos: fondo oscuro cálido, marco y trazos botánicos, nombres con contraste y tarjeta de ganador. La página pública agrega el arte original del post de Instagram, progreso del vivo, enlaces para compartir y acceso al catálogo. `public/sorteo/dia-de-la-madre-instagram.jpg` conserva la primera lámina de `DeIpHXtkYyf` (1080 × 1350), descargada de la publicación el 14/10/2026, sin recortes ni filtros. Se aloja en la tienda para no depender de enlaces CDN que vencen. Si el organizador cambia el premio o la publicación, se omite ese arte para no ilustrar otra campaña.
+
+Prueba real del 14/10/2026: el script ofrecido por el admin se ejecutó en esa publicación y capturó 15 comentarios, 2 cuentas únicas, 15 fechas y 15 referencias de foto (2 fotos distintas). Ambas fotos cargaron en la tabla administrativa al revisar el JSON. La sesión anónima de Instagram impidió ampliar la lista; esta muestra no se guardó como lista definitiva ni se publicó. Nombres completos: 0, porque el comentario solo mostraba el usuario. El JSON y las capturas de esta prueba permanecen en `qa-private/`, excluido de Git y de las rutas públicas.
 
 En **Escenario y resultado → Ensayo privado**, el admin puede ver la previa, contador, ruleta y ganador de ejemplo, ejecutar la animación completa o cambiar entre horizontal y vertical. Las cuentas `demo.*` están rotuladas como ensayo sin validez. El ensayo vive en su propio componente y no consulta ni modifica participantes, rondas o resultados. Durante un vivo real se desactiva el ensayo y se muestra el escenario real.
 

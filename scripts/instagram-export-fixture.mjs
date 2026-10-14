@@ -18,6 +18,17 @@ export async function consoleFixture(browser) {
     await new Promise(resolve=>setTimeout(resolve,3000));
     value=await page.evaluate(()=>JSON.parse(window.MYAComentarios.json()));assert.equal(value.comments.length,4);assert.equal(new Set(value.comments.map(c=>c.id)).size,4);
     value.reportedCount=4;
+    // Instagram's logged-out wall must stop native clicks and preserve the captured sample.
+    await page.evaluate(()=>{
+      const load=document.createElement('button');load.id='login-load';load.textContent='Cargar más comentarios';
+      load.addEventListener('click',()=>{load.dataset.clicks=String(Number(load.dataset.clicks||0)+1);const gate=document.createElement('div');gate.setAttribute('role','dialog');gate.innerHTML='<p>Ve todos los comentarios</p><button>Iniciar sesión</button>';document.body.append(gate);});
+      document.body.append(load);
+    });
+    await page.getByRole('button',{name:'Cargar comentarios',exact:true}).click();
+    await page.getByText('Instagram pide iniciar sesión para ver más comentarios.',{exact:false}).waitFor({timeout:8000});
+    assert.equal(await page.locator('#login-load').getAttribute('data-clicks'),'1');
+    assert.equal(await page.getByRole('button',{name:'Cargar comentarios',exact:true}).isEnabled(),true);
+    assert.equal(await page.evaluate(()=>JSON.parse(window.MYAComentarios.json()).comments.length),4);
     const stopped=await page.evaluate(()=>{const value=window.MYAComentarios.json();window.MYAComentarios.detener();return{value,panelRemoved:!document.querySelector('#mya-exportador')};});assert.equal(stopped.panelRemoved,true);assert.deepEqual(failures,[]);
     return value;
   } finally { await context.close(); }
