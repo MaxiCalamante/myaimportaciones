@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseImport,reviewComments,csvCell,validateRules,validateComments,hasMention } from '../src/lib/giveaway/participants';
+import { parseImport,reviewComments,csvCell,validateRules,validateComments,hasMention,parseInstagramExport,participantCsv } from '../src/lib/giveaway/participants';
 import { DEFAULT_RULES,type Comment } from '../src/lib/giveaway/types';
 const c=(id:string,u:string,text='con @amiga',timestamp:string|null='2026-10-18T15:00:00-03:00'):Comment=>({id,username:u,text,timestamp});
 test('CSV respeta BOM, nombres, coma entre comillas y comentario multilineal',()=>{
@@ -28,3 +28,18 @@ test('Exclusión manual afecta todos los comentarios y conserva motivo',()=>{con
 test('Reglas inválidas no llegan a sorteo',()=>{assert.throws(()=>validateRules({...DEFAULT_RULES,cutoff:'2026-10-18'}));assert.throws(()=>validateRules({...DEFAULT_RULES,manualExclusions:{alma:''}}));assert.throws(()=>validateComments([{id:'x',username:'a',text:3,timestamp:null}]));});
 test('Exportación CSV neutraliza fórmulas',()=>assert.equal(csvCell('=HYPERLINK("x")'),'"\'=HYPERLINK(""x"")"'));
 test('Nombres de cuenta similares a propiedades de Object no se excluyen por error',()=>assert.equal(reviewComments([c('x','constructor')],DEFAULT_RULES).valid.length,1));
+
+const exported = () => ({format:'mya-instagram-comments',version:1,postUrl:'https://www.instagram.com/p/FixtureMYA/',exportedAt:'2026-10-14T18:00:00Z',coverage:'loaded-comments-only',reportedCount:5,comments:[{...c('179001','fixture.alma'),displayName:'Alma',avatar:'https://scontent.cdninstagram.com/v/photo.jpg?a=1&b=2'}]});
+test('JSON de consola conserva fecha, nombre y foto, y declara cobertura limitada',()=>{
+  const value=parseInstagramExport(JSON.stringify(exported()));
+  assert.equal(value.comments[0].displayName,'Alma');assert.equal(value.comments[0].avatar,exported().comments[0].avatar);
+  assert.equal(value.coverage,'loaded-comments-only');assert.equal(value.reportedCount,5);
+  assert.deepEqual(parseImport(JSON.stringify(exported()),'instagram-export'),value.comments);
+  assert.deepEqual(parseImport(participantCsv(value.comments),'csv'),value.comments);
+});
+test('Exportación rechaza listas vacías, IDs repetidos, origen ajeno y fechas inventadas',()=>{
+  for(const change of [{comments:[]},{comments:[exported().comments[0],exported().comments[0]]},{postUrl:'https://example.com/p/FixtureMYA/'},{exportedAt:'ayer'},{coverage:'complete'},{reportedCount:-1}])assert.throws(()=>parseInstagramExport(JSON.stringify({...exported(),...change})));
+});
+test('Fotos importadas rechazan esquemas activos, dominios ajenos y URLs con credenciales',()=>{
+  for(const avatar of ['javascript:alert(1)','https://127.0.0.1/image.png','https://cdninstagram.com.evil.test/a.jpg','https://user:pass@scontent.cdninstagram.com/a.jpg','https://scontent.cdninstagram.com:8443/a.jpg'])assert.throws(()=>validateComments([{...c('photo','alma'),avatar}]));
+});

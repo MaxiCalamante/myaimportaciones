@@ -1,9 +1,9 @@
-export type SourceKind = 'instagram' | 'csv' | 'list' | 'demo';
+export type SourceKind = 'instagram' | 'instagram-export' | 'csv' | 'list' | 'demo';
 export type Comment = {
   id: string; username: string; text: string; timestamp: string | null;
   displayName?: string; avatar?: string; parentId?: string;
 };
-export type Source = { kind: SourceKind; label: string; permalink: string; importedAt: string; mediaId?: string; reportedCount?: number; warning?: string };
+export type Source = { kind: SourceKind; label: string; permalink: string; importedAt: string; mediaId?: string; reportedCount?: number; warning?: string; exportedAt?: string; coverage?: 'loaded-comments-only'; coverageReviewed?: boolean };
 export type Rules = { owner: string; requireMention: boolean; cutoff: string; allowUndated: boolean; manualExclusions: Record<string, string> };
 export type Excluded = { comment: Comment; reason: string };
 export type Review = { valid: Comment[]; excluded: Excluded[]; processed: number; undated: number };
@@ -26,4 +26,4 @@ export const DEFAULT_RULES: Rules = {
   cutoff: '2026-10-18T23:59:59-03:00', allowUndated: false, manualExclusions: {}
 };
 export const POST = 'https://www.instagram.com/p/DeIpHXtkYyf/';
-export const SOURCE_LABELS: Record<SourceKind, string> = { instagram: 'Comentarios de Meta', csv: 'CSV importado', list: 'Lista importada', demo: 'Demostración' };
+export const SOURCE_LABELS: Record<SourceKind, string> = { instagram: 'Comentarios de Meta', 'instagram-export': 'Comentarios visibles de Instagram', csv: 'CSV importado', list: 'Lista importada', demo: 'Demostración' };

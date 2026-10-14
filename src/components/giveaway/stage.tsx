@@ -5,11 +5,12 @@ import { download, recordingMime } from '@/lib/giveaway/exports';
 import type { Audit, Comment, SourceKind } from '@/lib/giveaway/types';
 
 export type StageHandle = { png:()=>Promise<void>; startRecording:()=>boolean; stopRecording:()=>void; canvas:()=>HTMLCanvasElement|null };
-type Props={ phase:Phase; countdown:number; progress:number; pool:Comment[]; audit:Audit|null; source?:SourceKind; portrait:boolean; reduceMotion:boolean; onRecorded:(blob:Blob)=>void; onRecordingError:(message:string)=>void; winner?:Comment; winnerStatus?:Audit['status']; winnerAvatar?:string; participantCount?:number;title?:string;prize?:string;liveClock?:{serverMs:number;performanceMs:number;spinAt:number;revealAt:number;countdownAt:number} };
+type Props={ phase:Phase; countdown:number; progress:number; pool:Comment[]; audit:Audit|null; source?:SourceKind; portrait:boolean; reduceMotion:boolean; onRecorded:(blob:Blob)=>void; onRecordingError:(message:string)=>void; winner?:Comment; winnerStatus?:Audit['status']; winnerAvatar?:string;winnerRoundId?:string; participantCount?:number;title?:string;prize?:string;liveClock?:{serverMs:number;performanceMs:number;spinAt:number;revealAt:number;countdownAt:number} };
 async function loadImage(src:string) {const img=new Image();img.src=src;await img.decode();return img;}
 export const Stage=forwardRef<StageHandle,Props>(function Stage(props,ref) {
   const canvas=useRef<HTMLCanvasElement>(null),state=useRef(props),logo=useRef<HTMLImageElement|undefined>(undefined),avatar=useRef<HTMLImageElement|undefined>(undefined),recorder=useRef<MediaRecorder|null>(null),chunks=useRef<Blob[]>([]),frame=useRef(0);
-  const draw=props.audit?.draws.at(-1),avatarUrl=props.winnerAvatar||(draw?props.audit?.avatars[draw.id]?.dataUrl:undefined);
+  const draw=props.audit?.draws.at(-1),manualAvatar=props.winnerAvatar||(draw?props.audit?.avatars[draw.id]?.dataUrl:undefined),roundId=draw?.id||props.winnerRoundId;
+  const avatarUrl=manualAvatar||(props.phase==='winner'&&roundId?`/api/sorteo/foto?round=${encodeURIComponent(roundId)}`:undefined);
   state.current=props;
   useEffect(()=>{let live=true;loadImage('/logo.png').then(img=>{if(live)logo.current=img;}).catch(()=>{});return()=>{live=false;};},[]);
   useEffect(()=>{let live=true;avatar.current=undefined;if(avatarUrl)loadImage(avatarUrl).then(img=>{if(live)avatar.current=img;}).catch(()=>{});return()=>{live=false;};},[avatarUrl]);
@@ -32,7 +33,7 @@ export const Stage=forwardRef<StageHandle,Props>(function Stage(props,ref) {
       const p=state.current,d=p.audit?.draws.at(-1);if(!d)throw new Error('Realizá un sorteo antes de exportar.');
       await document.fonts.ready;
       const el=document.createElement('canvas');el.width=1080;el.height=1920;
-      const photo=avatarUrl?await loadImage(avatarUrl):undefined;
+      const photo=avatarUrl?await loadImage(avatarUrl).catch(()=>undefined):undefined;
       renderStage(el.getContext('2d')!,1080,1920,{...p,phase:'winner',winner:d.winner,status:p.audit?.status,portrait:true,elapsed:6000,avatar:photo,logo:logo.current});
       const blob=await new Promise<Blob>((resolve,reject)=>el.toBlob(b=>b?resolve(b):reject(new Error('No se pudo crear la imagen.')),'image/png'));
       download(blob,`mya-ganador-${d.winner.username}-1080x1920.png`);

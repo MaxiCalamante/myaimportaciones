@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { getAdminClient } from '@/lib/admin-auth';
 import { createCommerceService } from '@/lib/supabase/service';
-import { parseImport,reviewComments,validateRules } from '@/lib/giveaway/participants';
+import { parseImport,reviewComments,validateRules,parseInstagramExport } from '@/lib/giveaway/participants';
 import { validateConfig } from '@/lib/giveaway/live';
 import { createAudit,draw,confirmWinner,disqualify,addEvent,digest } from '@/lib/giveaway/server/audit';
 import { dbError,privateState } from '@/lib/giveaway/server/data';
@@ -17,10 +17,21 @@ export async function POST(request:Request){
     const current=await privateState();
     if(input.action==='redraw'&&current.round&&current.round.id!==input.roundId&&current.round.audit.draws.at(-2)?.id===input.roundId)return response(current);
     if(input.action==='import'){
-      let config,rules,comments;
-      try{config=validateConfig(input.config);rules=validateRules(input.rules);if(!['csv','list','existing'].includes(input.kind))throw new Error('Elegí CSV o lista.');if(input.kind==='existing'&&!current.snapshot)throw new Error('No hay lista guardada.');comments=input.kind==='existing'?current.snapshot!.comments:parseImport(String(input.text||''),input.kind);}catch(e){throw new GiveawayError((e as Error).message);}
-      const sourceKind=input.kind==='existing'?current.snapshot!.source.kind:input.kind as 'csv'|'list';
-      const snapshot={version:1 as const,source:{kind:sourceKind,label:sourceKind==='csv'?'CSV importado':'Lista importada',permalink:config.permalink,importedAt:input.kind==='existing'?current.snapshot!.source.importedAt:new Date().toISOString()},rules,comments,review:reviewComments(comments,rules)};
+      let config,rules,comments,exportInfo;
+      try{
+        config=validateConfig(input.config);rules=validateRules(input.rules);
+        if(!['csv','list','instagram-export','existing'].includes(input.kind))throw new Error('Elegí exportación de Instagram, CSV o lista.');
+        if(input.kind==='existing'&&!current.snapshot)throw new Error('No hay lista guardada.');
+        if(input.kind==='instagram-export'){
+          exportInfo=parseInstagramExport(String(input.text||''));
+          if(new URL(exportInfo.postUrl).pathname.replace(/\/$/,'')!==new URL(config.permalink).pathname.replace(/\/$/,''))throw new Error('Los comentarios pertenecen a otra publicación. Revisá el enlace del anuncio.');
+          if(input.coverageReviewed!==true)throw new Error('Revisá la cobertura de comentarios y respuestas antes de guardar.');
+        }
+        comments=input.kind==='existing'?current.snapshot!.comments:parseImport(String(input.text||''),input.kind);
+      }catch(e){throw new GiveawayError((e as Error).message);}
+      const sourceKind=input.kind==='existing'?current.snapshot!.source.kind:input.kind as 'csv'|'list'|'instagram-export';
+      const source=input.kind==='existing'?{...current.snapshot!.source,permalink:config.permalink}:{kind:sourceKind,label:sourceKind==='instagram-export'?'Comentarios visibles de Instagram':sourceKind==='csv'?'CSV importado':'Lista importada',permalink:config.permalink,importedAt:new Date().toISOString(),...(exportInfo?{exportedAt:exportInfo.exportedAt,coverage:exportInfo.coverage,coverageReviewed:true,reportedCount:exportInfo.reportedCount,warning:'Captura de comentarios cargados en el navegador; cobertura revisada manualmente por el organizador.'}:{})};
+      const snapshot={version:1 as const,source,rules,comments,review:reviewComments(comments,rules)};
       const {error}=await db.rpc('giveaway_save_v1',{revision_input:input.revision,config_input:config,dataset_input:randomUUID(),snapshot_input:snapshot,reason_input:String(input.reason||'').slice(0,500),actor_input:actor});dbError(error);
     }else if(input.action==='start'||input.action==='redraw'){
       if(!current.snapshot||!current.datasetId)throw new GiveawayError('Cargá primero los comentarios.');

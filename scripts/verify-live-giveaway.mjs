@@ -6,6 +6,7 @@ import { readFile,mkdir,writeFile,readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { chromium } from '@playwright/test';
+import { consoleFixture } from './instagram-export-fixture.mjs';
 const base='http://localhost:3114',databaseUrl='http://127.0.0.1:3115',out='docs/sorteos/qa-private';
 const adminId='11111111-1111-4111-8111-111111111111',customerId='22222222-2222-4222-8222-222222222222';
 const db=new PGlite();
@@ -63,7 +64,13 @@ try{
   await mobile.addInitScript(()=>{const original=Date.now.bind(Date);Date.now=()=>original()+7*60000;});
   await admin.goto(base+'/admin/sorteo',{waitUntil:'networkidle'});
   await admin.getByRole('heading',{name:'MYA Sorteo en vivo',exact:true}).waitFor();
-  await admin.getByRole('button',{name:'Pegar participantes',exact:true}).click();await admin.getByLabel('Una cuenta por línea · @usuario | comentario').fill('@fixture.alma | @fixture.amiga\n@fixture.flor | @fixture.amiga\n@fixture.alma | otra @fixture.amiga\n@_myaimportaciones | @fixture.amiga');await admin.getByRole('button',{name:'Preparar archivo de participantes'}).click();await admin.getByLabel('Aceptar registros sin fecha después de revisión manual').check();await admin.getByLabel('Publicar el anuncio, contador y cantidad en /sorteo').check();
+  const exported=await consoleFixture(browser);
+  const scriptDenied=await vc.request.get(base+'/api/admin/sorteo/script');assert.equal(scriptDenied.status(),401);
+  await admin.getByRole('button',{name:'Importar de Instagram',exact:true}).click();await admin.getByLabel('Pegá el JSON de Instagram').fill(JSON.stringify(exported));await admin.getByRole('button',{name:'Revisar comentarios de Instagram',exact:true}).click();assert.equal(await admin.getByRole('button',{name:'Guardar lista privada y anuncio',exact:true}).isEnabled(),false);await admin.getByLabel('Revisé la cobertura de los comentarios y respuestas antes de guardar esta lista.').check();
+  const noAck=await ac.request.post(base+'/api/admin/sorteo',{headers:{Origin:base},data:{action:'import',kind:'instagram-export',revision:0,config:{title:'SORTEO DÍA DE LA MADRE',prize:'Travel Kit SKIN1004 Centella',permalink:exported.postUrl,scheduledFor:null,published:false},rules:{owner:'_myaimportaciones',requireMention:true,cutoff:'2026-10-18T23:59:59-03:00',allowUndated:false,manualExclusions:{}},text:JSON.stringify(exported)}});assert.equal(noAck.status(),400);
+  await admin.getByLabel('Publicar el anuncio, contador y cantidad en /sorteo').check();
+  for(const width of [320,390]){await admin.setViewportSize({width,height:844});await admin.screenshot({path:path.join(out,`instagram-import-${width}.png`),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
+  await admin.setViewportSize({width:1440,height:1000});
   await admin.getByRole('button',{name:'Guardar lista privada y anuncio'}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();await admin.screenshot({path:path.join(out,'admin-preparado.png'),fullPage:true});
   await viewer.goto(base+'/sorteo',{waitUntil:'domcontentloaded'});await mobile.goto(base+'/sorteo',{waitUntil:'domcontentloaded'});
   const denied=await vc.request.get(base+'/api/admin/sorteo');assert.equal(denied.status(),401);
@@ -86,7 +93,7 @@ try{
   for(const width of [320,390,768,1440]){await viewer.setViewportSize({width,height:900});await viewer.screenshot({path:path.join(out,`publico-${width}.png`),fullPage:true});assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);widths.push(width);}
   await admin.setViewportSize({width:390,height:844});await admin.screenshot({path:path.join(out,'admin-mobile.png'),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await viewer.addScriptTag({path:'node_modules/axe-core/axe.min.js'});const axe=await viewer.evaluate(async()=>await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
-  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
+  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,consoleScriptCollector:true,instagramJsonImport:true,coverageReviewRequired:true,photosAndNamesPreserved:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
   await writeFile(path.join(out,'verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{
   await browser?.close();if(next&&next.exitCode===null)next.kill();await new Promise(resolve=>server.close(resolve));await db.close();

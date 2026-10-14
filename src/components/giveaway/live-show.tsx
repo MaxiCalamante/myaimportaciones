@@ -41,7 +41,7 @@ export function LiveShow({initial}:Props){
     <div className={styles.publicGrid}>
       <div className={styles.scenario}>
         <div className={styles.liveBar}><span><span className={styles.liveDot}/>{status==='waiting'?'PRÓXIMAMENTE':status==='winner'?'RESULTADO DEL SORTEO':'EN VIVO'}</span><span>{state.participantCount} participantes</span></div>
-        <Stage audit={null} pool={pool} phase={status==='winner'?'winner':status==='countdown'?'countdown':status==='spinning'||status==='revealing'?'spinning':'idle'} countdown={current.countdown} progress={current.progress} participantCount={state.participantCount} winner={state.winner||undefined} winnerStatus={state.winnerStatus||undefined} winnerAvatar={state.winnerAvatar||undefined} source={state.source||undefined} title={state.config.title} prize={state.config.prize} liveClock={clock} portrait={portrait} reduceMotion={reduce} onRecorded={()=>{}} onRecordingError={()=>{}}/>
+        <Stage audit={null} pool={pool} phase={status==='winner'?'winner':status==='countdown'?'countdown':status==='spinning'||status==='revealing'?'spinning':'idle'} countdown={current.countdown} progress={current.progress} participantCount={state.participantCount} winner={state.winner||undefined} winnerStatus={state.winnerStatus||undefined} winnerAvatar={state.winnerAvatar||undefined} winnerRoundId={state.round?.id} source={state.source||undefined} title={state.config.title} prize={state.config.prize} liveClock={clock} portrait={portrait} reduceMotion={reduce} onRecorded={()=>{}} onRecordingError={()=>{}}/>
         <div className={styles.scenarioFooter}><ShieldCheck size={16}/><span>Una cuenta, una oportunidad. Resultado compartido para todos.</span></div>
       </div>
       <aside className={styles.audienceInfo}>
