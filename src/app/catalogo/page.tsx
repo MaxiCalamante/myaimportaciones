@@ -10,11 +10,31 @@ import { deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import type { Product } from "@/lib/types";
+import type { Metadata } from "next";
+import { siteConfig } from "@/lib/site";
 
-export const metadata = {
-  title: "Catálogo de productos | MyA importaciones",
+export const metadata: Metadata = {
+  title: "Catálogo Completo de Productos | MYA Importaciones",
   description:
-    "Explorá electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas. Encontrá modelos, colores y precios en MyA importaciones.",
+    "Explorá nuestro catálogo online con stock real y precios en pesos: cosmética coreana K-Beauty original, cuidado capilar premium (Kérastase, Shiseido, Karseell), electrónica y herramientas. Envíos a todo el país desde Tandil.",
+  alternates: { canonical: "/catalogo" },
+  keywords: [
+    "Catálogo MYA Importaciones",
+    "Comprar cosmética coreana Argentina",
+    "K-Beauty Tandil",
+    "Herramientas Total Tools Wadfow",
+    "Kérastase Shiseido Fino",
+    "Productos importados Tandil",
+    "Precios en pesos argentinos",
+  ],
+  openGraph: {
+    title: "Catálogo de Productos | MYA Importaciones",
+    description: "Cosmética coreana, cuidado capilar, herramientas y tecnología con envíos a todo el país.",
+    url: `${siteConfig.appUrl}/catalogo`,
+    siteName: siteConfig.brandName,
+    locale: "es_AR",
+    type: "website",
+  },
 };
 type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };
 const pageSize = 24;

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect,useRef,useState } from 'react';
-import { ArrowRight,Gift,Link2,ShieldCheck,Trophy,Maximize2,CalendarDays,Clock3 } from 'lucide-react';
+import { ArrowRight,Gift,Link2,ShieldCheck,Trophy,Maximize2,CalendarDays,Clock3,Sparkles,Users,CheckCircle2 } from 'lucide-react';
 import { ProfileAvatar } from './profile-avatar';
 import { Stage } from './stage';
 import { timeline,DEFAULT_CAMPAIGN,type PublicGiveaway } from '@/lib/giveaway/live';
@@ -40,31 +40,135 @@ export function LiveShow({initial}:Props){
   const activeStep=status==='waiting'?0:status==='countdown'?1:status==='spinning'?2:3;
   const originalArtwork=state.config.prize===DEFAULT_CAMPAIGN.prize&&state.config.permalink.replace(/\/$/,'')===DEFAULT_CAMPAIGN.permalink.replace(/\/$/,'');
   return <section className={`${styles.publicRoot} ${presentation?styles.presentation:''}`} aria-label="Sorteo en vivo de MYA">
-    <div className={styles.intro}><div><p className={styles.eyebrow}>MYA IMPORTACIONES · UN REGALO PARA MAMÁ</p><h1>Sorteo <em>en vivo.</em></h1><p>Un regalo para mamá. Un encuentro con toda la comunidad.</p><div className={styles.eventDate}><CalendarDays size={18}/><strong>Domingo 18 de octubre</strong><span>·</span><span>{schedule?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}).format(new Date(schedule))+' h · Argentina':'Horario a confirmar'}</span></div></div><div className={styles.introActions}><button className={styles.share} onClick={share}><Link2 size={16}/>{copied?'Enlace copiado':'Compartir sorteo'}</button><button className={styles.share} onClick={()=>setPresentation(true)} aria-label="Ampliar el escenario"><Maximize2 size={16}/></button></div></div>
+    <div className={styles.ambientGlowOne} aria-hidden="true" />
+    <div className={styles.ambientGlowTwo} aria-hidden="true" />
+    <header className={styles.intro}>
+      <div className={styles.introContent}>
+        <div className={styles.eyebrowChip}>
+          <Sparkles size={12} className={styles.sparkleIcon}/>
+          <p className={styles.eyebrow}>MYA IMPORTACIONES · UN REGALO PARA MAMÁ</p>
+        </div>
+        <h1>Sorteo <em>en vivo.</em></h1>
+        <p className={styles.heroSubtitle}>Un regalo pensado con amor para mamá. Compartimos este momento en vivo junto a toda nuestra comunidad.</p>
+        <div className={styles.headerMetaRow}>
+          <div className={styles.eventDate}>
+            <div className={styles.calendarIconWrapper}><CalendarDays size={16}/></div>
+            <strong>Domingo 18 de octubre</strong>
+            <span className={styles.dateDot}>·</span>
+            <span>{schedule?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}).format(new Date(schedule))+' h · Argentina':'Horario a confirmar'}</span>
+          </div>
+          <div className={styles.introActions}>
+            <button className={`${styles.share} ${copied?styles.shareCopied:''}`} onClick={share}>
+              {copied?<CheckCircle2 size={16}/>:<Link2 size={16}/>}
+              <span>{copied?'Enlace copiado':'Compartir sorteo'}</span>
+            </button>
+            <button className={`${styles.share} ${styles.presentationBtn}`} onClick={()=>setPresentation(true)} aria-label="Ampliar el escenario" title="Pantalla completa">
+              <Maximize2 size={16}/>
+            </button>
+          </div>
+        </div>
+        {schedule && status === 'waiting' && (
+          <div className={styles.heroCountdownSection} aria-label="Cuenta regresiva hacia el sorteo en vivo">
+            {remaining > 0 ? (
+              <div className={styles.heroCountdownBox}>
+                <div className={styles.heroCountdownBadge}>
+                  <span className={styles.countdownPulseDot} aria-hidden="true" />
+                  <span>EL VIVO COMIENZA EN</span>
+                </div>
+                <div className={styles.heroCountdownDigitsRow}>
+                  <div className={styles.heroCountdownItem}>
+                    <strong>{String(Math.floor(remaining / 86400000)).padStart(2, '0')}</strong>
+                    <small>DÍAS</small>
+                  </div>
+                  <span className={styles.heroCountdownColon} aria-hidden="true">:</span>
+                  <div className={styles.heroCountdownItem}>
+                    <strong>{String(Math.floor(remaining / 3600000) % 24).padStart(2, '0')}</strong>
+                    <small>HORAS</small>
+                  </div>
+                  <span className={styles.heroCountdownColon} aria-hidden="true">:</span>
+                  <div className={styles.heroCountdownItem}>
+                    <strong>{String(Math.floor(remaining / 60000) % 60).padStart(2, '0')}</strong>
+                    <small>MIN</small>
+                  </div>
+                  <span className={styles.heroCountdownColon} aria-hidden="true">:</span>
+                  <div className={styles.heroCountdownItem}>
+                    <strong>{String(Math.floor(remaining / 1000) % 60).padStart(2, '0')}</strong>
+                    <small>SEG</small>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.heroImminentNotice}>
+                <span className={styles.countdownPulseDot} aria-hidden="true" />
+                <div>
+                  <strong>¡Llegó la hora prevista!</strong>
+                  <span>Aguardando a que MYA inicie la transmisión en vivo…</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </header>
     {error&&<div role="status" className={styles.connectionNote}>{error} <span>Estamos recuperando la conexión. El resultado del sorteo se conserva.</span></div>}
     <div className={styles.publicGrid}>
-      <div>
+      <div className={styles.stageColumn}>
         <div className={styles.scenario}>
-          <div className={styles.liveBar} data-live={status==='countdown'||status==='spinning'}><span><span className={styles.liveDot}/>{status==='waiting'?'EN ESPERA':status==='winner'?'RESULTADO DEL SORTEO':'MYA · EN VIVO'}</span><span>{state.participantCount.toLocaleString('es-AR')} participantes</span></div>
+          <div className={styles.liveBar} data-live={status==='countdown'||status==='spinning'}>
+            <span className={styles.liveBadgeGroup}>
+              <span className={styles.liveDot}/>
+              <span className={styles.liveStatusText}>{status==='waiting'?'EN ESPERA':status==='winner'?'RESULTADO DEL SORTEO':'MYA · EN VIVO'}</span>
+            </span>
+            <span className={styles.participantBadge}>
+              <Users size={12}/>
+              <span>{state.participantCount.toLocaleString('es-AR')} participantes</span>
+            </span>
+          </div>
           <Stage audit={null} pool={pool} phase={status==='winner'?'winner':status==='countdown'?'countdown':status==='spinning'||status==='revealing'?'spinning':'idle'} countdown={current.countdown} progress={current.progress} participantCount={state.participantCount} winner={state.winner||undefined} winnerStatus={state.winnerStatus||undefined} winnerAvatar={state.winnerAvatar||undefined} winnerRoundId={state.round?.id} source={state.source||undefined} title={state.config.title} prize={state.config.prize} liveClock={clock} scheduledFor={state.config.scheduledFor} portrait={portrait} reduceMotion={reduce} onRecorded={()=>{}} onRecordingError={()=>{}}/>
-          <div className={styles.scenarioFooter}><ShieldCheck size={15}/><span>Una oportunidad por cuenta · El mismo resultado para todos.</span></div>
+          <div className={styles.scenarioFooter}>
+            <ShieldCheck size={16}/>
+            <span>Transparencia absoluta · Una oportunidad por cuenta · Sincronizado en tiempo real</span>
+          </div>
         </div>
-        {pool.length>0&&status!=='winner'&&<div className={styles.liveParticipants}><div>{pool.slice(0,5).map(c=><ProfileAvatar key={c.username} username={c.username} displayName={c.displayName} src={c.avatar} size={34} eager/>)}</div><span>{state.participantCount} cuentas en el sorteo</span></div>}
-        <div className={styles.stageRail} aria-label="Momento del sorteo">{['La previa','Cuenta regresiva','Selección','El resultado'].map((label,i)=><span key={label} data-active={i===activeStep}><i>{String(i+1).padStart(2,'0')}</i>{label}</span>)}</div>
-        <div className={styles.shopInvitation}><div><span>MYA IMPORTACIONES</span><h3>Conocé nuestra tienda.</h3><p>Skincare, cuidado capilar, electrónica y mucho más. Desde Tandil, con envíos a todo el país.</p></div><Link className={styles.roseButton} href="/catalogo">Descubrir MYA Importaciones<ArrowRight size={17}/></Link></div>
+        <div className={styles.stageTimelineBox}>
+          {pool.length>0&&status!=='winner'&&<div className={styles.liveParticipants}>
+            <div className={styles.avatarCluster}>{pool.slice(0,5).map(c=><ProfileAvatar key={c.username} username={c.username} displayName={c.displayName} src={c.avatar} size={32} eager/>)}</div>
+            <span className={styles.liveParticipantsText}>{state.participantCount} cuentas en el sorteo</span>
+          </div>}
+          <div className={styles.stageRail} aria-label="Momento del sorteo">
+            {['La previa','Cuenta regresiva','Selección','El resultado'].map((label,i)=>(
+              <span key={label} data-active={i===activeStep}>
+                <i>{String(i+1).padStart(2,'0')}</i>
+                <span>{label}</span>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
       <aside className={styles.audienceInfo}>
-        <p className={styles.eyebrow}>{status==='winner'?'UN MOMENTO PARA CELEBRAR':'DOMINGO 18 DE OCTUBRE · DÍA DE LA MADRE'}</p>
-        {status==='winner'&&<div className={styles.winnerMark}><Trophy size={21} strokeWidth={1.5}/></div>}
-        <h2>{status==='winner'?'¡Tenemos ganador!':status==='spinning'?'La suerte está girando…':status==='countdown'?'Estamos por comenzar':status==='revealing'?'Revelando el resultado…':waitingText}</h2>
-        {status==='winner'&&state.winner?<><div className={styles.winnerIdentity}><ProfileAvatar username={state.winner.username} displayName={state.winner.displayName} src={state.winnerAvatar||`/api/sorteo/foto?round=${encodeURIComponent(state.round!.id)}`} size={112} eager/>{state.winner.displayName&&<strong className={styles.winnerName}>{state.winner.displayName}</strong>}<a className={styles.winnerHandle} href={`https://www.instagram.com/${encodeURIComponent(state.winner.username)}/`} target="_blank" rel="noreferrer">@{state.winner.username}</a><span className={styles.winnerStatus} data-confirmed={state.winnerStatus==='confirmed'}>{state.winnerStatus==='confirmed'?'Premio confirmado':state.winnerStatus==='disqualified'?'Descalificación registrada':'Pendiente de revisión'}</span></div><p>{state.winnerStatus==='confirmed'?'MYA registró la revisión manual de las condiciones.':state.winnerStatus==='disqualified'?state.disqualificationReason:'MYA revisará las condiciones de participación antes de confirmar el premio.'}</p></>:status==='countdown'?<div className={styles.countdownNumber} aria-live="polite">{current.countdown}</div>:status==='waiting'&&remaining>0?<div className={styles.longCountdown} aria-label="Tiempo hasta el horario previsto">{[{label:'días',n:Math.floor(remaining/86400000)},{label:'horas',n:Math.floor(remaining/3600000)%24},{label:'min',n:Math.floor(remaining/60000)%60},{label:'seg',n:Math.floor(remaining/1000)%60}].map(item=><div key={item.label}><strong>{String(item.n).padStart(2,'0')}</strong><span>{item.label}</span></div>)}</div>:<p>{status==='waiting'?'El sorteo será el Día de la Madre. Volvé a esta página: la cuenta regresiva se activa cuando MYA inicia el vivo.':'Si recién llegaste, ya sos parte de este momento. Todos estamos viendo la misma selección.'}</p>}
+        <div className={styles.sidebarHeader}>
+          <p className={styles.eyebrow}>{status==='winner'?'UN MOMENTO PARA CELEBRAR':'DOMINGO 18 DE OCTUBRE · DÍA DE LA MADRE'}</p>
+          {status==='winner'&&<div className={styles.winnerMark}><Trophy size={22} strokeWidth={1.75}/></div>}
+          <h2>{status==='winner'?'¡Tenemos ganador!':status==='spinning'?'La suerte está girando…':status==='countdown'?'Estamos por comenzar':status==='revealing'?'Revelando el resultado…':waitingText}</h2>
+        </div>
+        {status==='winner'&&state.winner?<><div className={styles.winnerIdentity}><ProfileAvatar username={state.winner.username} displayName={state.winner.displayName} src={state.winnerAvatar||`/api/sorteo/foto?round=${encodeURIComponent(state.round!.id)}`} size={112} eager/>{state.winner.displayName&&<strong className={styles.winnerName}>{state.winner.displayName}</strong>}<a className={styles.winnerHandle} href={`https://www.instagram.com/${encodeURIComponent(state.winner.username)}/`} target="_blank" rel="noreferrer">@{state.winner.username}</a><span className={styles.winnerStatus} data-confirmed={state.winnerStatus==='confirmed'}>{state.winnerStatus==='confirmed'?'Premio confirmado':state.winnerStatus==='disqualified'?'Descalificación registrada':'Pendiente de revisión'}</span></div><p>{state.winnerStatus==='confirmed'?'MYA registró la revisión manual de las condiciones.':state.winnerStatus==='disqualified'?state.disqualificationReason:'MYA revisará las condiciones de participación antes de confirmar el premio.'}</p></>:status==='countdown'?<div className={styles.countdownNumber} aria-live="polite">{current.countdown}</div>:status==='waiting'&&remaining>0?<div className={styles.longCountdown} aria-label="Tiempo hasta el horario previsto">{[{label:'días',n:Math.floor(remaining/86400000)},{label:'horas',n:Math.floor(remaining/3600000)%24},{label:'min',n:Math.floor(remaining/60000)%60},{label:'seg',n:Math.floor(remaining/1000)%60}].map(item=><div key={item.label} className={styles.countdownCard}><strong>{String(item.n).padStart(2,'0')}</strong><span>{item.label}</span></div>)}</div>:status==='waiting'&&schedule&&remaining===0?<p className={styles.imminentText}>¡Llegó la hora prevista! En instantes comienza la transmisión en vivo cuando MYA inicie el sorteo.</p>:<p>{status==='waiting'?'El sorteo será el Día de la Madre. Volvé a esta página: la cuenta regresiva se activa cuando MYA inicia el vivo.':'Si recién llegaste, ya sos parte de este momento. Todos estamos viendo la misma selección.'}</p>}
         {status==='waiting'&&!schedule&&<p className={styles.scheduleNote}><Clock3 size={16}/>Horario a confirmar · Argentina</p>}
-        <div className={`${styles.prizeVisual} ${originalArtwork?styles.originalArtwork:''}`}>{originalArtwork?<Image src="/sorteo/dia-de-la-madre-instagram.jpg" alt="Publicación original de MYA en Instagram: Sorteo para mamá, Travel Kit SKIN1004 Centella de cinco productos" width={1080} height={1350} sizes="(max-width: 900px) 80vw, 360px"/>:<Gift size={44} strokeWidth={1}/>} {!originalArtwork&&<span className={styles.prizeStamp}>EL REGALO DE MYA</span>}</div>
-        <div className={styles.prize}><Gift size={22} strokeWidth={1.5}/><div><span>PARA REGALAR UN MOMENTO DE CUIDADO</span><strong>{state.config.prize}</strong></div></div>
-        <p className={styles.manualDisclaimer}>{state.available?'Participan las cuentas con comentarios válidos de la publicación.':'Estamos preparando la lista de participantes.'} Seguir la cuenta, el like y la historia se revisan manualmente.</p>
-        <a className={styles.outlineButton} href={state.config.permalink} target="_blank" rel="noreferrer">Ver publicación original<ArrowRight size={16}/></a>
+        <div className={styles.prizeSection}>
+          <div className={`${styles.prizeVisual} ${originalArtwork?styles.originalArtwork:''}`}>{originalArtwork?<Image src="/sorteo/dia-de-la-madre-instagram.jpg" alt="Publicación original de MYA en Instagram: Sorteo para mamá, Travel Kit SKIN1004 Centella de cinco productos" width={1080} height={1350} sizes="(max-width: 900px) 80vw, 360px" priority/>:<Gift size={44} strokeWidth={1}/>} {!originalArtwork&&<span className={styles.prizeStamp}>EL REGALO DE MYA</span>}</div>
+          <div className={styles.prize}><div className={styles.prizeIconWrapper}><Gift size={22} strokeWidth={1.5}/></div><div><span>PARA REGALAR UN MOMENTO DE CUIDADO</span><strong>{state.config.prize}</strong></div></div>
+          <p className={styles.manualDisclaimer}>{state.available?'Participan todos los comentarios válidos de nuestro posteo oficial en Instagram.':'Estamos preparando la lista de participantes.'} Al salir la cuenta ganadora, revisamos en vivo que siga a @_myaimportaciones y haya cumplido las condiciones.</p>
+          <a className={styles.outlineButton} href={state.config.permalink} target="_blank" rel="noreferrer">Ver publicación original<ArrowRight size={16}/></a>
+        </div>
         {state.snapshotHash&&<details className={styles.publicEvidence}><summary>Transparencia del sorteo</summary><p>Lista bloqueada antes de la selección. SHA-256:</p><code>{state.snapshotHash}</code><p>Selección {state.round?.attempt}. Las repeticiones requieren descalificación registrada.</p></details>}
       </aside>
+    </div>
+    <div className={styles.shopInvitation}>
+      <div className={styles.shopInvitationBody}>
+        <span className={styles.shopPill}>MYA IMPORTACIONES · BOUTIQUE OFICIAL</span>
+        <h3>¿Buscás el regalo perfecto para vos o para mamá?</h3>
+        <p>Descubrí nuestra boutique con lo mejor del skincare coreano original, cuidado capilar premium y tecnología. Atención personalizada de Máximo y Agustina desde Tandil con envíos a todo el país.</p>
+      </div>
+      <Link className={styles.roseButton} href="/catalogo">Explorar la tienda online<ArrowRight size={17}/></Link>
     </div>
     {presentation&&<button className={styles.exitPresentation} onClick={()=>setPresentation(false)}>Salir · Escape</button>}
   </section>;

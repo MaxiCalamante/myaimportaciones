@@ -38,6 +38,13 @@ export async function POST(request:Request){
       const comments=current.snapshot.comments,source={...current.snapshot.source,permalink:config.permalink};
       const snapshot={version:1 as const,source,rules,comments,review:reviewComments(comments,rules)};
       const {error}=await db.rpc('giveaway_save_v1',{revision_input:input.revision,config_input:config,dataset_input:randomUUID(),snapshot_input:snapshot,reason_input:String(input.reason||'').slice(0,500),actor_input:actor});dbError(error);
+    }else if(input.action==='reset'){
+      if(!current.snapshot)throw new GiveawayError('No hay lista guardada para reiniciar.');
+      if(current.round&&Date.now()<Date.parse(current.round.revealAt))throw new GiveawayError('El sorteo está girando en vivo. Esperá a que termine la animación antes de reiniciar.',409);
+      const defaultReason='Reinicio de prueba antes del evento oficial';
+      const reason=String(input.reason||defaultReason).trim().slice(0,500);
+      if(reason.length<5)throw new GiveawayError('Ingresá un motivo de al menos 5 caracteres.');
+      const {error}=await db.rpc('giveaway_save_v1',{revision_input:input.revision,config_input:current.config,dataset_input:randomUUID(),snapshot_input:current.snapshot,reason_input:reason,actor_input:actor});dbError(error);
     }else if(input.action==='start'||input.action==='redraw'){
       if(!current.snapshot||!current.datasetId)throw new GiveawayError('Cargá primero los comentarios.');
       let audit;

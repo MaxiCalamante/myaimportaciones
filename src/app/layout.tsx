@@ -35,22 +35,31 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: [
     "MyA importaciones",
+    "MYA Importaciones",
+    "MYA Tandil",
+    "Tienda online importaciones Argentina",
     "Cosmética Coreana Argentina",
     "K-Beauty Argentina",
     "Skincare Coreano Original",
-    "SKIN1004",
-    "Medicube",
-    "Dr Althea",
-    "Celimax",
-    "Karseell colágeno",
+    "Skincare Coreano Tandil",
+    "SKIN1004 Madagascar Centella",
+    "Medicube Collagen",
+    "Dr Althea 345 Relief Cream",
+    "Celimax Noni Energy",
+    "Anua Heartleaf",
+    "Beauty of Joseon",
+    "Karseell colágeno original",
     "Kérastase Argentina",
-    "Shiseido Fino Hair Mask",
-    "Victoria's Secret Body Mist",
-    "Herramientas Total Tools",
-    "Herramientas Wadfow",
-    "Apple Samsung Argentina",
+    "Shiseido Fino Premium Touch Hair Mask",
+    "Victoria's Secret Body Mist original",
+    "Herramientas Total Tools Argentina",
+    "Herramientas Wadfow Tandil",
+    "Taladros amoladoras herramientas a batería",
+    "Apple iPhone Tandil",
+    "Samsung Galaxy Argentina",
     "Smartphones tablets MacBook iMac",
     "Importaciones Tandil",
+    "Envíos a todo el país",
     "Máximo y Agustina",
   ],
   icons: {
@@ -103,6 +112,29 @@ const orgJsonLd = {
   },
 };
 
+const storeJsonLd = {
+  "@context": "https://schema.org",
+  "@type": ["Store", "OnlineStore"],
+  name: siteConfig.brandName,
+  alternateName: ["MYA Importaciones", "MyA Importaciones Tandil", "MYA Tienda"],
+  url: siteConfig.appUrl,
+  logo: `${siteConfig.appUrl}/logo.png`,
+  image: `${siteConfig.appUrl}/compartir`,
+  description: siteConfig.description,
+  telephone: siteConfig.phone,
+  email: siteConfig.email,
+  priceRange: "$$",
+  currenciesAccepted: "ARS",
+  paymentAccepted: "Cash, Credit Card, Debit Card, Mercado Pago, Bank Transfer",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Tandil",
+    addressRegion: "Buenos Aires",
+    addressCountry: "AR",
+  },
+  sameAs: [siteConfig.instagram],
+};
+
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -136,6 +168,10 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }}
         />
         <script
           type="application/ld+json"

@@ -108,11 +108,22 @@ try{
   await admin.getByRole('button',{name:'Descargar video',exact:true}).waitFor();await admin.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Descargar video'&&!b.disabled),{timeout:10000});
   const videoDownload=admin.waitForEvent('download');await admin.getByRole('button',{name:'Descargar video',exact:true}).click();const video=await videoDownload;await video.saveAs(path.join(out,'video-sorteo-fixture.mp4'));
   const pngDownload=admin.waitForEvent('download');await admin.getByRole('button',{name:'Imagen 1080 × 1920',exact:true}).click();const png=await pngDownload,pngPath=path.join(out,'ganador-fixture.png');await png.saveAs(pngPath);const pngBytes=await readFile(pngPath);assert.equal(pngBytes.readUInt32BE(16),1080);assert.equal(pngBytes.readUInt32BE(20),1920);
+  await admin.getByRole('button',{name:'Reiniciar sorteo (volver a la previa)',exact:true}).click();
+  await admin.getByRole('heading',{name:'Reiniciar sorteo para volver a la previa',exact:true}).waitFor();
+  await admin.getByRole('button',{name:'Confirmar reinicio y volver a la previa',exact:true}).click();
+  await admin.getByText('Sorteo reiniciado exitosamente.',{exact:false}).waitFor();
+  const resetAdmin=await (await ac.request.get(base+'/api/admin/sorteo')).json();
+  assert.equal(resetAdmin.round,null);
+  assert.equal(resetAdmin.snapshot.comments.length,4);
+  assert.equal(resetAdmin.snapshot.review.valid.length,2);
+  const resetViewer=await (await vc.request.get(base+'/api/sorteo')).json();
+  assert.equal(resetViewer.round,null);
+  assert.equal(resetViewer.winner,null);
   const widths=[];
   for(const width of [320,390,768,1280,1440]){await viewer.setViewportSize({width,height:900});await viewer.screenshot({path:path.join(out,`publico-${width}.png`),fullPage:true});assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);widths.push(width);}
   await admin.setViewportSize({width:390,height:844});await admin.screenshot({path:path.join(out,'admin-mobile.png'),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await viewer.addScriptTag({path:'node_modules/axe-core/axe.min.js'});const axe=await viewer.evaluate(async()=>await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
-  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
+  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true,resetGiveawayRound:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
   await writeFile(path.join(out,'verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{
   await writeFile(path.join(out,'next-qa-log.txt'),logs);
