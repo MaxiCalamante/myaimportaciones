@@ -71,8 +71,8 @@ try{
   const admin=await ac.newPage(),viewer=await vc.newPage(),mobile=await mc.newPage();for(const p of [admin,viewer,mobile])p.on('pageerror',e=>errors.push(e.message));
   // Wrong client time must not alter the shared timeline or winner.
   await mobile.addInitScript(()=>{const original=Date.now.bind(Date);Date.now=()=>original()+7*60000;});
-  await admin.goto(base+'/admin/sorteo',{waitUntil:'networkidle'});
-  await admin.getByRole('heading',{name:'MYA Sorteo en vivo',exact:true}).waitFor();
+  await admin.goto(base+'/admin/sorteo',{waitUntil:'domcontentloaded',timeout:120000});
+  await admin.getByRole('heading',{name:'MYA Sorteo en vivo',exact:true}).waitFor({timeout:120000});
   console.log('Administrador cargado.');
   const beforeResponse=await ac.request.get(base+'/api/admin/sorteo');if(!beforeResponse.ok())throw new Error('Admin API '+beforeResponse.status()+' '+logs.slice(-3500));const beforePreview=await beforeResponse.json();
   await admin.getByRole('button',{name:'Ensayo privado',exact:true}).click();
@@ -86,11 +86,40 @@ try{
   const imported=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(imported.snapshot.comments.length,4);assert.equal(imported.snapshot.source.kind,'instagram');assert.equal(imported.snapshot.review.valid.length,2);assert.equal(imported.snapshot.comments.filter(c=>c.avatar&&c.displayName).length,4);
   await admin.getByRole('button',{name:'Cargar últimos comentarios',exact:true}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();const refreshed=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(refreshed.snapshot.comments.length,4);
   await admin.getByLabel('Publicar el anuncio, contador y cantidad en /sorteo').check();
+  await admin.locator('summary').filter({hasText:'Anuncio y horario'}).click();
+  await admin.getByLabel('Horario previsto del vivo').fill('2026-10-18T12:00');
+  await admin.getByLabel('Cierre de comentarios').fill('2026-10-18T12:01');
+  await admin.getByRole('button',{name:'Guardar lista privada y anuncio'}).click();
+  await admin.getByRole('alert').filter({hasText:'El cierre de comentarios debe ser anterior o igual'}).waitFor();
+  await admin.getByLabel('Cierre de comentarios').fill('2026-10-18T12:00');
+  const currentTiming=await (await ac.request.get(base+'/api/admin/sorteo')).json();
+  const invalidTiming=await ac.request.post(base+'/api/admin/sorteo',{headers:{Origin:base},data:{action:'import',kind:'existing',revision:currentTiming.revision,config:{...currentTiming.config,scheduledFor:'2026-10-18T12:00:00-03:00'},rules:{...currentTiming.snapshot.rules,cutoff:'2026-10-18T12:00:01-03:00'}}});
+  assert.equal(invalidTiming.status(),400);
+  assert.equal((await (await ac.request.get(base+'/api/admin/sorteo')).json()).revision,currentTiming.revision);
   for(const width of [320,390]){await admin.setViewportSize({width,height:844});await admin.screenshot({path:path.join(out,`instagram-import-${width}.png`),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
   await admin.setViewportSize({width:1440,height:1000});
   await admin.getByLabel('Buscar participantes o comentarios').fill('fixture.flor');assert.equal(await admin.locator('tbody tr').count(),1);await admin.getByLabel('Buscar participantes o comentarios').fill('');
   await admin.getByRole('button',{name:'Guardar lista privada y anuncio'}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();await admin.screenshot({path:path.join(out,'admin-preparado.png'),fullPage:true});
   await viewer.goto(base+'/sorteo',{waitUntil:'domcontentloaded'});await mobile.goto(base+'/sorteo',{waitUntil:'domcontentloaded'});
+  assert.equal(Date.parse((await (await vc.request.get(base+'/api/sorteo')).json()).config.scheduledFor),Date.parse('2026-10-18T12:00:00-03:00'));
+  const eventLd=await viewer.locator('script[type="application/ld+json"]').allTextContents();
+  assert.ok(eventLd.some(value=>Date.parse(JSON.parse(value).startDate)===Date.parse('2026-10-18T12:00:00-03:00')));
+  const calendarDownload=viewer.waitForEvent('download');await viewer.getByRole('button',{name:'Agendar el sorteo'}).click();
+  const calendar=await calendarDownload;await calendar.saveAs(path.join(out,'sorteo-fixture.ics'));
+  assert.match(await readFile(path.join(out,'sorteo-fixture.ics'),'utf8'),/DTSTART:20261018T150000Z/);
+  for(const width of [320,390,768,1280,1440]){
+    for(const [page,label] of [[viewer,'publico-previa'],[admin,'admin-previa']]){
+      await page.setViewportSize({width,height:900});
+      await page.screenshot({path:path.join(out,`${label}-${width}.png`),fullPage:true});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${label} ${width}`);
+    }
+  }
+  await viewer.emulateMedia({reducedMotion:'reduce'});
+  await viewer.getByRole('button',{name:'Ampliar el escenario'}).click();
+  await viewer.getByRole('button',{name:'Salir · Escape'}).waitFor();await viewer.keyboard.press('Escape');
+  await viewer.emulateMedia({reducedMotion:'no-preference'});
+  await viewer.setViewportSize({width:1440,height:1000});await admin.setViewportSize({width:1440,height:1000});
+  assert.equal((await (await vc.request.get(base+'/api/sorteo')).json()).round,null);
   const denied=await vc.request.get(base+'/api/admin/sorteo');assert.equal(denied.status(),401);
   await admin.getByLabel('Grabar el escenario en video vertical').check();
   await admin.getByRole('button',{name:'INICIAR EN VIVO',exact:true}).click();await admin.getByLabel('Revisé la lista guardada, exclusiones y reglas. Confirmo el inicio público.').check();await admin.getByRole('button',{name:'Confirmar e iniciar en vivo'}).click();
@@ -123,7 +152,10 @@ try{
   for(const width of [320,390,768,1280,1440]){await viewer.setViewportSize({width,height:900});await viewer.screenshot({path:path.join(out,`publico-${width}.png`),fullPage:true});assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);widths.push(width);}
   await admin.setViewportSize({width:390,height:844});await admin.screenshot({path:path.join(out,'admin-mobile.png'),fullPage:true});assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await viewer.addScriptTag({path:'node_modules/axe-core/axe.min.js'});const axe=await viewer.evaluate(async()=>await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
-  assert.deepEqual(errors,[]);const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true,resetGiveawayRound:true},widths,jsErrors:errors,axeViolations:axe.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),externalBrowserRequestsBlocked:blocked.length};
+  await viewer.setViewportSize({width:1440,height:1000});await viewer.screenshot({path:path.join(out,'redesign-desktop.png'),fullPage:true});
+  await viewer.setViewportSize({width:390,height:844});await viewer.screenshot({path:path.join(out,'redesign-mobile.png'),fullPage:true});
+  assert.deepEqual(errors,[]);assert.deepEqual(axe.violations.map(v=>v.id),[]);
+  const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true,resetGiveawayRound:true,noonScheduleShared:true,serverRejectsLateCutoff:true,calendarDownload:true,eventMetadataMatches:true,adminAndPublicFiveWidths:true,presentationAndReducedMotion:true},widths,jsErrors:errors,axeViolations:[],externalBrowserRequestsBlocked:blocked.length};
   await writeFile(path.join(out,'verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{
   await writeFile(path.join(out,'next-qa-log.txt'),logs);

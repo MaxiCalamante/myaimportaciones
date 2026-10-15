@@ -1,6 +1,7 @@
 import type { Audit, Comment, Snapshot, SourceKind } from './types';
+import { MOTHERS_DAY_SCHEDULE } from './schedule';
 export type CampaignConfig={title:string;prize:string;permalink:string;scheduledFor:string|null;published:boolean};
-export const DEFAULT_CAMPAIGN:CampaignConfig={title:'SORTEO DÍA DE LA MADRE',prize:'Travel Kit SKIN1004 Centella',permalink:'https://www.instagram.com/p/DeIpHXtkYyf/',scheduledFor:null,published:false};
+export const DEFAULT_CAMPAIGN:CampaignConfig={title:'SORTEO DÍA DE LA MADRE',prize:'Travel Kit SKIN1004 Centella',permalink:'https://www.instagram.com/p/DeIpHXtkYyf/',scheduledFor:MOTHERS_DAY_SCHEDULE,published:false};
 export type PrivateState={revision:number;config:CampaignConfig;datasetId:string|null;snapshot:Snapshot|null;round:PrivateRound|null;serverNow?:string};
 export type PrivateRound={id:string;countdownAt:string;spinAt:string;revealAt:string;audit:Audit};
 export type PublicGiveaway={version:1;serverNow:string;revision:number;available:boolean;config:Pick<CampaignConfig,'title'|'prize'|'permalink'|'scheduledFor'>;participantCount:number;source:SourceKind|null;snapshotHash:string|null;round:{id:string;countdownAt:string;spinAt:string;revealAt:string;attempt:number}|null;reel:Pick<Comment,'username'|'displayName'|'avatar'>[];winner:Comment|null;winnerStatus:Audit['status']|null;winnerAvatar:string|null;disqualificationReason:string|null};

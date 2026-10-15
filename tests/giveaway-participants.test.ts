@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseImport,reviewComments,csvCell,validateRules,validateComments,hasMention,parseInstagramExport,participantCsv } from '../src/lib/giveaway/participants';
 import { DEFAULT_RULES,type Comment } from '../src/lib/giveaway/types';
-const c=(id:string,u:string,text='con @amiga',timestamp:string|null='2026-10-18T15:00:00-03:00'):Comment=>({id,username:u,text,timestamp});
+const c=(id:string,u:string,text='con @amiga',timestamp:string|null='2026-10-18T11:00:00-03:00'):Comment=>({id,username:u,text,timestamp});
 test('CSV respeta BOM, nombres, coma entre comillas y comentario multilineal',()=>{
   const rows=parseImport('\uFEFFusuario,comentario,fecha,id,nombre\r\n@ALMA,"Hola, @flor\nqué lindo",2026-10-17T12:00:00-03:00,ig1,Alma','csv');
   assert.equal(rows[0].username,'alma');assert.equal(rows[0].text,'Hola, @flor\nqué lindo');assert.equal(rows[0].displayName,'Alma');
@@ -19,7 +19,7 @@ test('Organizadora, doble ID y cuenta duplicada quedan excluidos',()=>{
   assert.equal(r.valid.length,1);assert.deepEqual(r.excluded.map(e=>e.reason).sort(),['Cuenta organizadora','ID de comentario duplicado','Una participación por cuenta'].sort());
 });
 test('Cierre inclusivo convierte UTC y rechaza fechas posteriores o ambiguas',()=>{
-  const r=reviewComments([c('a','a','@flor','2026-10-19T02:59:59Z'),c('b','b','@flor','2026-10-19T03:00:00Z'),c('c','c','@flor','2026-10-17T12:00:00'),c('d','d','@flor','incorrecta')],DEFAULT_RULES);
+  const r=reviewComments([c('a','a','@flor','2026-10-18T15:00:00Z'),c('b','b','@flor','2026-10-18T15:00:01Z'),c('c','c','@flor','2026-10-17T12:00:00'),c('d','d','@flor','incorrecta')],DEFAULT_RULES);
   assert.equal(r.valid[0].username,'a');assert.equal(r.valid.length,1);assert.equal(r.excluded.length,3);
 });
 test('Fechas ausentes requieren decisión manual explícita',()=>{assert.equal(reviewComments([c('a','alma','@flor',null)],DEFAULT_RULES).valid.length,0);assert.equal(reviewComments([c('a','alma','@flor',null)],{...DEFAULT_RULES,allowUndated:true}).valid.length,1);});

@@ -5,6 +5,7 @@ import { getAdminClient } from '@/lib/admin-auth';
 import { createCommerceService } from '@/lib/supabase/service';
 import { reviewComments,validateRules } from '@/lib/giveaway/participants';
 import { validateConfig } from '@/lib/giveaway/live';
+import { validateCampaignTiming } from '@/lib/giveaway/schedule';
 import { createAudit,draw,confirmWinner,disqualify,addEvent,digest } from '@/lib/giveaway/server/audit';
 import { dbError,privateState } from '@/lib/giveaway/server/data';
 import { body,checkOrigin,fail,response,GiveawayError } from '@/lib/giveaway/server/http';
@@ -23,6 +24,7 @@ export async function POST(request:Request){
       if(current.round&&(Date.now()<Date.parse(current.round.revealAt)||String(input.reason||'').trim().length<5))throw new GiveawayError('La lista está bloqueada. Para preparar otra después del vivo, registrá el motivo.',409);
       if(current.revision!==input.revision)throw new GiveawayError('El estado cambió. Actualizá antes de sincronizar.',409);
       const config=validateConfig(input.config),rules=validateRules(input.rules);
+      try{validateCampaignTiming(config,rules);}catch(e){throw new GiveawayError((e as Error).message);}
       const fresh=await readInstagramComments(config.permalink);
       const previous=current.snapshot?.source.kind==='instagram'&&current.snapshot.source.mediaId===fresh.mediaId?current.snapshot.comments:[];
       const merged=mergeComments(previous,fresh.comments);
@@ -34,6 +36,7 @@ export async function POST(request:Request){
 
       if(!current.snapshot)throw new GiveawayError('No hay lista guardada.');
       const config=validateConfig(input.config),rules=validateRules(input.rules);
+      try{validateCampaignTiming(config,rules);}catch(e){throw new GiveawayError((e as Error).message);}
       if(config.permalink!==current.config.permalink)throw new GiveawayError('Al cambiar la publicación, cargá sus comentarios desde Instagram antes de guardar.');
       const comments=current.snapshot.comments,source={...current.snapshot.source,permalink:config.permalink};
       const snapshot={version:1 as const,source,rules,comments,review:reviewComments(comments,rules)};
@@ -57,8 +60,11 @@ export async function POST(request:Request){
       if(!current.round||input.roundId!==current.round.id)throw new GiveawayError('El resultado cambió. Recargá la pantalla.');
       const audit=structuredClone(current.round.audit);
       try{
-        if(input.action==='confirm')confirmWinner(audit,input.checks);
-        if(input.action==='disqualify')disqualify(audit,input.reason);
+        if(input.action==='confirm'){
+          const checks=input.checks as Record<string,unknown>|null;
+          confirmWinner(audit,{follows:checks?.follows===true,likes:checks?.likes===true,story:checks?.story===true});
+        }
+        if(input.action==='disqualify')disqualify(audit,typeof input.reason==='string'?input.reason:'');
         if(input.action==='avatar'){
           const winner=audit.draws.at(-1)!.winner;
           if(input.username!==winner.username||input.confirmIdentity!==true)throw new Error('Confirmá la identidad de esta foto.');

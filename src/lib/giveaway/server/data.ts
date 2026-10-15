@@ -37,5 +37,6 @@ export function dbError(error:{message?:string;code?:string}|null){
   if(!error)return;
   if(missing(error))throw new GiveawayError('Falta activar la migración del sorteo en Supabase.',503);
   const messages:Record<string,string>={giveaway_conflict:'La configuración cambió en otro dispositivo. Recargá antes de continuar.',giveaway_locked:'La lista está bloqueada durante la cuenta regresiva y la animación.',giveaway_reason_required:'Registrá un motivo de al menos 5 caracteres.',giveaway_disqualification_required:'Primero registrá la descalificación del ganador.',giveaway_empty:'Publicá un conjunto con participantes válidos antes de iniciar.',giveaway_reviewed:'El ganador ya tiene una revisión registrada.'};
-  throw new GiveawayError(messages[error.message||'']||'No se pudo guardar el sorteo. Revisá configuración y permisos.');
+  const conflict=['giveaway_conflict','giveaway_locked','giveaway_reviewed'].includes(error.message||'');
+  throw new GiveawayError(messages[error.message||'']||'No se pudo guardar el sorteo. Revisá configuración y permisos.',conflict?409:400);
 }

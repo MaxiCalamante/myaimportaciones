@@ -3,6 +3,7 @@ import { LiveShow } from '@/components/giveaway/live-show';
 import { GiveawayStoreBridge } from '@/components/giveaway/giveaway-store-bridge';
 import { publicState, unavailable } from '@/lib/giveaway/server/data';
 import { siteConfig } from '@/lib/site';
+import { DEFAULT_CAMPAIGN } from '@/lib/giveaway/live';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,6 @@ const giveawayEventJsonLd = {
   name: 'Sorteo Día de la Madre - MYA Importaciones',
   description:
     'Sorteo oficial en vivo para el Día de la Madre de MYA Importaciones. Premio: Travel Kit SKIN1004 Madagascar Centella original.',
-  startDate: '2026-10-18T20:00:00-03:00',
   eventStatus: 'https://schema.org/EventScheduled',
   eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
   location: {
@@ -74,14 +74,20 @@ export default async function GiveawayPage() {
   } catch {
     state = unavailable();
   }
+  const event = {
+    ...giveawayEventJsonLd,
+    name: `${state.config.title} · ${siteConfig.brandName}`,
+    description: `Sorteo de MYA Importaciones. Premio: ${state.config.prize}.`,
+    ...(state.config.scheduledFor ? { startDate: state.config.scheduledFor } : {}),
+  };
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(giveawayEventJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(event).replace(/</g, '\\u003c') }}
       />
       <LiveShow initial={state} />
-      <GiveawayStoreBridge />
+      {state.config.prize === DEFAULT_CAMPAIGN.prize && <GiveawayStoreBridge />}
     </>
   );
 }

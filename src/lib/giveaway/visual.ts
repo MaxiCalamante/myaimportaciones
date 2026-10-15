@@ -1,10 +1,11 @@
 import type { Comment, SourceKind } from './types';
+import { eventTime } from './schedule';
 export type Phase = 'idle' | 'countdown' | 'spinning' | 'winner';
 export type Visual = { phase: Phase; countdown: number; progress: number; pool: Comment[]; winner?: Comment; source?: SourceKind; status?: string; reduceMotion: boolean; elapsed: number; avatar?: HTMLImageElement; avatars?:ReadonlyMap<string,HTMLImageElement>;phaseElapsed?:number;countdownProgress?:number; logo?: HTMLImageElement; portrait: boolean; participantCount?:number;scheduledFor?:string|null; title?:string; prize?:string };
 const TEAL='#1a565f',GOLD='#f0d5a8',PAPER='#ffffff',MUTED='#96b1ae';
 function text(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,size:number,color=PAPER,weight=500,max=900,serif=false){
   ctx.fillStyle=color;
-  const font=(n:number)=>`${weight} ${n}px ${serif?'"Geist", "Segoe UI"':'"Geist", "Segoe UI"'}, sans-serif`;
+  const font=(n:number)=>`${weight} ${n}px ${serif?'Georgia, "Times New Roman", serif':'"Geist", "Segoe UI", sans-serif'}`;
   ctx.font=font(size);while(ctx.measureText(value).width>max&&size>13){size--;ctx.font=font(size);}ctx.fillText(value,x,y,max);
 }
 function box(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r:number,fill:string){ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
@@ -42,11 +43,11 @@ export function renderStage(ctx:CanvasRenderingContext2D,w:number,h:number,v:Vis
   if(v.phase==='idle'){
     const dw=portrait?480:420,dh=portrait?356:260;
     box(ctx,cx-dw/2,main-dh/2,dw,dh,24,'rgba(14, 46, 53, 0.78)');ctx.strokeStyle='rgba(240, 213, 168, 0.32)';ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(cx-dw/2,main-dh/2,dw,dh,24);ctx.stroke();
-    spaced(ctx,'DOMINGO · OCTUBRE',cx,main-(portrait?108:77),portrait?23:19,GOLD);
-    text(ctx,'18',cx,main+(portrait?88:64),portrait?222:168,'#ffffff',550,dw);
+    spaced(ctx,v.scheduledFor?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',weekday:'long',month:'long'}).format(new Date(v.scheduledFor)).toUpperCase():'FECHA A CONFIRMAR',cx,main-(portrait?108:77),portrait?23:19,GOLD);
+    text(ctx,v.scheduledFor?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'numeric'}).format(new Date(v.scheduledFor)):'—',cx,main+(portrait?88:64),portrait?222:168,'#ffffff',550,dw);
     text(ctx,'DÍA DE LA MADRE',cx,main+(portrait?142:101),portrait?24:19,GOLD,600,dw);
     text(ctx,'Nos encontramos acá.',cx,main+(portrait?270:205),portrait?42:33,PAPER,500,portrait?910:1400);
-    text(ctx,v.scheduledFor?'En vivo a las '+new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}).format(new Date(v.scheduledFor))+' h · Argentina':'El horario se anuncia próximamente.',cx,main+(portrait?331:250),portrait?27:22,MUTED,400);
+    text(ctx,eventTime(v.scheduledFor||null),cx,main+(portrait?331:250),portrait?27:22,MUTED,400);
   }else if(v.phase==='countdown'){
     const r=portrait?184:120;ctx.strokeStyle='rgba(232, 209, 173, 0.16)';ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(cx,main,r,0,Math.PI*2);ctx.stroke();
     ctx.save();ctx.shadowColor='rgba(240, 213, 168, 0.55)';ctx.shadowBlur=18;ctx.strokeStyle=GOLD;ctx.lineWidth=5.5;ctx.beginPath();ctx.arc(cx,main,r,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0.01,v.countdownProgress??(5-v.countdown)/5));ctx.stroke();ctx.restore();

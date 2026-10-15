@@ -23,7 +23,7 @@ export type Audit = {
 };
 export const DEFAULT_RULES: Rules = {
   owner: '_myaimportaciones', requireMention: true,
-  cutoff: '2026-10-18T23:59:59-03:00', allowUndated: false, manualExclusions: {}
+  cutoff: '2026-10-18T12:00:00-03:00', allowUndated: false, manualExclusions: {}
 };
 export const POST = 'https://www.instagram.com/p/DeIpHXtkYyf/';
 export const SOURCE_LABELS: Record<SourceKind, string> = { instagram: 'Comentarios de Meta', 'instagram-export': 'Comentarios visibles de Instagram', csv: 'CSV importado', list: 'Lista importada', demo: 'Demostración' };

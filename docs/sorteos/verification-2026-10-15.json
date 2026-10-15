@@ -1,0 +1,61 @@
+{
+  "verifiedAt": "2026-10-15T23:02:00.095Z",
+  "local": {
+    "at": "2026-10-15T23:01:03.911Z",
+    "fixtureOnly": true,
+    "tests": {
+      "importAndAdmin": true,
+      "apiPaginationAndDedupe": true,
+      "privateRehearsalNoMutation": true,
+      "officialApiImport": true,
+      "photosAndNamesPreserved": true,
+      "roulettePhotosLoaded": true,
+      "winnerPhotoServed": true,
+      "participantSearch": true,
+      "guestMutationDenied": true,
+      "winnerHiddenUntilReveal": true,
+      "twoDevicesSameWinner": true,
+      "wrongDeviceClockIgnored": true,
+      "reloadKeepsWinner": true,
+      "manualReviewShared": true,
+      "privateFileNotInPublicPayload": true,
+      "resetGiveawayRound": true,
+      "noonScheduleShared": true,
+      "serverRejectsLateCutoff": true,
+      "calendarDownload": true,
+      "eventMetadataMatches": true,
+      "adminAndPublicFiveWidths": true,
+      "presentationAndReducedMotion": true
+    },
+    "widths": [
+      320,
+      390,
+      768,
+      1280,
+      1440
+    ],
+    "jsErrors": [],
+    "axeViolations": [],
+    "externalBrowserRequestsBlocked": 0,
+    "unitTests": {
+      "passed": 103,
+      "failed": 0
+    },
+    "build": "passed",
+    "typeCheck": "passed",
+    "giveawayLint": "passed",
+    "repositoryLint": {
+      "passed": false,
+      "preExistingError": "src/app/producto/[slug]/page.tsx:115 react-hooks/purity (Date.now in render)"
+    }
+  },
+  "production": {
+    "scheduleSavedThroughAuthenticatedAdmin": true,
+    "scheduledFor": "2026-10-18T12:00-03:00",
+    "participants": 75,
+    "available": true,
+    "round": null,
+    "winner": null,
+    "redesignDeployed": false
+  }
+}
