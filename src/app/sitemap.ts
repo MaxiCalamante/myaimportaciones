@@ -47,12 +47,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
-    url: `${baseUrl}/producto/${product.slug}`,
+  const productRoutes: MetadataRoute.Sitemap = products.map((product) => {
+    const imageUrl = product.imageUrl ? (product.imageUrl.startsWith("http") ? product.imageUrl : `${baseUrl}${product.imageUrl}`) : undefined;
+    return {
+      url: `${baseUrl}/producto/${product.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+      images: imageUrl ? [imageUrl] : undefined,
+    };
+  });
+
+  const uniqueBrands = Array.from(
+    new Set(products.map((p) => p.brand).filter((b): b is string => Boolean(b && b.trim())))
+  );
+
+  const brandRoutes: MetadataRoute.Sitemap = uniqueBrands.map((brand) => ({
+    url: `${baseUrl}/catalogo?brand=${encodeURIComponent(brand)}`,
     lastModified: new Date(),
     changeFrequency: "daily",
     priority: 0.85,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+  return [...staticRoutes, ...categoryRoutes, ...brandRoutes, ...productRoutes];
 }

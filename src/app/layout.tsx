@@ -132,6 +132,15 @@ const storeJsonLd = {
     addressRegion: "Buenos Aires",
     addressCountry: "AR",
   },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: -37.32167,
+    longitude: -59.13316,
+  },
+  areaServed: {
+    "@type": "Country",
+    name: "Argentina",
+  },
   sameAs: [siteConfig.instagram],
 };
 
@@ -178,6 +187,10 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
 
+        <meta name="geo.region" content="AR-B" />
+        <meta name="geo.placename" content="Tandil" />
+        <meta name="geo.position" content="-37.32167;-59.13316" />
+        <meta name="ICBM" content="-37.32167, -59.13316" />
       </head>
       <body className="min-h-full bg-slate-50 text-zinc-950">
         <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-5 focus:py-3 focus:font-bold focus:shadow-xl">Saltar al contenido</a>

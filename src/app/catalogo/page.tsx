@@ -13,31 +13,68 @@ import type { Product } from "@/lib/types";
 import type { Metadata } from "next";
 import { siteConfig } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Catálogo Completo de Productos | MYA Importaciones",
-  description:
-    "Explorá nuestro catálogo online con stock real y precios en pesos: cosmética coreana K-Beauty original, cuidado capilar premium (Kérastase, Shiseido, Karseell), electrónica y herramientas. Envíos a todo el país desde Tandil.",
-  alternates: { canonical: "/catalogo" },
-  keywords: [
-    "Catálogo MYA Importaciones",
-    "Comprar cosmética coreana Argentina",
-    "K-Beauty Tandil",
-    "Herramientas Total Tools Wadfow",
-    "Kérastase Shiseido Fino",
-    "Productos importados Tandil",
-    "Precios en pesos argentinos",
-  ],
-  openGraph: {
-    title: "Catálogo de Productos | MYA Importaciones",
-    description: "Cosmética coreana, cuidado capilar, herramientas y tecnología con envíos a todo el país.",
-    url: `${siteConfig.appUrl}/catalogo`,
-    siteName: siteConfig.brandName,
-    locale: "es_AR",
-    type: "website",
-  },
-};
 type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };
 const pageSize = 24;
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<CatalogParams> }): Promise<Metadata> {
+  const params = await searchParams;
+  const { categories } = await getStorefrontData({ limit: 0 });
+  const category = categories.find((c) => c.slug === params.category);
+  const q = params.q?.trim();
+  const brand = params.brand?.trim();
+
+  let title = "Catálogo Completo de Productos | MYA Importaciones";
+  let description =
+    "Explorá nuestro catálogo online con stock real y precios en pesos: cosmética coreana K-Beauty original, cuidado capilar premium, electrónica y herramientas. Envíos a todo el país desde Tandil.";
+
+  if (category) {
+    title = `${category.name} en Argentina · Productos Originales | MYA Importaciones`;
+    description = category.description
+      ? `${category.description} Comprá con envíos a todo el país desde Tandil por MYA Importaciones.`
+      : `Comprá ${category.name} 100% original en Argentina. Catálogo actualizado con precios en pesos y envíos a todo el país.`;
+  } else if (brand) {
+    title = `${brand} en Argentina · Productos Originales | MYA Importaciones`;
+    description = `Comprá productos ${brand} originales en Argentina al mejor precio. Envíos a todo el país desde Tandil con garantía oficial.`;
+  } else if (q) {
+    title = `Buscar "${q}" | Catálogo MYA Importaciones`;
+    description = `Resultados para "${q}" en MYA Importaciones. Encontrá productos originales importados con stock real y envíos a toda la Argentina.`;
+  }
+
+  const canonicalPath = category
+    ? `/catalogo?category=${encodeURIComponent(category.slug)}`
+    : brand
+      ? `/catalogo?brand=${encodeURIComponent(brand)}`
+      : "/catalogo";
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `${siteConfig.appUrl}${canonicalPath}` },
+    keywords: [
+      category?.name || "Catálogo",
+      brand || "",
+      "MYA Importaciones",
+      "Comprar en Argentina",
+      "Precios en pesos",
+      "Tandil envíos",
+      "K-Beauty Argentina",
+      "Herramientas Total Tools",
+    ].filter(Boolean),
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.appUrl}${canonicalPath}`,
+      siteName: siteConfig.brandName,
+      locale: "es_AR",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<CatalogParams> }) {
   const params = await searchParams;
@@ -127,8 +164,72 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     return `/catalogo${query.size ? `?${query}` : ""}`;
   }
 
+  const canonicalPath = category
+    ? `/catalogo?category=${encodeURIComponent(category.slug)}`
+    : brand
+      ? `/catalogo?brand=${encodeURIComponent(brand)}`
+      : "/catalogo";
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Inicio",
+        item: siteConfig.appUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Catálogo",
+        item: `${siteConfig.appUrl}/catalogo`,
+      },
+      ...(category ? [{
+        "@type": "ListItem",
+        position: 3,
+        name: category.name,
+        item: `${siteConfig.appUrl}/catalogo?category=${category.slug}`,
+      }] : brand ? [{
+        "@type": "ListItem",
+        position: 3,
+        name: brand,
+        item: `${siteConfig.appUrl}/catalogo?brand=${encodeURIComponent(brand)}`,
+      }] : []),
+    ],
+  };
+
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: category?.name
+      ? `${category.name} | MYA Importaciones`
+      : brand
+        ? `${brand} en Argentina | MYA Importaciones`
+        : "Catálogo de Productos | MYA Importaciones",
+    url: `${siteConfig.appUrl}${canonicalPath}`,
+    numberOfItems: products.length,
+    itemListElement: products.map((p, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: p.title,
+      url: `${siteConfig.appUrl}/producto/${p.slug}`,
+      image: p.imageUrl?.startsWith("http") ? p.imageUrl : `${siteConfig.appUrl}${p.imageUrl || "/logo.png"}`,
+    })),
+  };
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd).replace(/</g, "\\u003c") }}
+      />
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       {/* Breadcrumbs */}
       <nav
         aria-label="Ubicación"
@@ -158,19 +259,29 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             <span className="font-semibold text-zinc-900">{category.name}</span>
           </>
         )}
+        {brand && !category && (
+          <>
+            <ChevronRight className="h-3 w-3 text-zinc-400 shrink-0" />
+            <span className="font-semibold text-zinc-900">{brand}</span>
+          </>
+        )}
       </nav>
 
       {/* Category Header */}
       <div className="mb-4 sm:mb-6 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">
-            {root && root.id !== category?.id ? root.name : "Catálogo oficial"}
+            {root && root.id !== category?.id ? root.name : brand ? `Marca oficial · ${brand}` : "Catálogo oficial"}
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
-            {category?.name ?? "Todos los productos"}
+            {q ? `Búsqueda: "${q}"` : brand ? `${brand} en Argentina` : category?.name ?? "Todos los productos"}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-zinc-500 max-w-2xl">
-            {category?.description || "Encontrá productos 100% auténticos importados con envíos a todo el país y atención personalizada desde Tandil."}
+            {q
+              ? `Resultados disponibles para "${q}" con stock real y envíos a todo el país.`
+              : brand
+                ? `Catálogo oficial y productos de la marca ${brand} en Argentina. Precios en pesos y despacho desde Tandil.`
+                : category?.description || "Encontrá productos 100% auténticos importados con envíos a todo el país y atención personalizada desde Tandil."}
           </p>
         </div>
         <div className="mt-1 sm:mt-0 flex items-center">
@@ -347,5 +458,6 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </nav>
       )}
     </div>
+    </>
   );
 }

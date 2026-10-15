@@ -34,6 +34,11 @@ function extractBrand(title: string, categoryName: string, tags: string[] = []):
   if (t.includes("torriden")) return "Torriden";
   if (t.includes("beauty of joseon")) return "Beauty of Joseon";
   if (t.includes("cosrx")) return "COSRX";
+  if (t.includes("kerastase") || t.includes("kérastase")) return "Kérastase";
+  if (t.includes("shiseido") || t.includes("fino")) return "Shiseido";
+  if (t.includes("victoria's secret") || t.includes("victorias secret")) return "Victoria's Secret";
+  if (t.includes("apple") || t.includes("iphone") || t.includes("ipad") || t.includes("macbook")) return "Apple";
+  if (t.includes("samsung") || t.includes("galaxy")) return "Samsung";
   if (categoryName.toLowerCase().includes("herramientas")) return "Total Tools";
   return "MYA Importaciones";
 }
@@ -48,7 +53,7 @@ export async function GET() {
       const link = `${baseUrl}/producto/${p.slug}`;
       const imgLink = p.imageUrl?.startsWith("http") ? p.imageUrl : `${baseUrl}${p.imageUrl}`;
       const availability = p.stock > 0 ? "in_stock" : "out_of_stock";
-      const brand = extractBrand(p.title, p.categoryName, p.tags);
+      const brand = p.brand || extractBrand(p.title, p.categoryName, p.tags);
       const cleanDesc = p.description
         ? escapeXml(p.description.substring(0, 5000))
         : escapeXml(`${p.title} - Importación directa en Argentina por MYA Importaciones.`);

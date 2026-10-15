@@ -27,15 +27,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = product.title;
   const price = `${formatCurrency(product.retailPrice)} ARS`;
-  const shareTitle = `${title} · ${price} | MYA Importaciones`;
-  const description = `${price}. ${product.description?.replace(/\s+/g, " ").trim().slice(0, 180) || `Conocé ${product.title} en MYA Importaciones.`} Consultá disponibilidad y entrega.`;
+  const shareTitle = `${title} Original en Argentina | ${price} | MYA Importaciones`;
+  const description = `Comprá ${title} 100% original en Argentina al mejor precio (${price}). Envíos a todo el país desde Tandil, asesoramiento directo y garantía. ${product.description ? product.description.replace(/\s+/g, " ").trim().slice(0, 110) + "..." : "Asesoramiento personalizado de Máximo y Agustina."}`;
 
   const imageUrl = new URL(product.imageUrl || siteConfig.logoUrl, `${siteConfig.appUrl}/`).href;
 
   return {
     title,
     description,
-    alternates: { canonical: `/producto/${product.slug}` },
+    alternates: { canonical: `${siteConfig.appUrl}/producto/${product.slug}` },
     keywords: [
       product.title,
       product.categoryName,
@@ -112,12 +112,48 @@ export default async function ProductPage({ params }: Props) {
       url: `${siteConfig.appUrl}/producto/${product.slug}`,
       priceCurrency: "ARS",
       price: product.retailPrice,
-
+      priceValidUntil: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       availability: isVerifiedStock(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition,
       seller: {
         "@type": "Organization",
         name: siteConfig.brandName,
+        url: siteConfig.appUrl,
+      },
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "AR",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 30,
+        returnMethod: "https://schema.org/ReturnByMail",
+        returnFees: "https://schema.org/FreeReturn",
+      },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: "0",
+          currency: "ARS",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "AR",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 1,
+            maxValue: 2,
+            unitCode: "d",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 2,
+            maxValue: 5,
+            unitCode: "d",
+          },
+        },
       },
     },
   };
@@ -220,14 +256,14 @@ export default async function ProductPage({ params }: Props) {
           {Object.entries(product.specifications ?? {}).filter(([,v]) => v).length > 0 && <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">{Object.entries(product.specifications ?? {}).filter(([,v]) => v).map(([k,v]) => <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4"><dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd></div>)}</dl>}
           {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
 
-            <div className="pt-4 border-t border-zinc-200 grid grid-cols-2 gap-4 text-xs text-zinc-500">
+            <div className="pt-4 border-t border-zinc-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span>Condiciones de garantía en la ficha</span>
+                <span>100% Original e importado con garantía</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="h-4 w-4 shrink-0 text-sky-600" />
-                <span>Entrega y despacho a coordinar</span>
+                <span>Envíos a todo el país desde Tandil</span>
               </div>
             </div>
           </div>
