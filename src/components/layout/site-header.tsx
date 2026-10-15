@@ -28,6 +28,17 @@ import type { Category, Product } from "@/lib/types";
 import type { Profile } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 
+const POPULAR_SEARCHES = [
+  { label: "SKIN1004 Centella", query: "SKIN1004" },
+  { label: "Medicube", query: "Medicube" },
+  { label: "Shiseido Fino", query: "Shiseido" },
+  { label: "Kérastase", query: "Kérastase" },
+  { label: "Total Tools", query: "Total" },
+  { label: "Apple iPhone", query: "iPhone" },
+  { label: "Wadfow", query: "Wadfow" },
+  { label: "Victoria's Secret", query: "Victoria" },
+];
+
 export function SiteHeader({
   initialCategories = [],
   initialProducts = [],
@@ -42,6 +53,7 @@ export function SiteHeader({
   const isWholesale = pathname?.startsWith("/mayorista");
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [apiResults, setApiResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [completedSearch, setCompletedSearch] = useState("");
@@ -442,6 +454,8 @@ export function SiteHeader({
               placeholder="Buscar productos..."
               type="text"
               value={searchQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 250)}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") showSearchResults(); }}
             />
@@ -451,6 +465,37 @@ export function SiteHeader({
               </button>
             )}
           </div>
+
+          {/* Quick Suggestions when empty and focused */}
+          {searchFocused && !searchQuery.trim() && (
+            <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-xl z-50 animate-in fade-in duration-100 ${
+              isWholesale ? "border-zinc-800 bg-zinc-900 text-zinc-100" : "border-zinc-200 bg-white text-zinc-900"
+            }`}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                Búsquedas frecuentes
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {POPULAR_SEARCHES.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearchQuery(item.query);
+                      router.push(`${catalogPath}?q=${encodeURIComponent(item.query)}`);
+                    }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                      isWholesale
+                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                        : "bg-zinc-100 hover:bg-sky-50 hover:text-sky-800 text-zinc-700 border border-zinc-200/60"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Results Dropdown */}
           {searchQuery.trim().length >= 2 && !searchPending && searchResults.length > 0 && (
@@ -603,6 +648,35 @@ export function SiteHeader({
                 </button>
               )}
             </div>
+
+            {/* Quick Suggestions on Mobile when empty */}
+            {!searchQuery.trim() && (
+              <div className="mt-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-0.5">
+                  Búsquedas populares
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {POPULAR_SEARCHES.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery(item.query);
+                        setOpen(false);
+                        router.push(`${catalogPath}?q=${encodeURIComponent(item.query)}`);
+                      }}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                        isWholesale
+                          ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-sky-50 hover:text-sky-800 border border-zinc-200/60"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Results Dropdown Mobile */}
             {searchQuery.trim().length >= 2 && !searchPending && searchResults.length > 0 && (

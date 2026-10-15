@@ -27,12 +27,14 @@ import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import type { Product } from "@/lib/types";
 import { trackAdsEvent } from "@/lib/analytics";
 import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
+import { StickyMobileBuyBar } from "./sticky-mobile-buy-bar";
 
 export function ProductDetailInteractive({ product }: { product: Product }) {
   const {
     addToCart,
     toggleFavorite,
     isFavorite,
+    cartCount,
     setCartOpen,
     postalCode,
     setPostalCode,
@@ -50,6 +52,8 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const [isStickyVisible, setIsStickyVisible] = useState(false);
+  const mainCtaRef = React.useRef<HTMLDivElement>(null);
 
   const favorite = isFavorite(product.id);
 
@@ -61,7 +65,21 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     });
   }, [product.id, product.title, product.retailPrice]);
 
+  React.useEffect(() => {
+    if (!mainCtaRef.current || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsStickyVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(mainCtaRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const price = channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
+  const transferPrice = channel === "retail" && price > 0 ? Math.round(price * 0.97) : price;
+  const transferSavings = price - transferPrice;
 
   const isImmediate = useMemo(() => isProductImmediateStock(product), [product]);
   const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(product), [product]);
@@ -166,9 +184,24 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
                 </span>
               )}
             </div>
+            {channel === "retail" && price > 0 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100/90 px-2.5 py-1 text-xs font-black text-emerald-900 border border-emerald-300 shadow-2xs">
+                  <span>{formatCurrency(transferPrice)}</span>
+                  <span className="text-[10px] font-bold text-emerald-700">con Transferencia (-3% OFF)</span>
+                </div>
+                <span className="text-[11px] font-medium text-zinc-500">Ahorrás {formatCurrency(transferSavings)}</span>
+              </div>
+            )}
             {channel === "retail" && <ElectronicsPrice product={product} detail />}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:max-w-[12rem] sm:justify-end sm:text-right">
+            {product.stock > 0 && product.stock <= 3 && isVerifiedStock(product) && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide border border-amber-300">
+                <Zap className="h-3 w-3 text-amber-600 shrink-0" />
+                ¡Últimas {product.stock} {product.stock === 1 ? "unidad" : "unidades"}!
+              </span>
+            )}
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
               isVerifiedStock(product) ? "text-emerald-700" : "text-amber-600"
             }`}>
@@ -229,70 +262,72 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         )}
 
         {/* Quantity and Actions */}
-        <div className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-3 pt-2 sm:grid-cols-[auto_minmax(0,1fr)_3rem]">
-          <div className="col-span-2 flex items-center justify-between sm:col-span-1 sm:block">
-            <span className="text-xs font-semibold text-zinc-600 sm:hidden">Cantidad</span>
-          <div className="flex h-12 shrink-0 items-center rounded-xl border border-zinc-300 bg-white">
+        <div ref={mainCtaRef} className="space-y-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-3 pt-2 sm:grid-cols-[auto_minmax(0,1fr)_3rem]">
+            <div className="col-span-2 flex items-center justify-between sm:col-span-1 sm:block">
+              <span className="text-xs font-semibold text-zinc-600 sm:hidden">Cantidad</span>
+            <div className="flex h-12 shrink-0 items-center rounded-xl border border-zinc-300 bg-white">
+              <button
+                onClick={handleDecrement}
+                className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
+                type="button"
+                aria-label="Reducir cantidad"
+                disabled={quantity <= (channel === "wholesale" ? product.wholesaleMinQuantity : 1)}
+              >
+                -
+              </button>
+              <span aria-live="polite" aria-atomic="true" className="w-9 text-center text-sm font-bold text-zinc-900">
+                {quantity}
+              </span>
+              <button
+                onClick={handleIncrement}
+                className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
+                type="button"
+                aria-label="Aumentar cantidad"
+                disabled={quantity >= purchasableQuantity(product)}
+              >
+                +
+              </button>
+            </div>
+            </div>
+
             <button
-              onClick={handleDecrement}
-              className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
+              onClick={handleAddToCart}
+              disabled={!isVerifiedStock(product)}
+              className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-3 text-sm font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
               type="button"
-              aria-label="Reducir cantidad"
-              disabled={quantity <= (channel === "wholesale" ? product.wholesaleMinQuantity : 1)}
             >
-              -
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              {!isVerifiedStock(product) ? "Disponibilidad a confirmar" : added ? "¡Agregado al carrito!" : "Agregar al carrito"}
             </button>
-            <span aria-live="polite" aria-atomic="true" className="w-9 text-center text-sm font-bold text-zinc-900">
-              {quantity}
-            </span>
+
             <button
-              onClick={handleIncrement}
-              className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
+              onClick={() => toggleFavorite(product.id)}
+              className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
+                favorite
+                  ? "bg-red-50 border-red-200 text-red-600"
+                  : "bg-white border-zinc-300 text-zinc-600 hover:text-zinc-950"
+              }`}
               type="button"
-              aria-label="Aumentar cantidad"
-              disabled={quantity >= purchasableQuantity(product)}
+              aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+              aria-pressed={favorite}
+              title={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
             >
-              +
+              <Heart className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} />
             </button>
           </div>
+
+          {/* WhatsApp Direct Order Button */}
+          <div>
+            <button
+              type="button"
+              onClick={() => openWhatsApp(whatsappMessage)}
+              className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 px-3 py-2.5 text-white text-xs sm:text-sm font-bold transition shadow-sm cursor-pointer"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Consultar o Pedir por WhatsApp
+            </button>
           </div>
-
-          <button
-            onClick={handleAddToCart}
-            disabled={!isVerifiedStock(product)}
-            className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-3 text-sm font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
-            type="button"
-          >
-            <ShoppingCart className="h-4 w-4 shrink-0" />
-            {!isVerifiedStock(product) ? "Disponibilidad a confirmar" : added ? "¡Agregado al carrito!" : "Agregar al carrito"}
-          </button>
-
-          <button
-            onClick={() => toggleFavorite(product.id)}
-            className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
-              favorite
-                ? "bg-red-50 border-red-200 text-red-600"
-                : "bg-white border-zinc-300 text-zinc-600 hover:text-zinc-950"
-            }`}
-            type="button"
-            aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-            aria-pressed={favorite}
-            title={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-          >
-            <Heart className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} />
-          </button>
-        </div>
-
-        {/* WhatsApp Direct Order Button */}
-        <div>
-          <button
-            type="button"
-            onClick={() => openWhatsApp(whatsappMessage)}
-            className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 px-3 py-2.5 text-white text-xs sm:text-sm font-bold transition shadow-sm cursor-pointer"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Consultar o Pedir por WhatsApp
-          </button>
         </div>
 
         {/* Share & Copy Link */}
@@ -473,37 +508,56 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
       {/* Trust & Guarantee Badges */}
       <TrustGuaranteeBadges variant="compact" />
 
-      {/* Mobile Sticky Add-to-Cart Bar */}
-      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-30 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 px-4 py-2.5 shadow-lg">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] text-zinc-500 font-semibold uppercase block">
-              {channel === "wholesale" ? "Mayorista" : "Minorista"}
-            </span>
-            <span className="whitespace-nowrap text-base font-black text-zinc-950">{formatCurrency(price)}</span>
-          </div>
-          {!isVerifiedStock(product) ? (
-            <button
-              type="button"
-              onClick={() => openWhatsApp(whatsappMessage)}
-              className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-emerald-800 cursor-pointer"
-            >
-              <MessageCircle className="h-4 w-4 shrink-0" />
-              Consultar disponibilidad
-            </button>
-          ) : (
-            <button
-              onClick={handleAddToCart}
-              disabled={!isVerifiedStock(product)}
-              className="flex-1 inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-xs font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50"
-              type="button"
-            >
-              <ShoppingCart className="h-4 w-4 shrink-0" />
-              {added ? "¡Agregado!" : "Agregar al carrito"}
-            </button>
-          )}
+      {/* Quick Buyer Confidence FAQ */}
+      <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 space-y-3 text-xs shadow-xs">
+        <p className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+          Preguntas frecuentes sobre tu compra
+        </p>
+        <div className="divide-y divide-zinc-100">
+          <details className="group py-2.5" open>
+            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
+              <span>¿Cómo se realiza el envío y cuánto tarda?</span>
+              <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
+            </summary>
+            <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
+              Despachamos desde Tandil hacia toda la Argentina mediante Correo Argentino (a domicilio o sucursal). Te enviamos el código de seguimiento apenas el paquete ingresa al correo para que sigas el trayecto en tiempo real.
+            </p>
+          </details>
+
+          <details className="group py-2.5">
+            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
+              <span>¿El producto es nuevo y 100% original?</span>
+              <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
+            </summary>
+            <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
+              Absolutamente. Solo comercializamos productos originales en empaque cerrado de fábrica. Garantizamos autenticidad y estado impecable con control de calidad previo al empaque.
+            </p>
+          </details>
+
+          <details className="group py-2.5">
+            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
+              <span>¿Cómo aprovecho el 3% de descuento por transferencia?</span>
+              <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
+            </summary>
+            <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
+              Al finalizar tu compra en el checkout o al coordinar por WhatsApp, elegí la opción de Transferencia Bancaria y el descuento se aplica automáticamente sobre tu total.
+            </p>
+          </details>
         </div>
       </div>
+
+      {/* Modern Sticky Mobile Buy Bar */}
+      <StickyMobileBuyBar
+        product={product}
+        price={price}
+        transferPrice={transferPrice}
+        added={added}
+        onAddToCart={handleAddToCart}
+        onOpenWhatsApp={() => openWhatsApp(whatsappMessage)}
+        cartCount={cartCount}
+        onOpenCart={() => setCartOpen(true)}
+        visible={isStickyVisible}
+      />
     </div>
   );
 }

@@ -10,13 +10,13 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
   const { cartCount, setCartOpen, openWhatsApp } = useCommerce();
 
-  // Hide on admin routes
-  if (pathname?.startsWith("/admin")) {
+  // Hide on admin routes and product detail pages (handled by StickyMobileBuyBar)
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/producto/")) {
     return null;
   }
 
   const isHome = pathname === "/";
-  const isCatalog = pathname === "/catalogo" || pathname?.startsWith("/producto/");
+  const isCatalog = pathname === "/catalogo";
   const orderPath = signedIn ? "/cuenta" : "/seguimiento";
   const isTracking = pathname?.startsWith(orderPath);
 

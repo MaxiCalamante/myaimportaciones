@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LiveShow } from '@/components/giveaway/live-show';
+import { GiveawayStoreBridge } from '@/components/giveaway/giveaway-store-bridge';
 import { publicState, unavailable } from '@/lib/giveaway/server/data';
 import { siteConfig } from '@/lib/site';
 
@@ -80,6 +81,7 @@ export default async function GiveawayPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(giveawayEventJsonLd) }}
       />
       <LiveShow initial={state} />
+      <GiveawayStoreBridge />
     </>
   );
 }

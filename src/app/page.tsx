@@ -12,6 +12,7 @@ import { getStorefrontData, getPublicFacetProducts } from "@/lib/storefront";
 import { deriveCatalogFacets } from "@/lib/catalog-facets";
 import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 import { StoreSeoFaq } from "@/components/commerce/store-seo-faq";
+import { SocialProofSection } from "@/components/commerce/social-proof-section";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -57,6 +58,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     {(error || !retailProducts.length) && <EmptyCatalog error={error} />}
     {retailProducts.length > 0 && <ProductSection eyebrow="Selección especial" id="catalogo" products={featuredProducts} title="Productos destacados" />}
     {retailProducts.length > 0 && <ProductSection eyebrow="Explorá la tienda" id="ofertas" products={discoveryProducts} title="Más para descubrir" />}
+    <SocialProofSection />
     <TrustGuaranteeBadges />
     <StoreSeoFaq />
   </>;
