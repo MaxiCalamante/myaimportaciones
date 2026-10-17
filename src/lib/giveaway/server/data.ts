@@ -6,16 +6,17 @@ import { createCommerceService } from '@/lib/supabase/service';
 import type { Audit,Snapshot } from '../types';
 import { DEFAULT_CAMPAIGN,type CampaignConfig,type PrivateState,type PublicGiveaway } from '../live';
 import { GiveawayError } from './http';
+import { DEFAULT_SELECTION } from '../selection';
 export type RawPrivateState=PrivateState&{round:({id:string;countdownAt:string;spinAt:string;revealAt:string;audit:Audit})|null};
-export function missing(error:{code?:string}|null){return Boolean(error&&['42P01','PGRST202','PGRST205'].includes(error.code||''));}
+export function missing(error:{code?:string}|null){return Boolean(error&&['42P01','42703','PGRST202','PGRST204','PGRST205'].includes(error.code||''));}
 export async function privateState():Promise<RawPrivateState>{
   const db=createCommerceService();
-  const {data:c,error}=await db.from('giveaway_campaign').select('revision,config,dataset_id,snapshot,active_round').eq('id',1).single();
+  const {data:c,error}=await db.from('giveaway_campaign').select('revision,config,dataset_id,snapshot,active_round,selection').eq('id',1).single();
   if(missing(error))throw new GiveawayError('Falta activar la migración del sorteo en Supabase.',503);
   if(error||!c)throw new GiveawayError('No se pudo leer la configuración privada.',503);
   let round:RawPrivateState['round']=null;
   if(c.active_round){const {data:r,error:roundError}=await db.from('giveaway_rounds').select('id,countdown_at,spin_at,reveal_at,audit').eq('id',c.active_round).single();if(roundError||!r)throw new GiveawayError('No se pudo recuperar el resultado registrado.',503);round={id:r.id,countdownAt:r.countdown_at,spinAt:r.spin_at,revealAt:r.reveal_at,audit:r.audit as Audit};}
-  return{revision:c.revision,config:c.config as CampaignConfig,datasetId:c.dataset_id,snapshot:c.snapshot as Snapshot|null,round,serverNow:new Date().toISOString()};
+  return{revision:c.revision,config:c.config as CampaignConfig,datasetId:c.dataset_id,snapshot:c.snapshot as Snapshot|null,selection:c.selection||DEFAULT_SELECTION,round,serverNow:new Date().toISOString()};
 }
 export function unavailable():PublicGiveaway{return{version:1,serverNow:new Date().toISOString(),revision:0,available:false,config:{...DEFAULT_CAMPAIGN},participantCount:0,source:null,snapshotHash:null,round:null,reel:[],winner:null,winnerStatus:null,winnerAvatar:null,disqualificationReason:null};}
 let cached:{value:PublicGiveaway;until:number}|null=null;

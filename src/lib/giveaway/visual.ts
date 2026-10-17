@@ -1,5 +1,6 @@
 import type { Comment, SourceKind } from './types';
 import { eventTime } from './schedule';
+import { renderParticipantReel } from './reel';
 export type Phase = 'idle' | 'countdown' | 'spinning' | 'winner';
 export type Visual = { phase: Phase; countdown: number; progress: number; pool: Comment[]; winner?: Comment; source?: SourceKind; status?: string; reduceMotion: boolean; elapsed: number; avatar?: HTMLImageElement; avatars?:ReadonlyMap<string,HTMLImageElement>;phaseElapsed?:number;countdownProgress?:number; logo?: HTMLImageElement; portrait: boolean; participantCount?:number;scheduledFor?:string|null; title?:string; prize?:string };
 const TEAL='#1a565f',GOLD='#f0d5a8',PAPER='#ffffff',MUTED='#96b1ae';
@@ -55,14 +56,10 @@ export function renderStage(ctx:CanvasRenderingContext2D,w:number,h:number,v:Vis
   }else if(v.phase==='spinning'&&v.reduceMotion){
     text(ctx,'Seleccionando una cuenta…',cx,main,portrait?47:39,PAPER,400,portrait?900:1400,true);text(ctx,'Una oportunidad por cuenta.',cx,main+73,portrait?26:22,MUTED,400);
   }else if(v.phase==='spinning'){
-    const slot=portrait?144:105,aw=portrait?900:1390,ah=slot*3.15,target=96,t=Math.min(v.progress,0.999),travel=t<0.16?0.24*Math.pow(t/0.16,2):0.24+0.76*(1-Math.pow(1-(t-0.16)/0.84,3)),position=target*travel,floor=Math.floor(position),frac=position-floor;
-    box(ctx,cx-aw/2,main-ah/2,aw,ah,24,'rgba(8, 26, 31, 0.94)');ctx.save();ctx.beginPath();ctx.roundRect(cx-aw/2,main-ah/2,aw,ah,24);ctx.clip();
-    box(ctx,cx-aw/2+13,main-slot/2+5,aw-26,slot-10,14,'rgba(28, 86, 95, 0.65)');
-    for(let offset=-2;offset<=3;offset++){const index=floor+offset,c=index>=target&&v.winner?v.winner:v.pool[Math.max(0,index)%v.pool.length];if(!c)continue;const y=main+(offset-frac)*slot;ctx.globalAlpha=Math.max(0.18,1-Math.abs(offset-frac)*0.45);avatar(ctx,c,cx-aw/2+92,y,portrait?40:34,v.avatars?.get(c.username));text(ctx,`@${c.username}`,cx+46,y+(c.displayName?-1:13),portrait?41:39,'#ffffff',650,aw-280);if(c.displayName)text(ctx,c.displayName,cx+46,y+35,portrait?23:21,'#b5d0cb',450,aw-280);}
-    const fade=ctx.createLinearGradient(0,main-ah/2,0,main+ah/2);fade.addColorStop(0,'rgba(8, 26, 31, 0.98)');fade.addColorStop(0.25,'rgba(8, 26, 31, 0)');fade.addColorStop(0.75,'rgba(8, 26, 31, 0)');fade.addColorStop(1,'rgba(8, 26, 31, 0.98)');ctx.fillStyle=fade;ctx.fillRect(cx-aw/2,main-ah/2,aw,ah);
-    ctx.restore();ctx.strokeStyle='#e0bd8c';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(cx-aw/2+13,main-slot/2+5,aw-26,slot-10,14);ctx.stroke();
-    ctx.strokeStyle='rgba(240, 213, 168, 0.32)';ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(cx-aw/2,main-ah/2,aw,ah,24);ctx.stroke();
-    text(ctx,'Una oportunidad por cuenta.',cx,main+ah/2+66,portrait?27:23,MUTED,400);
+    const rw=portrait?970:1580,rh=portrait?480:330;
+    ctx.save();ctx.translate(cx-rw/2,main-rh/2);
+    renderParticipantReel(ctx,rw,rh,{pool:v.pool,winner:v.winner,progress:v.progress,reduceMotion:v.reduceMotion,avatars:v.avatars||new Map()});
+    ctx.restore();
   }else if(v.winner){
     const enter=v.reduceMotion?1:1-Math.pow(1-Math.min(1,(v.phaseElapsed??1000)/650),3);ctx.save();ctx.globalAlpha=enter;ctx.translate(0,(1-enter)*30);
     const top=portrait?667:451,cw=portrait?908:1424,ch=portrait?758:418;

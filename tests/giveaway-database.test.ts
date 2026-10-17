@@ -16,6 +16,7 @@ test('Postgres: privado, sincronizado, ganador oculto, idempotencia y reemplazo 
       create table public.profiles(id uuid primary key,role text);insert into profiles values('${admin}','admin'),('${customer}','customer');
       create function public.is_admin() returns boolean language sql security definer set search_path=public as $$ select exists(select 1 from profiles where id=auth.uid() and role='admin') $$;`);
     await db.exec(readFileSync('supabase/migrations/20261014140000_live_giveaway.sql','utf8'));
+    await db.exec(readFileSync('supabase/migrations/20261017120000_giveaway_repeat_selection.sql','utf8'));
     const publicRead=async()=>(await db.query<{data:PublicGiveaway}>('select public.public_giveaway_v1() data')).rows[0].data;
     await db.exec('set role anon');assert.equal((await publicRead()).available,false);
     await assert.rejects(db.query('select giveaway_admin_history_v1()'));

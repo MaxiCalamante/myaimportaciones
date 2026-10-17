@@ -1,176 +1,81 @@
-'use client';
+"use client";
 import Image from 'next/image';
-import { useEffect,useRef,useState } from 'react';
-import { ArrowRight,Gift,Link2,ShieldCheck,Trophy,Maximize2,CalendarDays,Clock3,Sparkles,Users,CheckCircle2 } from 'lucide-react';
-import { ProfileAvatar } from './profile-avatar';
-import { Stage } from './stage';
-import { timeline,DEFAULT_CAMPAIGN,type PublicGiveaway } from '@/lib/giveaway/live';
-import type { Comment } from '@/lib/giveaway/types';
+import Link from 'next/link';
+import { useEffect,useState } from 'react';
+import { CalendarDays,Clock3,Maximize2,ShieldCheck,Users,ArrowRight,CheckCircle2,RefreshCw } from 'lucide-react';
+import { type PublicGiveaway,timeline } from '@/lib/giveaway/live';
+import { experienceState,countdownParts } from '@/lib/giveaway/experience';
 import { eventDate,eventTime,eventCalendar } from '@/lib/giveaway/schedule';
 import { download } from '@/lib/giveaway/exports';
-import styles from './giveaway.module.css';
+import { useLiveGiveaway } from './use-live-giveaway';
+import { GiveawayHero,PrizeCard,Participation,INSTAGRAM } from './experience-sections';
+import { ParticipantReel } from './participant-reel';
+import { ProfileAvatar } from './profile-avatar';
+import { ShareButton } from './share-button';
+import styles from './experience.module.css';
+import { Instagram } from './instagram-icon';
+
 type Props={initial:PublicGiveaway};
+function Botanicals(){return <svg className={styles.botanical} viewBox="0 0 150 460" fill="none" aria-hidden="true"><g stroke="currentColor" strokeWidth="1"><path d="M65 445C125 300 16 190 86 12"/><path d="M67 368C15 365 0 332 9 303C47 311 64 335 67 368ZM73 313C122 296 139 267 129 242C96 252 77 275 73 313ZM61 263C12 245 2 218 11 194C47 207 58 230 61 263ZM58 209C105 192 124 162 113 137C79 148 61 175 58 209ZM63 149C25 131 22 103 34 81C59 97 66 122 63 149ZM73 89C112 70 124 44 110 20C85 38 75 58 73 89Z"/></g></svg>;}
+function Countdown({remaining}:{remaining:number}){return <div className={styles.countdown} role="timer" aria-label="Cuenta regresiva hacia el sorteo en vivo">{countdownParts(remaining).map((value,i)=><div key={i}><strong key={value}>{String(value).padStart(2,'0')}</strong><span>{['DÍAS','HORAS','MIN','SEG'][i]}</span></div>)}</div>;}
 export function LiveShow({initial}:Props){
-  const [state,setState]=useState(initial),[now,setNow]=useState(Date.parse(initial.serverNow)),[error,setError]=useState(''),[reduce,setReduce]=useState(false),[portrait,setPortrait]=useState(false),[presentation,setPresentation]=useState(false),[copied,setCopied]=useState(false);
-  const anchor=useRef({serverMs:Date.parse(initial.serverNow),performanceMs:0});
-  const [clockAnchor,setClockAnchor]=useState({serverMs:Date.parse(initial.serverNow),performanceMs:0});
-  useEffect(()=>{
-    anchor.current={serverMs:Date.parse(initial.serverNow),performanceMs:performance.now()};
-    const motion=matchMedia('(prefers-reduced-motion: reduce)'),viewport=matchMedia('(max-width: 780px)');const update=()=>setReduce(motion.matches),resize=()=>setPortrait(viewport.matches);motion.addEventListener('change',update);viewport.addEventListener('change',resize);
-    const initialFrame=requestAnimationFrame(()=>{update();resize();setClockAnchor(anchor.current);setPresentation(new URLSearchParams(location.search).get('presentacion')==='1');});
-    let disposed=false,timer:ReturnType<typeof setTimeout>|undefined,active:AbortController|null=null,sequence=0,failures=0;
-    let liveRound=Boolean(initial.round);
-    const sync=async()=>{
-      if(disposed)return;
-      active?.abort();active=new AbortController();const controller=active,requestId=++sequence,started=performance.now();
-      try{const r=await fetch('/api/sorteo',{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(12000)])});const next=await r.json();if(!r.ok||next.error)throw new Error(next.error||'No se pudo sincronizar.');
-        if(!disposed&&requestId===sequence){failures=0;liveRound=Boolean(next.round);anchor.current={serverMs:Date.parse(next.serverNow)+(performance.now()-started)/2,performanceMs:performance.now()};setClockAnchor(anchor.current);setState(previous=>next.revision>=previous.revision?next:previous);setNow(anchor.current.serverMs);setError('');}
-      }catch{if(!disposed&&!controller.signal.aborted&&requestId===sequence){failures++;setError('No pudimos actualizar el vivo.');}}
-      finally{if(!disposed&&requestId===sequence)timer=setTimeout(sync,failures?Math.min(15000,1500*2**Math.min(failures,4)):document.hidden?10000:liveRound?1000:2500);}
-    };
-    void sync();const interval=setInterval(()=>setNow(anchor.current.serverMs+performance.now()-anchor.current.performanceMs),150);
-    const visible=()=>{if(!document.hidden){if(timer)clearTimeout(timer);void sync();}};
-    document.addEventListener('visibilitychange',visible);const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setPresentation(false);};window.addEventListener('keydown',key);
-    return()=>{disposed=true;if(timer)clearTimeout(timer);active?.abort();clearInterval(interval);cancelAnimationFrame(initialFrame);motion.removeEventListener('change',update);viewport.removeEventListener('change',resize);document.removeEventListener('visibilitychange',visible);window.removeEventListener('keydown',key);};
-  },[initial.serverNow,initial.round]);
-  const current=timeline(state,now),status=current.phase;
-  const pool:Comment[]=state.reel.map((c,i)=>({id:`public-reel:${i}`,username:c.username,displayName:c.displayName||undefined,avatar:c.avatar,text:'',timestamp:null}));
-  const schedule=state.config.scheduledFor?Date.parse(state.config.scheduledFor):null,remaining=schedule?Math.max(0,schedule-now):0;
-  const clock=state.round&&clockAnchor.performanceMs?{...clockAnchor,spinAt:Date.parse(state.round.spinAt),revealAt:Date.parse(state.round.revealAt),countdownAt:Date.parse(state.round.countdownAt)}:undefined;
-  const waitingText=state.round?'MYA está preparando el inicio':schedule&&remaining>0?'Nos encontramos en el vivo':'Esperando que MYA inicie el sorteo';
-  async function share(){try{await navigator.clipboard.writeText(`${location.origin}/sorteo`);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{setError(`Compartí este enlace: ${location.origin}/sorteo`);}}
-  const activeStep=status==='waiting'?0:status==='countdown'?1:status==='spinning'?2:3;
-  const originalArtwork=state.config.prize===DEFAULT_CAMPAIGN.prize&&state.config.permalink.replace(/\/$/,'')===DEFAULT_CAMPAIGN.permalink.replace(/\/$/,'');
-  return <section className={`${styles.publicRoot} ${presentation?styles.presentation:''}`} aria-label="Sorteo en vivo de MYA">
-    <div className={styles.ambientGlowOne} aria-hidden="true" />
-    <div className={styles.ambientGlowTwo} aria-hidden="true" />
-    <header className={styles.intro}>
-      <div className={styles.introContent}>
-        <div className={styles.eyebrowChip}>
-          <Sparkles size={12} className={styles.sparkleIcon}/>
-          <p className={styles.eyebrow}>MYA IMPORTACIONES · UN REGALO PARA MAMÁ</p>
-        </div>
-        <h1>{originalArtwork?<>Un regalo especial.<br/><em>Un momento para mamá.</em></>:state.config.title}</h1>
-        <p className={styles.heroSubtitle}>Celebremos juntas. Un kit de cuidado, nuestra comunidad y la emoción de compartir el resultado en vivo.</p>
-        <div className={styles.headerMetaRow}>
-          <div className={styles.eventDate}>
-            <div className={styles.calendarIconWrapper}><CalendarDays size={16}/></div>
-            <strong>{eventDate(state.config.scheduledFor)}</strong>
-            <span className={styles.dateDot}>·</span>
-            <span>{eventTime(state.config.scheduledFor)}</span>
+  const {state,now,error,reduce,anchor,reconnect}=useLiveGiveaway(initial);
+  const [presentation,setPresentation]=useState(false);
+  useEffect(()=>{const frame=requestAnimationFrame(()=>setPresentation(new URLSearchParams(location.search).get('presentacion')==='1'));const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setPresentation(false);};window.addEventListener('keydown',key);return()=>{cancelAnimationFrame(frame);window.removeEventListener('keydown',key);};},[]);
+  const view=experienceState(state,now),current=timeline(state,now),round=state.round;
+  const drawing=['preparing','countdown','drawing','revealing'].includes(view);
+  const settling=Boolean(round&&state.winner&&now<Date.parse(round.revealAt)+1100&&!reduce);
+  const result=Boolean(state.winner&&!settling&&!drawing);
+  const activeStep=view==='countdown'?1:drawing?(view==='preparing'?1:2):result?3:0;
+  const remaining=state.config.scheduledFor?Math.max(0,Date.parse(state.config.scheduledFor)-now):0;
+  const pool=state.reel.map((c,i)=>({id:`public-reel:${i}`,username:c.username,displayName:c.displayName||undefined,avatar:c.avatar,text:'',timestamp:null}));
+  const winner=state.winner,confirmed=state.winnerStatus==='confirmed',disqualified=state.winnerStatus==='disqualified';
+  const celebrate=Boolean(!reduce&&round&&(initial.round?.id!==round.id||Date.parse(initial.serverNow)<Date.parse(round.revealAt)));
+  const statusText=error?'CONEXIÓN INTERRUMPIDA':drawing?'EN VIVO · SORTEO DÍA DE LA MADRE':settling?'REVELANDO EL RESULTADO':result?'RESULTADO DEL SORTEO':view==='ready'?'ESTAMOS POR COMENZAR':'EN ESPERA DEL SORTEO EN VIVO';
+  return <section className={`${styles.page} ${presentation?styles.presentation:''}`} aria-label="Sorteo en vivo de MYA" data-event-state={view}>
+    <div className={styles.content}>
+      <GiveawayHero state={state} view={view}/>
+      {error&&<div className={styles.connectionNote} role="status"><span>{error}</span><button onClick={reconnect}><RefreshCw size={15}/>Reintentar conexión</button></div>}
+      <div className={styles.mainGrid}>
+        <section className={styles.stagePanel} id="sorteo-en-vivo" aria-label="Escenario del sorteo" data-live={drawing}>
+          <div className={styles.liveBar}><span><i data-live={drawing} aria-hidden="true"/>{statusText}</span><span className={styles.participantBadge}><Users size={14}/>{state.participantCount.toLocaleString('es-AR')} participantes</span><button className={styles.expandButton} onClick={()=>setPresentation(true)} aria-label="Ampliar el escenario"><Maximize2 size={16}/></button></div>
+          <div className={styles.stageInner}>
+            <Botanicals/><div className={styles.brand}><Image src="/logo.png" alt="MYA Importaciones" width={76} height={55}/><span>MYA IMPORTACIONES</span></div>
+            <h2 className={styles.eventTitle}>Sorteo Día de la Madre</h2>
+            {result&&winner?<div className={styles.winnerResult} key={round?.id} id="resultado" data-celebrate={celebrate}>
+              {celebrate&&<div className={styles.confetti} aria-hidden="true">{Array.from({length:18},(_,i)=><i key={i} style={{'--i':i} as React.CSSProperties}/>)}</div>}
+              <p className={styles.resultEyebrow}>{confirmed?'UN MOMENTO PARA CELEBRAR':disqualified?'REVISIÓN REGISTRADA':'CUENTA SELECCIONADA'}</p>
+              <h3>{confirmed?'¡Tenemos ganadora!':disqualified?'El resultado fue descalificado':'Revisamos la cuenta seleccionada'}</h3>
+              <div className={styles.winnerPhoto}><ProfileAvatar username={winner.username} displayName={winner.displayName} src={state.winnerAvatar||`/api/sorteo/foto?round=${encodeURIComponent(round!.id)}`} size={118} eager/></div>
+              {winner.displayName&&<strong className={styles.winnerName}>{winner.displayName}</strong>}
+              <a className={styles.winnerHandle} href={`https://www.instagram.com/${encodeURIComponent(winner.username)}/`} target="_blank" rel="noreferrer">@{winner.username}</a>
+              <span className={styles.reviewBadge}>{confirmed?<><CheckCircle2 size={15}/>Premio confirmado</>:disqualified?'Descalificación registrada':'Pendiente de revisión manual'}</span>
+              <p>{confirmed?`¡Felicitaciones! Ganaste el ${state.config.prize}.`:disqualified?state.disqualificationReason:'MYA está revisando las condiciones de participación antes de confirmar el premio.'}</p>
+              {confirmed&&<p>MYA registró la revisión manual de las condiciones.</p>}
+              {confirmed&&<p className={styles.resultThanks}>Gracias a todas por participar y formar parte de nuestra comunidad.</p>}
+              <div className={styles.resultPrize}><GiftLabel prize={state.config.prize}/><span>{eventDate(round?.revealAt||state.config.scheduledFor)}</span></div>
+              <div className={styles.resultActions}><ShareButton result/><a className={styles.secondaryButton} href={INSTAGRAM} target="_blank" rel="noreferrer"><Instagram size={16}/>Ver Instagram</a><Link className={styles.textLink} href="/catalogo">Descubrir productos<ArrowRight size={16}/></Link></div>
+              <span className="sr-only" role="status">{confirmed?'Premio confirmado para':disqualified?'Descalificación registrada para':'Cuenta seleccionada, pendiente de revisión:'} @{winner.username}.</span>
+            </div>:drawing||settling?<div className={styles.drawingContent} key={round?.id}>
+              <h3>{view==='preparing'?'¡Llegó el momento de conocer a la ganadora!':view==='countdown'?'Estamos por comenzar':view==='revealing'||settling?'Revelando el resultado…':'Estamos seleccionando una cuenta'}</h3>
+              <Countdown remaining={0}/>
+              {view==='countdown'?<div className={styles.startCount} aria-label={`El sorteo comienza en ${current.countdown}`}><strong key={current.countdown}>{current.countdown}</strong><span>PREPARATE PARA ESTE MOMENTO</span></div>:view==='preparing'?<p className={styles.preparingNote}>Preparamos la selección para compartirla con todos.</p>:<ParticipantReel pool={pool} winner={winner?{...winner,avatar:state.winnerAvatar||`/api/sorteo/foto?round=${encodeURIComponent(round!.id)}`}:undefined} spinAt={Date.parse(round!.spinAt)} revealAt={Date.parse(round!.revealAt)} anchor={anchor} reduce={reduce}/>}
+            </div>:<div className={styles.waitingContent} key={view==='ready'?'ready':'preview'}>
+              <h3>{view==='ready'?'Estamos por comenzar':view==='unavailable'?'Estamos preparando este momento':'Nos encontramos en el vivo'}</h3>
+              {state.config.scheduledFor?<Countdown remaining={remaining}/>:<p className={styles.scheduleNote}>Horario a confirmar · Argentina</p>}
+              <p className={styles.stageDate}><CalendarDays size={19}/>{eventDate(state.config.scheduledFor)}<span>· {eventTime(state.config.scheduledFor)}</span></p>
+              {view==='ready'?<p className={styles.readyNote}>¡Llegó la hora prevista! El sorteo comenzará cuando MYA lo inicie. La selección todavía no empezó.</p>:state.config.scheduledFor?<button className={styles.calendarButton} onClick={()=>download(new Blob([eventCalendar(state.config,`${location.origin}/sorteo`)],{type:'text/calendar;charset=utf-8'}),'mya-sorteo.ics')}><CalendarDays size={14}/>Agendar el sorteo</button>:<p className={styles.readyNote}><Clock3 size={15}/>Pronto compartiremos el horario.</p>}
+            </div>}
+            <ol className={styles.stageRail} aria-label="Momento del sorteo">{['La previa','Cuenta regresiva','Selección','El resultado'].map((label,i)=><li key={label} data-active={i===activeStep} data-done={i<activeStep} aria-current={i===activeStep?'step':undefined}><i>{String(i+1).padStart(2,'0')}</i><span>{label}</span></li>)}</ol>
           </div>
-          <div className={styles.introActions}>
-            <button className={`${styles.share} ${copied?styles.shareCopied:''}`} onClick={share}>
-              {copied?<CheckCircle2 size={16}/>:<Link2 size={16}/>}
-              <span>{copied?'Enlace copiado':'Compartir sorteo'}</span>
-            </button>
-            <button className={`${styles.share} ${styles.presentationBtn}`} onClick={()=>setPresentation(true)} aria-label="Ampliar el escenario" title="Pantalla completa">
-              <Maximize2 size={16}/>
-            </button>
-          </div>
-        </div>
-        {schedule && status === 'waiting' && (
-          <div className={styles.heroCountdownSection} aria-label="Cuenta regresiva hacia el sorteo en vivo">
-            {remaining > 0 ? (
-              <div className={styles.heroCountdownBox}>
-                <div className={styles.heroCountdownBadge}>
-                  <span className={styles.countdownPulseDot} aria-hidden="true" />
-                  <span>NOS ENCONTRAMOS EN</span>
-                </div>
-                <div className={styles.heroCountdownDigitsRow}>
-                  <div className={styles.heroCountdownItem}>
-                    <strong>{String(Math.floor(remaining / 86400000)).padStart(2, '0')}</strong>
-                    <small>DÍAS</small>
-                  </div>
-                  <span className={styles.heroCountdownColon} aria-hidden="true">:</span>
-                  <div className={styles.heroCountdownItem}>
-                    <strong>{String(Math.floor(remaining / 3600000) % 24).padStart(2, '0')}</strong>
-                    <small>HORAS</small>
-                  </div>
-                  <span className={styles.heroCountdownColon} aria-hidden="true">:</span>
-                  <div className={styles.heroCountdownItem}>
-                    <strong>{String(Math.floor(remaining / 60000) % 60).padStart(2, '0')}</strong>
-                    <small>MIN</small>
-                  </div>
-                  <span className={styles.heroCountdownColon} aria-hidden="true">:</span>
-                  <div className={styles.heroCountdownItem}>
-                    <strong>{String(Math.floor(remaining / 1000) % 60).padStart(2, '0')}</strong>
-                    <small>SEG</small>
-                  </div>
-                </div>
-                <p className={styles.ticketTime}>{eventTime(state.config.scheduledFor)}</p>
-                <button className={styles.calendarButton} onClick={()=>download(new Blob([eventCalendar(state.config,`${location.origin}/sorteo`)],{type:'text/calendar;charset=utf-8'}),'mya-sorteo.ics')}><CalendarDays size={15}/>Agendar el sorteo</button>
-              </div>
-            ) : (
-              <div className={styles.heroImminentNotice}>
-                <span className={styles.countdownPulseDot} aria-hidden="true" />
-                <div>
-                  <strong>¡Llegó la hora prevista!</strong>
-                  <span>Aguardando a que MYA inicie la transmisión en vivo…</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          <div className={styles.stageFooter}><ShieldCheck size={18}/><span>Una participación por cuenta · Selección registrada en el servidor</span></div>
+        </section>
+        <PrizeCard state={state} drawing={drawing}/>
       </div>
-    </header>
-    {error&&<div role="status" className={styles.connectionNote}>{error} <span>Estamos recuperando la conexión. El resultado del sorteo se conserva.</span></div>}
-    <div className={styles.publicGrid}>
-      <div className={styles.stageColumn}>
-        <div className={styles.scenario}>
-          <div className={styles.liveBar} data-live={status==='countdown'||status==='spinning'}>
-            <span className={styles.liveBadgeGroup}>
-              <span className={styles.liveDot}/>
-              <span className={styles.liveStatusText}>{status==='waiting'?'EN ESPERA':status==='winner'?'RESULTADO DEL SORTEO':'MYA · EN VIVO'}</span>
-            </span>
-            <span className={styles.participantBadge}>
-              <Users size={12}/>
-              <span>{state.participantCount.toLocaleString('es-AR')} participantes</span>
-            </span>
-          </div>
-          <Stage audit={null} pool={pool} phase={status==='winner'?'winner':status==='countdown'?'countdown':status==='spinning'||status==='revealing'?'spinning':'idle'} countdown={current.countdown} progress={current.progress} participantCount={state.participantCount} winner={state.winner||undefined} winnerStatus={state.winnerStatus||undefined} winnerAvatar={state.winnerAvatar||undefined} winnerRoundId={state.round?.id} source={state.source||undefined} title={state.config.title} prize={state.config.prize} liveClock={clock} scheduledFor={state.config.scheduledFor} portrait={portrait} reduceMotion={reduce} onRecorded={()=>{}} onRecordingError={()=>{}}/>
-          <div className={styles.scenarioFooter}>
-            <ShieldCheck size={16}/>
-            <span>Una oportunidad por cuenta · Selección registrada en el servidor</span>
-          </div>
-        </div>
-        <div className={styles.stageTimelineBox}>
-          {pool.length>0&&status!=='winner'&&<div className={styles.liveParticipants}>
-            <div className={styles.avatarCluster}>{pool.slice(0,5).map(c=><ProfileAvatar key={c.username} username={c.username} displayName={c.displayName} src={c.avatar} size={32} eager/>)}</div>
-            <span className={styles.liveParticipantsText}>{state.participantCount} cuentas en el sorteo</span>
-          </div>}
-          <div className={styles.stageRail} aria-label="Momento del sorteo">
-            {['La previa','Cuenta regresiva','Selección','El resultado'].map((label,i)=>(
-              <span key={label} data-active={i===activeStep}>
-                <i>{String(i+1).padStart(2,'0')}</i>
-                <span>{label}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className={styles.howItWorks}>
-          <p className={styles.eyebrow}>CÓMO SER PARTE</p>
-          <ol><li><span>01</span><div><strong>Participá en Instagram</strong><p>Leé las condiciones y comentá en la publicación original.</p></div></li><li><span>02</span><div><strong>Volvé para el vivo</strong><p>Seguí la selección desde esta página, sin registrarte.</p></div></li><li><span>03</span><div><strong>Compartimos el resultado</strong><p>MYA revisa las condiciones de la cuenta seleccionada.</p></div></li></ol>
-          <a className={styles.outlineButton} href={state.config.permalink} target="_blank" rel="noreferrer">Ir al post del sorteo<ArrowRight size={16}/></a>
-        </div>
-      </div>
-      <aside className={styles.audienceInfo}>
-        <div className={styles.sidebarHeader}>
-          <p className={styles.eyebrow}>{status==='winner'?'UN MOMENTO PARA CELEBRAR':'EL REGALO · '+eventDate(state.config.scheduledFor)}</p>
-          {status==='winner'&&<div className={styles.winnerMark}><Trophy size={22} strokeWidth={1.75}/></div>}
-          <h2>{status==='winner'?'¡Tenemos ganador!':status==='spinning'?'La suerte está girando…':status==='countdown'?'Estamos por comenzar':status==='revealing'?'Revelando el resultado…':waitingText}</h2>
-        </div>
-        {status==='winner'&&state.winner?<><div className={styles.winnerIdentity}><ProfileAvatar username={state.winner.username} displayName={state.winner.displayName} src={state.winnerAvatar||`/api/sorteo/foto?round=${encodeURIComponent(state.round!.id)}`} size={112} eager/>{state.winner.displayName&&<strong className={styles.winnerName}>{state.winner.displayName}</strong>}<a className={styles.winnerHandle} href={`https://www.instagram.com/${encodeURIComponent(state.winner.username)}/`} target="_blank" rel="noreferrer">@{state.winner.username}</a><span className={styles.winnerStatus} data-confirmed={state.winnerStatus==='confirmed'}>{state.winnerStatus==='confirmed'?'Premio confirmado':state.winnerStatus==='disqualified'?'Descalificación registrada':'Pendiente de revisión'}</span></div><p>{state.winnerStatus==='confirmed'?'MYA registró la revisión manual de las condiciones.':state.winnerStatus==='disqualified'?state.disqualificationReason:'MYA revisará las condiciones de participación antes de confirmar el premio.'}</p></>:status==='countdown'?<div className={styles.countdownNumber} aria-live="polite">{current.countdown}</div>:status==='waiting'&&remaining>0?<p className={styles.scheduleNote}><Clock3 size={16}/>{eventTime(state.config.scheduledFor)}</p>:status==='waiting'&&schedule&&remaining===0?<p className={styles.imminentText}>¡Llegó la hora prevista! En instantes comienza la transmisión en vivo cuando MYA inicie el sorteo.</p>:<p>{status==='waiting'?'El sorteo será el Día de la Madre. Volvé a esta página: la cuenta regresiva se activa cuando MYA inicia el vivo.':'Si recién llegaste, ya sos parte de este momento. Todos estamos viendo la misma selección.'}</p>}
-        {status==='waiting'&&!schedule&&<p className={styles.scheduleNote}><Clock3 size={16}/>Horario a confirmar · Argentina</p>}
-        <div className={styles.prizeSection}>
-          <div className={`${styles.prizeVisual} ${originalArtwork?styles.originalArtwork:''}`}>{originalArtwork?<Image src="/sorteo/dia-de-la-madre-instagram.jpg" alt="Publicación original de MYA en Instagram: Sorteo para mamá, Travel Kit SKIN1004 Centella de cinco productos" width={1080} height={1350} sizes="(max-width: 900px) 80vw, 360px" priority/>:<Gift size={44} strokeWidth={1}/>} {!originalArtwork&&<span className={styles.prizeStamp}>EL REGALO DE MYA</span>}</div>
-          <div className={styles.prize}><div className={styles.prizeIconWrapper}><Gift size={22} strokeWidth={1.5}/></div><div><span>PARA REGALAR UN MOMENTO DE CUIDADO</span><strong>{state.config.prize}</strong></div></div>
-          <p className={styles.manualDisclaimer}>{state.available?'Participan todos los comentarios válidos de nuestro posteo oficial en Instagram.':'Estamos preparando la lista de participantes.'} Al salir la cuenta ganadora, revisamos en vivo que siga a @_myaimportaciones y haya cumplido las condiciones.</p>
-          <a className={styles.outlineButton} href={state.config.permalink} target="_blank" rel="noreferrer">Ver publicación original<ArrowRight size={16}/></a>
-        </div>
-        {state.snapshotHash&&<details className={styles.publicEvidence}><summary>Transparencia del sorteo</summary><p>Lista bloqueada antes de la selección. SHA-256:</p><code>{state.snapshotHash}</code><p>Selección {state.round?.attempt}. Las repeticiones requieren descalificación registrada.</p></details>}
-      </aside>
+      {state.snapshotHash&&<details className={styles.evidence}><summary>Transparencia del sorteo</summary><p>Selección {round?.attempt}. La lista se bloquea al iniciar. Las repeticiones oficiales conservan el resultado anterior y su motivo en el historial.</p><p>Huella de la lista registrada:</p><code>{state.snapshotHash}</code><p>La confirmación de las condiciones es manual. El resultado que ves se recibe del servidor.</p></details>}
+      <Participation permalink={state.config.permalink} active={drawing}/>
     </div>
     {presentation&&<button className={styles.exitPresentation} onClick={()=>setPresentation(false)}>Salir · Escape</button>}
   </section>;
 }
+function GiftLabel({prize}:{prize:string}){return <strong>{prize}</strong>;}

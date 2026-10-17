@@ -6,6 +6,7 @@ import { createCommerceService } from '@/lib/supabase/service';
 import { reviewComments,validateRules } from '@/lib/giveaway/participants';
 import { validateConfig } from '@/lib/giveaway/live';
 import { validateCampaignTiming } from '@/lib/giveaway/schedule';
+import { DEFAULT_SELECTION, validateSelection, validateSelectionPool } from '@/lib/giveaway/selection';
 import { createAudit,draw,confirmWinner,disqualify,addEvent,digest } from '@/lib/giveaway/server/audit';
 import { dbError,privateState } from '@/lib/giveaway/server/data';
 import { body,checkOrigin,fail,response,GiveawayError } from '@/lib/giveaway/server/http';
@@ -19,12 +20,22 @@ export async function POST(request:Request){
     checkOrigin(request);const actor=await admin(),input=await body(request),db=createCommerceService();
     if(!Number.isSafeInteger(input.revision)||input.revision<0)throw new GiveawayError('Versión inválida.');
     const current=await privateState();
-    if(input.action==='redraw'&&current.round&&current.round.id!==input.roundId&&current.round.audit.draws.at(-2)?.id===input.roundId)return response(current);
-    if(input.action==='sync-instagram'){
+    if((input.action==='repeat'||input.action==='redraw')&&input.confirmed!==true)throw new GiveawayError('Confirmá antes de repetir un sorteo oficial.');
+    if(['repeat','redraw'].includes(input.action)&&current.round&&current.round.id!==input.roundId&&current.round.audit.draws.at(-2)?.id===input.roundId)return response(current);
+    if(input.action==='selection'){
+      if(!current.snapshot)throw new GiveawayError('Cargá primero los participantes.');
+      let selection;
+      try {
+        selection=validateSelection(input.selection);
+        if(selection.excludedUsernames.some(u=>!current.snapshot!.comments.some(c=>c.username===u)))throw new Error('La exclusión debe corresponder a una cuenta cargada.');
+        if(selection.designatedUsername)validateSelectionPool(current.round?.audit||{draws:[],events:[]},current.snapshot.review.valid,selection);
+      }catch(e){if(e instanceof GiveawayError)throw e;throw new GiveawayError((e as Error).message);}
+      const {error}=await db.rpc('giveaway_selection_v1',{revision_input:input.revision,selection_input:selection,actor_input:actor});dbError(error);
+    }else if(input.action==='sync-instagram'){
       if(current.round&&(Date.now()<Date.parse(current.round.revealAt)||String(input.reason||'').trim().length<5))throw new GiveawayError('La lista está bloqueada. Para preparar otra después del vivo, registrá el motivo.',409);
       if(current.revision!==input.revision)throw new GiveawayError('El estado cambió. Actualizá antes de sincronizar.',409);
       const config=validateConfig(input.config),rules=validateRules(input.rules);
-      try{validateCampaignTiming(config,rules);}catch(e){throw new GiveawayError((e as Error).message);}
+      try{validateCampaignTiming(config,rules);}catch(e){if(e instanceof GiveawayError)throw e;throw new GiveawayError((e as Error).message);}
       const fresh=await readInstagramComments(config.permalink);
       const previous=current.snapshot?.source.kind==='instagram'&&current.snapshot.source.mediaId===fresh.mediaId?current.snapshot.comments:[];
       const merged=mergeComments(previous,fresh.comments);
@@ -36,7 +47,7 @@ export async function POST(request:Request){
 
       if(!current.snapshot)throw new GiveawayError('No hay lista guardada.');
       const config=validateConfig(input.config),rules=validateRules(input.rules);
-      try{validateCampaignTiming(config,rules);}catch(e){throw new GiveawayError((e as Error).message);}
+      try{validateCampaignTiming(config,rules);}catch(e){if(e instanceof GiveawayError)throw e;throw new GiveawayError((e as Error).message);}
       if(config.permalink!==current.config.permalink)throw new GiveawayError('Al cambiar la publicación, cargá sus comentarios desde Instagram antes de guardar.');
       const comments=current.snapshot.comments,source={...current.snapshot.source,permalink:config.permalink};
       const snapshot={version:1 as const,source,rules,comments,review:reviewComments(comments,rules)};
@@ -48,14 +59,22 @@ export async function POST(request:Request){
       const reason=String(input.reason||defaultReason).trim().slice(0,500);
       if(reason.length<5)throw new GiveawayError('Ingresá un motivo de al menos 5 caracteres.');
       const {error}=await db.rpc('giveaway_save_v1',{revision_input:input.revision,config_input:current.config,dataset_input:randomUUID(),snapshot_input:current.snapshot,reason_input:reason,actor_input:actor});dbError(error);
-    }else if(input.action==='start'||input.action==='redraw'){
+    }else if(['start','redraw','repeat'].includes(input.action)){
       if(!current.snapshot||!current.datasetId)throw new GiveawayError('Cargá primero los comentarios.');
       let audit;
       try{
-        if(input.action==='start')audit=createAudit({id:current.datasetId,comments:current.snapshot.comments,source:current.snapshot.source},current.snapshot.rules);
-        else{if(!current.round||current.round.audit.status!=='disqualified')throw new Error('Primero registrá una descalificación.');audit=structuredClone(current.round.audit);draw(audit,audit.events.findLast(e=>e.type==='disqualification')!.reason!);}
-      }catch(e){throw new GiveawayError((e as Error).message);}
-      const {error}=await db.rpc('giveaway_start_v1',{revision_input:input.revision,audit_input:audit,mode_input:input.action==='start'?'initial':'redraw',expected_round:input.roundId||null,actor_input:actor});dbError(error);
+        const selection=current.selection||DEFAULT_SELECTION;
+        if(input.action==='start')audit=createAudit({id:current.datasetId,comments:current.snapshot.comments,source:current.snapshot.source},current.snapshot.rules,selection);
+        else{
+          if(!current.round||input.roundId!==current.round.id)throw new Error('El resultado cambió. Actualizá el estado.');
+          if(Date.now()<Date.parse(current.round.revealAt))throw new GiveawayError('Esperá a que termine la animación.',409);
+          if(input.action==='redraw'&&current.round.audit.status!=='disqualified')throw new Error('Primero registrá una descalificación.');
+          audit=structuredClone(current.round.audit);
+          const reason=input.action==='redraw'?audit.events.findLast(e=>e.type==='disqualification')!.reason!:typeof input.reason==='string'?input.reason.trim():'';
+          draw(audit,reason,selection,input.action==='repeat');
+        }
+      }catch(e){if(e instanceof GiveawayError)throw e;throw new GiveawayError((e as Error).message);}
+      const {error}=await db.rpc('giveaway_start_v1',{revision_input:input.revision,audit_input:audit,mode_input:input.action==='start'?'initial':input.action==='repeat'?'repeat':'redraw',expected_round:input.roundId||null,actor_input:actor});dbError(error);
     }else if(['confirm','disqualify','avatar'].includes(input.action)){
       if(!current.round||input.roundId!==current.round.id)throw new GiveawayError('El resultado cambió. Recargá la pantalla.');
       const audit=structuredClone(current.round.audit);
@@ -72,7 +91,7 @@ export async function POST(request:Request){
           const bytes=Buffer.from(input.dataUrl.split(',')[1],'base64');if(bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a')throw new Error('Foto PNG inválida.');
           const hash=digest(input.dataUrl);audit.avatars[current.round.id]={dataUrl:input.dataUrl,hash,username:winner.username};addEvent(audit,{type:'avatar',avatarHash:hash,reason:'Foto manual asociada por el organizador a la cuenta ganadora.'});
         }
-      }catch(e){throw new GiveawayError((e as Error).message);}
+      }catch(e){if(e instanceof GiveawayError)throw e;throw new GiveawayError((e as Error).message);}
       const {error}=await db.rpc('giveaway_review_v1',{revision_input:input.revision,round_input:input.roundId,audit_input:audit,action_input:input.action,actor_input:actor});dbError(error);
     }else throw new GiveawayError('Acción inválida.');
     return response(await privateState());

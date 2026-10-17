@@ -9,7 +9,7 @@ export function exportAudit(audit:Audit,kind:'json'|'csv') {
     const rows:unknown[][]=[['tipo','fecha','usuario','comment_id','comentario','estado_motivo','snapshot_sha256','hash_evento','indice','entropia_uint32']];
     audit.snapshot.review.valid.forEach(c=>rows.push(['participante',c.timestamp,c.username,c.id,c.text,'válido',audit.snapshotHash]));
     audit.snapshot.review.excluded.forEach(e=>rows.push(['excluido',e.comment.timestamp,e.comment.username,e.comment.id,e.comment.text,e.reason,audit.snapshotHash]));
-    audit.draws.forEach(d=>rows.push(['sorteo',d.at,d.winner.username,d.winner.id,d.winner.text,d.reason||'selección inicial',audit.snapshotHash,d.hash,d.winnerIndex,d.random.words.join('|')]));
+    audit.draws.forEach(d=>{rows.push(['sorteo',d.at,d.winner.username,d.winner.id,d.winner.text,d.reason||'selección inicial',audit.snapshotHash,d.hash,d.winnerIndex,d.random.words.join('|')]);if(d.selection)rows.push(['seleccion',d.at,d.winner.username,d.id,'',JSON.stringify(d.selection),audit.snapshotHash,d.hash]);});
     audit.events.forEach(e=>rows.push([e.type,e.at,'',e.drawId,'',e.reason||JSON.stringify(e.checks),audit.snapshotHash,e.hash]));
     rows.push(['acta',audit.lockedAt,'',audit.id,'',audit.status,audit.snapshotHash,audit.signature]);
     rows.push(['reglas','','','','',JSON.stringify(audit.snapshot.rules)]);

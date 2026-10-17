@@ -2501,3 +2501,11 @@
     transition: none !important;
   }
 }
+.selectionPanel{min-width:0;border:1px solid var(--line,#dfd8cd);border-radius:14px;padding:18px;margin:20px 0;}
+.selectionPanel legend{font-weight:650;padding:0 6px;}
+.selectionPanel>p{font-size:13px;line-height:1.6;}
+.selectionResults{max-height:340px;overflow:auto;margin:12px 0;}
+.selectionRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #e8e1d8;}
+.selectionRow>div{flex:1;min-width:120px;overflow-wrap:anywhere;}
+.selectionRow small{display:block;font-size:11px;}
+.selectionRow button{max-width:100%;overflow-wrap:anywhere;white-space:normal;}

@@ -12,7 +12,8 @@ export type ManualChecks = { follows: boolean; likes: boolean; story: boolean };
 export type Draw = {
   id: string; at: string; winner: Comment; winnerIndex: number; size: number;
   reason: string | null; previousHash: string | null; hash: string;
-  random: { algorithm: 'uint32-rejection-v1'; words: number[]; ceiling: number };
+  random: { algorithm: 'uint32-rejection-v1' | 'administrator-designated-v1'; words: number[]; ceiling: number };
+  selection?: import('./selection').SelectionSettings & { method: 'random' | 'designated'; repeat: boolean };
 };
 export type Event = { at: string; type: 'review' | 'disqualification' | 'avatar' | 'new-dataset'; drawId: string; reason?: string; checks?: ManualChecks; avatarHash?: string; hash: string; previousHash: string };
 export type Audit = {

@@ -4,7 +4,7 @@ import { renderStage, type Phase } from '@/lib/giveaway/visual';
 import { download, recordingMime } from '@/lib/giveaway/exports';
 import type { Audit, Comment, SourceKind } from '@/lib/giveaway/types';
 
-export type StageHandle = { png:()=>Promise<void>; startRecording:()=>boolean; stopRecording:()=>void; canvas:()=>HTMLCanvasElement|null };
+export type StageHandle = { png:()=>Promise<void>; startRecording:()=>boolean; stopRecording:()=>void; discardRecording:()=>void; canvas:()=>HTMLCanvasElement|null };
 type Props={ phase:Phase; countdown:number; progress:number; pool:Comment[]; audit:Audit|null; source?:SourceKind; portrait:boolean; reduceMotion:boolean; onRecorded:(blob:Blob)=>void; onRecordingError:(message:string)=>void; winner?:Comment; winnerStatus?:Audit['status']; winnerAvatar?:string;winnerRoundId?:string; participantCount?:number;scheduledFor?:string|null;title?:string;prize?:string;liveClock?:{serverMs:number;performanceMs:number;spinAt:number;revealAt:number;countdownAt:number} };
 async function loadImage(src:string) {const img=new Image();img.crossOrigin='anonymous';img.src=src;await img.decode();return img;}
 export const Stage=forwardRef<StageHandle,Props>(function Stage(props,ref) {
@@ -18,18 +18,19 @@ export const Stage=forwardRef<StageHandle,Props>(function Stage(props,ref) {
   useEffect(()=>{let live=true;loadImage('/logo.png').then(img=>{if(live)logo.current=img;}).catch(()=>{});return()=>{live=false;};},[]);
   useEffect(()=>{let live=true;avatar.current=undefined;if(avatarUrl){void (async()=>{for(let attempt=0;attempt<3&&live;attempt++){try{const image=await loadImage(avatarUrl);if(live)avatar.current=image;return;}catch{if(attempt<2)await new Promise(r=>setTimeout(r,500*(attempt+1)));}}})();}return()=>{live=false;};},[avatarUrl]);
   useEffect(()=>{
-    const started=performance.now();let lastPhase=state.current.phase,phaseAt=started,lastPaint=0;
+    const started=performance.now();let lastPhase=state.current.phase,lastRound=state.current.audit?.draws.at(-1)?.id||state.current.winnerRoundId,phaseAt=started,lastPaint=0;
     function paint(now:number) {
       const el=canvas.current;if(!el)return;const ctx=el.getContext('2d');if(!ctx)return;
       const p=state.current,d=p.audit?.draws.at(-1);
-      if(lastPhase!==p.phase){lastPhase=p.phase;phaseAt=now;lastPaint=0;}
+      const currentRound=d?.id||p.winnerRoundId;
+      if(lastPhase!==p.phase||lastRound!==currentRound){lastPhase=p.phase;lastRound=currentRound;phaseAt=now;lastPaint=0;}
       const moving=p.phase==='countdown'||p.phase==='spinning'||p.phase==='winner'&&now-phaseAt<6500;
       const interval=moving&&!p.reduceMotion?1000/60:moving?100:250;
       if(now-lastPaint<interval){frame.current=requestAnimationFrame(paint);return;}lastPaint=now;
       const clock=p.liveClock,serverNow=clock?clock.serverMs+now-clock.performanceMs:0;
       const countdown=clock?Math.max(1,Math.ceil((clock.spinAt-serverNow)/1000)):p.countdown;
       const progress=clock?Math.max(0,Math.min(1,(serverNow-clock.spinAt)/(clock.revealAt-clock.spinAt))):p.progress;
-      renderStage(ctx,el.width,el.height,{...p,countdown,progress,phaseElapsed:now-phaseAt,countdownProgress:clock?Math.max(0,Math.min(1,1-(clock.spinAt-serverNow)/5000)):undefined,avatars:avatars.current,winner:p.winner||d?.winner,status:p.winnerStatus||p.audit?.status,elapsed:clock?Math.max(0,serverNow-clock.revealAt):now-started,avatar:avatar.current,logo:logo.current});
+      renderStage(ctx,el.width,el.height,{...p,countdown,progress,phaseElapsed:now-phaseAt,countdownProgress:clock?Math.max(0,Math.min(1,1-(clock.spinAt-serverNow)/5000)):undefined,avatars:avatars.current,winner:p.winner||d?.winner,status:p.winnerStatus||p.audit?.status,elapsed:clock?Math.max(0,serverNow-clock.revealAt):now-phaseAt,avatar:avatar.current,logo:logo.current});
       frame.current=requestAnimationFrame(paint);
     }
     frame.current=requestAnimationFrame(paint);
@@ -47,16 +48,19 @@ export const Stage=forwardRef<StageHandle,Props>(function Stage(props,ref) {
     },
     startRecording() {
       const mime=recordingMime(),el=canvas.current;if(!mime||!el?.captureStream) {state.current.onRecordingError('Este navegador no permite grabar el escenario. Usá Chrome o Edge de escritorio, o grabá la pantalla.');return false;}
-      if(recorder.current?.state==='recording')return true;
+      const previous=recorder.current;recorder.current=null;
+      if(previous&&previous.state!=='inactive')previous.stop();
+      previous?.stream.getTracks().forEach(t=>t.stop());
       try {
-        const stream=el.captureStream(30);const r=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8_000_000});chunks.current=[];
-        r.ondataavailable=e=>{if(e.data.size)chunks.current.push(e.data);};
-        r.onstop=()=>{stream.getTracks().forEach(t=>t.stop());if(chunks.current.length)state.current.onRecorded(new Blob(chunks.current,{type:r.mimeType}));};
+        const stream=el.captureStream(30);const r=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8_000_000});const recordingChunks:Blob[]=[];chunks.current=recordingChunks;
+        r.ondataavailable=e=>{if(e.data.size)recordingChunks.push(e.data);};
+        r.onstop=()=>{stream.getTracks().forEach(t=>t.stop());if(recordingChunks.length&&recorder.current===r)state.current.onRecorded(new Blob(recordingChunks,{type:r.mimeType}));};
         r.onerror=()=>{state.current.onRecordingError('La grabación falló. Podés exportar la imagen o grabar la pantalla.');stream.getTracks().forEach(t=>t.stop());};
         recorder.current=r;r.start(1000);return true;
       }catch {state.current.onRecordingError('No se pudo iniciar la grabación en este navegador.');return false;}
     },
     stopRecording(){if(recorder.current?.state==='recording')recorder.current.stop();},
+    discardRecording(){const previous=recorder.current;recorder.current=null;if(previous&&previous.state!=='inactive')previous.stop();previous?.stream.getTracks().forEach(t=>t.stop());chunks.current=[];},
     canvas(){return canvas.current;}
   }),[avatarUrl]);
   const currentWinner=props.winner||draw?.winner;
