@@ -121,19 +121,19 @@ Los resultados se guardan fuera de Git en `docs/seo/qa-private/` y `docs/sorteos
 | Carrito/checkout/login | Agregado y persistencia del carrito, acceso al checkout y login comprobados sin enviar pedidos ni cobros. |
 | Sorteos | Regresión completa aprobada con base y participantes aislados: ensayo, importación, selector, revisión, exportación, repetición, idempotencia, responsive y accesibilidad. |
 | Administración/stock/pagos | Se conservan guards, RLS, permisos y tests de contratos/SQL. La API privada rechaza visitantes. No se hizo una compra, un pago, un cambio real de stock ni un sorteo oficial como prueba. |
-| Producción | Se comprueban el SHA desplegado, HTTPS, redirecciones y rutas con `scripts/verify-seo.mjs`; el resultado posterior al push queda en `production-verification.json`. |
-| Validadores externos de Google | Pendientes de acceso/ejecución externa; parsear JSON-LD y revisar sus valores no equivale a aprobación de Rich Results o Merchant. |
+| Producción | Vercel READY para `750807fbf54b570d2d277a91d9028c550908a423`, alias oficial confirmado. Rastreo de las 523 URLs sin fallos de HTTP/canonical ni títulos duplicados; feed con 460 productos; carrito persistente; API privada 401; cinco anchos sin desborde, errores JS o infracciones Axe en las reglas ejecutadas. |
+| Validadores externos de Google | Search Console procesó el sitemap y descubrió 523 páginas. La prueba pública de Rich Results se abrió con una ficha real, pero no produjo un informe en esta sesión: queda pendiente. Parsear JSON-LD y revisar sus valores no equivale a aprobación de Rich Results o Merchant. |
 
 Comandos: `npm test`, `npm run type-check`, `npm run lint`, `npm run build`, `npm run test:giveaway`, `node scripts/check-public-evidence.mjs`, `git diff --check` y `node scripts/verify-seo.mjs`. El verificador SEO permite `SEO_BASE_URL`, `SEO_BASELINE=1` para medir antes y `SEO_CRAWL=1` para recorrer todo el sitemap. Bloquea escrituras desde el navegador y terceros de analítica.
 
 ## Estado de Google y configuración restante
 
-Se accedió a la propiedad de dominio `myaimportaciones.com` en Search Console con la cuenta del titular. Ya estaba creada: no se generó otra propiedad ni se publicó un token inventado. Rendimiento, indexación y experiencia muestran **datos en procesamiento**. Antes del despliegue de esta implementación, Sitemaps mostraba cero envíos. El sitemap se presenta después de verificar las URLs nuevas en producción; su resultado se incorpora al cierre de esta auditoría.
+Se accedió a la propiedad de dominio `myaimportaciones.com` en Search Console con la cuenta del titular. Ya estaba creada: no se generó otra propiedad ni se publicó un token inventado. Rendimiento, indexación y experiencia muestran **datos en procesamiento**. Después de verificar el despliegue se envió `https://myaimportaciones.com/sitemap.xml`: Google confirmó **«El sitemap se ha procesado correctamente» y 523 páginas descubiertas**, con última lectura el 17/10/2026. Esto prueba lectura del sitemap, no indexación de todas las URLs. La captura quedó en `docs/seo/qa-private/search-console-sitemap.png`.
 
 1. Conservar la propiedad de dominio existente y su verificación. Si se necesita verificar otra propiedad, usar el TXT exacto suministrado por Google en el DNS autoritativo, preservando MX y verificaciones existentes. No hay un token ficticio configurado.
 2. Como alternativa para una propiedad de prefijo `https://myaimportaciones.com/`, usar su token real en `GOOGLE_SITE_VERIFICATION`; el layout ya admite la etiqueta. El método HTML no sustituye la verificación DNS de la propiedad de dominio.
-3. Verificar también la propiedad antigua `https://myaimportaciones.vercel.app/` con la misma cuenta propietaria. Usar Cambio de dirección si la herramienta lo ofrece para esas propiedades a nivel de host y cumple sus requisitos; no confundirla con un simple cambio HTTP→HTTPS o una ruta parcial. No se afirmó haber enviado ese cambio.
-4. Enviar `https://myaimportaciones.com/sitemap.xml`. Inspeccionar home, una categoría, una marca, una ficha y página 2: revisar HTML rastreado, canonical declarada/elegida y respuesta HTTP. Solicitar indexación de muestras relevantes, sin enviar indiscriminadamente cada filtro.
+3. La consulta de la propiedad antigua `https://myaimportaciones.vercel.app/` mostró **«Vaya, no puedes acceder a esta propiedad»**. Queda pendiente acreditar su propiedad o recibir acceso del titular para usar Cambio de dirección, si la herramienta lo ofrece y se cumplen sus requisitos. No se envió ese cambio ni se alteraron permisos para aparentar acceso.
+4. Sitemap enviado y procesado. Queda observar indexación y canonical elegida por Google cuando terminen de procesarse los informes. Se verificaron por HTTP home, categoría, marca, ficha y página 2; eso no sustituye un informe de indexación de Google. No se enviaron filtros indiscriminadamente ni se atribuyó una indexación inexistente.
 5. Seguir los informes Indexación de páginas, Sitemaps, Estadísticas de rastreo, Resultados de productos, Fichas de comerciantes y Core Web Vitals. Analizar rendimiento por consulta, página, dispositivo y país Argentina. La elegibilidad y la aparición efectiva dependen de Google.
 6. Mantener las redirecciones públicas al menos un año y preferiblemente mientras existan enlaces antiguos. Revisar que los perfiles comerciales y campañas externas enlacen al dominio nuevo. No se enviaron mensajes a terceros ni se editaron cuentas sociales.
 7. En Merchant Center verificar/reclamar el mismo dominio, completar identidad comercial y condiciones reales, conectar el feed por URL y revisar sus diagnósticos. No anunciar aprobación, Shopping activo o productos indexados hasta verificarlo en la cuenta.
@@ -191,6 +191,27 @@ Prioridades y competencia son hipótesis cualitativas de planificación, sin vol
 | `.env.example`, `.gitignore` | Configuración documentada y evidencia de QA privada. |
 | `tests/seo.test.ts`, `tests/site.test.ts`, `scripts/verify-seo.mjs` | Regresiones, rastreo, responsive, contratos e informe reproducible. |
 | `SEO_AUDIT.md` | Auditoría inicial, implementación, límites y seguimiento. |
+
+## Cierre de publicación y medición
+
+La publicación funcional `750807f` quedó READY en Vercel con los alias raíz, www y Vercel anterior. HTTPS respondió sin omitir validación de certificados. Se comprobaron redirecciones 308 de www y del dominio anterior hacia la misma ruta y parámetros del raíz, y compatibilidad de `/api/sorteo`, feed y callback antiguo. El callback sin código válido vuelve al login con error de confirmación, como corresponde; no prueba recepción real de un correo.
+
+El rastreo completo de producción recorrió las 523 URLs. También se verificaron XML, robots, metadata/JSON-LD, noindex de filtros, inexistentes con 404, agregado al carrito y persistencia después de recargar, acceso a checkout/login y rechazo 401 de administración sin sesión. El catálogo y la ficha se inspeccionaron a 320/390/768/1280/1440 px, sin desborde ni errores JavaScript. El sorteo público respondió con 81 participantes, sin ronda ni ganador; no se ejecutó un sorteo oficial para probar la publicación. Los logs consultados de Vercel no mostraron errores/fatales en la ventana revisada.
+
+La revisión posterior detectó que la plantilla global duplicaba el sufijo de marca en el título del sorteo. Se declaró ese título como absoluto y se agregó una comprobación al verificador HTTP. Se repitieron los 116 tests, build y typecheck sobre ese ajuste antes de publicar el cierre. No cambia la animación, selección ni estado del sorteo.
+
+Mediciones de laboratorio en producción, mismo navegador, sin limitar CPU/red. Cada celda es una navegación, no una distribución estadística:
+
+| Página/ancho | LCP anterior | LCP tras publicar | LCP repetición posterior | CLS |
+| --- | --- | --- | --- | --- |
+| Home 390 px | 1,440 s | 2,076 s | 1,012 s | 0 |
+| Home 1440 px | 1,144 s | 1,368 s | 0,956 s | 0 |
+| Ficha muestreada 390 px | 1,264 s | 1,128 s | 0,856 s | 0 |
+| Ficha muestreada 1440 px | 1,048 s | 1,008 s | 0,904 s | 0 |
+
+La primera navegación de portada fue más lenta que la referencia; la repetición fue más rápida, compatible con variación de caché y generación inicial de imágenes, sin demostrar por sí sola la causa. No se oculta ese costo inicial ni se promete una mejora porcentual general. TTFB observado: aproximadamente 44–47 ms tras publicar frente a 45–53 ms de referencia. Transferencia JS observada en home: 252.875 → 252.167 bytes; ficha: 253.989 → 254.059 bytes. Se conservan como evidencia la referencia, la verificación completa y la repetición separada. INP y percentiles reales siguen pendientes de datos de campo.
+
+No fue necesaria una migración SEO: se reutilizó el JSON de especificaciones existente. No se modificaron registros de productos, precios, stock, pedidos ni permisos de usuarios. Merchant Center, identificadores faltantes y datos fiscales/logísticos requieren la evidencia y decisiones comerciales detalladas arriba. El acceso a la propiedad antigua de Search Console y el informe externo de Rich Results permanecen pendientes.
 
 ## Fuentes oficiales consultadas
 

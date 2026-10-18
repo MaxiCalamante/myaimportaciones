@@ -30,6 +30,7 @@ try{
     for(const route of routes){
       const r=await get(route);assert.equal(r.status,200,route);const canonical=decode(r.body.match(/rel="canonical" href="([^"]+)"/)?.[1]||'');assert.ok(canonical.startsWith(official),route+' canonical');assert.ok(equivalent(canonical,official+route),route+' self canonical');
       const title=r.body.match(/<title>(.*?)<\/title>/)?.[1];assert.ok(title,route+' title');
+      assert.ok(!title.includes('MYA Importaciones | MYA Importaciones'),route+' duplicated brand suffix');
       if(!route.includes('q=')&&!route.includes('&brand=')){assert.ok(!titles.has(title),'duplicate title '+title);titles.add(title);}
       if(route.includes('q=')||route.includes('&brand='))assert.match(r.body,/<meta name="robots" content="noindex, follow"/);
       const ld=[...r.body.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(x=>JSON.parse(x[1]));assert.ok(ld.some(x=>x['@type']==='Organization'));

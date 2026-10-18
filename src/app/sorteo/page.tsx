@@ -8,7 +8,7 @@ import { DEFAULT_CAMPAIGN } from '@/lib/giveaway/live';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Sorteo Día de la Madre en Vivo · Travel Kit SKIN1004 | MYA Importaciones',
+  title: { absolute: 'Sorteo Día de la Madre en Vivo · Travel Kit SKIN1004 | MYA Importaciones' },
   description:
     'Viví el sorteo oficial del Día de la Madre en vivo con MYA Importaciones. Premio: Travel Kit SKIN1004 Madagascar Centella original. Cuenta regresiva transparente y selección en directo desde Tandil.',
   alternates: { canonical: `${siteConfig.appUrl}/sorteo` },
