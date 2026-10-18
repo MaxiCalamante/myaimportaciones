@@ -13,7 +13,7 @@ process.env.GIVEAWAY_AUDIT_SECRET='isolated-repeat-test-secret-at-least-32-chara
 const dataset=()=>({id:randomUUID(),source:{kind:'csv' as const,label:'Prueba privada',permalink:'https://www.instagram.com/p/DeIpHXtkYyf/',importedAt:'2026-10-17T12:00:00Z'},comments:['alma','flor','juli'].map((username,i)=>({id:String(i),username,text:'Con @amiga',timestamp:'2026-10-17T12:00:00Z'}))});
 
 test('Selección: designación explícita, revisión humana, exclusiones y cadena de múltiples ejecuciones',()=>{
-  assert.throws(()=>validateSelection({...DEFAULT_SELECTION,designatedUsername:'flor'}),/cuatro condiciones/);
+  assert.throws(()=>validateSelection({...DEFAULT_SELECTION,designatedUsername:'flor'}),/todos los requisitos/);
   assert.throws(()=>validateSelection({...DEFAULT_SELECTION,excludedUsernames:['bad user']}));
   const selected={...DEFAULT_SELECTION,designatedUsername:'flor',requirementsReviewed:true};
   const a=createAudit(dataset(),DEFAULT_RULES,selected);

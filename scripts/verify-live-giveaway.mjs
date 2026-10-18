@@ -86,6 +86,24 @@ try{
   await admin.getByRole('button',{name:'Cargar últimos comentarios',exact:true}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();
   console.log('Comentarios de prueba importados.');
   const imported=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(imported.snapshot.comments.length,4);assert.equal(imported.snapshot.source.kind,'instagram');assert.equal(imported.snapshot.review.valid.length,2);assert.equal(imported.snapshot.comments.filter(c=>c.avatar&&c.displayName).length,4);
+  // A second administrator updates the saved campaign while this tab stays open.
+  async function remoteCampaign(config){const saved=await (await ac.request.get(base+'/api/admin/sorteo')).json();const response=await ac.request.post(base+'/api/admin/sorteo',{headers:{Origin:base},data:{action:'import',kind:'existing',revision:saved.revision,config,rules:saved.snapshot.rules}});assert.equal(response.status(),200);return response.json();}
+  const remoteTitle='SORTEO COMPARTIDO ENTRE DISPOSITIVOS';
+  await remoteCampaign({...imported.config,title:remoteTitle});
+  await admin.waitForFunction(title=>document.querySelector('#giveaway-title')?.value===title,remoteTitle,{timeout:8000});
+  await admin.locator('summary').filter({hasText:'Anuncio y horario'}).click();
+  await admin.getByLabel('Título público',{exact:true}).fill('BORRADOR LOCAL SIN GUARDAR');
+  const remotePrize=imported.config.prize+' · versión guardada';
+  const conflicting=await remoteCampaign({...imported.config,title:remoteTitle,prize:remotePrize});
+  await admin.getByRole('alert').filter({hasText:'Conservamos tus cambios sin guardar'}).waitFor({timeout:8000});
+  assert.equal(await admin.getByLabel('Título público',{exact:true}).inputValue(),'BORRADOR LOCAL SIN GUARDAR');
+  await admin.getByRole('button',{name:'Guardar lista privada y anuncio'}).click();
+  await admin.getByRole('alert').filter({hasText:'La configuración cambió en otro dispositivo'}).waitFor();
+  assert.equal((await (await ac.request.get(base+'/api/admin/sorteo')).json()).config.prize,remotePrize);
+  assert.equal((await (await ac.request.get(base+'/api/admin/sorteo')).json()).revision,conflicting.revision);
+  await remoteCampaign(imported.config);
+  await admin.reload({waitUntil:'domcontentloaded'});await admin.locator('canvas[data-loaded-avatars]').waitFor();
+  console.log('Actualización entre administradores y protección de borradores verificadas.');
   await admin.getByRole('button',{name:'Cargar últimos comentarios',exact:true}).click();await admin.getByText('Lista guardada en privado.',{exact:false}).waitFor();const refreshed=await (await ac.request.get(base+'/api/admin/sorteo')).json();assert.equal(refreshed.snapshot.comments.length,4);
   await admin.getByLabel('Publicar el anuncio, contador y cantidad en /sorteo').check();
   await admin.locator('summary').filter({hasText:'Anuncio y horario'}).click();
@@ -152,7 +170,7 @@ try{
   await selectionPanel.getByLabel('Buscar ganador designado').fill('fixture.flor');
   await selectionPanel.getByRole('button',{name:'Designar @fixture.flor',exact:true}).click();
   assert.equal(await selectionPanel.getByRole('button',{name:'Guardar selección privada'}).isEnabled(),false);
-  await selectionPanel.getByLabel('Revisé manualmente que esta cuenta cumplió las cuatro condiciones del sorteo.').check();
+  await selectionPanel.getByLabel('Revisé manualmente que esta cuenta cumplió todos los requisitos de la publicación original.').check();
   await selectionPanel.getByRole('button',{name:'Guardar selección privada'}).click();
   await admin.getByText('Selección privada guardada.',{exact:false}).waitFor();
   await admin.reload({waitUntil:'domcontentloaded'});await admin.locator('canvas[data-loaded-avatars]').waitFor();
@@ -234,7 +252,7 @@ try{
   await viewer.setViewportSize({width:390,height:844});await viewer.evaluate(()=>window.scrollTo(0,0));await viewer.screenshot({path:path.join(out,'redesign-mobile.png'),fullPage:true});
   await writeFile(path.join(out,'axe-preview.json'),JSON.stringify(axe.violations,null,2));
   assert.deepEqual(errors,[]);assert.deepEqual(axe.violations.map(v=>v.id),[]);
-  const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true,resetGiveawayRound:true,designatedWinnerPersists:true,designationPrivate:true,clearSelectionRestoresRandom:true,repeatRequiresConfirmation:true,repeatAnimationSynchronized:true,repeatExcludesPreviousWinner:true,repeatRetryIdempotent:true,selectionLockedDuringAnimation:true,reviewChecksReset:true,countdownZeroDoesNotStart:true,readyState:true,nativeShare:true,clipboardShare:true,reconnectionRecovery:true,confirmedWinnerFiveWidths:true,confirmedWinnerAccessibility:true,noonScheduleShared:true,serverRejectsLateCutoff:true,calendarDownload:true,eventMetadataMatches:true,adminAndPublicFiveWidths:true,presentationAndReducedMotion:true},widths,jsErrors:errors,axeViolations:[],externalBrowserRequestsBlocked:blocked.length};
+  const report={at:new Date().toISOString(),fixtureOnly:true,tests:{importAndAdmin:true,remoteAdminChangesSynced:true,unsavedDraftConflictProtected:true,apiPaginationAndDedupe:true,privateRehearsalNoMutation:true,officialApiImport:true,photosAndNamesPreserved:true,roulettePhotosLoaded:true,winnerPhotoServed:true,participantSearch:true,guestMutationDenied:true,winnerHiddenUntilReveal:true,twoDevicesSameWinner:true,wrongDeviceClockIgnored:true,reloadKeepsWinner:true,manualReviewShared:true,privateFileNotInPublicPayload:true,resetGiveawayRound:true,designatedWinnerPersists:true,designationPrivate:true,clearSelectionRestoresRandom:true,repeatRequiresConfirmation:true,repeatAnimationSynchronized:true,repeatExcludesPreviousWinner:true,repeatRetryIdempotent:true,selectionLockedDuringAnimation:true,reviewChecksReset:true,countdownZeroDoesNotStart:true,readyState:true,nativeShare:true,clipboardShare:true,reconnectionRecovery:true,confirmedWinnerFiveWidths:true,confirmedWinnerAccessibility:true,noonScheduleShared:true,serverRejectsLateCutoff:true,calendarDownload:true,eventMetadataMatches:true,adminAndPublicFiveWidths:true,presentationAndReducedMotion:true},widths,jsErrors:errors,axeViolations:[],externalBrowserRequestsBlocked:blocked.length};
   await writeFile(path.join(out,'verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{
   await writeFile(path.join(out,'next-qa-log.txt'),logs);

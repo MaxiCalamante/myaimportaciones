@@ -18,7 +18,7 @@ export function validateSelection(input: unknown): SelectionSettings {
       typeof s.requirementsReviewed !== 'boolean' || typeof s.excludePreviousWinners !== 'boolean' ||
       !Array.isArray(s.excludedUsernames) || s.excludedUsernames.length > 50000 ||
       s.excludedUsernames.some(u => typeof u !== 'string' || !validUsername(u))) throw new Error('Configuración de selección inválida.');
-  if (s.designatedUsername && !s.requirementsReviewed) throw new Error('Confirmá la revisión manual de las cuatro condiciones del participante designado.');
+  if (s.designatedUsername && !s.requirementsReviewed) throw new Error('Confirmá la revisión manual de todos los requisitos del participante designado.');
   return { designatedUsername: s.designatedUsername, requirementsReviewed: Boolean(s.designatedUsername && s.requirementsReviewed),
     excludePreviousWinners: s.excludePreviousWinners, excludedUsernames: [...new Set(s.excludedUsernames)].sort() };
 }
