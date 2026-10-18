@@ -34,8 +34,8 @@ export function LiveShow({initial}:Props){
       if(event.shiftKey&&(document.activeElement===first||!section.contains(document.activeElement))){event.preventDefault();last.focus();}
       else if(!event.shiftKey&&(document.activeElement===last||!section.contains(document.activeElement))){event.preventDefault();first.focus();}
     };
-    section.addEventListener('keydown',containFocus);
-    return()=>{section.removeEventListener('keydown',containFocus);document.body.style.overflow=overflow;presentationTrigger.current=null;if(previous?.isConnected)previous.focus({preventScroll:true});};
+    document.addEventListener('keydown',containFocus);
+    return()=>{document.removeEventListener('keydown',containFocus);document.body.style.overflow=overflow;presentationTrigger.current=null;if(previous?.isConnected)previous.focus({preventScroll:true});};
   },[presentation]);
   const view=experienceState(state,now),current=timeline(state,now),round=state.round;
   const drawing=['preparing','countdown','drawing','revealing'].includes(view);

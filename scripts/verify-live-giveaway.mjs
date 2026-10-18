@@ -161,6 +161,9 @@ try{
   await viewer.getByRole('button',{name:'Ampliar el escenario'}).click();
   await viewer.getByRole('button',{name:'Salir · Escape'}).waitFor();
   assert.equal(await viewer.evaluate(()=>document.body.style.overflow),'hidden');
+  // A live transition can remove the focused control (for example the calendar button).
+  await viewer.evaluate(()=>document.activeElement?.blur());await viewer.keyboard.press('Tab');
+  assert.equal(await viewer.evaluate(()=>document.activeElement?.closest('[role="dialog"]')?.getAttribute('aria-label')),'Sorteo en vivo de MYA');
   for(let i=0;i<8;i++){await viewer.keyboard.press('Tab');assert.equal(await viewer.evaluate(()=>document.activeElement?.closest('[role="dialog"]')?.getAttribute('aria-label')),'Sorteo en vivo de MYA');}
   await viewer.keyboard.press('Escape');
   assert.notEqual(await viewer.evaluate(()=>document.body.style.overflow),'hidden');

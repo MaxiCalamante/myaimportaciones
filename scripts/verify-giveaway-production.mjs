@@ -53,6 +53,7 @@ try{
   await page.getByRole('button',{name:'Ampliar el escenario',exact:true}).click();
   await page.getByRole('button',{name:'Salir · Escape',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden');
+  await page.evaluate(()=>document.activeElement?.blur());
   await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement?.closest('[role="dialog"]')?.getAttribute('aria-label')),'Sorteo en vivo de MYA');
   await page.screenshot({path:path.join(out,'production-presentation.png')});
   await page.keyboard.press('Escape');
