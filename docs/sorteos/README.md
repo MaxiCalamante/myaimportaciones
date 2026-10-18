@@ -25,6 +25,8 @@ Las tres tablas de la migración `20261014140000_live_giveaway.sql` usan RLS. So
 
 ## Verificación
 
+El [pulido visual del 18/10/2026](pulido-visual-2026-10-18.md) documenta la revisión de branding, confirmaciones en siete tamaños, presentación por teclado y animación. El evento conserva el domingo 18 a las 12:00 de Argentina.
+
 Prueba inicial de lectura: 1.161 registros, 75 cuentas, 75 fotos descargadas correctamente y 67 nombres visibles. Los datos y capturas están en `qa-private/`, fuera de Git. Meta informó 1.074 en su contador durante esa consulta; ese contador no se usa para inventar ni descartar registros. Estas cantidades son históricas, no el total actual.
 
 La [revisión final del 17/10/2026](revision-final-2026-10-17.md) verificó 1.703 comentarios y 81 cuentas participantes, con 75 fotos y 67 nombres disponibles. El horario y cierre guardados son el 18/10/2026 a las 12:00 de Argentina. La selección sigue aleatoria, sin ronda iniciada ni ganador. Una cuenta sin foto conserva su participación.

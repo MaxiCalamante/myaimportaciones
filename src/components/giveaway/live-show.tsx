@@ -1,7 +1,7 @@
 "use client";
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { CalendarDays,Clock3,Maximize2,ShieldCheck,Users,ArrowRight,CheckCircle2,RefreshCw } from 'lucide-react';
 import { type PublicGiveaway,timeline } from '@/lib/giveaway/live';
 import { experienceState,countdownParts } from '@/lib/giveaway/experience';
@@ -21,7 +21,22 @@ function Countdown({remaining}:{remaining:number}){return <div className={styles
 export function LiveShow({initial}:Props){
   const {state,now,error,reduce,anchor,reconnect}=useLiveGiveaway(initial);
   const [presentation,setPresentation]=useState(false);
+  const root=useRef<HTMLElement>(null),closePresentation=useRef<HTMLButtonElement>(null),presentationTrigger=useRef<HTMLElement|null>(null);
   useEffect(()=>{const frame=requestAnimationFrame(()=>setPresentation(new URLSearchParams(location.search).get('presentacion')==='1'));const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setPresentation(false);};window.addEventListener('keydown',key);return()=>{cancelAnimationFrame(frame);window.removeEventListener('keydown',key);};},[]);
+  useEffect(()=>{
+    const section=root.current;if(!presentation||!section)return;
+    const previous=presentationTrigger.current||document.activeElement as HTMLElement|null,overflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';closePresentation.current?.focus({preventScroll:true});
+    const containFocus=(event:KeyboardEvent)=>{
+      if(event.key!=='Tab')return;
+      const items=[...section.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),summary,[tabindex="0"]')].filter(el=>el.getClientRects().length>0);
+      const first=items[0],last=items.at(-1);if(!first||!last)return;
+      if(event.shiftKey&&(document.activeElement===first||!section.contains(document.activeElement))){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&(document.activeElement===last||!section.contains(document.activeElement))){event.preventDefault();first.focus();}
+    };
+    section.addEventListener('keydown',containFocus);
+    return()=>{section.removeEventListener('keydown',containFocus);document.body.style.overflow=overflow;presentationTrigger.current=null;if(previous?.isConnected)previous.focus({preventScroll:true});};
+  },[presentation]);
   const view=experienceState(state,now),current=timeline(state,now),round=state.round;
   const drawing=['preparing','countdown','drawing','revealing'].includes(view);
   const settling=Boolean(round&&state.winner&&now<Date.parse(round.revealAt)+1100&&!reduce);
@@ -32,13 +47,13 @@ export function LiveShow({initial}:Props){
   const winner=state.winner,confirmed=state.winnerStatus==='confirmed',disqualified=state.winnerStatus==='disqualified';
   const celebrate=Boolean(!reduce&&round&&(initial.round?.id!==round.id||Date.parse(initial.serverNow)<Date.parse(round.revealAt)));
   const statusText=error?'CONEXIÓN INTERRUMPIDA':drawing?'EN VIVO · SORTEO DÍA DE LA MADRE':settling?'REVELANDO EL RESULTADO':result?'RESULTADO DEL SORTEO':view==='ready'?'ESTAMOS POR COMENZAR':'EN ESPERA DEL SORTEO EN VIVO';
-  return <section className={`${styles.page} ${presentation?styles.presentation:''}`} aria-label="Sorteo en vivo de MYA" data-event-state={view}>
+  return <section ref={root} className={`${styles.page} ${presentation?styles.presentation:''}`} role={presentation?'dialog':undefined} aria-modal={presentation||undefined} aria-label="Sorteo en vivo de MYA" data-event-state={view}>
     <div className={styles.content}>
       <GiveawayHero state={state} view={view}/>
       {error&&<div className={styles.connectionNote} role="status"><span>{error}</span><button onClick={reconnect}><RefreshCw size={15}/>Reintentar conexión</button></div>}
       <div className={styles.mainGrid}>
         <section className={styles.stagePanel} id="sorteo-en-vivo" aria-label="Escenario del sorteo" data-live={drawing}>
-          <div className={styles.liveBar}><span><i data-live={drawing} aria-hidden="true"/>{statusText}</span><span className={styles.participantBadge}><Users size={14}/>{state.participantCount.toLocaleString('es-AR')} participantes</span><button className={styles.expandButton} onClick={()=>setPresentation(true)} aria-label="Ampliar el escenario"><Maximize2 size={16}/></button></div>
+          <div className={styles.liveBar}><span><i data-live={drawing} aria-hidden="true"/>{statusText}</span><span className={styles.participantBadge}><Users size={14}/>{state.participantCount.toLocaleString('es-AR')} participantes</span><button className={styles.expandButton} onClick={event=>{presentationTrigger.current=event.currentTarget;setPresentation(true);}} aria-label="Ampliar el escenario"><Maximize2 size={16}/></button></div>
           <div className={styles.stageInner}>
             <Botanicals/><div className={styles.brand}><Image src="/logo.png" alt="MYA Importaciones" width={76} height={55}/><span>MYA IMPORTACIONES</span></div>
             <h2 className={styles.eventTitle}>Sorteo Día de la Madre</h2>
@@ -75,7 +90,7 @@ export function LiveShow({initial}:Props){
       {state.snapshotHash&&<details className={styles.evidence}><summary>Transparencia del sorteo</summary><p>Selección {round?.attempt}. La lista se bloquea al iniciar. Las repeticiones oficiales conservan el resultado anterior y su motivo en el historial.</p><p>Huella de la lista registrada:</p><code>{state.snapshotHash}</code><p>La confirmación de las condiciones es manual. El resultado que ves se recibe del servidor.</p></details>}
       <Participation permalink={state.config.permalink} active={drawing}/>
     </div>
-    {presentation&&<button className={styles.exitPresentation} onClick={()=>setPresentation(false)}>Salir · Escape</button>}
+    {presentation&&<button ref={closePresentation} className={styles.exitPresentation} onClick={()=>setPresentation(false)}>Salir · Escape</button>}
   </section>;
 }
 function GiftLabel({prize}:{prize:string}){return <strong>{prize}</strong>;}

@@ -42,12 +42,23 @@ try{
     const broken=await page.evaluate(()=>[...document.images].filter(img=>{const b=img.getBoundingClientRect();return b.top<innerHeight&&b.bottom>0&&b.width>0&&img.naturalWidth===0;}).map(img=>img.alt));
     report.brokenVisibleImages.push(...broken.map(alt=>({width,alt})));
     await stage.screenshot({path:path.join(out,'production-stage-'+width+'.png')});
+    const campaign=page.getByRole('region',{name:'Productos del sorteo en la tienda',exact:true});await campaign.scrollIntoViewIfNeeded();
+    await campaign.locator('img').evaluateAll(images=>Promise.all(images.map(img=>img.decode().catch(()=>{}))));
+    assert.equal(await campaign.locator('img').evaluateAll(images=>images.every(img=>img.naturalWidth>0)),true,'Imagen editorial '+width);
+    await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
     await page.screenshot({path:path.join(out,'production-public-'+width+'.png'),fullPage:true});report.widths.push(width);
+    if(width===390||width===1440)await page.screenshot({path:path.join(out,'production-preview-'+width+'.png')});
   }
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.getByRole('button',{name:'Ampliar el escenario',exact:true}).click();
-  await page.getByRole('button',{name:'Salir · Escape',exact:true}).waitFor();await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'Salir · Escape',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden');
+  await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement?.closest('[role="dialog"]')?.getAttribute('aria-label')),'Sorteo en vivo de MYA');
+  await page.screenshot({path:path.join(out,'production-presentation.png')});
+  await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Salir · Escape',exact:true}).waitFor({state:'hidden'});
+  assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');
+  assert.equal(await page.getByRole('button',{name:'Ampliar el escenario',exact:true}).evaluate(el=>document.activeElement===el),true);
   await page.addScriptTag({content:await readFile('node_modules/axe-core/axe.min.js','utf8')});
   const axe=await page.evaluate(()=>window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
   report.axeViolations=axe.violations.map(x=>({id:x.id,impact:x.impact,nodes:x.nodes.length}));

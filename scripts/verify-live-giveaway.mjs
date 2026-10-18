@@ -159,7 +159,12 @@ try{
   console.log('Contador a cero sin inicio, compartir y reconexión verificados.');
   await viewer.emulateMedia({reducedMotion:'reduce'});
   await viewer.getByRole('button',{name:'Ampliar el escenario'}).click();
-  await viewer.getByRole('button',{name:'Salir · Escape'}).waitFor();await viewer.keyboard.press('Escape');
+  await viewer.getByRole('button',{name:'Salir · Escape'}).waitFor();
+  assert.equal(await viewer.evaluate(()=>document.body.style.overflow),'hidden');
+  for(let i=0;i<8;i++){await viewer.keyboard.press('Tab');assert.equal(await viewer.evaluate(()=>document.activeElement?.closest('[role="dialog"]')?.getAttribute('aria-label')),'Sorteo en vivo de MYA');}
+  await viewer.keyboard.press('Escape');
+  assert.notEqual(await viewer.evaluate(()=>document.body.style.overflow),'hidden');
+  assert.equal(await viewer.getByRole('button',{name:'Ampliar el escenario'}).evaluate(el=>document.activeElement===el),true);
   await viewer.emulateMedia({reducedMotion:'no-preference'});
   await viewer.setViewportSize({width:1440,height:1000});await admin.setViewportSize({width:1440,height:1000});
   assert.equal((await (await vc.request.get(base+'/api/sorteo')).json()).round,null);
@@ -183,11 +188,24 @@ try{
   console.log('Selector privado persistido y oculto para visitantes.');
   await selectionPanel.screenshot({path:path.join(out,'selector-privado.png')});
   await admin.getByLabel('Grabar el escenario en video vertical').check();
-  await admin.getByRole('button',{name:'INICIAR EN VIVO',exact:true}).click();await admin.getByLabel('Revisé la lista guardada, exclusiones y reglas. Confirmo el inicio público.').check();await admin.getByRole('button',{name:'Confirmar e iniciar en vivo'}).click();
+  await admin.getByRole('button',{name:'INICIAR EN VIVO',exact:true}).click();
+  for(const [width,height] of [...[320,390,768,1280,1440].map(width=>[width,900]),[320,600],[844,390]]){
+    await admin.setViewportSize({width,height});
+    const dialog=admin.getByRole('dialog',{name:'Confirmar el inicio en vivo'});await dialog.screenshot({path:path.join(out,`confirmacion-inicio-${width}x${height}.png`)});
+    const rect=await dialog.boundingBox();assert.ok(rect);assert.ok(Math.abs(rect.x-(width-rect.width)/2)<3,'Centrado horizontal del diálogo '+width);assert.ok(Math.abs(rect.y-(height-rect.height)/2)<3,'Centrado vertical del diálogo '+width);assert.ok(rect.width<=width&&rect.height<=height);
+    assert.equal(await dialog.evaluate(el=>el.scrollWidth>el.clientWidth),false,'Desborde del diálogo '+width);
+    assert.equal(await admin.evaluate(()=>document.body.style.overflow),'hidden');
+    if(width===390)await admin.screenshot({path:path.join(out,'confirmation-preview-390.png')});
+  }
+  await admin.keyboard.press('Escape');await admin.getByRole('dialog').waitFor({state:'hidden'});assert.notEqual(await admin.evaluate(()=>document.body.style.overflow),'hidden');
+  assert.equal((await (await vc.request.get(base+'/api/sorteo')).json()).round,null);
+  await admin.setViewportSize({width:1440,height:1000});await admin.getByRole('button',{name:'INICIAR EN VIVO',exact:true}).click();await admin.getByLabel('Revisé la lista guardada, exclusiones y reglas. Confirmo el inicio público.').check();await admin.getByRole('button',{name:'Confirmar e iniciar en vivo'}).click();
   await viewer.getByRole('heading',{name:'Estamos por comenzar',exact:true}).waitFor({timeout:15000});await mobile.getByRole('heading',{name:'Estamos por comenzar',exact:true}).waitFor({timeout:15000});
   const during=await (await vc.request.get(base+'/api/sorteo')).json();assert.equal(during.winner,null);assert.equal(during.participantCount,2);assert.ok(!JSON.stringify(during).includes('words'));assert.ok(!JSON.stringify(during).includes('comments'));assert.ok(!JSON.stringify(during).includes('manualExclusions'));
   await viewer.evaluate(()=>window.scrollTo(0,0));await viewer.screenshot({path:path.join(out,'contador-sincronizado.png'),fullPage:true});
   await viewer.getByRole('heading',{name:'Estamos seleccionando una cuenta',exact:true}).waitFor({timeout:15000});await viewer.evaluate(()=>window.scrollTo(0,0));await viewer.screenshot({path:path.join(out,'ruleta-publica.png'),fullPage:true});
+  const firstReelFrame=await viewer.locator('canvas').evaluate(el=>el.toDataURL());
+  await viewer.waitForFunction(previous=>document.querySelector('canvas')?.toDataURL()!==previous,firstReelFrame,{timeout:2000});
   const mid=await (await vc.request.get(base+'/api/sorteo')).json();assert.equal(mid.winner,null);assert.equal(mid.reel.length,2);assert.ok(mid.reel.every(c=>c.avatar?.includes('fixture-only-photo')));await viewer.waitForFunction(()=>Number(document.querySelector('canvas')?.getAttribute('data-loaded-avatars'))===2,{timeout:5000});
   await viewer.getByRole('heading',{name:'Revisamos la cuenta seleccionada',exact:true}).waitFor({timeout:20000});await mobile.getByRole('heading',{name:'Revisamos la cuenta seleccionada',exact:true}).waitFor({timeout:10000});
   const photoResponse=await vc.request.get(base+'/api/sorteo/foto?round='+mid.round.id);assert.equal(photoResponse.status(),200);assert.match(photoResponse.headers()['content-type'],/image\/png/);await viewer.locator('[aria-label^="Perfil de @fixture"]').getAttribute('data-loaded');

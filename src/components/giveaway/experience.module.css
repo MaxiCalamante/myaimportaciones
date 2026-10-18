@@ -166,8 +166,16 @@
 @media(max-width:370px){.content{width:calc(100% - 24px)}.hero{margin-inline:-12px;padding-inline:12px}.hero h1{font-size:36px}.heroWords>p{font-size:13px}.heroActions{gap:8px}.heroActions .primaryButton,.heroActions .secondaryButton{font-size:11px;padding-inline:12px;gap:7px}.heroBenefits{gap:12px}.heroBenefits li:last-child{display:none}.heroArtwork{height:270px;width:calc(100% + 24px);margin-inline:-12px}.eventMeta{gap:12px}.eventMeta svg{width:18px}.eventMeta strong{font-size:10px}.liveBar{padding:16px 13px 12px}.liveBar>span:first-child{font-size:7px;max-width:150px;line-height:1.7}.participantBadge{font-size:8px}.expandButton{display:none}.stageInner{padding-inline:12px}.eventTitle{font-size:27px}.countdown>div{min-height:75px}.countdown strong{font-size:29px}.stageDate{font-size:10px}.stageRail li{font-size:8px}.stageFooter{font-size:9px}.prizeCard{padding:23px;display:block}.prizeImage{aspect-ratio:1.4}.prizeCard ul{margin-top:18px}.participation{padding:23px 16px}.participation h2{font-size:30px}.steps{grid-template-columns:minmax(0,1fr)}.steps li{display:grid;grid-template-columns:58px 1fr;text-align:left;gap:0 14px;padding:18px 14px}.stepNumber{left:auto;right:11px;top:12px}.stepIcon{grid-row:1/3;margin:0;width:56px;height:56px}.steps h3{font-size:13px;padding-right:17px}.steps p{font-size:12px}.storeCampaign{padding-inline:20px}.storeCopy h2{font-size:32px}.storeCopy .heroActions a{font-size:10px;padding-inline:11px}}
 @media(prefers-reduced-motion:reduce){.page *,.campaignShell *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.heroWords,.winnerResult{opacity:1;transform:none}.confetti{display:none}}
 
+/* Keep keyboard focus and presentation controls within the campaign palette. */
+.page :is(a,button,input,summary):focus-visible{outline:2px solid #1a565f;outline-offset:3px;}
+.stagePanel :is(a,button,input,summary):focus-visible{outline-color:#f0d5a8;}
+.winnerResult :is(a,button,input,summary):focus-visible{outline-color:#1a565f;}
+.winnerName{overflow-wrap:anywhere;}
+.exitPresentation{min-height:44px;}
+.presentation .expandButton{display:none;}
 /* On phones, copy precedes campaign photography and faces remain fully visible. */
 @media(max-width:720px){
+  .expandButton{width:44px;height:44px;flex-shrink:0;}
   .heroCopy{order:0}.heroArtwork{order:1}
   .storeCampaign{flex-direction:column;min-height:0;padding:34px 24px 0;gap:0;}
   .storeCopy{order:0;position:relative;z-index:1;}

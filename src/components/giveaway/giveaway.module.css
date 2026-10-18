@@ -1775,9 +1775,11 @@
 }
 
 .modal {
+  margin: auto;
   width: min(94vw, 490px);
   max-height: 90dvh;
   overflow: auto;
+  overscroll-behavior: contain;
   box-sizing: border-box;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -1793,6 +1795,7 @@
 }
 
 .modal h2 {
+  overflow-wrap: anywhere;
   font-size: 22px;
   line-height: 1.25;
   font-weight: 600;
@@ -2509,3 +2512,7 @@
 .selectionRow>div{flex:1;min-width:120px;overflow-wrap:anywhere;}
 .selectionRow small{display:block;font-size:11px;}
 .selectionRow button{max-width:100%;overflow-wrap:anywhere;white-space:normal;}
+@media(max-width:720px){
+  .adminRoot input:not([type=checkbox]):not([type=file]),.adminRoot textarea{font-size:16px;}
+  .adminRoot .smallButton{min-height:44px;}
+}
