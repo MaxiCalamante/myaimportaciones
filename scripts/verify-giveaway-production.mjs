@@ -43,6 +43,8 @@ try{
     report.brokenVisibleImages.push(...broken.map(alt=>({width,alt})));
     await stage.screenshot({path:path.join(out,'production-stage-'+width+'.png')});
     const campaign=page.getByRole('region',{name:'Productos del sorteo en la tienda',exact:true});await campaign.scrollIntoViewIfNeeded();
+    const editorial=await campaign.locator('img').elementHandle();assert.ok(editorial);
+    await page.waitForFunction(img=>img.complete&&img.naturalWidth>0,editorial,{timeout:15000});await editorial.dispose();
     await campaign.locator('img').evaluateAll(images=>Promise.all(images.map(img=>img.decode().catch(()=>{}))));
     assert.equal(await campaign.locator('img').evaluateAll(images=>images.every(img=>img.naturalWidth>0)),true,'Imagen editorial '+width);
     await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
