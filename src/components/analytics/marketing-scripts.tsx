@@ -36,7 +36,7 @@ window.dataLayer?.push(arguments); }; window.gtag("consent", "update", { analyti
    const { eventType, payload } = (event as CustomEvent<{ eventType: AdsEventType; payload: AdsEventPayload }>).detail;
    if (eventType === "PageView") return;
    window.fbq?.("track", eventType, payload, payload.transaction_id ? { eventID: payload.transaction_id } : undefined);
-   window.gtag?.("event", eventNames[eventType], { ...payload, items: payload.items?.map(i => ({ item_id: i.id, item_name: i.title, quantity: i.quantity, price: i.price })) });
+   window.gtag?.("event", eventNames[eventType], { ...payload, ...(eventType === "Search" ? { search_term: payload.search_string } : {}), items: payload.items?.map(i => ({ item_id: i.id, item_name: i.title, quantity: i.quantity, price: i.price })) });
    window.ttq?.track(eventType === "Purchase" ? "CompletePayment" : eventType, payload);
   }
   window.addEventListener("mya_ads_event", receive); return () => window.removeEventListener("mya_ads_event", receive);

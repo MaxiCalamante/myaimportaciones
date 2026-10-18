@@ -85,6 +85,13 @@ export function parseProductForm(form: FormData, creating: boolean) {
   const validMethods: PaymentMethod[] = ["transferencia", "tarjeta", "mercado_pago", "efectivo", "cuenta_corriente"];
   if (methods.some(m => !validMethods.includes(m as PaymentMethod))) throw new AdminFormError("Medio de pago inválido.");
   const specifications = parseSpecifications(text(form, "specifications", 30000));
+  for (const [field, key, limit] of [["seo_title", "_seo_title", 90], ["seo_description", "_seo_description", 180]] as const) {
+    if (!form.has(field)) continue;
+    const value = text(form, field, limit);
+    if (/[<>\r\n]/.test(value)) throw new AdminFormError("El SEO debe ser texto simple, sin HTML ni saltos de línea.");
+    if (value) specifications[key] = value;
+    else delete specifications[key];
+  }
   if (form.has("weight_kg")) {
     const weight = number(form, "weight_kg", 0, 1000);
     if (weight > 0) specifications.peso_kg = String(weight);

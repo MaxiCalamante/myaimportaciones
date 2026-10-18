@@ -286,8 +286,8 @@ Alias: MYA.IMPORTACIONES.TD
               </span>
               <ul className="space-y-1 text-[11px] text-zinc-500 pt-1 list-disc list-inside">
                 <li>Cotización en Pesos Argentinos congelada por 7 días.</li>
-                <li>Despacho garantizado en 24/48hs post confirmación del pago.</li>
-                <li>Embalaje protegido con seguro de transporte oficial.</li>
+                <li>El plazo de despacho se coordina después de confirmar disponibilidad y pago.</li>
+                <li>Consultá las condiciones del embalaje y del transporte antes de confirmar.</li>
               </ul>
             </div>
           </div>

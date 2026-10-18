@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { siteConfig } from "@/lib/site";
+import { publicUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,9 +7,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: ["/", "/api/catalog/google-feed", "/api/catalog/meta-feed"],
-        disallow: ["/admin", "/login", "/register", "/favoritos", "/auth/", "/checkout", "/cuenta", "/seguimiento", "/mayorista", "/api/"],
+        disallow: ["/admin", "/auth/", "/api/"],
       },
     ],
-    sitemap: `${siteConfig.appUrl}/sitemap.xml`,
+    sitemap: publicUrl("/sitemap.xml"),
   };
 }

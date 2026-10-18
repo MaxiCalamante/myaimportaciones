@@ -37,6 +37,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+docs/seo/qa-private/
 
 # Private electronics supplier lists, purchase costs, comparable evidence and snapshots.
 docs/electronics-atacado-2026-10-08/*

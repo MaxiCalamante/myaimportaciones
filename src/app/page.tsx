@@ -14,23 +14,9 @@ import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badg
 import { StoreSeoFaq } from "@/components/commerce/store-seo-faq";
 import { SocialProofSection } from "@/components/commerce/social-proof-section";
 import { siteConfig } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "MYA Importaciones | Tienda Online en Argentina · Cosmética Coreana, Capilar, Herramientas y Tecnología",
-  description:
-    "Tienda online de productos originales importados en Argentina. Cosmética coreana K-Beauty (SKIN1004, Medicube, Dr. Althea), cuidado capilar (Kérastase, Shiseido Fino, Karseell), herramientas Total y tecnología. Envíos a todo el país desde Tandil.",
-  alternates: {
-    canonical: siteConfig.appUrl,
-  },
-  openGraph: {
-    title: "MYA Importaciones | Tienda Online en Argentina",
-    description:
-      "Cosmética coreana original, cuidado capilar premium, herramientas y tecnología con envíos a toda la Argentina. Atención personalizada desde Tandil.",
-    url: siteConfig.appUrl,
-    locale: "es_AR",
-    type: "website",
-  },
-};
+export const metadata: Metadata = pageMetadata({ title: siteConfig.shareTitle, description: siteConfig.description, path: "/" });
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
   const { category } = await searchParams;

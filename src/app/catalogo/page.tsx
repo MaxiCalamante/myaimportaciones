@@ -1,85 +1,41 @@
 import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
 import { EmptyCatalog } from "@/components/commerce/empty-catalog";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { permanentRedirect, notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
-import { getStorefrontData, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
+import { getPublicNavigation, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
 import { deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "@/lib/catalog-facets";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import type { Product } from "@/lib/types";
 import type { Metadata } from "next";
 import { siteConfig } from "@/lib/site";
+import { breadcrumbData, catalogSeo, pageMetadata, normalizeCatalogParams, type CatalogParams } from "@/lib/seo";
 
-type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };
 const pageSize = 24;
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<CatalogParams> }): Promise<Metadata> {
-  const params = await searchParams;
-  const { categories } = await getStorefrontData({ limit: 0 });
-  const category = categories.find((c) => c.slug === params.category);
-  const q = params.q?.trim();
-  const brand = params.brand?.trim();
-
-  let title = "Catálogo Completo de Productos | MYA Importaciones";
-  let description =
-    "Explorá nuestro catálogo online con stock real y precios en pesos: cosmética coreana K-Beauty original, cuidado capilar premium, electrónica y herramientas. Envíos a todo el país desde Tandil.";
-
-  if (category) {
-    title = `${category.name} en Argentina · Productos Originales | MYA Importaciones`;
-    description = category.description
-      ? `${category.description} Comprá con envíos a todo el país desde Tandil por MYA Importaciones.`
-      : `Comprá ${category.name} 100% original en Argentina. Catálogo actualizado con precios en pesos y envíos a todo el país.`;
-  } else if (brand) {
-    title = `${brand} en Argentina · Productos Originales | MYA Importaciones`;
-    description = `Comprá productos ${brand} originales en Argentina al mejor precio. Envíos a todo el país desde Tandil con garantía oficial.`;
-  } else if (q) {
-    title = `Buscar "${q}" | Catálogo MYA Importaciones`;
-    description = `Resultados para "${q}" en MYA Importaciones. Encontrá productos originales importados con stock real y envíos a toda la Argentina.`;
+  const params = normalizeCatalogParams(await searchParams);
+  const [{ categories }, products] = await Promise.all([getPublicNavigation(), getPublicFacetProducts()]);
+  const facets = deriveCatalogFacets(categories, products);
+  const seo = catalogSeo(params, facets.categories, facets.brands.map(b => b.brand));
+  if ((params.category && !seo.category) || (params.brand && !seo.brand)) notFound();
+  if (seo.page > 1 && !params.q && !params.min && !params.max) {
+    const ids = new Set(seo.category ? facets.categories.filter(c => c.id === seo.category!.id || c.parentId === seo.category!.id).map(c => c.id) : facets.categories.map(c => c.id));
+    const total = products.filter(p => ids.has(p.category_id) && (!seo.brand || p.brand === seo.brand) && (!params.family || p.model === params.family)).length;
+    if ((seo.page - 1) * pageSize >= total) notFound();
   }
-
-  const canonicalPath = category
-    ? `/catalogo?category=${encodeURIComponent(category.slug)}`
-    : brand
-      ? `/catalogo?brand=${encodeURIComponent(brand)}`
-      : "/catalogo";
-
-  return {
-    title,
-    description,
-    alternates: { canonical: `${siteConfig.appUrl}${canonicalPath}` },
-    keywords: [
-      category?.name || "Catálogo",
-      brand || "",
-      "MYA Importaciones",
-      "Comprar en Argentina",
-      "Precios en pesos",
-      "Tandil envíos",
-      "K-Beauty Argentina",
-      "Herramientas Total Tools",
-    ].filter(Boolean),
-    openGraph: {
-      title,
-      description,
-      url: `${siteConfig.appUrl}${canonicalPath}`,
-      siteName: siteConfig.brandName,
-      locale: "es_AR",
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
-  };
+  return pageMetadata({ ...seo });
 }
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<CatalogParams> }) {
-  const params = await searchParams;
+  const params = normalizeCatalogParams(await searchParams);
   if (params.category === "smartphones-tecnologia") {
-    redirect("/catalogo?category=electronica");
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => Boolean(value)) as [string, string][]);
+    query.set("category", "electronica");
+    permanentRedirect(`/catalogo?${query}`);
   }
   const q = (params.q ?? "").replace(/[^\p{L}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " ").slice(0, 100);
   const brand = (params.brand ?? "").trim().slice(0, 80);
@@ -88,7 +44,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const minPrice = /^\d{1,12}$/.test(params.min ?? "") ? params.min! : "";
   const maxPrice = /^\d{1,12}$/.test(params.max ?? "") ? params.max! : "";
   const page = Math.min(200, Math.max(1, Number.parseInt(params.page ?? "1") || 1));
-  const { categories, products: fallback, error: catalogError } = await getStorefrontData({ limit: 0 });
+  const { categories, products: fallback, error: catalogError } = await getPublicNavigation();
   let visibleCategories = categories.filter(c => !c.wholesaleOnly);
   const category = visibleCategories.find(c => c.slug === params.category);
   const root = category?.parentId ? visibleCategories.find(c => c.id === category.parentId) : category;
@@ -144,6 +100,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     brandsByCategory = facets.brandsByCategory;
   }
 
+  const seo = catalogSeo(params, visibleCategories, brands.map(b => b.brand));
+  if (!failed && ((params.category && !visibleCategories.some(c => c.slug === params.category)) || (brand && !brands.some(b => b.brand === brand)) || (page > 1 && (page - 1) * pageSize >= count))) notFound();
   const pages = Math.ceil(count / pageSize);
   const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
   const electronics = root?.slug === "electronica";
@@ -164,41 +122,16 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     return `/catalogo${query.size ? `?${query}` : ""}`;
   }
 
-  const canonicalPath = category
-    ? `/catalogo?category=${encodeURIComponent(category.slug)}`
-    : brand
-      ? `/catalogo?brand=${encodeURIComponent(brand)}`
-      : "/catalogo";
+  const canonicalPath = seo.path;
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Inicio",
-        item: siteConfig.appUrl,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Catálogo",
-        item: `${siteConfig.appUrl}/catalogo`,
-      },
-      ...(category ? [{
-        "@type": "ListItem",
-        position: 3,
-        name: category.name,
-        item: `${siteConfig.appUrl}/catalogo?category=${category.slug}`,
-      }] : brand ? [{
-        "@type": "ListItem",
-        position: 3,
-        name: brand,
-        item: `${siteConfig.appUrl}/catalogo?brand=${encodeURIComponent(brand)}`,
-      }] : []),
-    ],
-  };
+  const breadcrumbJsonLd = breadcrumbData([
+    { name: "Inicio", path: "/" }, { name: "Catálogo", path: "/catalogo" },
+    ...(root ? [{ name: root.name, path: "/catalogo?category=" + encodeURIComponent(root.slug) }] : []),
+    ...(category?.parentId ? [{ name: category.name, path: "/catalogo?category=" + encodeURIComponent(category.slug) }] : []),
+    ...(brand && !category ? [{ name: brand, path: "/catalogo?brand=" + encodeURIComponent(brand) }] : []),
+  ]);
+  const brandCategoryIds = new Set(facetProducts.filter(p => p.brand === brand).map(p => p.category_id));
+  const brandCategories = visibleCategories.filter(c => brandCategoryIds.has(c.id));
 
   const itemListJsonLd = {
     "@context": "https://schema.org",
@@ -212,7 +145,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     numberOfItems: products.length,
     itemListElement: products.map((p, idx) => ({
       "@type": "ListItem",
-      position: idx + 1,
+      position: (page - 1) * pageSize + idx + 1,
       name: p.title,
       url: `${siteConfig.appUrl}/producto/${p.slug}`,
       image: p.imageUrl?.startsWith("http") ? p.imageUrl : `${siteConfig.appUrl}${p.imageUrl || "/logo.png"}`,
@@ -271,17 +204,17 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       <div className="mb-4 sm:mb-6 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">
-            {root && root.id !== category?.id ? root.name : brand ? `Marca oficial · ${brand}` : "Catálogo oficial"}
+            {root && root.id !== category?.id ? root.name : brand ? `Marca · ${brand}` : "Catálogo oficial"}
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
             {q ? `Búsqueda: "${q}"` : brand ? `${brand} en Argentina` : category?.name ?? "Todos los productos"}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-zinc-500 max-w-2xl">
             {q
-              ? `Resultados disponibles para "${q}" con stock real y envíos a todo el país.`
+              ? `Resultados disponibles para "${q}" con disponibilidad informada y envíos a todo el país.`
               : brand
-                ? `Catálogo oficial y productos de la marca ${brand} en Argentina. Precios en pesos y despacho desde Tandil.`
-                : category?.description || "Encontrá productos 100% auténticos importados con envíos a todo el país y atención personalizada desde Tandil."}
+                ? `Productos ${brand} en Argentina. Consultá presentaciones y disponibilidad, con precios en pesos y envíos a todo el país.`
+                : category?.description || "Explorá productos importados con precios en pesos, envíos a Argentina y atención personalizada."}
           </p>
         </div>
         <div className="mt-1 sm:mt-0 flex items-center">
@@ -292,6 +225,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
+      {brand && !q && brandCategories.length > 0 && <p className="mb-4 max-w-3xl text-sm leading-6 text-zinc-600">En la selección de {brand} encontrás {brandCategories.slice(0, 6).map((item, i) => <span key={item.id}>{i ? ", " : ""}<Link className="text-sky-800 underline underline-offset-2" href={catalogUrl({category:item.slug,brand})}>{item.name.toLocaleLowerCase("es-AR")}</Link></span>)}. Revisá el detalle y la presentación de cada producto para comparar antes de comprar.</p>}
       {/* Horizontal Subcategory / Category quick chips */}
       {(root || visibleCategories.length > 0) && (
         <div className="mb-3 sm:mb-5">
@@ -335,6 +269,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
+      {brands.length > 0 && !q && !brand && <nav aria-label="Explorar marcas del catálogo" className="mb-4 flex flex-wrap gap-2">{(category ? brandsByCategory[category.id] || [] : brands).slice(0, 16).map(({ brand: value }) => <Link key={value} href={"/catalogo?brand=" + encodeURIComponent(value)} className="rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:border-sky-400">{value}</Link>)}</nav>}
       {/* Search and Filters Controls */}
       {electronics && (
         <div className="mb-4 space-y-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-3 sm:p-4">

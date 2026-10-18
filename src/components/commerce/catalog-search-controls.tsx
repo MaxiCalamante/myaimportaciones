@@ -13,6 +13,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { Category } from "@/lib/types";
+import { trackAdsEvent } from "@/lib/analytics";
 
 type Props = {
   categories: Category[];
@@ -172,6 +173,7 @@ export function CatalogSearchControls({
   // Submit search query
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (searchInput.trim()) trackAdsEvent("Search", { search_string: searchInput.trim() });
     navigateWithParams({ q: searchInput });
   };
 

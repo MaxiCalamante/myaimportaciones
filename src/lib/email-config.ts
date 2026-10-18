@@ -1,3 +1,4 @@
+import { resolveSiteOrigin } from "./site-origin";
 export function validEmail(value: string) {
   return value.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value);
 }
@@ -6,9 +7,9 @@ export function getEmailConfig(env: Record<string, string | undefined> = process
   const from = (env.RESEND_FROM_EMAIL || "").trim();
   const address = from.match(/<([^<>]+)>$/)?.[1] || from;
   const domain = address.split("@")[1]?.toLowerCase();
-  const origin = env.NEXT_PUBLIC_SITE_URL || "https://myaimportaciones.vercel.app";
+  const origin = resolveSiteOrigin(env.NEXT_PUBLIC_SITE_URL);
   let validOrigin = false;
-  try { const url = new URL(origin); validOrigin = url.protocol === "https:" && !url.username && !url.password; } catch {}
+  try { const url = new URL(env.NEXT_PUBLIC_SITE_URL || origin); validOrigin = url.protocol === "https:" && !url.username && !url.password; } catch {}
   const problems = [
     env.TRANSACTIONAL_EMAILS_ENABLED !== "true" ? "Los envíos están desactivados." : "",
     !env.RESEND_API_KEY ? "Falta la clave privada de Resend." : "",

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -25,7 +26,7 @@ interface DbProfile {
   is_approved_wholesale: boolean | null;
 }
 
-export async function getCurrentProfile(): Promise<{
+export const getCurrentProfile = cache(async function getCurrentProfile(): Promise<{
   user: User | null;
   profile: Profile | null;
   source: DataSource;
@@ -76,4 +77,4 @@ export async function getCurrentProfile(): Promise<{
       isApprovedWholesale,
     },
   };
-}
+});

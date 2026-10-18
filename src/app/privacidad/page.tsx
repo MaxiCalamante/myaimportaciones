@@ -1,5 +1,6 @@
+import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
-export const metadata = { title: "Privacidad" };
+export const metadata = pageMetadata({ title: "Privacidad", description: "Conocé cómo MYA Importaciones utiliza los datos de compras, consultas y cuentas, y cómo gestionar tu consentimiento.", path: "/privacidad" });
 export default function Privacy() { return <article className="content-page max-w-3xl space-y-5 px-5 py-10"><h1 className="text-3xl font-bold">Privacidad</h1>
   <h2 className="text-xl font-semibold">Datos de tu compra</h2><p>Usamos tus datos de contacto, pedido y entrega para atender consultas, gestionar compras, pagos, envíos y reclamos. No solicitamos los datos completos de tu tarjeta: el cobro se gestiona en Mercado Pago cuando está habilitado.</p>
   <h2 className="text-xl font-semibold">Servicios que intervienen</h2><p>Vercel aloja la tienda y Supabase gestiona la base de datos y el acceso a cuentas. Mercado Pago procesa el pago cuando lo elegís. Para entregar un pedido, compartimos únicamente los datos necesarios con el transportista acordado. Si elegís contactarnos por WhatsApp, tu consulta se procesa también a través de ese servicio. Estos prestadores pueden procesar información en otros países según sus propias condiciones.</p><p>Los datos de pedidos y reclamos no son públicos. Conservamos los registros necesarios para completar la compra, atender posventa y cumplir obligaciones aplicables; cuando dejan de ser necesarios, corresponde eliminarlos o anonimizarlos.</p>

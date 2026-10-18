@@ -4,11 +4,10 @@ import { ProductGallery } from "@/components/commerce/product-gallery";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
-import { siteConfig } from "@/lib/site";
 import { ProductDetailInteractive } from "@/components/commerce/product-detail-interactive";
 import { ProductCard } from "@/components/commerce/product-card";
-import { isVerifiedStock } from "@/lib/commerce-policy";
-import { formatCurrency } from "@/lib/format";
+import { breadcrumbData, productMetadata, productStructuredData } from "@/lib/seo";
+import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -19,59 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductBySlug(slug);
 
   if (!product) {
-    return {
-      title: "Producto no encontrado | MYA Importaciones",
-      description: "El producto que buscas no está disponible en MYA Importaciones.",
-    };
+    notFound();
   }
 
-  const title = product.title;
-  const price = `${formatCurrency(product.retailPrice)} ARS`;
-  const shareTitle = `${title} Original en Argentina | ${price} | MYA Importaciones`;
-  const description = `Comprá ${title} 100% original en Argentina al mejor precio (${price}). Envíos a todo el país desde Tandil, asesoramiento directo y garantía. ${product.description ? product.description.replace(/\s+/g, " ").trim().slice(0, 110) + "..." : "Asesoramiento personalizado de Máximo y Agustina."}`;
-
-  const imageUrl = new URL(product.imageUrl || siteConfig.logoUrl, `${siteConfig.appUrl}/`).href;
-
-  return {
-    title,
-    description,
-    alternates: { canonical: `${siteConfig.appUrl}/producto/${product.slug}` },
-    keywords: [
-      product.title,
-      product.categoryName,
-      ...product.tags,
-      "MYA Importaciones",
-      "K-Beauty Argentina",
-      "Venta minorista",
-      "Herramientas Total Tools Wadfow",
-      "Importación directa Tandil",
-      "Envíos a todo el país",
-    ],
-    openGraph: {
-      title: shareTitle,
-      description,
-      url: `${siteConfig.appUrl}/producto/${product.slug}`,
-      siteName: siteConfig.brandName,
-      locale: "es_AR",
-      type: "website",
-      images: [
-        {
-          url: imageUrl,
-          alt: product.title,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: shareTitle,
-      description,
-      images: [imageUrl],
-    },
-    other: {
-      "product:price:amount": product.retailPrice.toString(),
-      "product:price:currency": "ARS",
-    },
-  };
+  const alias = PRODUCT_CANONICAL_ALIASES[product.slug];
+  const target = alias ? await getProductBySlug(alias) : undefined;
+  return productMetadata(product, canonicalProductSlug(product, target || undefined));
 }
 
 export default async function ProductPage({ params }: Props) {
@@ -83,6 +35,7 @@ export default async function ProductPage({ params }: Props) {
 
   const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
   const category = categories.find((c) => c.id === product.categoryId);
+  const parent = categories.find(c => c.id === category?.parentId);
   const alternativeModel = product.specifications?.["Modelo alternativo"];
   const alternativeProduct = alternativeModel
     ? products.find((p) => p.id !== product.id && p.model === alternativeModel)
@@ -91,97 +44,14 @@ export default async function ProductPage({ params }: Props) {
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
 
-  const brandName = product.brand;
-  const itemCondition = /CPO|reacondicionado/i.test(product.specifications?.["Condición"] ?? "")
-    ? "https://schema.org/RefurbishedCondition"
-    : /activado/i.test(product.specifications?.["Condición"] ?? "")
-      ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition";
+  const productJsonLd = productStructuredData(product);
 
-  const productJsonLd = {
-    "@context": "https://schema.org/",
-    "@type": "Product",
-    name: product.title,
-    image: [product.imageUrl?.startsWith("http") ? product.imageUrl : `${siteConfig.appUrl}${product.imageUrl}`],
-    description: product.description,
-    sku: product.sku || product.id,
-    ...(product.model ? { mpn: product.model } : {}),
-    itemCondition,
-    ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
-    offers: {
-      "@type": "Offer",
-      url: `${siteConfig.appUrl}/producto/${product.slug}`,
-      priceCurrency: "ARS",
-      price: product.retailPrice,
-      priceValidUntil: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      availability: isVerifiedStock(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      itemCondition,
-      seller: {
-        "@type": "Organization",
-        name: siteConfig.brandName,
-        url: siteConfig.appUrl,
-      },
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "AR",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 30,
-        returnMethod: "https://schema.org/ReturnByMail",
-        returnFees: "https://schema.org/FreeReturn",
-      },
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        shippingRate: {
-          "@type": "MonetaryAmount",
-          value: "0",
-          currency: "ARS",
-        },
-        shippingDestination: {
-          "@type": "DefinedRegion",
-          addressCountry: "AR",
-        },
-        deliveryTime: {
-          "@type": "ShippingDeliveryTime",
-          handlingTime: {
-            "@type": "QuantitativeValue",
-            minValue: 1,
-            maxValue: 2,
-            unitCode: "d",
-          },
-          transitTime: {
-            "@type": "QuantitativeValue",
-            minValue: 2,
-            maxValue: 5,
-            unitCode: "d",
-          },
-        },
-      },
-    },
-  };
-
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Inicio",
-        item: siteConfig.appUrl,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: product.categoryName,
-        item: `${siteConfig.appUrl}/catalogo?category=${category?.slug || ""}`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: product.title,
-        item: `${siteConfig.appUrl}/producto/${product.slug}`,
-      },
-    ],
-  };
+  const breadcrumbJsonLd = breadcrumbData([
+    { name: "Inicio", path: "/" },
+    ...(parent ? [{ name: parent.name, path: "/catalogo?category=" + encodeURIComponent(parent.slug) }] : []),
+    { name: product.categoryName, path: "/catalogo?category=" + (category?.slug || "") },
+    { name: product.title, path: "/producto/" + product.slug },
+  ]);
 
   return (
     <>
@@ -201,6 +71,7 @@ export default async function ProductPage({ params }: Props) {
             <ArrowLeft className="h-3.5 w-3.5" /> Inicio
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
+          {parent && <><Link href={"/catalogo?category=" + encodeURIComponent(parent.slug)} className="hover:text-zinc-900 transition">{parent.name}</Link><ChevronRight className="h-3.5 w-3.5 text-zinc-300"/></>}
           <Link
             href={`/catalogo?category=${category?.slug || ""}`}
             className="hover:text-zinc-900 transition"
@@ -225,7 +96,7 @@ export default async function ProductPage({ params }: Props) {
               <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight">
                 {product.title}
               </h1>
-              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">{[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="min-w-0 break-words"><dt className="inline font-semibold">{label}: </dt><dd className="inline">{value}</dd></div>)}</dl>
+              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">{[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="min-w-0 break-words"><dt className="inline font-semibold">{label}: </dt><dd className="inline">{label === "Marca" ? <Link href={"/catalogo?brand=" + encodeURIComponent(value!)} className="text-sky-800 underline">{value}</Link> : value}</dd></div>)}</dl>
               {product.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {product.tags.map((tag) => (
@@ -253,13 +124,13 @@ export default async function ProductPage({ params }: Props) {
                 Ver otra versión: {alternativeProduct.title}
               </Link>
             )}
-          {Object.entries(product.specifications ?? {}).filter(([,v]) => v).length > 0 && <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">{Object.entries(product.specifications ?? {}).filter(([,v]) => v).map(([k,v]) => <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4"><dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd></div>)}</dl>}
+          {Object.entries(product.specifications ?? {}).filter(([k,v]) => v && !k.startsWith("_seo_")).length > 0 && <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">{Object.entries(product.specifications ?? {}).filter(([k,v]) => v && !k.startsWith("_seo_")).map(([k,v]) => <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4"><dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd></div>)}</dl>}
           {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
 
             <div className="pt-4 border-t border-zinc-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span>100% Original e importado con garantía</span>
+                <span>Condiciones y garantía informadas en la ficha</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="h-4 w-4 shrink-0 text-sky-600" />

@@ -47,12 +47,10 @@ export function StoreHero({ slides = defaultCarouselSlides, preview = false }: {
             idx === visibleIndex ? "relative opacity-100 z-10" : "absolute opacity-0 z-0 pointer-events-none"
           }`}
         >
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-50"
-            style={{
-              backgroundImage: `linear-gradient(90deg, rgba(9,9,11,0.95), rgba(9,9,11,0.4)), url(${JSON.stringify(slide.image)})`,
-            }}
-          />
+          <div className="absolute inset-0 opacity-50">
+            {(idx === 0 || idx === visibleIndex) && <Image src={slide.image} alt="" fill sizes="100vw" quality={75} preload={idx === 0} className="object-cover object-center"/>}
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,9,11,0.95),rgba(9,9,11,0.4))]"/>
+          </div>
           <div className="relative mx-auto grid min-h-[520px] w-full max-w-7xl content-center gap-8 px-4 py-16 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold uppercase text-sky-300 tracking-wider">
@@ -418,57 +416,4 @@ export function WholesaleTeaser({
   );
 }
 
-export function TestimonialsSection() {
-  const testimonials = [
-    {
-      name: "Florencia Benítez",
-      role: "Cliente K-Beauty & Skincare (Córdoba)",
-      stars: 5,
-      comment: "Compré sérums y cremas de Medicube y SKIN1004. Llegaron sellados en su empaque original con código de lote verificado. Pagué con el 10% de descuento por transferencia y el envío llegó en 48 horas.",
-    },
-    {
-      name: "Ing. Martín Carrizo",
-      role: "Taller Metalúrgico & Obras (Rosario)",
-      stars: 5,
-      comment: "Equipamos la cuadrilla con amoladoras y rotomartillos Total Tools y Wadfow. La durabilidad en obra es excelente y la atención mayorista con Factura A fue muy rápida y transparente.",
-    },
-    {
-      name: "Valeria Gómez",
-      role: "Salón de Belleza & Estilista (Mar del Plata)",
-      stars: 5,
-      comment: "Compramos mascarillas Karseell y cosmética coreana por bulto cerrado. Los productos son 100% auténticos y el margen de reventa para el salón es extraordinario.",
-    },
-  ];
-
-  return (
-    <section className="bg-zinc-100/60 py-16 border-t border-zinc-200">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <p className="text-sm font-semibold uppercase text-emerald-700 tracking-wider">Testimonios Reales</p>
-          <h2 className="mt-2 text-3xl font-extrabold text-zinc-950">Qué dicen quienes compran en MYA</h2>
-          <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
-            Garantizamos origen legítimo, atención dedicada y despachos rápidos para consumidores finales, profesionales y comercios en todo el país.
-          </p>
-        </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {testimonials.map((t, index) => (
-            <div key={index} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-              <div>
-                <div className="flex items-center gap-1 mb-3">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <span key={i} className="text-amber-400 text-base">★</span>
-                  ))}
-                </div>
-                <p className="text-sm text-zinc-600 italic leading-relaxed">&quot;{t.comment}&quot;</p>
-              </div>
-              <div className="mt-6 border-t border-zinc-100 pt-4">
-                <p className="text-sm font-bold text-zinc-950">{t.name}</p>
-                <p className="text-xs text-zinc-500">{t.role}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+// Reviews are displayed only after their source and permission have been verified.

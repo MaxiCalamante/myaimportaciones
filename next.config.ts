@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Resolve metadata and missing-page decisions before sending headers (avoid streamed soft 404s).
+  htmlLimitedBots: /.*/,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {

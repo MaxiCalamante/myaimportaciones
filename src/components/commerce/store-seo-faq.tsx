@@ -3,36 +3,12 @@ import { ArrowRight, HelpCircle, ShieldCheck, Truck, Sparkles, MapPin, CreditCar
 import { siteConfig } from "@/lib/site";
 
 const faqs = [
-  {
-    question: "¿Cómo comprar en MYA Importaciones y cómo son los envíos a todo el país?",
-    answer:
-      "Podés explorar nuestro catálogo online, sumar productos al carrito y coordinar tu pedido de forma directa con nosotros por WhatsApp. Despachamos a toda la Argentina mediante Correo Argentino y transportes expresos desde Tandil. Cada envío cuenta con código de seguimiento en tiempo real para que sepas exactamente cuándo llega a tu domicilio o sucursal.",
-  },
-  {
-    question: "¿Los productos de cosmética coreana, capilares y herramientas son 100% originales?",
-    answer:
-      "Sí, garantizamos autenticidad absoluta en cada artículo. Trabajamos con importación directa de marcas líderes globales: K-Beauty coreano original (SKIN1004, Medicube, Dr. Althea, Celimax, Anua, Beauty of Joseon), cuidado capilar de alta gama (Kérastase, Shiseido Fino, Karseell Collagen), herramientas profesionales Total Tools y Wadfow, y tecnología con garantía oficial.",
-  },
-  {
-    question: "¿Cuáles son los medios de pago disponibles?",
-    answer:
-      "Aceptamos transferencia bancaria inmediata (con descuentos y promociones especiales), Mercado Pago (dinero en cuenta y tarjetas de débito/crédito) y efectivo para retiros locales en Tandil. La confirmación es instantánea y emitimos comprobante para tu total tranquilidad.",
-  },
-  {
-    question: "¿Cómo es la atención personalizada de Máximo y Agustina?",
-    answer:
-      "En MYA Importaciones no hablás con un bot genérico: te atendemos directamente nosotros desde Tandil. Agustina te asesora en rutinas de skincare coreano, tipo de piel, cuidado capilar y fragancias; Máximo te acompaña en herramientas industriales, especificaciones técnicas de tecnología y logística de envíos.",
-  },
-  {
-    question: "¿Se puede retirar personalmente en Tandil?",
-    answer:
-      "¡Por supuesto! Si estás en Tandil o la zona, podés seleccionar la opción de retiro al comunicarte con nosotros y pasar a retirar tu pedido sin costo de envío coordinando día y horario por WhatsApp.",
-  },
-  {
-    question: "¿Cómo participar de los sorteos oficiales de MYA?",
-    answer:
-      "Realizamos sorteos en vivo periódicamente para premiar a nuestra comunidad. Podés seguir la transmisión y verificar ganadores en tiempo real en nuestra sección oficial de Sorteo (/sorteo) y en nuestro Instagram @_myaimportaciones con total transparencia auditada.",
-  },
+  { question: "¿Cómo comprar y recibir un pedido en Argentina?", answer: "Explorá el catálogo, revisá la disponibilidad y agregá productos al carrito. El resumen informa las condiciones de pago y entrega. Para confirmar costo y plazo de envío, podés consultar a MYA por WhatsApp antes de comprar." },
+  { question: "¿Dónde consultar el modelo y la presentación?", answer: "Cada ficha informa la marca, el modelo, las fotos y las especificaciones disponibles. Si necesitás confirmar una presentación, compatibilidad o condición particular, consultanos antes de elegir. La garantía comercial adicional se informa en la ficha cuando corresponde." },
+  { question: "¿Qué medios de pago están disponibles?", answer: "El resumen de compra muestra los medios habilitados y las promociones aplicables. La acreditación de un pago se confirma después de verificarlo; crear un pedido no significa que ya esté pagado." },
+  { question: "¿Quién puede asesorarme?", answer: "Agustina te acompaña en cosmética y cuidado capilar. Máximo te ayuda con herramientas, tecnología y consultas de entrega. Encontrás ambos contactos en el sitio." },
+  { question: "¿Cómo consultar envíos o retiro?", answer: "Enviamos a Argentina. El costo y el plazo dependen del destino y del producto. Consultá las condiciones de compra y coordiná con MYA cualquier retiro antes de acercarte." },
+  { question: "¿Cómo participar del sorteo de MYA?", answer: "La participación se realiza en la publicación de Instagram @_myaimportaciones. En /sorteo podés consultar el horario previsto, seguir una selección iniciada por MYA y ver el estado de revisión del resultado. Las condiciones de Instagram se revisan manualmente." },
 ];
 
 const categoryLinks = [
@@ -48,12 +24,12 @@ const categoryLinks = [
   },
   {
     title: "Herramientas Profesionales",
-    desc: "Línea completa Total Tools y Wadfow a batería, eléctricas e industriales.",
+    desc: "Herramientas Total y Wadfow: compará modelos y especificaciones.",
     href: "/catalogo?category=herramientas-equipamiento",
   },
   {
     title: "Tecnología & Gadgets",
-    desc: "Apple, Samsung, tablets, smartwatches y accesorios garantizados.",
+    desc: "Apple y Samsung: smartphones, tablets y computadoras del catálogo.",
     href: "/catalogo?category=electronica",
   },
 ];
@@ -99,15 +75,15 @@ export function StoreSeoFaq() {
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50/80 px-3 py-1 text-xs font-semibold text-sky-800">
             <Sparkles className="h-3.5 w-3.5 text-sky-600" />
-            <span>Tienda Oficial en Argentina</span>
+            <span>Comprá en Argentina</span>
           </div>
           <h2 id="store-seo-heading" className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            MYA Importaciones: Calidad, Autenticidad y Envíos a todo el País
+            MYA Importaciones: productos y envíos a toda Argentina
           </h2>
           <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-600 max-w-3xl">
             Somos Máximo y Agustina. Desde Tandil, provincia de Buenos Aires, seleccionamos e importamos productos originales
             para el cuidado personal, el hogar y el trabajo profesional. Comprá online con precios claros en pesos argentinos,
-            atención humana y envíos protegidos a cada rincón del país.
+            atención humana y condiciones de entrega claras.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -133,7 +109,7 @@ export function StoreSeoFaq() {
           {/* Brand Discovery Chips */}
           <div className="mt-8 pt-6 border-t border-slate-200/70">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-              Marcas destacadas con stock y garantía oficial
+              Explorá las marcas del catálogo
             </p>
             <div className="flex flex-wrap gap-2">
               {brandChips.map((brand) => (

@@ -12,15 +12,15 @@ function configuredOrigin(value?: string) {
 }
 
 test("product links replace the retired MYA deployment origin", () => {
-  assert.equal(configuredOrigin("https://tienda-mayorista-minorista.vercel.app/"), "https://myaimportaciones.vercel.app");
+  assert.equal(configuredOrigin("https://tienda-mayorista-minorista.vercel.app/"), "https://myaimportaciones.com");
 });
 
 test("missing site configuration uses the public MYA store", () => {
-  assert.equal(configuredOrigin(), "https://myaimportaciones.vercel.app");
+  assert.equal(configuredOrigin(), "https://myaimportaciones.com");
 });
 
-test("a configured custom domain is preserved without a doubled path slash", () => {
-  assert.equal(configuredOrigin("https://example.com/"), "https://example.com");
+test("an unrelated configured domain cannot replace the official public identity", () => {
+  assert.equal(configuredOrigin("https://example.com/"), "https://myaimportaciones.com");
 });
 
 test("an explicitly configured local origin remains local", () => {

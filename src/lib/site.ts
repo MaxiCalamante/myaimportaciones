@@ -1,7 +1,5 @@
-const configuredAppUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://myaimportaciones.vercel.app").replace(/\/+$/, "");
-const appUrl = configuredAppUrl === "https://tienda-mayorista-minorista.vercel.app"
-  ? "https://myaimportaciones.vercel.app"
-  : configuredAppUrl;
+import { resolveSiteOrigin } from "./site-origin";
+const appUrl = resolveSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL);
 
 export interface WhatsAppContact {
   id: "maximo" | "agustina";
@@ -41,9 +39,9 @@ export const siteConfig = {
   brandName: "MyA importaciones",
   shortName: "MyA",
   tagline: "Desde Tandil a todo el país",
-  shareTitle: "MYA Importaciones | Desde Tandil a todo el país",
+  shareTitle: "MYA Importaciones | Cosmética, Tecnología y Herramientas",
   description:
-    "Descubrí productos originales de importación para vos, tu hogar y tu negocio. Atención personalizada de Máximo y Agustina desde Tandil y envíos a toda la Argentina.",
+    "Descubrí cosmética coreana, tecnología, cuidado capilar y herramientas importadas. Comprá online en MYA Importaciones con envíos a toda Argentina.",
   email: "maximocalamante14@gmail.com",
   phone: "+54 9 249 463-8919",
   phoneAgustina: "+54 9 2494 25-1541",

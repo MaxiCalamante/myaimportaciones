@@ -1,73 +1,20 @@
 import type { MetadataRoute } from "next";
-import { siteConfig } from "@/lib/site";
 import { getStorefrontData } from "@/lib/storefront";
+import { deriveCatalogFacets } from "@/lib/catalog-facets";
+import { publicUrl } from "@/lib/seo";
+import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = siteConfig.appUrl;
-  const { categories, products: catalog } = await getStorefrontData({ all: true });
+  const { categories, products: catalog, error } = await getStorefrontData({ all: true });
+  if (error) throw new Error("No se pudo generar el sitemap con el catálogo actual.");
   const products = catalog.filter(p => p.active && !p.wholesaleOnly);
-
-  const staticRoutes: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/catalogo`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/sorteo`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/condiciones`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/privacidad`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.5,
-    },
+  const bySlug = new Map(products.map(p => [p.slug, p]));
+  const facets = deriveCatalogFacets(categories, products.map(p => ({ category_id: p.categoryId, brand: p.brand || null })));
+  // Omit lastmod without a reliable date of a meaningful public-content change.
+  return [
+    ...["/", "/catalogo", "/sorteo", "/condiciones", "/privacidad"].map(path => ({ url: publicUrl(path) })),
+    ...facets.categories.map(category => ({ url: publicUrl('/catalogo?category=' + encodeURIComponent(category.slug)) })),
+    ...facets.brands.map(({ brand }) => ({ url: publicUrl('/catalogo?brand=' + encodeURIComponent(brand)) })),
+    ...products.filter(p => canonicalProductSlug(p, bySlug.get(PRODUCT_CANONICAL_ALIASES[p.slug])) === p.slug).map(product => ({ url: publicUrl('/producto/' + product.slug), images: product.imageUrl ? [publicUrl(product.imageUrl)] : undefined })),
   ];
-
-  const categoryRoutes: MetadataRoute.Sitemap = categories.filter(c => !c.wholesaleOnly).map((category) => ({
-    url: `${baseUrl}/catalogo?category=${category.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "daily",
-    priority: 0.8,
-  }));
-
-  const productRoutes: MetadataRoute.Sitemap = products.map((product) => {
-    const imageUrl = product.imageUrl ? (product.imageUrl.startsWith("http") ? product.imageUrl : `${baseUrl}${product.imageUrl}`) : undefined;
-    return {
-      url: `${baseUrl}/producto/${product.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-      images: imageUrl ? [imageUrl] : undefined,
-    };
-  });
-
-  const uniqueBrands = Array.from(
-    new Set(products.map((p) => p.brand).filter((b): b is string => Boolean(b && b.trim())))
-  );
-
-  const brandRoutes: MetadataRoute.Sitemap = uniqueBrands.map((brand) => ({
-    url: `${baseUrl}/catalogo?brand=${encodeURIComponent(brand)}`,
-    lastModified: new Date(),
-    changeFrequency: "daily",
-    priority: 0.85,
-  }));
-
-  return [...staticRoutes, ...categoryRoutes, ...brandRoutes, ...productRoutes];
 }

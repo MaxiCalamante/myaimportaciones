@@ -103,7 +103,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
   return result;
 });
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export const getProductBySlug = cache(async function getProductBySlug(slug: string): Promise<Product | null> {
   if (!hasSupabaseConfig()) {
     return null;
   }
@@ -121,4 +121,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
 
   return mapProduct(data as unknown as DbProduct);
-}
+});
+
+// Share the same navigation read between metadata, layout and the catalog in one request.
+export const getPublicNavigation = cache(() => getStorefrontData({ limit: 0 }));

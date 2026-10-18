@@ -526,11 +526,11 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
           <details className="group py-2.5">
             <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
-              <span>¿El producto es nuevo y 100% original?</span>
+              <span>¿Cuál es la condición y presentación del producto?</span>
               <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
             </summary>
             <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
-              Absolutamente. Solo comercializamos productos originales en empaque cerrado de fábrica. Garantizamos autenticidad y estado impecable con control de calidad previo al empaque.
+              Revisá la condición, el modelo y la presentación informados en esta ficha. Si necesitás confirmar un detalle o la garantía aplicable, consultanos antes de comprar.
             </p>
           </details>
 

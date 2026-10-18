@@ -7,7 +7,7 @@ export function EmailPreview() {
   const adminEvents = ["order_created", "payment_confirmed", "order_cancelled", "reservation_expired", "payment_review", "withdrawal_received"];
   const options = Object.entries(emailEventLabels).filter(([key]) => audience === "admin" ? adminEvents.includes(key) : key !== "payment_review");
   const sample = { customer_email: "cliente@example.com", shipping_name: "Cliente de ejemplo", shipping_phone: "Teléfono de ejemplo", shipping_address: "Domicilio de ejemplo, Tandil", tracking_code: "ORD-EJEMPLO", payment_method: "transferencia", total_amount: 125000, shipping_option: "delivery_quote_separately", carrier_tracking_code: "GUIA-DE-EJEMPLO", reference: "ARR-EJEMPLO", reason: "Comentario de ejemplo", items: [{ product_title: "Producto de ejemplo", quantity: 1, unit_price: 125000 }] };
-  const content = renderTransactionalEmail(event, audience, sample, "https://myaimportaciones.vercel.app");
+  const content = renderTransactionalEmail(event, audience, sample, "https://myaimportaciones.com");
   return <section className="rounded-2xl border bg-white p-4 sm:p-6">
     <h2 className="text-xl font-bold">Vista previa de los emails</h2>
     <p className="mt-2 text-sm text-zinc-600">Datos ficticios. Esta vista previa no envía emails.</p>

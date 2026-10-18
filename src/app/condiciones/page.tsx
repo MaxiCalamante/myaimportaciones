@@ -1,6 +1,7 @@
+import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 import { isShippingPaidSeparately } from "@/lib/shipping";
-export const metadata = { title: "Condiciones de compra" };
+export const metadata = pageMetadata({ title: "Condiciones de compra", description: "Consultá precios, pagos, entrega, arrepentimiento y garantías de tus compras en MYA Importaciones.", path: "/condiciones" });
 export default function Conditions() { return <article className="content-page max-w-3xl space-y-5 px-5 py-10">
   <h1 className="text-3xl font-bold">Condiciones de compra</h1>
   <h2 className="text-xl font-bold">Quién vende</h2>

@@ -1,94 +1,11 @@
 import { NextResponse } from "next/server";
 import { getStorefrontData } from "@/lib/storefront";
-import { siteConfig } from "@/lib/site";
-
-function escapeXml(unsafe: string): string {
-  return unsafe.replace(/[<>&'"]/g, (c) => {
-    switch (c) {
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case "&":
-        return "&amp;";
-      case "'":
-        return "&apos;";
-      case '"':
-        return "&quot;";
-      default:
-        return c;
-    }
-  });
-}
-
-function extractBrand(title: string, categoryName: string, tags: string[] = []): string {
-  const t = `${title} ${tags.join(" ")}`.toLowerCase();
-  if (t.includes("total") || t.includes("total tools")) return "Total Tools";
-  if (t.includes("wadfow")) return "Wadfow";
-  if (t.includes("skin1004") || t.includes("centella")) return "SKIN1004";
-  if (t.includes("medicube")) return "Medicube";
-  if (t.includes("dr althea") || t.includes("dr. althea")) return "Dr. Althea";
-  if (t.includes("celimax")) return "Celimax";
-  if (t.includes("karseell")) return "Karseell";
-  if (t.includes("anua")) return "Anua";
-  if (t.includes("torriden")) return "Torriden";
-  if (t.includes("beauty of joseon")) return "Beauty of Joseon";
-  if (t.includes("cosrx")) return "COSRX";
-  if (t.includes("kerastase") || t.includes("kérastase")) return "Kérastase";
-  if (t.includes("shiseido") || t.includes("fino")) return "Shiseido";
-  if (t.includes("victoria's secret") || t.includes("victorias secret")) return "Victoria's Secret";
-  if (t.includes("apple") || t.includes("iphone") || t.includes("ipad") || t.includes("macbook")) return "Apple";
-  if (t.includes("samsung") || t.includes("galaxy")) return "Samsung";
-  if (categoryName.toLowerCase().includes("herramientas")) return "Total Tools";
-  return "MYA Importaciones";
-}
-
+import { merchantFeed } from "@/lib/merchant-feed";
+export const dynamic = "force-dynamic";
 export async function GET() {
-  const { products: loaded } = await getStorefrontData({ all: true });
-  const products = loaded.filter(p => p.active && !p.wholesaleOnly && p.fulfillmentMode === "own_stock" && p.stockVerifiedAt && p.stock > 0 && p.retailPrice > 0 && p.imageUrl);
-  const baseUrl = siteConfig.appUrl.replace(/\/$/, "");
-
-  const itemsXml = products
-    .map((p) => {
-      const link = `${baseUrl}/producto/${p.slug}`;
-      const imgLink = p.imageUrl?.startsWith("http") ? p.imageUrl : `${baseUrl}${p.imageUrl}`;
-      const availability = p.stock > 0 ? "in_stock" : "out_of_stock";
-      const brand = p.brand || extractBrand(p.title, p.categoryName, p.tags);
-      const cleanDesc = p.description
-        ? escapeXml(p.description.substring(0, 5000))
-        : escapeXml(`${p.title} - Importación directa en Argentina por MYA Importaciones.`);
-
-      return `    <item>
-      <g:id>${escapeXml(p.id)}</g:id>
-      <g:title>${escapeXml(p.title)}</g:title>
-      <g:description>${cleanDesc}</g:description>
-      <g:link>${escapeXml(link)}</g:link>
-      <g:image_link>${escapeXml(imgLink)}</g:image_link>
-      <g:condition>new</g:condition>
-      <g:availability>${availability}</g:availability>
-      <g:price>${p.retailPrice.toFixed(2)} ARS</g:price>
-      <g:brand>${escapeXml(brand)}</g:brand>
-      <g:google_product_category>${escapeXml(p.categoryName)}</g:google_product_category>
-      <g:identifier_exists>no</g:identifier_exists>
-    </item>`;
-    })
-    .join("\n");
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
-  <channel>
-    <title>MYA Importaciones - Google Merchant Center Feed</title>
-    <link>${escapeXml(baseUrl)}</link>
-    <description>Catálogo de productos oficial para Google Shopping y Google Ads de MYA Importaciones.</description>
-${itemsXml}
-  </channel>
-</rss>`;
-
-  return new NextResponse(xml, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "s-maxage=3600, stale-while-revalidate=86400",
-    },
+  const { products, error } = await getStorefrontData({ all: true });
+  if (error) return new NextResponse("Catálogo temporalmente no disponible", { status: 503, headers: { "Cache-Control": "no-store" } });
+  return new NextResponse(merchantFeed(products, process.env.COMMERCE_CHECKOUT_ENABLED === "true"), {
+    headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex" },
   });
 }
