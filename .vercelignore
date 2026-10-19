@@ -8,7 +8,8 @@ scratch
 AI_CONTEXT.md
 CLAUDE.md
 .git
-.next
+.next*
+.vercel
 node_modules
 .env*
 *.tsbuildinfo

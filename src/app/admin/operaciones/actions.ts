@@ -2,6 +2,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
 export async function updateWithdrawalAction(form: FormData) {
   const db = await createServerSupabaseClient();
   const { data: { user } } = await db.auth.getUser();
@@ -13,6 +14,7 @@ export async function updateWithdrawalAction(form: FormData) {
   if (!/^ARR-[A-F0-9]{32}$/.test(reference) || !["received", "contacted", "resolved"].includes(status)) throw new Error("Solicitud inválida.");
   const { data, error } = await db.from("withdrawal_requests").update({ status }).eq("reference", reference).select("reference").single();
   if (error || !data) throw new Error("No se pudo actualizar la solicitud.");
+  scheduleTransactionalEmails();
   revalidatePath("/admin/operaciones");
 }
 export async function verifyInventoryAction(form: FormData) {

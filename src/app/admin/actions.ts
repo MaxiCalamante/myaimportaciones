@@ -157,12 +157,42 @@ async function checkProductCategory(db: Awaited<ReturnType<typeof getAdminClient
   const { data, error } = await db.from("categories").select("id, parent_id").eq("id", categoryId).single();
   if (error || !data || (parentId && categoryId !== parentId && data.parent_id !== parentId)) throw new AdminFormError("La categoría seleccionada no existe o no pertenece al rubro elegido.");
 }
+export async function getProductVariantsAction(productId: string) {
+  validId(productId);
+  const db = await getAdminClient();
+  const { data, error } = await db
+    .from("product_variants")
+    .select("*")
+    .eq("product_id", productId)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) {
+    throw new Error("No se pudieron cargar las variantes del producto.");
+  }
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    productId: String(row.product_id),
+    title: String(row.title ?? ""),
+    sku: String(row.sku ?? ""),
+    retailPrice: Number(row.retail_price ?? 0),
+    wholesalePrice: Number(row.wholesale_price ?? 0),
+    stock: Number(row.stock ?? 0),
+    stockVerifiedAt: row.stock_verified_at ? String(row.stock_verified_at) : null,
+    fulfillmentMode: (row.fulfillment_mode === "own_stock" ? "own_stock" : "supplier") as "own_stock" | "supplier",
+    supplierAvailable: Boolean(row.supplier_available),
+    imageUrl: row.image_url ? String(row.image_url) : "",
+    isActive: row.is_active !== false,
+    options: (row.options as Record<string, string>) || {},
+    displayOrder: Number(row.display_order ?? 0),
+  }));
+}
+
 export async function createProductAction(formData: FormData) {
   return runAdminFormAction(() => createProduct(formData));
 }
 async function createProduct(formData: FormData) {
   const db = await getAdminClient();
-  const { fields, slug, stock } = parseProductForm(formData, true);
+  const { fields, slug, stock, hasVariants, variants } = parseProductForm(formData, true);
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: match, error: slugError } = await db.from("products").select("id").eq("slug", slug).maybeSingle();
   if (slugError) throw new AdminFormError("No se pudo verificar el enlace del producto.");
@@ -179,6 +209,30 @@ async function createProduct(formData: FormData) {
     if (paths.length) await db.storage.from("product-images").remove(paths);
     throw new AdminFormError(error?.code === "23505" ? "Ya existe un producto con ese enlace o SKU. Revisá el catálogo." : "No se pudo guardar el producto. Revisá los datos y tu conexión.");
   }
+
+  if (hasVariants && variants.length) {
+    const variantRows = variants.map((v, idx) => ({
+      product_id: data.id,
+      title: v.title,
+      sku: v.sku || null,
+      retail_price: v.retailPrice,
+      wholesale_price: v.wholesalePrice ?? 0,
+      stock: v.stock,
+      stock_verified_at: v.fulfillmentMode === "own_stock" && v.stock ? new Date().toISOString() : null,
+      fulfillment_mode: v.fulfillmentMode,
+      supplier_available: v.supplierAvailable,
+      image_url: v.imageUrl || null,
+      is_active: v.isActive,
+      options: v.options,
+      display_order: idx,
+    }));
+    const { error: variantError } = await db.from("product_variants").insert(variantRows);
+    if (variantError) {
+      await db.from("products").delete().eq("id", data.id);
+      throw new AdminFormError("No se pudieron guardar las variantes del producto.");
+    }
+  }
+
   refreshCatalog();
   return { success: true, id: data.id, slug: data.slug };
 }
@@ -188,12 +242,12 @@ export async function updateProductAction(formData: FormData) {
 async function updateProduct(formData: FormData) {
   const db = await getAdminClient();
   const id = validId(getString(formData, "id"));
-  const { fields } = parseProductForm(formData, false);
+  const { fields, hasVariants, variants } = parseProductForm(formData, false);
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: matches, error: readError } = await readAdminProducts(db, { ids: [id], size: 1 });
   const existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null } | undefined;
   if (readError || !existing) throw new AdminFormError("El producto ya no está disponible para editar. Recargá el panel.");
-  if (formData.has("stock") && Number(formData.get("stock")) !== existing.stock) throw new AdminFormError("Verificá el conteo físico desde Operaciones para proteger las reservas.");
+  if (formData.has("stock") && !hasVariants && Number(formData.get("stock")) !== existing.stock) throw new AdminFormError("Verificá el conteo físico desde Operaciones para proteger las reservas.");
   const gallery = [...new Set([existing.image_url, ...(existing.image_urls ?? [])].filter(Boolean))] as string[];
   const { urls, paths } = await prepareProductImages(db, formData, gallery);
   if (fields.is_active && !urls.length) throw new AdminFormError("Agregá al menos una foto antes de publicar.");
@@ -209,6 +263,60 @@ async function updateProduct(formData: FormData) {
       ...(existing.source_url !== fields.source_url ? { supplier_last_checked_at: null, supplier_stock_status: "unknown" } : {}),
     }).eq("id", id).select("id").single();
     if (error || !data) throw new AdminFormError("No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
+
+    if (hasVariants) {
+      const { data: existingVariants } = await db.from("product_variants").select("id").eq("product_id", id);
+      const existingIds = new Set((existingVariants ?? []).map((v: { id: string }) => v.id));
+      const incomingIds = new Set(variants.filter(v => v.id).map(v => v.id!));
+
+      for (const exId of existingIds) {
+        if (!incomingIds.has(exId)) {
+          const { count } = await db.from("order_items").select("id", { count: "exact", head: true }).eq("variant_id", exId);
+          if (count && count > 0) {
+            await db.from("product_variants").update({ is_active: false }).eq("id", exId);
+          } else {
+            await db.from("product_variants").delete().eq("id", exId);
+          }
+        }
+      }
+
+      for (let idx = 0; idx < variants.length; idx++) {
+        const v = variants[idx];
+        const variantPayload = {
+          product_id: id,
+          title: v.title,
+          sku: v.sku || null,
+          retail_price: v.retailPrice,
+          wholesale_price: v.wholesalePrice ?? 0,
+          stock: v.stock,
+          stock_verified_at: v.fulfillmentMode === "own_stock" && v.stock ? new Date().toISOString() : null,
+          fulfillment_mode: v.fulfillmentMode,
+          supplier_available: v.supplierAvailable,
+          image_url: v.imageUrl || null,
+          is_active: v.isActive,
+          options: v.options,
+          display_order: idx,
+        };
+
+        if (v.id && existingIds.has(v.id)) {
+          await db.from("product_variants").update(variantPayload).eq("id", v.id);
+        } else {
+          await db.from("product_variants").insert(variantPayload);
+        }
+      }
+    } else {
+      const { data: existingVariants } = await db.from("product_variants").select("id").eq("product_id", id);
+      if (existingVariants && existingVariants.length > 0) {
+        for (const ex of existingVariants) {
+          const { count } = await db.from("order_items").select("id", { count: "exact", head: true }).eq("variant_id", ex.id);
+          if (count && count > 0) {
+            await db.from("product_variants").update({ is_active: false }).eq("id", ex.id);
+          } else {
+            await db.from("product_variants").delete().eq("id", ex.id);
+          }
+        }
+      }
+    }
   } catch (error) {
     if (paths.length) await db.storage.from("product-images").remove(paths);
     throw error;
@@ -487,6 +595,7 @@ export async function toggleWholesaleApprovalAction(userId: string, isApproved: 
   if (error) {
     throw new Error(`Error al actualizar estado mayorista: ${error.message}`);
   }
+  scheduleTransactionalEmails();
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");
@@ -519,6 +628,7 @@ export async function setWholesaleByEmailAction(email: string, isApproved: boole
   if (error) {
     throw new Error(`Error al actualizar estado mayorista: ${error.message}`);
   }
+  scheduleTransactionalEmails();
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/mayorista");

@@ -5,7 +5,7 @@ import { getAdminClient } from "@/lib/admin-auth";
 import { getEmailConfig } from "@/lib/email-config";
 import { emailEventLabels } from "@/lib/email-templates";
 import { EmailPreview } from "@/components/admin/email-preview";
-import { processPendingEmailsAction, retryFailedEmailAction } from "./actions";
+import { processPendingEmailsAction, retryFailedEmailAction, sendEmailTestAction } from "./actions";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Emails | MYA Importaciones", robots: { index: false, follow: false } };
 const statusLabels: Record<string, string> = { pending: "Pendiente", processing: "Procesando", sent: "Aceptado por Resend", failed: "Falló", review: "Revisión manual", skipped: "Omitido" };
@@ -28,9 +28,12 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
       {!config.enabled && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">{config.problems.map(p => <li key={p}>{p}</li>)}</ul>}
       <p className="mt-3 break-words text-sm"><strong>Administradores:</strong> {config.recipients.join(", ")}</p>
       <p className="mt-1 break-words text-sm"><strong>Remitente:</strong> {config.from || "Pendiente de un dominio propio verificado"}</p>
-      <p className="mt-2 text-sm">Los avisos de despacho y entrega se generan al actualizar el pedido. La guía se envía cuando está cargada y el pedido figura despachado. Agustina puede recibir los mismos avisos cuando se agregue su email exacto.</p>
+      <p className="mt-2 text-sm">Los avisos de despacho y entrega se generan al actualizar el pedido. La guía se envía cuando está cargada y el pedido figura despachado. También se notifican la bienvenida, los cambios de acceso mayorista y la atención de solicitudes de arrepentimiento.</p>
       <p className="mt-2 text-sm">Confirmación de cuenta y recuperación de contraseña usan Supabase Auth. Para enviarlas con Resend también debe configurarse su SMTP. Las promociones requieren consentimiento aparte.</p>
       {!process.env.RESEND_WEBHOOK_SECRET && <p className="mt-2 text-sm">El registro de entregas y rebotes requiere configurar el webhook de Resend.</p>}
+      {!process.env.CRON_SECRET && <p className="mt-2 text-sm">Falta configurar la recuperación automática de pendientes.</p>}
+      <form action={sendEmailTestAction} className="mt-4"><button disabled={!config.enabled || Boolean(error)} className="min-h-11 rounded-xl border bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50">Enviar prueba a administradores</button><p className="mt-2 text-xs">Un aviso de prueba cada 10 minutos. El historial distingue aceptación por Resend y entrega confirmada.</p></form>
+      {notice === "test" && <p role="status" className="mt-3 text-sm">Prueba registrada. Revisá el historial y ambas casillas.</p>}
     </section>
     <section className="rounded-2xl border bg-white p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">Historial reciente</h2><form action={processPendingEmailsAction}><button disabled={!config.enabled || Boolean(error)} className="min-h-11 rounded-xl bg-zinc-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Procesar pendientes</button></form></div>

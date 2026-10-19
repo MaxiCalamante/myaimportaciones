@@ -1,5 +1,6 @@
 export interface PricedItem {
   id: string;
+  variant_id?: string | null;
   title: string;
   quantity: number;
   price: number;

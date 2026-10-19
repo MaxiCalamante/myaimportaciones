@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyResendWebhook } from "@/lib/email-webhook";
-import { validEmail } from "@/lib/email-config";
+import { isEmailWebhookForSender, verifyResendWebhook } from "@/lib/email-webhook";
+import { getEmailConfig, validEmail } from "@/lib/email-config";
 import { createCommerceService, hasCommerceService } from "@/lib/supabase/service";
 export const runtime = "nodejs";
 export async function POST(req: Request) {
@@ -12,6 +12,7 @@ export async function POST(req: Request) {
   if (!event) return NextResponse.json({ error: "Invalid signature or event" }, { status: 401 });
   const types = ["email.sent", "email.delivered", "email.delivery_delayed", "email.bounced", "email.complained", "email.failed", "email.suppressed"];
   if (!types.includes(event.type)) return NextResponse.json({ received: true });
+  if (!isEmailWebhookForSender(event, getEmailConfig().from)) return NextResponse.json({ received: true, ignored: true });
   try {
     const db = createCommerceService();
     const { error } = await db.from("email_provider_events").upsert({ id: req.headers.get("svix-id"), provider_id: event.data.email_id, event_type: event.type, occurred_at: event.created_at }, { onConflict: "id", ignoreDuplicates: true });

@@ -6,7 +6,7 @@ import { getEmailConfig } from "../src/lib/email-config";
 import { EmailSendError, type ResendPayload } from "../src/lib/email-transport";
 
 const config = getEmailConfig({ TRANSACTIONAL_EMAILS_ENABLED: "true", RESEND_API_KEY: "synthetic", RESEND_DOMAIN_VERIFIED: "true", RESEND_FROM_EMAIL: "pedidos@example.com", NEXT_PUBLIC_SITE_URL: "https://shop.example.com" });
-function fixture(overrides: Record<string, unknown> = {}, options: { currentStatus?: string; suppressed?: boolean; failResultSave?: boolean } = {}) {
+function fixture(overrides: Record<string, unknown> = {}, options: { currentStatus?: string; suppressed?: boolean; failResultSave?: boolean; profileEmail?: string; wholesale?: boolean } = {}) {
   const row = { id: "12345678-1234-1234-1234-123456789abc", event_key: "order/test/created", event_type: "order_created", audience: "customer", order_id: "order-test", snapshot: { status: "pending", customer_email: "customer@example.com", shipping_name: "Test Customer", tracking_code: "ORD-TEST", payment_method: "transferencia", total_amount: 1000 }, payload: null, lease_token: "lease", attempts: 0, created_at: new Date().toISOString(), first_attempt_at: null, ...overrides };
   const updates: Record<string, unknown>[] = [];
   const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -14,6 +14,7 @@ function fixture(overrides: Record<string, unknown> = {}, options: { currentStat
     if (path.endsWith("/rpc/claim_transactional_emails_v1")) return Response.json([row]);
     if (path.endsWith("/rpc/apply_email_provider_events_v1")) return Response.json(null);
     if (path.endsWith("/orders")) return Response.json({ status: options.currentStatus || "pending", carrier_tracking_code: null });
+    if (path.endsWith("/profiles")) return Response.json({ email: options.profileEmail || "customer@example.com", is_approved_wholesale: options.wholesale ?? true });
     if (path.endsWith("/email_suppressions")) return Response.json(options.suppressed ? [{ email: "customer@example.com" }] : []);
     if (path.endsWith("/email_outbox")) {
       const fields = JSON.parse(String(init?.body)); updates.push(fields);
@@ -71,4 +72,15 @@ test("one blocked administrator does not prevent a new notification to the other
   const result = await dispatchEmailOutbox(f.db, { ...config, recipients: ["customer@example.com", "admin@example.com"] }, undefined, async payload => { assert.deepEqual(payload.to, ["admin@example.com"]); return "provider-id"; });
   assert.equal(result.sent, 1);
   assert.match(String(f.updates.at(-1)?.last_error), /destinatarios bloqueados/);
+});
+
+test("account notices cannot reach an old email or describe a wholesale state that was reversed", async () => {
+  const account = { event_type: "wholesale_approved", order_id: null, snapshot: { profile_id: "profile-test", customer_email: "customer@example.com" } };
+  let calls = 0;
+  const send = async () => { calls++; return "provider-id"; };
+  for (const f of [fixture(account, { profileEmail: "new@example.com" }), fixture(account, { wholesale: false }), fixture({ ...account, event_type: "wholesale_revoked" })]) {
+    assert.equal((await dispatchEmailOutbox(f.db, config, undefined, send)).skipped, 1);
+  }
+  assert.equal(calls, 0);
+  assert.equal((await dispatchEmailOutbox(fixture(account).db, config, undefined, send)).sent, 1);
 });

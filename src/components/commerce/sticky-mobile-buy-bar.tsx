@@ -16,6 +16,10 @@ interface Props {
   cartCount: number;
   onOpenCart: () => void;
   visible: boolean;
+  disabled?: boolean;
+  imageUrl?: string;
+  buttonText?: string;
+  variantTitle?: string;
 }
 
 export function StickyMobileBuyBar({
@@ -28,11 +32,15 @@ export function StickyMobileBuyBar({
   cartCount,
   onOpenCart,
   visible,
+  disabled,
+  imageUrl,
+  buttonText,
+  variantTitle,
 }: Props) {
   if (!visible) return null;
 
-  const inStock = isVerifiedStock(product);
-  const imageUrl = product.imageUrl || "/placeholder-product.svg";
+  const inStock = disabled !== undefined ? !disabled : isVerifiedStock(product);
+  const displayImage = imageUrl || product.imageUrl || "/placeholder-product.svg";
 
   return (
     <div
@@ -44,7 +52,7 @@ export function StickyMobileBuyBar({
         {/* Thumbnail & Title/Price */}
         <div className="relative size-11 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
           <Image
-            src={imageUrl}
+            src={displayImage}
             alt={product.title}
             fill
             sizes="44px"
@@ -56,8 +64,13 @@ export function StickyMobileBuyBar({
           <p className="truncate text-xs font-bold text-zinc-900 leading-tight">
             {product.title}
           </p>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
-            <span className="text-sm font-black text-zinc-950">
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {variantTitle && (
+              <span className="truncate max-w-[90px] rounded bg-sky-100 px-1.5 py-0.2 text-[10px] font-bold text-sky-800">
+                {variantTitle}
+              </span>
+            )}
+            <span className="text-sm font-black text-zinc-950 font-mono">
               {formatCurrency(price)}
             </span>
             {transferPrice < price && (
@@ -102,7 +115,7 @@ export function StickyMobileBuyBar({
           className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-3.5 text-xs font-bold text-white active:bg-sky-800 disabled:opacity-40 shadow-xs shrink-0"
         >
           <ShoppingCart className="size-3.5" />
-          <span>{added ? "¡Agregado!" : "Comprar"}</span>
+          <span>{added ? "¡Agregado!" : buttonText || "Comprar"}</span>
         </button>
       </div>
     </div>

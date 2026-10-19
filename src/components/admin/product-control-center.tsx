@@ -960,6 +960,12 @@ export function ProductControlCenter({
                                 </span>
                               )}
 
+                              {product.hasVariants && (
+                                <span className="inline-flex items-center gap-1 rounded bg-purple-50 border border-purple-200 px-1.5 py-0.5 text-[10px] font-bold text-purple-800">
+                                  <Layers className="h-2.5 w-2.5" /> Variantes
+                                </span>
+                              )}
+
                               {product.sourceUrl && (
                                 <a
                                   href={product.sourceUrl}

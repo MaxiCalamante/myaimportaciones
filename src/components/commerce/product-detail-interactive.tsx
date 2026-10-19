@@ -23,13 +23,19 @@ import {
   isProductImmediateStock,
   getProductShippingTimeInfo,
 } from "@/lib/shipping";
-import { siteConfig, getWhatsAppUrl } from "@/lib/site";
-import type { Product } from "@/lib/types";
+import { siteConfig } from "@/lib/site";
+import type { Product, ProductVariant } from "@/lib/types";
 import { trackAdsEvent } from "@/lib/analytics";
 import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 import { StickyMobileBuyBar } from "./sticky-mobile-buy-bar";
 
-export function ProductDetailInteractive({ product }: { product: Product }) {
+export function ProductDetailInteractive({
+  product,
+  onVariantChange,
+}: {
+  product: Product;
+  onVariantChange?: (variant: ProductVariant | null) => void;
+}) {
   const {
     addToCart,
     toggleFavorite,
@@ -57,13 +63,50 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
   const favorite = isFavorite(product.id);
 
+  const dimensions = useMemo(() => product.optionsConfig || [], [product.optionsConfig]);
+  const activeVariants = useMemo(() => product.variants?.filter((v) => v.isActive) || [], [product.variants]);
+  const isVariantMode = Boolean(product.hasVariants && dimensions.length > 0);
+
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
+    if (activeVariants.length === 1) {
+      return { ...activeVariants[0].options };
+    }
+    return {};
+  });
+
+  const allDimensionsSelected = dimensions.length > 0 && dimensions.every((dim) => Boolean(selectedOptions[dim.name]));
+
+  const matchedVariant = useMemo(() => {
+    if (!isVariantMode || !allDimensionsSelected) return null;
+    return (
+      activeVariants.find((v) =>
+        dimensions.every((dim) => v.options[dim.name] === selectedOptions[dim.name])
+      ) || null
+    );
+  }, [isVariantMode, allDimensionsSelected, activeVariants, dimensions, selectedOptions]);
+
+  React.useEffect(() => {
+    onVariantChange?.(matchedVariant);
+  }, [matchedVariant, onVariantChange]);
+
+  const price = matchedVariant
+    ? (channel === "wholesale" ? (matchedVariant.wholesalePrice ?? matchedVariant.retailPrice) : matchedVariant.retailPrice)
+    : (isVariantMode && product.minPrice ? product.minPrice : (channel === "wholesale" ? product.wholesalePrice : product.retailPrice));
+
+  const hasPriceRange = isVariantMode && !matchedVariant && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice;
+
+  const targetItem = matchedVariant || product;
+  const inStock = isVariantMode
+    ? (allDimensionsSelected ? Boolean(matchedVariant && isVerifiedStock(matchedVariant)) : Boolean(product.stock > 0 && isVerifiedStock(product)))
+    : isVerifiedStock(product);
+
   React.useEffect(() => {
     trackAdsEvent("ViewContent", {
-      content_name: product.title,
-      content_ids: [product.id],
-      value: product.retailPrice,
+      content_name: matchedVariant ? `${product.title} (${matchedVariant.title})` : product.title,
+      content_ids: [matchedVariant ? `${product.id}:${matchedVariant.id}` : product.id],
+      value: price,
     });
-  }, [product.id, product.title, product.retailPrice]);
+  }, [product.id, product.title, matchedVariant, price]);
 
   React.useEffect(() => {
     if (!mainCtaRef.current || typeof IntersectionObserver === "undefined") return;
@@ -77,24 +120,29 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     return () => observer.disconnect();
   }, []);
 
-  const price = channel === "wholesale" ? product.wholesalePrice : product.retailPrice;
   const transferPrice = channel === "retail" && price > 0 ? Math.round(price * 0.97) : price;
   const transferSavings = price - transferPrice;
 
-  const isImmediate = useMemo(() => isProductImmediateStock(product), [product]);
-  const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(product), [product]);
+  const isImmediate = useMemo(() => {
+    if (matchedVariant) {
+      return matchedVariant.fulfillmentMode === "own_stock" && Boolean(matchedVariant.stockVerifiedAt) && matchedVariant.stock > 0;
+    }
+    return isProductImmediateStock(product);
+  }, [matchedVariant, product]);
+
+  const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(targetItem), [targetItem]);
 
   const shippingCalculation = useMemo(() => {
     return calculateShipping(
       postalCode,
       price * quantity,
       isImmediate,
-      product.fulfillmentMode === "supplier",
+      targetItem.fulfillmentMode === "supplier",
       province,
       city,
       address
     );
-  }, [postalCode, price, quantity, isImmediate, product.fulfillmentMode, province, city, address]);
+  }, [postalCode, price, quantity, isImmediate, targetItem.fulfillmentMode, province, city, address]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -103,15 +151,37 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     );
   }, [product]);
 
+  const getCtaState = () => {
+    if (!isVariantMode) {
+      if (!isVerifiedStock(product)) return { text: "Disponibilidad a confirmar", disabled: true };
+      return { text: added ? "¡Agregado al carrito!" : "Agregar al carrito", disabled: false };
+    }
+    if (!allDimensionsSelected) {
+      const firstMissing = dimensions.find((d) => !selectedOptions[d.name]);
+      return { text: `Elegí tu ${firstMissing?.name || "opción"}`, disabled: true };
+    }
+    if (!matchedVariant) {
+      return { text: "Combinación no disponible", disabled: true };
+    }
+    if (!isVerifiedStock(matchedVariant)) {
+      return { text: "Opción agotada", disabled: true };
+    }
+    return { text: added ? "¡Agregado al carrito!" : "Agregar al carrito", disabled: false };
+  };
+
+  const ctaState = getCtaState();
+
   const handleAddToCart = () => {
-    addToCart(product, channel, quantity);
+    if (isVariantMode && (!allDimensionsSelected || !matchedVariant)) return;
+    addToCart(product, channel, quantity, matchedVariant);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
     setCartOpen(true);
   };
 
   const handleIncrement = () => {
-    setQuantity((q) => Math.max(1, Math.min(q + 1, purchasableQuantity(product))));
+    const max = purchasableQuantity(matchedVariant || product);
+    setQuantity((q) => Math.max(1, Math.min(q + 1, max)));
   };
 
   const handleDecrement = () => {
@@ -130,7 +200,9 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
     }
   };
 
-  const whatsappMessage = `Hola MYA Importaciones! Me interesa el producto "${product.title}" (${channel === "wholesale" ? "precio mayorista" : "precio minorista"}). ¿Tienen disponibilidad para envío?`;
+  const whatsappMessage = matchedVariant
+    ? `Hola MYA Importaciones! Me interesa el producto "${product.title}" (${matchedVariant.title}) (${channel === "wholesale" ? "precio mayorista" : "precio minorista"}). ¿Tienen disponibilidad para envío?`
+    : `Hola MYA Importaciones! Me interesa el producto "${product.title}" (${channel === "wholesale" ? "precio mayorista" : "precio minorista"}). ¿Tienen disponibilidad para envío?`;
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
@@ -176,7 +248,14 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             </p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-                {formatCurrency(price)}
+                {hasPriceRange ? (
+                  <>
+                    <span className="text-base sm:text-lg font-semibold text-zinc-500 mr-1.5 font-sans">Desde</span>
+                    {formatCurrency(price)}
+                  </>
+                ) : (
+                  formatCurrency(price)
+                )}
               </span>
               {channel === "wholesale" && product.retailPrice > product.wholesalePrice && (
                 <span className="text-sm font-semibold text-zinc-400 line-through">
@@ -196,19 +275,24 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             {channel === "retail" && <ElectronicsPrice product={product} detail />}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:max-w-[12rem] sm:justify-end sm:text-right">
-            {product.stock > 0 && product.stock <= 3 && isVerifiedStock(product) && (
+            {matchedVariant?.sku && (
+              <span className="w-full text-right text-[11px] font-medium text-zinc-500">
+                SKU: <span className="font-mono font-bold text-zinc-800">{matchedVariant.sku}</span>
+              </span>
+            )}
+            {targetItem.stock > 0 && targetItem.stock <= 3 && isVerifiedStock(targetItem) && (
               <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide border border-amber-300">
                 <Zap className="h-3 w-3 text-amber-600 shrink-0" />
-                ¡Últimas {product.stock} {product.stock === 1 ? "unidad" : "unidades"}!
+                ¡Últimas {targetItem.stock} {targetItem.stock === 1 ? "unidad" : "unidades"}!
               </span>
             )}
             <span className={`inline-flex items-center gap-1 text-xs font-bold ${
-              isVerifiedStock(product) ? "text-emerald-700" : "text-amber-600"
+              inStock ? "text-emerald-700" : "text-amber-600"
             }`}>
               <span className={`h-2 w-2 shrink-0 rounded-full ${
-                isVerifiedStock(product) ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                inStock ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
               }`} />
-              {isVerifiedStock(product) ? "Disponible" : "Consultar disponibilidad"}
+              {inStock ? "Disponible" : "Consultar disponibilidad"}
             </span>
             <span
               className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border ${shippingTimeInfo.badgeClass}`}
@@ -216,7 +300,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             >
               {isImmediate
                 ? "Stock en Tandil"
-                : isVerifiedStock(product)
+                : inStock
                 ? "Envío Correo Argentino"
                 : "Disponibilidad a confirmar"}
             </span>
@@ -227,6 +311,131 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
             )}
           </div>
         </div>
+
+        {/* Dimension & Options Selector */}
+        {isVariantMode && (
+          <div className="space-y-4 rounded-2xl border border-zinc-200/90 bg-white p-4 sm:p-5 shadow-xs">
+            {dimensions.map((dim) => {
+              const currentVal = selectedOptions[dim.name];
+              return (
+                <div key={dim.name} className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md">
+                        {dim.name}
+                      </span>
+                      {currentVal ? (
+                        <span className="text-xs sm:text-sm font-bold text-zinc-900 flex items-center gap-1.5">
+                          {currentVal}
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-sky-700 animate-pulse">
+                          Seleccioná una opción
+                        </span>
+                      )}
+                    </div>
+                    {matchedVariant && dimensions.length === 1 && (
+                      <span className="text-[11px] font-mono text-zinc-500">
+                        {matchedVariant.stock > 0 ? (
+                          matchedVariant.stock <= 3 ? (
+                            <span className="text-amber-700 font-bold">¡Últimas {matchedVariant.stock} un.!</span>
+                          ) : (
+                            <span className="text-emerald-700 font-semibold">{matchedVariant.stock} disponibles</span>
+                          )
+                        ) : (
+                          <span className="text-zinc-400">Agotado</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {dim.values.map((val) => {
+                      const isSelected = currentVal === val;
+                      const matchingVariants = activeVariants.filter((v) => v.options[dim.name] === val);
+                      const exists = matchingVariants.length > 0;
+                      const hasStock = matchingVariants.some((v) => isVerifiedStock(v));
+                      const variantForVal = dimensions.length === 1 ? matchingVariants[0] : null;
+                      const hasCustomPrice = Boolean(variantForVal && variantForVal.retailPrice > 0 && hasPriceRange);
+
+                      return (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => {
+                            setSelectedOptions((prev) => ({
+                              ...prev,
+                              [dim.name]: val,
+                            }));
+                          }}
+                          className={`group relative flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-sky-700 bg-sky-50 text-sky-950 ring-2 ring-sky-600/25 shadow-xs font-bold"
+                              : !hasStock
+                              ? "border-zinc-200/80 bg-zinc-50/80 text-zinc-400 opacity-60 hover:opacity-80"
+                              : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 hover:bg-zinc-50/80 hover:shadow-2xs"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="flex size-4 items-center justify-center rounded-full bg-sky-700 text-white shrink-0">
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            </span>
+                          )}
+                          <span>{val}</span>
+                          {hasCustomPrice && variantForVal && (
+                            <span className={`text-[11px] font-mono font-bold ${isSelected ? "text-sky-800" : "text-zinc-500"}`}>
+                              {formatCurrency(variantForVal.retailPrice)}
+                            </span>
+                          )}
+                          {!hasStock && exists && (
+                            <span className="rounded bg-zinc-200/80 px-1.5 py-0.5 text-[9px] font-bold text-zinc-500 uppercase tracking-tight">
+                              Agotado
+                            </span>
+                          )}
+                          {hasStock && variantForVal && variantForVal.stock > 0 && variantForVal.stock <= 3 && !isSelected && (
+                            <span className="rounded bg-amber-100 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-800">
+                              ¡Últimas {variantForVal.stock}!
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Selected Variant Confirmation Card */}
+        {isVariantMode && matchedVariant && (
+          <div className="flex items-center justify-between rounded-xl border border-sky-200/90 bg-gradient-to-r from-sky-50/70 via-white to-sky-50/30 p-3 sm:p-3.5 shadow-2xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-700 text-white font-bold shadow-2xs">
+                <Check className="size-4 stroke-[2.5]" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-bold text-zinc-950 text-xs sm:text-sm truncate">
+                  {matchedVariant.title}
+                </p>
+                <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                  {matchedVariant.sku && (
+                    <span>SKU: <span className="font-mono text-zinc-700 font-bold">{matchedVariant.sku}</span></span>
+                  )}
+                  {matchedVariant.sku && <span>•</span>}
+                  <span className={matchedVariant.stock > 0 ? "text-emerald-700 font-bold" : "text-zinc-500"}>
+                    {matchedVariant.stock > 0 ? `${matchedVariant.stock} disponibles` : "Sin stock inmediato"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right shrink-0 pl-2">
+              <span className="text-sm sm:text-base font-black text-zinc-950 font-mono">
+                {formatCurrency(matchedVariant.retailPrice)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {channel === "retail" && (
           <div className="rounded-xl bg-gradient-to-r from-emerald-50/90 to-sky-50/70 border border-emerald-200/70 p-3 space-y-1.5 text-xs">
@@ -284,7 +493,7 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
                 className="h-full min-w-11 px-3 text-lg font-bold text-zinc-600 hover:text-zinc-950 transition cursor-pointer disabled:cursor-default disabled:opacity-40"
                 type="button"
                 aria-label="Aumentar cantidad"
-                disabled={quantity >= purchasableQuantity(product)}
+                disabled={quantity >= purchasableQuantity(targetItem)}
               >
                 +
               </button>
@@ -293,12 +502,12 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
 
             <button
               onClick={handleAddToCart}
-              disabled={!isVerifiedStock(product)}
+              disabled={ctaState.disabled}
               className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-3 text-sm font-bold leading-snug text-white hover:bg-sky-800 active:scale-[0.99] transition cursor-pointer shadow-sm disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
               type="button"
             >
               <ShoppingCart className="h-4 w-4 shrink-0" />
-              {!isVerifiedStock(product) ? "Disponibilidad a confirmar" : added ? "¡Agregado al carrito!" : "Agregar al carrito"}
+              {ctaState.text}
             </button>
 
             <button
@@ -557,6 +766,10 @@ export function ProductDetailInteractive({ product }: { product: Product }) {
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
         visible={isStickyVisible}
+        disabled={ctaState.disabled}
+        buttonText={ctaState.text}
+        imageUrl={matchedVariant?.imageUrl || undefined}
+        variantTitle={matchedVariant?.title || undefined}
       />
     </div>
   );

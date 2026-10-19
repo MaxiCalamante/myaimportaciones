@@ -38,11 +38,59 @@ export function productStructuredData(product: Product) {
   const mpn = product.specifications?.MPN;
   const gtin = verifiedGtin(product.specifications?.GTIN || product.specifications?.EAN || product.specifications?.UPC);
   const gtinData: Partial<Record<`gtin${8 | 12 | 13 | 14}`, string>> = gtin ? { [`gtin${gtin.length}`]: gtin } : {};
-  return { "@context": "https://schema.org", "@type": "Product", "@id": publicUrl(`/producto/${product.slug}#product`), name: product.title,
-    description: productDescription(product), image: [...new Set([product.imageUrl, ...(product.imageUrls || [])].filter(Boolean))].map(publicUrl),
-    ...(product.sku ? { sku: product.sku } : {}), ...(mpn ? { mpn } : {}), ...gtinData, ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
-    ...(product.retailPrice > 0 ? { offers: { "@type": "Offer", url: publicUrl(`/producto/${product.slug}`), price: product.retailPrice, priceCurrency: "ARS",
-      availability: `https://schema.org/${isVerifiedStock(product) ? "InStock" : "OutOfStock"}`, itemCondition: `https://schema.org/${condition}`, seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" } } } : {}) };
+
+  const activeVariants = product.variants?.filter(v => v.isActive) || [];
+
+  let offers: Record<string, unknown> | undefined = undefined;
+
+  if (product.hasVariants && activeVariants.length > 0) {
+    const prices = activeVariants.map(v => v.retailPrice).filter(p => p > 0);
+    const lowPrice = prices.length ? Math.min(...prices) : product.retailPrice;
+    const highPrice = prices.length ? Math.max(...prices) : product.retailPrice;
+    offers = {
+      "@type": "AggregateOffer",
+      url: publicUrl(`/producto/${product.slug}`),
+      priceCurrency: "ARS",
+      lowPrice,
+      highPrice,
+      offerCount: activeVariants.length,
+      offers: activeVariants.map(v => ({
+        "@type": "Offer",
+        name: `${product.title} - ${v.title}`,
+        price: v.retailPrice,
+        priceCurrency: "ARS",
+        availability: `https://schema.org/${isVerifiedStock(v) ? "InStock" : "OutOfStock"}`,
+        itemCondition: `https://schema.org/${condition}`,
+        ...(v.sku ? { sku: v.sku } : {}),
+        url: publicUrl(`/producto/${product.slug}`),
+        seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" }
+      }))
+    };
+  } else if (product.retailPrice > 0) {
+    offers = {
+      "@type": "Offer",
+      url: publicUrl(`/producto/${product.slug}`),
+      price: product.retailPrice,
+      priceCurrency: "ARS",
+      availability: `https://schema.org/${isVerifiedStock(product) ? "InStock" : "OutOfStock"}`,
+      itemCondition: `https://schema.org/${condition}`,
+      seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" }
+    };
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": publicUrl(`/producto/${product.slug}#product`),
+    name: product.title,
+    description: productDescription(product),
+    image: [...new Set([product.imageUrl, ...(product.imageUrls || [])].filter(Boolean))].map(publicUrl),
+    ...(product.sku ? { sku: product.sku } : {}),
+    ...(mpn ? { mpn } : {}),
+    ...gtinData,
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
+    ...(offers ? { offers } : {})
+  };
 }
 export type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };
 export function normalizeCatalogParams(input: Record<string, string | string[] | undefined>): CatalogParams {

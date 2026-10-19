@@ -6,7 +6,7 @@ import type { OrderQuote } from "@/lib/order-pricing";
 import { createOrderAction, quoteOrderAction, type CheckoutInput } from "@/app/checkout/actions";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { formatCurrency } from "@/lib/format";
-import { siteConfig, getWhatsAppUrl } from "@/lib/site";
+import { siteConfig } from "@/lib/site";
 import { trackAdsEvent } from "@/lib/analytics";
 import {
   CORREO_ARGENTINO_PROVINCES,
@@ -56,7 +56,12 @@ export function CheckoutPanel({
   const initiated = useRef(false);
 
   const input: CheckoutInput = {
-    lines: cart.map(l => ({ productId: l.product.id, quantity: l.quantity, channel: l.channel })),
+    lines: cart.map(l => ({
+      productId: l.product.id,
+      variantId: l.variantId || undefined,
+      quantity: l.quantity,
+      channel: l.channel,
+    })),
     paymentMethod,
     postalCode,
     province,
@@ -301,12 +306,16 @@ export function CheckoutPanel({
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
             <h2 className="text-xl font-bold text-zinc-950">Coordiná tu compra</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">Confirmamos disponibilidad, costo y plazo de entrega por Correo Argentino según tu destino antes de indicarte cómo pagar.</p>
-            <button type="button" onClick={() => openWhatsApp(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}.`)} className="mt-6 w-full block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700 cursor-pointer">Consultar este carrito por WhatsApp</button>
+            <button type="button" onClick={() => openWhatsApp(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}${line.variantTitle ? ` (${line.variantTitle})` : ""}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}.`)} className="mt-6 w-full block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700 cursor-pointer">Consultar este carrito por WhatsApp</button>
             <Link href="/catalogo" className="mt-4 inline-block text-sm font-semibold text-sky-700 underline underline-offset-2">Seguir viendo productos</Link>
           </div>
           <aside className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
             <h2 className="text-xl font-bold">Resumen del carrito</h2>
-            <div className="mt-4 space-y-4">{cart.map(l => <p key={`${l.product.id}-${l.channel}`} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}<strong className="mt-1 block text-zinc-950">{formatCurrency(l.quantity * (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice))}</strong></p>)}</div>
+            <div className="mt-4 space-y-4">{cart.map(l => {
+              const unitPrice = l.variantPrice != null ? l.variantPrice : (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice);
+              const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
+              return <p key={lineKey} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}<strong className="mt-1 block text-zinc-950">{formatCurrency(l.quantity * unitPrice)}</strong></p>;
+            })}</div>
             <p className="mt-4 flex justify-between font-bold"><span>Subtotal de referencia</span><span>{formatCurrency(cartTotal)}</span></p>
             <p className="mt-2 text-xs text-zinc-500">Entrega y precio final sujetos a confirmación.</p>
           </aside>
@@ -517,14 +526,18 @@ export function CheckoutPanel({
           <aside className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 lg:sticky lg:top-24 shadow-xs">
             <h2 className="text-xl font-bold">Resumen de compra</h2>
             <div className="divide-y divide-zinc-100 max-h-56 overflow-y-auto pr-1">
-              {cart.map(l => (
-                <div key={l.product.id} className="py-2 text-xs">
-                  <div className="flex justify-between gap-3 font-medium text-zinc-800">
-                    <span>{l.quantity} × {l.product.title}</span>
-                    <span className="shrink-0 tabular-nums font-bold text-zinc-950">{formatCurrency(l.quantity * l.product.retailPrice)}</span>
+              {cart.map(l => {
+                const unitPrice = l.variantPrice != null ? l.variantPrice : (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice);
+                const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
+                return (
+                  <div key={lineKey} className="py-2 text-xs">
+                    <div className="flex justify-between gap-3 font-medium text-zinc-800">
+                      <span>{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}</span>
+                      <span className="shrink-0 tabular-nums font-bold text-zinc-950">{formatCurrency(l.quantity * unitPrice)}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <label className="block text-xs font-semibold text-zinc-700">
@@ -578,7 +591,7 @@ export function CheckoutPanel({
               </label>
             )}
 
-            {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200"><p>{error}</p><button type="button" onClick={() => openWhatsApp(`Hola, necesito coordinar mi pedido: ${cart.map(line => `${line.quantity} × ${line.product.title}`).join(", ")}. Destino: ${city}, CP ${postalCode}.`)} className="mt-2 inline-block font-semibold underline cursor-pointer text-left">Coordinar el pedido por WhatsApp</button></div>}
+            {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200"><p>{error}</p><button type="button" onClick={() => openWhatsApp(`Hola, necesito coordinar mi pedido: ${cart.map(line => `${line.quantity} × ${line.product.title}${line.variantTitle ? ` (${line.variantTitle})` : ""}`).join(", ")}. Destino: ${city}, CP ${postalCode}.`)} className="mt-2 inline-block font-semibold underline cursor-pointer text-left">Coordinar el pedido por WhatsApp</button></div>}
 
             <p className="text-[11px] text-zinc-500 text-center">
               Al confirmar aceptás las <Link href="/condiciones" className="underline">condiciones de compra</Link> y <Link href="/privacidad" className="underline">privacidad</Link>.

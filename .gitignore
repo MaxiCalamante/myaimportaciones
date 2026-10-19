@@ -20,6 +20,10 @@
 # production
 /build
 
+# local product images (all product images served remotely via CDN/URLs)
+public/products/
+public/products/*
+
 # misc
 .DS_Store
 *.pem

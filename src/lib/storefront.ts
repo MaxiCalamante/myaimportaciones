@@ -54,8 +54,8 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
       .from("products")
       .select(
         options?.admin
-          ? "*, categories(name)"
-          : `${PUBLIC_PRODUCT_COLUMNS}, categories(name)`,
+          ? "*, categories(name), product_variants(*)"
+          : `${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, retail_price, is_active, stock, supplier_available, fulfillment_mode, options)`,
       );
     if (!options?.admin) query = query.eq("is_active", true);
 
@@ -112,7 +112,7 @@ export const getProductBySlug = cache(async function getProductBySlug(slug: stri
   const { data, error } = await supabase
     .from("products")
     .select(
-      `${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`,
+      `${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug), product_variants(*)`,
     )
     .eq("slug", slug)
     .eq("is_active", true)

@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Product, ProductChannel } from "@/lib/types";
+import type { Product, ProductChannel, ProductVariant, CartLine } from "@/lib/types";
 import {
   calculateShipping,
   isProductImmediateStock,
@@ -22,11 +22,7 @@ import {
 import { trackAdsEvent } from "@/lib/analytics";
 import { reconcileCart } from "@/lib/cart-reconcile";
 
-export interface CartLine {
-  product: Product;
-  quantity: number;
-  channel: ProductChannel;
-}
+export type { CartLine } from "@/lib/types";
 
 interface CommerceContextValue {
   cart: CartLine[];
@@ -37,9 +33,9 @@ interface CommerceContextValue {
   favoritesCount: number;
   cartTotal: number;
   setCartOpen: (open: boolean) => void;
-  addToCart: (product: Product, channel: ProductChannel, quantity?: number) => void;
-  updateQuantity: (productId: string, channel: ProductChannel, quantity: number) => void;
-  removeFromCart: (productId: string, channel: ProductChannel) => void;
+  addToCart: (product: Product, channel: ProductChannel, quantity?: number, variant?: ProductVariant | null) => void;
+  updateQuantity: (productId: string, channel: ProductChannel, quantity: number, variantId?: string | null) => void;
+  removeFromCart: (productId: string, channel: ProductChannel, variantId?: string | null) => void;
   toggleFavorite: (productId: string) => void;
   isFavorite: (productId: string) => boolean;
   clearCart: () => void;
@@ -154,7 +150,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
         if (storedCart) {
           const parsed: unknown = JSON.parse(storedCart);
-          if (Array.isArray(parsed)) setCart(parsed.filter((l: CartLine) => l?.product?.id && typeof l.product.title === "string" && Number.isFinite(l.product.retailPrice) && l.product.retailPrice > 0 && Number.isFinite(l.product.stock) && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail")));
+          if (Array.isArray(parsed)) setCart(parsed.filter((l: CartLine) => {
+            const effectivePrice = l?.variantPrice ?? l?.product?.retailPrice;
+            return l?.product?.id && typeof l.product.title === "string" && Number.isFinite(effectivePrice) && effectivePrice > 0 && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail");
+          }));
         }
 
         if (storedPostalCode) {
@@ -243,30 +242,55 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   }, [cart]);
 
   const addToCart = useCallback(
-    (product: Product, channel: ProductChannel, quantity = 1) => {
-      if ((!WHOLESALE_ENABLED && channel === "wholesale") || !isVerifiedStock(product) || !Number.isInteger(quantity) || quantity < 1) return;
+    (product: Product, channel: ProductChannel, quantity = 1, variant?: ProductVariant | null) => {
+      if ((!WHOLESALE_ENABLED && channel === "wholesale") || !Number.isInteger(quantity) || quantity < 1) return;
+      const targetItem = variant || product;
+      if (!isVerifiedStock(targetItem)) return;
+
+      const variantId = variant?.id || null;
+      const variantTitle = variant?.title || null;
+      const variantPrice = variant ? (channel === "wholesale" ? (variant.wholesalePrice ?? variant.retailPrice) : variant.retailPrice) : null;
+      const variantImage = variant?.imageUrl || null;
+      const variantSku = variant?.sku || null;
+      const selectedOptions = variant?.options || undefined;
+
       setCart((current) => {
-        const existing = current.find(
-          (line) => line.product.id === product.id && line.channel === channel,
+        const existingIndex = current.findIndex(
+          (line) => line.product.id === product.id && line.channel === channel && (line.variantId || null) === variantId,
         );
 
-        if (existing) {
-          return current.map((line) =>
-            line.product.id === product.id && line.channel === channel
-              ? { ...line, quantity: Math.min(purchasableQuantity(product), line.quantity + quantity) }
+        const maxQty = purchasableQuantity(targetItem);
+
+        if (existingIndex >= 0) {
+          return current.map((line, idx) =>
+            idx === existingIndex
+              ? { ...line, quantity: Math.min(maxQty, line.quantity + quantity) }
               : line,
           );
         }
 
-        return [...current, { product, quantity: Math.min(purchasableQuantity(product), quantity), channel }];
+        return [
+          ...current,
+          {
+            product,
+            quantity: Math.min(maxQty, quantity),
+            channel,
+            variantId,
+            variantTitle,
+            variantPrice,
+            variantImage,
+            variantSku,
+            selectedOptions,
+          },
+        ];
       });
       setCartOpen(true);
 
-      // Track AddToCart conversion event
+      const effectivePrice = variantPrice ?? (channel === "wholesale" ? product.wholesalePrice : product.retailPrice);
       trackAdsEvent("AddToCart", {
-        content_name: product.title,
-        content_ids: [product.id],
-        value: (channel === "wholesale" ? product.wholesalePrice : product.retailPrice) * quantity,
+        content_name: variantTitle ? `${product.title} (${variantTitle})` : product.title,
+        content_ids: [variantId ? `${product.id}:${variantId}` : product.id],
+        value: effectivePrice * quantity,
         quantity,
       });
     },
@@ -274,24 +298,40 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   );
 
   const updateQuantity = useCallback(
-    (productId: string, channel: ProductChannel, quantity: number) => {
+    (productId: string, channel: ProductChannel, quantity: number, variantId?: string | null) => {
       setCart((current) =>
         current
-          .map((line) =>
-            line.product.id === productId && line.channel === channel
-              ? { ...line, quantity: Number.isInteger(quantity) ? Math.min(purchasableQuantity(line.product), Math.max(0, quantity)) : line.quantity }
-              : line,
-          )
+          .map((line) => {
+            const match =
+              line.product.id === productId &&
+              line.channel === channel &&
+              (variantId === undefined || (line.variantId || null) === (variantId || null));
+            if (!match) return line;
+
+            const variant = line.variantId ? line.product.variants?.find((v) => v.id === line.variantId) : null;
+            const targetItem = variant || line.product;
+            const maxQty = purchasableQuantity(targetItem);
+
+            return {
+              ...line,
+              quantity: Number.isInteger(quantity) ? Math.min(maxQty, Math.max(0, quantity)) : line.quantity,
+            };
+          })
           .filter((line) => line.quantity > 0),
       );
     },
     [],
   );
 
-  const removeFromCart = useCallback((productId: string, channel: ProductChannel) => {
+  const removeFromCart = useCallback((productId: string, channel: ProductChannel, variantId?: string | null) => {
     setCart((current) =>
       current.filter(
-        (line) => !(line.product.id === productId && line.channel === channel),
+        (line) =>
+          !(
+            line.product.id === productId &&
+            line.channel === channel &&
+            (variantId === undefined || (line.variantId || null) === (variantId || null))
+          ),
       ),
     );
   }, []);
@@ -305,7 +345,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const favoritesCount = favoriteIds.length;
   const cartTotal = cart.reduce((sum, line) => {
     const price =
-      line.channel === "wholesale"
+      line.variantPrice != null
+        ? line.variantPrice
+        : line.channel === "wholesale"
         ? line.product.wholesalePrice
         : line.product.retailPrice;
     return sum + price * line.quantity;
@@ -313,12 +355,25 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
   // Check if all items in cart are in physical immediate stock in Tandil
   const isAllImmediateStock = useMemo(() => {
-    return cart.length > 0 && cart.every((line) => isProductImmediateStock(line.product));
+    return (
+      cart.length > 0 &&
+      cart.every((line) => {
+        const variant = line.variantId ? line.product.variants?.find((v) => v.id === line.variantId) : null;
+        if (variant) {
+          return variant.fulfillmentMode === "own_stock" && Boolean(variant.stockVerifiedAt) && variant.stock > 0;
+        }
+        return isProductImmediateStock(line.product);
+      })
+    );
   }, [cart]);
 
   // Dynamic shipping calculation based on postalCode, cartTotal, isAllImmediateStock, province, city, and address
   const shippingCalculation = useMemo(() => {
-    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, cart.some(line => line.product.fulfillmentMode === "supplier"), province, city, address);
+    const hasSupplier = cart.some((line) => {
+      const variant = line.variantId ? line.product.variants?.find((v) => v.id === line.variantId) : null;
+      return (variant ? variant.fulfillmentMode : line.product.fulfillmentMode) === "supplier";
+    });
+    return calculateShipping(postalCode, cartTotal, isAllImmediateStock, hasSupplier, province, city, address);
   }, [postalCode, cartTotal, isAllImmediateStock, cart, province, city, address]);
 
   const selectedShippingOption = useMemo(() => {
@@ -344,7 +399,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const volumeDiscountAmount = useMemo(() => {
     const retailSubtotal = cart
       .filter((l) => l.channel === "retail")
-      .reduce((sum, l) => sum + l.product.retailPrice * l.quantity, 0);
+      .reduce((sum, l) => sum + (l.variantPrice ?? l.product.retailPrice) * l.quantity, 0);
     return Math.round(retailSubtotal * (volumeDiscountPercentage / 100));
   }, [cart, volumeDiscountPercentage]);
 

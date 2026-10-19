@@ -4,6 +4,7 @@ import { siteConfig } from "@/lib/site";
 import { safeAuthNext } from "@/lib/auth-navigation";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -62,6 +63,7 @@ export async function signUpAction(formData: FormData) {
     return { error: "No pudimos crear la cuenta. Revisá tus datos e intentá nuevamente." };
   }
 
+  if (data.session) scheduleTransactionalEmails();
   return data.session ? { redirectTo: next } : { message: "Revisá tu email para confirmar la cuenta. Si no llega, revisá la carpeta de spam antes de reintentar." };
 }
 

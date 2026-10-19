@@ -9,7 +9,7 @@ import { calculateShipping, isShippingPaidSeparately } from "@/lib/shipping";
 import { priceOrder, type PricedItem } from "@/lib/order-pricing";
 import { createMercadoPagoPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 export interface CheckoutInput {
-  lines: { productId: string; quantity: number; channel: "retail" | "wholesale" }[];
+  lines: { productId: string; variantId?: string; quantity: number; channel: "retail" | "wholesale" }[];
   paymentMethod: "transferencia" | "mercado_pago";
   postalCode: string;
   province?: string;
@@ -31,27 +31,91 @@ async function resolveQuote(input: CheckoutInput) {
   if (!["transferencia", "mercado_pago"].includes(input.paymentMethod)) throw new Error("Medio de pago inválido.");
   if (input.paymentMethod === "mercado_pago" && !isMercadoPagoConfigured()) throw new Error("Mercado Pago no está disponible. Elegí transferencia.");
   if (typeof input.postalCode !== "string" || input.postalCode.length > 12 || typeof input.coupon !== "string" || input.coupon.length > 30) throw new Error("Revisá código postal y cupón.");
-  const ids = new Set<string>();
+  const lineKeys = new Set<string>();
+  const productIds = new Set<string>();
+  const variantIds = new Set<string>();
   for (const line of input.lines) {
-    if (!uuid.test(line.productId) || line.channel !== "retail" || !Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 100 || ids.has(line.productId)) throw new Error("Revisá productos y cantidades. Solo está habilitada la compra minorista.");
-    ids.add(line.productId);
+    if (!uuid.test(line.productId) || (line.variantId && !uuid.test(line.variantId)) || line.channel !== "retail" || !Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 100) {
+      throw new Error("Revisá productos y cantidades. Solo está habilitada la compra minorista.");
+    }
+    const lineKey = line.variantId ? `${line.productId}:${line.variantId}` : line.productId;
+    if (lineKeys.has(lineKey)) {
+      throw new Error("No podés incluir líneas duplicadas en el pedido.");
+    }
+    lineKeys.add(lineKey);
+    productIds.add(line.productId);
+    if (line.variantId) variantIds.add(line.variantId);
   }
   const db = createCommerceService();
-  const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...ids]);
-  if (error || products?.length !== ids.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
-  const { data: costs, error: costError } = await db.from("product_costs").select("*").in("product_id", [...ids]);
+  const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...productIds]);
+  if (error || products?.length !== productIds.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
+  let dbVariants: { id: string; product_id: string; title: string; retail_price: number; stock: number; stock_verified_at: string | null; fulfillment_mode: string; supplier_available: boolean; is_active: boolean }[] = [];
+  if (variantIds.size > 0) {
+    const { data: variants, error: varError } = await db.from("product_variants").select("id, product_id, title, retail_price, stock, stock_verified_at, fulfillment_mode, supplier_available, is_active").in("id", [...variantIds]);
+    if (varError || variants?.length !== variantIds.size) throw new Error("No pudimos verificar las variantes seleccionadas. Intentá nuevamente.");
+    dbVariants = variants;
+  }
+  const { data: costs, error: costError } = await db.from("product_costs").select("*").in("product_id", [...productIds]);
   if (costError) throw new Error("No pudimos verificar los precios. Consultanos para continuar.");
   const items: PricedItem[] = input.lines.map(line => {
     const p = products.find(p => p.id === line.productId)!;
     const category = Array.isArray(p.categories) ? p.categories[0] : p.categories;
-    if (!p.is_active || p.is_wholesale_only || (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity))) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+    if (!p.is_active || p.is_wholesale_only) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+
+    let price = Number(p.retail_price);
+    let title = p.title;
+
+    if (line.variantId) {
+      const v = dbVariants.find(v => v.id === line.variantId);
+      if (!v || v.product_id !== p.id || !v.is_active) {
+        throw new Error(`La opción seleccionada de ${p.title} no está disponible.`);
+      }
+      if (v.fulfillment_mode === "supplier" ? !v.supplier_available : (!v.stock_verified_at || v.stock < line.quantity)) {
+        throw new Error(`Consultá disponibilidad de ${p.title} (${v.title}) antes de comprar.`);
+      }
+      price = Number(v.retail_price);
+      title = `${p.title} (${v.title})`;
+    } else {
+      if (p.has_variants) {
+        throw new Error(`Por favor seleccioná una opción para ${p.title}.`);
+      }
+      if (p.fulfillment_mode === "supplier" ? !p.supplier_available : (!p.stock_verified_at || p.stock < line.quantity)) {
+        throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+      }
+    }
+
     const cost = costs?.find(c => c.product_id === p.id);
     const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
     // Charge the published server price. Unknown costs disable discounts, not the purchase.
-    return { id: p.id, title: p.title, quantity: line.quantity, price: Number(p.retail_price), landedCost: fresh ? Number(cost.landed_cost) : null, variableCost: fresh ? Number(cost.variable_cost ?? 0) + Number(p.retail_price) * Number(cost.payment_fee_percent ?? 0) / 100 : 0, minimumContribution: fresh ? Number(cost.minimum_contribution ?? 0) : 0, beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? "") };
+    return {
+      id: p.id,
+      variant_id: line.variantId || null,
+      title,
+      quantity: line.quantity,
+      price,
+      landedCost: fresh ? Number(cost.landed_cost) : null,
+      variableCost: fresh ? Number(cost.variable_cost ?? 0) + price * Number(cost.payment_fee_percent ?? 0) / 100 : 0,
+      minimumContribution: fresh ? Number(cost.minimum_contribution ?? 0) : 0,
+      beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? ""),
+    };
   });
-  const supplierDelivery = products.some(p => p.fulfillment_mode === "supplier");
-  if (!isShippingPaidSeparately() && supplierDelivery && products.some(p => p.fulfillment_mode !== "supplier")) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
+  const supplierDelivery = input.lines.some(line => {
+    if (line.variantId) {
+      const v = dbVariants.find(v => v.id === line.variantId);
+      return v?.fulfillment_mode === "supplier";
+    }
+    const p = products.find(p => p.id === line.productId)!;
+    return p.fulfillment_mode === "supplier";
+  });
+  const ownStockDelivery = input.lines.some(line => {
+    if (line.variantId) {
+      const v = dbVariants.find(v => v.id === line.variantId);
+      return v?.fulfillment_mode !== "supplier";
+    }
+    const p = products.find(p => p.id === line.productId)!;
+    return p.fulfillment_mode !== "supplier";
+  });
+  if (!isShippingPaidSeparately() && supplierDelivery && ownStockDelivery) throw new Error("Este carrito necesita coordinar entregas desde distintos depósitos. Consultanos para cotizarlo.");
   const shipping = calculateShipping(input.postalCode, 0, !supplierDelivery, supplierDelivery, input.province, input.city, input.address);
   const option = shipping.options.find(o => o.id === input.shippingOptionId);
   const shippingQuotedSeparately = isShippingPaidSeparately() && option?.id === "delivery_quote_separately";
@@ -59,11 +123,11 @@ async function resolveQuote(input: CheckoutInput) {
   if (!shipping.isValid || !option) throw new Error("Elegí un destino y una opción de entrega válidos.");
   if (option.type !== "pickup" && !shippingQuotedSeparately) {
     if (process.env.COMMERCE_SHIPPING_ENABLED !== "true") throw new Error("El envío necesita confirmación de tarifa. Consultanos por WhatsApp para coordinar la entrega.");
-    const weight = products.reduce((sum, p) => {
+    const weight = input.lines.reduce((sum, line) => {
+      const p = products.find(p => p.id === line.productId)!;
       const declared = Number(p.specifications?.peso_kg);
       if (!Number.isFinite(declared) || declared <= 0) throw new Error(`El envío de ${p.title} necesita peso y tarifa confirmados. Consultanos por WhatsApp para coordinarlo.`);
-      const itemWeight = declared;
-      return sum + itemWeight * input.lines.find(l => l.productId === p.id)!.quantity;
+      return sum + declared * line.quantity;
     }, 0);
     if (weight > 25) throw new Error("Este pedido supera los 25 kg (límite estándar de Correo Argentino). Consultanos por WhatsApp para coordinar la entrega.");
   }

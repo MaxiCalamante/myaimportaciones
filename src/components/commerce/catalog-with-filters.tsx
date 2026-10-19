@@ -1,7 +1,7 @@
 "use client";
 import { isVerifiedStock } from "@/lib/commerce-policy";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   SlidersHorizontal,
   ArrowUpDown,
@@ -11,9 +11,7 @@ import {
   X,
   Search,
   Tag,
-  Sparkles,
   Layers,
-  Check,
 } from "lucide-react";
 import type { Product, ProductChannel } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
@@ -141,7 +139,12 @@ export function CatalogWithFilters({
           p.title.toLowerCase().includes(q) ||
           p.slug.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q)) ||
-          p.description?.toLowerCase().includes(q)
+          p.description?.toLowerCase().includes(q) ||
+          p.variants?.some((v) =>
+            v.title.toLowerCase().includes(q) ||
+            Object.values(v.options).some((val) => val.toLowerCase().includes(q)) ||
+            Boolean(v.sku && v.sku.toLowerCase().includes(q))
+          )
       );
     }
 

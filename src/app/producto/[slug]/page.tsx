@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ProductGallery } from "@/components/commerce/product-gallery";
+import { ProductShowcase } from "@/components/commerce/product-showcase";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
-import { ProductDetailInteractive } from "@/components/commerce/product-detail-interactive";
 import { ProductCard } from "@/components/commerce/product-card";
 import { breadcrumbData, productMetadata, productStructuredData } from "@/lib/seo";
 import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
@@ -82,63 +81,92 @@ export default async function ProductPage({ params }: Props) {
           <span className="font-semibold text-zinc-900 truncate max-w-xs">{product.title}</span>
         </nav>
 
-        {/* Product Grid */}
-        <div className="grid gap-6 sm:gap-10 lg:grid-cols-2">
-          {/* Left Column: Image */}
-          <ProductGallery title={product.title} image={product.imageUrl} images={product.imageUrls} />
+        {/* Product Showcase (Gallery + Interactive Info) */}
+        <ProductShowcase
+          product={product}
+          beforeInteractive={
+            <>
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
+                  <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}
+                </span>
+                <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight">
+                  {product.title}
+                </h1>
+                <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">
+                  {[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]]
+                    .filter(([, value]) => value)
+                    .map(([label, value]) => (
+                      <div key={label} className="min-w-0 break-words">
+                        <dt className="inline font-semibold">{label}: </dt>
+                        <dd className="inline">
+                          {label === "Marca" ? (
+                            <Link href={"/catalogo?brand=" + encodeURIComponent(value!)} className="text-sky-800 underline">
+                              {value}
+                            </Link>
+                          ) : (
+                            value
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                </dl>
+                {product.tags.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {product.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 capitalize"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          {/* Right Column: Info & Actions */}
-          <div className="flex min-w-0 flex-col justify-center space-y-4 sm:space-y-6">
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
-                <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}
-              </span>
-              <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight">
-                {product.title}
-              </h1>
-              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">{[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="min-w-0 break-words"><dt className="inline font-semibold">{label}: </dt><dd className="inline">{label === "Marca" ? <Link href={"/catalogo?brand=" + encodeURIComponent(value!)} className="text-sky-800 underline">{value}</Link> : value}</dd></div>)}</dl>
-              {product.tags.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {product.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 capitalize"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+              <p className="whitespace-pre-line break-words text-sm sm:text-base leading-relaxed text-zinc-600">
+                {product.description}
+              </p>
+            </>
+          }
+          afterInteractive={
+            <>
+              {alternativeProduct && (
+                <Link
+                  href={`/producto/${alternativeProduct.slug}`}
+                  className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900 transition hover:bg-sky-100"
+                >
+                  Ver otra versión: {alternativeProduct.title}
+                </Link>
               )}
-            </div>
+              {Object.entries(product.specifications ?? {}).filter(([k, v]) => v && !k.startsWith("_seo_")).length > 0 && (
+                <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">
+                  {Object.entries(product.specifications ?? {})
+                    .filter(([k, v]) => v && !k.startsWith("_seo_"))
+                    .map(([k, v]) => (
+                      <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4">
+                        <dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt>
+                        <dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd>
+                      </div>
+                    ))}
+                </dl>
+              )}
+              {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
 
-            <p className="whitespace-pre-line break-words text-sm sm:text-base leading-relaxed text-zinc-600">
-              {product.description}
-            </p>
-
-            <ProductDetailInteractive product={product} />
-            {alternativeProduct && (
-              <Link
-                href={`/producto/${alternativeProduct.slug}`}
-                className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900 transition hover:bg-sky-100"
-              >
-                Ver otra versión: {alternativeProduct.title}
-              </Link>
-            )}
-          {Object.entries(product.specifications ?? {}).filter(([k,v]) => v && !k.startsWith("_seo_")).length > 0 && <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">{Object.entries(product.specifications ?? {}).filter(([k,v]) => v && !k.startsWith("_seo_")).map(([k,v]) => <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4"><dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt><dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd></div>)}</dl>}
-          {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
-
-            <div className="pt-4 border-t border-zinc-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span>Condiciones y garantía informadas en la ficha</span>
+              <div className="pt-4 border-t border-zinc-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>Condiciones y garantía informadas en la ficha</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 shrink-0 text-sky-600" />
+                  <span>Envíos a todo el país desde Tandil</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Truck className="h-4 w-4 shrink-0 text-sky-600" />
-                <span>Envíos a todo el país desde Tandil</span>
-              </div>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (

@@ -23,6 +23,14 @@ export async function dispatchEmailOutbox(db: SupabaseClient, config: ReturnType
       if (!row.first_attempt_at && Date.now() - Date.parse(row.created_at) > 86400000) {
         await save({ status: "skipped", last_error: "Aviso antiguo: no se envía automáticamente.", lease_token: null, leased_until: null }); report.skipped++; continue;
       }
+      if (!row.payload && row.snapshot.profile_id) {
+        const { data: profile, error: profileError } = await db.from("profiles").select("email,is_approved_wholesale").eq("id", row.snapshot.profile_id).maybeSingle();
+        if (profileError) throw new Error("No se pudo verificar la cuenta.");
+        const obsolete = !profile || profile.email?.toLowerCase() !== row.snapshot.customer_email?.toLowerCase()
+          || (row.event_type === "wholesale_approved" && !profile.is_approved_wholesale)
+          || (row.event_type === "wholesale_revoked" && profile.is_approved_wholesale);
+        if (obsolete) { await save({ status: "skipped", last_error: "La cuenta cambió desde que se generó el aviso.", lease_token: null, leased_until: null }); report.skipped++; continue; }
+      }
       if (!row.payload && row.order_id && ["order_created", "payment_failed", "order_preparing", "order_shipped", "tracking_updated"].includes(row.event_type)) {
         const { data: order, error: orderError } = await db.from("orders").select("status,carrier_tracking_code").eq("id", row.order_id).maybeSingle();
         if (orderError) throw new Error("No se pudo verificar el estado del pedido.");

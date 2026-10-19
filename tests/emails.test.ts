@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { Webhook } from "svix";
 import { getEmailConfig } from "../src/lib/email-config";
 import { renderTransactionalEmail, emailEventLabels } from "../src/lib/email-templates";
-import { verifyResendWebhook } from "../src/lib/email-webhook";
+import { isEmailWebhookForSender, verifyResendWebhook } from "../src/lib/email-webhook";
 import { sendResendEmail, EmailSendError, type ResendPayload } from "../src/lib/email-transport";
 
 test("sending requires explicit activation, private key, owned verified sender and valid recipients", () => {
@@ -77,4 +77,28 @@ test("webhooks require authentic signatures, exact body and fresh timestamp", ()
   const old = new Date(Date.now() - 10 * 60000);
   const oldHeaders = new Headers({ "svix-id": "event-id", "svix-timestamp": String(Math.floor(old.getTime() / 1000)), "svix-signature": wh.sign("event-id", old, body) });
   assert.equal(verifyResendWebhook(body, oldHeaders, secret), null);
+});
+
+test("account and aftersales templates point to the correct flow without claiming a refund", () => {
+  const origin = "https://myaimportaciones.com";
+  assert.match(renderTransactionalEmail("account_welcome", "customer", {}, origin).html, /https:\/\/myaimportaciones.com\/cuenta/);
+  assert.match(renderTransactionalEmail("wholesale_approved", "customer", {}, origin).html, /https:\/\/myaimportaciones.com\/mayorista/);
+  for (const event of ["withdrawal_contacted", "withdrawal_resolved"]) {
+    const email = renderTransactionalEmail(event, "customer", { reference: "ARR-TEST" }, origin);
+    assert.match(email.text, /ARR-TEST/);
+    assert.match(email.text, /no (confirma|acredita) un reintegro|no confirma una cancelación ni un reintegro/);
+    assert.ok(!email.html.includes('>Ver mi pedido</a>'));
+  }
+  assert.match(renderTransactionalEmail("email_test", "admin", {}, origin).text, /No corresponde a una compra/);
+});
+
+test("account-wide Resend events cannot mix Turnero deliveries or suppressions into MYA", () => {
+  const sender = "MYA Importaciones <pedidos@mail.myaimportaciones.com>";
+  const event = { type: "email.bounced", created_at: new Date().toISOString(), data: { email_id: "provider-test", from: "pedidos@mail.myaimportaciones.com", to: ["same-person@example.com"] } };
+  assert.equal(isEmailWebhookForSender(event, sender), true);
+  assert.equal(isEmailWebhookForSender({ ...event, data: { ...event.data, from: '"MYA Importaciones" <PEDIDOS@mail.myaimportaciones.com>' } }, sender), true);
+  for (const from of [undefined, "notificaciones@turnero.site", "pedidos@mail.myaimportaciones.com.other.test", "Other <other@mail.myaimportaciones.com>", "MYA\r\nBcc: other@example.com <pedidos@mail.myaimportaciones.com>"]) {
+    assert.equal(isEmailWebhookForSender({ ...event, data: { ...event.data, from } }, sender), false);
+  }
+  assert.equal(isEmailWebhookForSender(event, ""), false);
 });

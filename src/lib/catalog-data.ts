@@ -1,7 +1,7 @@
 import { WHOLESALE_ENABLED, cleanProductTitle } from "./commerce-policy";
 import type { Category, PaymentMethod, Product } from "./types";
 // Public reads explicitly omit costs and supplier sources, including for signed-in admins.
-export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, tags, payment_methods, specifications, warranty_terms";
+export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, tags, payment_methods, specifications, warranty_terms, has_variants, options_config";
 
 export interface DbCategory {
   id: string;
@@ -12,6 +12,25 @@ export interface DbCategory {
   image_url: string | null;
   is_wholesale_only: boolean | null;
   display_order: number | null;
+}
+
+export interface DbProductVariant {
+  id: string;
+  product_id: string;
+  title: string;
+  sku: string | null;
+  retail_price: number | null;
+  wholesale_price: number | null;
+  stock: number | null;
+  stock_verified_at: string | null;
+  fulfillment_mode: "own_stock" | "supplier" | null;
+  supplier_available: boolean | null;
+  image_url: string | null;
+  is_active: boolean | null;
+  options: Record<string, string> | null;
+  display_order: number | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DbProduct {
@@ -44,6 +63,30 @@ export interface DbProduct {
   is_featured: boolean | null;
   is_wholesale_only: boolean | null;
   categories: { name: string } | Array<{ name: string }> | null;
+  has_variants?: boolean | null;
+  options_config?: { name: string; values: string[] }[] | null;
+  product_variants?: DbProductVariant[] | null;
+}
+
+export function mapProductVariant(v: DbProductVariant): import("./types").ProductVariant {
+  return {
+    id: v.id,
+    productId: v.product_id,
+    title: v.title,
+    sku: v.sku ?? undefined,
+    retailPrice: Number(v.retail_price ?? 0),
+    wholesalePrice: Number(v.wholesale_price ?? 0),
+    stock: Number(v.stock ?? 0),
+    stockVerifiedAt: v.stock_verified_at ?? null,
+    fulfillmentMode: v.fulfillment_mode ?? "own_stock",
+    supplierAvailable: Boolean(v.supplier_available),
+    imageUrl: v.image_url ?? undefined,
+    isActive: v.is_active ?? true,
+    options: v.options && typeof v.options === "object" ? v.options : {},
+    displayOrder: v.display_order ?? 0,
+    createdAt: v.created_at,
+    updatedAt: v.updated_at,
+  };
 }
 
 export function mapCategory(category: DbCategory, admin = false): Category {
@@ -64,6 +107,27 @@ export function mapProduct(product: DbProduct, admin = false): Product {
     ? product.categories[0]
     : product.categories;
 
+  const rawVariants = Array.isArray(product.product_variants) ? product.product_variants : [];
+  const variants = rawVariants.map(mapProductVariant);
+  const activeVariants = variants.filter(v => admin || v.isActive);
+  const activePrices = activeVariants.map(v => v.retailPrice).filter(p => p > 0);
+  const minPrice = activePrices.length ? Math.min(...activePrices) : undefined;
+  const maxPrice = activePrices.length ? Math.max(...activePrices) : undefined;
+  const basePrice = Number(product.retail_price ?? 0);
+  const effectiveRetailPrice = basePrice > 0 ? basePrice : (minPrice ?? 0);
+
+  const hasVariants = Boolean(product.has_variants);
+  const totalVariantStock = activeVariants.reduce((sum, v) => sum + v.stock, 0);
+  const anyVariantVerified = activeVariants.some(v => Boolean(v.stockVerifiedAt) && v.stock > 0);
+  const anySupplierAvailable = activeVariants.some(v => v.supplierAvailable);
+  const effectiveStock = hasVariants ? totalVariantStock : Number(product.stock ?? 0);
+  const effectiveStockVerifiedAt = hasVariants
+    ? (anyVariantVerified ? (product.stock_verified_at || new Date().toISOString()) : null)
+    : (product.stock_verified_at ?? null);
+  const effectiveSupplierAvailable = hasVariants
+    ? anySupplierAvailable
+    : Boolean(product.supplier_available);
+
   return {
     id: product.id,
     ...(admin ? {
@@ -73,7 +137,7 @@ export function mapProduct(product: DbProduct, admin = false): Product {
       supplierLivePrice: product.supplier_live_price !== null && product.supplier_live_price !== undefined ? Number(product.supplier_live_price) : null,
     } : {}),
     fulfillmentMode: product.fulfillment_mode ?? "own_stock",
-    supplierAvailable: Boolean(product.supplier_available),
+    supplierAvailable: effectiveSupplierAvailable,
     active: product.is_active ?? true,
     slug: product.slug,
     title: admin ? product.title : cleanProductTitle(product.title),
@@ -81,20 +145,25 @@ export function mapProduct(product: DbProduct, admin = false): Product {
     model: product.model ?? undefined,
     sku: product.sku ?? undefined,
     imageUrls: product.image_urls ?? [],
-    stockVerifiedAt: product.stock_verified_at ?? null,
+    stockVerifiedAt: effectiveStockVerifiedAt,
     specifications: product.specifications ?? {},
     warrantyTerms: product.warranty_terms ?? null,
     description: !admin && /Catálogo Oficial 2026|Formulación: Tratamiento dermatológico|100% Original Garantizado|Factura A o B/i.test(product.description ?? "") ? "Consultá la presentación, especificaciones y condiciones de este producto antes de comprar." : (product.description ?? ""),
     categoryId: product.category_id,
     categoryName: category?.name ?? "Catalogo",
     imageUrl: product.image_url ?? "",
-    retailPrice: Number(product.retail_price ?? 0),
+    retailPrice: effectiveRetailPrice,
     wholesalePrice: (WHOLESALE_ENABLED || admin) ? Number(product.wholesale_price ?? 0) : 0,
     wholesaleMinQuantity: Number(product.wholesale_min_qty ?? 1),
-    stock: Number(product.stock ?? 0),
+    stock: effectiveStock,
     paymentMethods: product.payment_methods ?? ["transferencia"],
     tags: product.tags ?? [],
     featured: Boolean(product.is_featured),
     wholesaleOnly: Boolean(product.is_wholesale_only),
+    hasVariants,
+    optionsConfig: Array.isArray(product.options_config) ? product.options_config : [],
+    variants,
+    minPrice,
+    maxPrice,
   };
 }

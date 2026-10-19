@@ -32,6 +32,30 @@ export interface Category {
   displayOrder: number;
 }
 
+export interface ProductOptionDimension {
+  name: string;
+  values: string[];
+}
+
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  title: string;
+  sku?: string | null;
+  retailPrice: number;
+  wholesalePrice?: number;
+  stock: number;
+  stockVerifiedAt?: string | null;
+  fulfillmentMode: "own_stock" | "supplier";
+  supplierAvailable: boolean;
+  imageUrl?: string | null;
+  isActive: boolean;
+  options: Record<string, string>;
+  displayOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Product {
   sourceUrl?: string | null;
   supplierLastCheckedAt?: string | null;
@@ -62,6 +86,11 @@ export interface Product {
   tags: string[];
   featured: boolean;
   wholesaleOnly: boolean;
+  hasVariants?: boolean;
+  optionsConfig?: ProductOptionDimension[];
+  variants?: ProductVariant[];
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 export interface StorefrontData {
@@ -85,10 +114,25 @@ export interface CustomerSummary {
   isApprovedWholesale?: boolean;
 }
 
+export interface CartLine {
+  product: Product;
+  quantity: number;
+  channel: ProductChannel;
+  variantId?: string | null;
+  variantTitle?: string | null;
+  variantPrice?: number | null;
+  variantImage?: string | null;
+  variantSku?: string | null;
+  selectedOptions?: Record<string, string>;
+}
+
 export interface OrderItemSummary {
   productTitle: string;
   quantity: number;
   unitPrice: number;
+  variantId?: string | null;
+  variantTitle?: string | null;
+  variantSku?: string | null;
 }
 
 export interface OrderSummary {

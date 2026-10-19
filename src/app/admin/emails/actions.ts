@@ -5,6 +5,17 @@ import { getAdminClient } from "@/lib/admin-auth";
 import { createCommerceService } from "@/lib/supabase/service";
 import { getEmailConfig } from "@/lib/email-config";
 import { processEmailOutbox } from "@/lib/email-worker";
+export async function sendEmailTestAction() {
+  await getAdminClient();
+  if (!getEmailConfig().enabled) redirect("/admin/emails?notice=disabled");
+  // Fixed administrative audience and one test per ten minutes. No arbitrary recipients.
+  const key = `admin/email-test/${Math.floor(Date.now() / 600000)}`;
+  const { error } = await createCommerceService().from("email_outbox").upsert({ event_key: key, event_type: "email_test", audience: "admin", snapshot: {} }, { onConflict: "event_key", ignoreDuplicates: true });
+  if (error) redirect("/admin/emails?notice=error");
+  try { await processEmailOutbox(); } catch { redirect("/admin/emails?notice=error"); }
+  revalidatePath("/admin/emails");
+  redirect("/admin/emails?notice=test");
+}
 export async function processPendingEmailsAction() {
   await getAdminClient();
   if (!getEmailConfig().enabled) redirect("/admin/emails?notice=disabled");

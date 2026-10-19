@@ -4,7 +4,7 @@ import { isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, PackageCheck, ShoppingCart } from "lucide-react";
+import { Heart, PackageCheck, ShoppingCart, Layers, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { ElectronicsPrice } from "./electronics-price";
 import type { Product, ProductChannel } from "@/lib/types";
@@ -53,7 +53,19 @@ export function ProductCard({
             quality={75}
           />
         </div>
-        {product.brand && <span className="absolute left-2 top-2 max-w-[calc(100%-4rem)] truncate rounded-lg bg-white/95 px-2 py-1 text-[10px] font-bold text-slate-800 shadow-sm sm:left-3 sm:top-3">{product.brand}</span>}
+        <div className="absolute left-2 top-2 flex flex-col gap-1 items-start sm:left-3 sm:top-3">
+          {product.brand && (
+            <span className="max-w-[calc(100%-4rem)] truncate rounded-lg bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-800 shadow-2xs border border-zinc-200/50">
+              {product.brand}
+            </span>
+          )}
+          {product.hasVariants && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-sky-700/90 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-2xs">
+              <Layers className="size-2.5" />
+              Variantes
+            </span>
+          )}
+        </div>
       </Link>
         <button
           aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
@@ -88,7 +100,14 @@ export function ProductCard({
               {channel === "wholesale" ? "Precio mayorista" : "Precio en pesos"}
             </p>
             <p className="text-lg font-bold tabular-nums text-zinc-950 sm:text-xl">
-              {formatCurrency(price)}
+              {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
+                <>
+                  <span className="text-xs font-semibold text-zinc-500 mr-1.5 font-sans">Desde</span>
+                  {formatCurrency(product.minPrice)}
+                </>
+              ) : (
+                formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)
+              )}
             </p>
             {channel === "retail" && <ElectronicsPrice product={product} />}
             {channel === "retail" && <p className="mt-1 text-[11px] text-emerald-800">Consultá las condiciones de compra</p>}
@@ -98,6 +117,18 @@ export function ProductCard({
                 Minimo {product.wholesaleMinQuantity} unidades
               </p>
             ) : null}
+            {product.hasVariants && product.optionsConfig && product.optionsConfig.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                {product.optionsConfig.map((opt) => (
+                  <span
+                    key={opt.name}
+                    className="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 border border-sky-200/70"
+                  >
+                    {opt.values.length} {opt.name.toLowerCase()}s
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <span
             className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${shippingInfo.badgeClass}`}
@@ -107,7 +138,15 @@ export function ProductCard({
           </span>
         </div>
 
-        {cartItem ? (
+        {product.hasVariants ? (
+          <Link
+            href={`/producto/${product.slug}`}
+            className="mt-3 flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-sky-700 p-2.5 text-center text-xs font-bold text-white hover:bg-sky-800 transition sm:mt-4 sm:p-3 sm:text-sm shadow-xs group/btn cursor-pointer"
+          >
+            <span>Elegir opciones</span>
+            <ArrowRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5" />
+          </Link>
+        ) : cartItem ? (
           <div className="mt-3 flex h-12 items-center justify-between rounded-lg border border-zinc-200 sm:mt-4">
             <button
               aria-label="Restar unidad"

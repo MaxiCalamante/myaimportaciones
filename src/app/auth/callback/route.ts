@@ -2,6 +2,7 @@ import { safeAuthNext } from "@/lib/auth-navigation";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
+import { scheduleTransactionalEmails } from "@/lib/email-worker";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -11,7 +12,10 @@ export async function GET(request: Request) {
   if (code && hasSupabaseConfig()) {
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL(next, requestUrl.origin));
+    if (!error) {
+      scheduleTransactionalEmails();
+      return NextResponse.redirect(new URL(next, requestUrl.origin));
+    }
   }
 
   return NextResponse.redirect(new URL("/login?error=confirmation", requestUrl.origin));

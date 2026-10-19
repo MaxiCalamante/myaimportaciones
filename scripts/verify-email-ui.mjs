@@ -2,17 +2,20 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 const runtimeModules = process.env.CODEX_NODE_MODULES || "C:/Users/maxim/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules";
 const require = createRequire(import.meta.url);
+const { Webhook } = require("svix");
 const { chromium } = require(resolve(runtimeModules, "playwright"));
 let role = "admin";
+let providerWrites = 0;
 const user = { id: "22222222-2222-4222-8222-222222222222", aud: "authenticated", role: "authenticated", email: "admin@example.com", user_metadata: {}, app_metadata: {}, created_at: new Date().toISOString() };
 const snapshot = { tracking_code: "ORD-EJEMPLO", status: "shipped", total_amount: 125000, customer_email: "cliente@example.com" };
 const fake = createServer((req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
+  if (req.method === "POST" && /\/email_(provider_events|suppressions)$/.test(path)) providerWrites++;
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "authorization,apikey,content-type,x-client-info");
@@ -24,7 +27,7 @@ const fake = createServer((req, res) => {
   res.end("[]");
 });
 await new Promise(done => fake.listen(3411, "127.0.0.1", done));
-const out = resolve("../scratch/email-system-2026-10-10");
+const out = resolve("../scratch/email-system-2026-10-19");
 await mkdir(out, { recursive: true });
 const app = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", "3412"], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:3411", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic", SUPABASE_SERVICE_ROLE_KEY: "synthetic", NEXT_PUBLIC_SITE_URL: "http://localhost:3412", TRANSACTIONAL_EMAILS_ENABLED: "false", RESEND_API_KEY: "", RESEND_FROM_EMAIL: "", RESEND_DOMAIN_VERIFIED: "false", RESEND_WEBHOOK_SECRET: "whsec_c3ludGhldGljLXZhbGlkLWtleS0xMjM0NTY3ODkw", CRON_SECRET: "synthetic-cron", COMMERCE_CHECKOUT_ENABLED: "false" } });
 let log = "";
@@ -35,8 +38,10 @@ try {
   if (!log.includes("Ready in")) throw new Error("Local app startup timed out");
   browser = await chromium.launch({ channel: "chrome", headless: true });
   const context = await browser.newContext();
+  await context.route("**/*", route => new URL(route.request().url()).hostname === "localhost" ? route.continue() : route.abort());
   await context.addInitScript(() => { if (window.top === window) localStorage.setItem("mya_analytics_consent", "denied"); });
   const page = await context.newPage();
+  page.setDefaultNavigationTimeout(90000);
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("http://localhost:3412/admin/emails", { waitUntil: "networkidle" });
@@ -62,6 +67,14 @@ try {
     await page.getByLabel("Destinatario", { exact: true }).selectOption("customer");
     await page.getByLabel("Ocasión", { exact: true }).selectOption("order_shipped");
     await frame.getByRole("heading", { name: "Despachamos tu pedido", exact: true }).waitFor();
+    for (const [event, title] of [["account_welcome", "Te damos la bienvenida a MYA"], ["wholesale_approved", "Ya tenés acceso mayorista"], ["wholesale_revoked", "Actualizamos el acceso de tu cuenta"], ["withdrawal_contacted", "Tu solicitud está en atención"], ["withdrawal_resolved", "Actualizamos tu solicitud"]]) {
+      await page.getByLabel("Ocasión", { exact: true }).selectOption(event);
+      await frame.getByRole("heading", { name: title, exact: true }).waitFor();
+      const preview = page.frames().find(f => f !== page.mainFrame());
+      assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${event} overflow at ${width}`);
+    }
+    await page.getByLabel("Ocasión", { exact: true }).selectOption("order_shipped");
+    await frame.getByRole("heading", { name: "Despachamos tu pedido", exact: true }).waitFor();
     const iframeOverflow = await page.locator("iframe").evaluate(el => { const doc = el.contentDocument; return doc ? doc.documentElement.scrollWidth > doc.documentElement.clientWidth : null; });
     // The sandbox intentionally denies parent DOM access. Inspect through Playwright's frame context.
     const child = page.frames().find(f => f !== page.mainFrame());
@@ -77,14 +90,33 @@ try {
   await emailPage.setContent(emailHtml);
   await emailPage.screenshot({ path: resolve(out, "email-demo-390.png"), fullPage: true });
   await writeFile(resolve(out, "email-demo.html"), emailHtml);
+  for (const key of ["confirmation", "recovery", "invite", "magic_link", "email_change", "reauthentication", "password_changed_notification", "email_changed_notification", "phone_changed_notification", "identity_linked_notification", "identity_unlinked_notification", "mfa_factor_enrolled_notification", "mfa_factor_unenrolled_notification"]) {
+    const template = (await readFile(resolve(`supabase/templates/${key}.html`), "utf8")).replaceAll("{{ .ConfirmationURL }}", "https://example.com/auth/verify?token=synthetic").replaceAll("{{ .Token }}", "123456");
+    for (const width of [320, 390, 1440]) {
+      await emailPage.setViewportSize({ width, height: 900 });
+      await emailPage.setContent(template);
+      assert.equal(await emailPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${key} overflow at ${width}`);
+    }
+  }
   await emailPage.close();
   const cron = await context.request.get("http://localhost:3412/api/cron/emails"); assert.equal(cron.status(), 401);
   const disabledCron = await context.request.get("http://localhost:3412/api/cron/emails", { headers: { authorization: "Bearer synthetic-cron" } }); assert.deepEqual(await disabledCron.json(), { enabled: false });
   const unsigned = await context.request.post("http://localhost:3412/api/resend/webhook", { data: { type: "email.delivered" } }); assert.equal(unsigned.status(), 401);
+  const webhook = new Webhook("whsec_c3ludGhldGljLXZhbGlkLWtleS0xMjM0NTY3ODkw");
+  const signedRequest = async from => {
+    const timestamp = new Date();
+    const id = `synthetic-${from}`;
+    const data = JSON.stringify({ type: "email.bounced", created_at: timestamp.toISOString(), data: { email_id: "synthetic-provider", from, to: ["cliente@example.com"] } });
+    return context.request.post("http://localhost:3412/api/resend/webhook", { data, headers: { "Content-Type": "application/json", "svix-id": id, "svix-timestamp": String(Math.floor(timestamp.getTime() / 1000)), "svix-signature": webhook.sign(id, timestamp, data) } });
+  };
+  const foreignWebhook = await signedRequest("notificaciones@turnero.site");
+  assert.equal(foreignWebhook.status(), 200);
+  assert.deepEqual(await foreignWebhook.json(), { received: true, ignored: true });
+  assert.equal(providerWrites, 0, "foreign sender must not write history or suppressions");
   role = "customer";
   await page.goto("http://localhost:3412/admin/emails", { waitUntil: "networkidle" }); assert.ok(page.url().includes("/cuenta"));
   assert.deepEqual(errors, []);
-  const report = { evidence: "local actual routes with synthetic Supabase/auth; no live writes or email sending", results, anonymousRedirect: true, customerRedirect: true, cronAuth: true, disabledCron: true, unsignedWebhookRejected: true, pageErrors: errors };
+  const report = { evidence: "local actual routes with synthetic Supabase/auth; no live writes or email sending", results, authTemplates: 13, anonymousRedirect: true, customerRedirect: true, cronAuth: true, disabledCron: true, unsignedWebhookRejected: true, foreignWebhookIgnoredWithoutWrites: true, pageErrors: errors };
   await writeFile(resolve(out, "verification.json"), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));
 } catch (error) {

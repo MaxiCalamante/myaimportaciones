@@ -3,7 +3,7 @@ export function validEmail(value: string) {
   return value.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value);
 }
 export function getEmailConfig(env: Record<string, string | undefined> = process.env) {
-  const recipients = [...new Set((env.ADMIN_NOTIFICATION_EMAILS || "maximocalamante14@gmail.com").split(",").map(s => s.trim().toLowerCase()).filter(Boolean))];
+  const recipients = [...new Set((env.ADMIN_NOTIFICATION_EMAILS || "maximocalamante14@gmail.com,agustinagil009@gmail.com").split(",").map(s => s.trim().toLowerCase()).filter(Boolean))];
   const from = (env.RESEND_FROM_EMAIL || "").trim();
   const address = from.match(/<([^<>]+)>$/)?.[1] || from;
   const domain = address.split("@")[1]?.toLowerCase();

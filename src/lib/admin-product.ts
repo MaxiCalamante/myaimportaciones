@@ -1,6 +1,7 @@
 import { supplierUrl } from "./supplier-url";
 import { AdminFormError } from "./admin-action-result";
 import type { PaymentMethod } from "./types";
+import { parseOptionsConfig, parseVariantsJson, type VariantFormInput } from "./admin-variants";
 
 export const MAX_PRODUCT_IMAGES = 4;
 export const MAX_UPLOAD_BYTES = 750_000;
@@ -70,13 +71,42 @@ export function parseSpecifications(raw: string): Record<string, string> {
   if (!parsed || Array.isArray(parsed) || typeof parsed !== "object" || Object.keys(parsed).length > 40 || Object.entries(parsed).some(([k, v]) => !k.trim() || k.length > 80 || typeof v !== "string" || v.length > 3000 || ["__proto__", "constructor", "prototype"].includes(k))) throw new AdminFormError("Las especificaciones deben ser pares de nombre y texto.");
   return parsed as Record<string, string>;
 }
-export function parseProductForm(form: FormData, creating: boolean) {
+export function parseProductForm(form: FormData, creating = false) {
   const title = text(form, "title", 200);
   if (title.length < 2) throw new AdminFormError("Ingresá un título de al menos 2 caracteres.");
   const categoryId = validId(text(form, "subcategory_id") || text(form, "category_id"));
   const retailPrice = number(form, "retail_price", 0, 9999999999.99);
   const active = form.get("is_active") === "on";
-  if (active && retailPrice <= 0) throw new AdminFormError("Para publicar, el precio minorista debe ser mayor a cero.");
+
+  // Check variants configuration
+  const hasVariants = form.get("has_variants") === "true" || form.get("has_variants") === "on";
+  const optionsConfig = hasVariants ? parseOptionsConfig(form.get("options_config")) : [];
+  const variants: VariantFormInput[] = hasVariants ? parseVariantsJson(form.get("variants_json")) : [];
+
+  let effectiveRetailPrice = retailPrice;
+  if (hasVariants) {
+    if (!optionsConfig.length) {
+      throw new AdminFormError("Agregá al menos una opción o dimensión (ej. Fragancia, Potencia) para el producto con variantes.");
+    }
+    if (!variants.length) {
+      throw new AdminFormError("Configurá al menos una variante para el producto.");
+    }
+    const activeVariants = variants.filter(v => v.isActive);
+    if (active) {
+      if (!activeVariants.length) {
+        throw new AdminFormError("Para publicar un producto con variantes, debés activar al menos una variante.");
+      }
+      if (activeVariants.some(v => v.retailPrice <= 0)) {
+        throw new AdminFormError("Todas las variantes activas deben tener un precio mayor a cero.");
+      }
+    }
+    if (effectiveRetailPrice <= 0 && activeVariants.length) {
+      effectiveRetailPrice = Math.min(...activeVariants.map(v => v.retailPrice));
+    }
+  } else {
+    if (active && retailPrice <= 0) throw new AdminFormError("Para publicar, el precio minorista debe ser mayor a cero.");
+  }
+
   const mode = text(form, "fulfillment_mode") || "supplier";
   if (!["supplier", "own_stock"].includes(mode)) throw new AdminFormError("Elegí una modalidad de disponibilidad válida.");
   const minimum = number(form, "wholesale_min_qty", 1, 100000, true);
@@ -98,13 +128,13 @@ export function parseProductForm(form: FormData, creating: boolean) {
     else delete specifications.peso_kg;
   }
   const stock = creating ? number(form, "stock", 0, 100000, true) : undefined;
-  if (creating && mode === "supplier" && stock) throw new AdminFormError("El stock físico se carga sólo para stock propio.");
-  if (creating && stock && form.get("stock_confirmed") !== "on") throw new AdminFormError("Confirmá el conteo físico antes de cargar stock propio.");
+  if (creating && mode === "supplier" && stock && !hasVariants) throw new AdminFormError("El stock físico se carga sólo para stock propio.");
+  if (creating && stock && form.get("stock_confirmed") !== "on" && !hasVariants) throw new AdminFormError("Confirmá el conteo físico antes de cargar stock propio.");
   const rawCost = text(form, "supplier_live_price", 30);
   const tags = [...new Set(text(form, "tags", 1000).split(",").map(t => t.trim()).filter(t => t && !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())))];
   const fields = {
     title, category_id: categoryId, description: text(form, "description", 10000) || null,
-    retail_price: retailPrice, wholesale_price: number(form, "wholesale_price", 0, 9999999999.99), wholesale_min_qty: minimum,
+    retail_price: effectiveRetailPrice, wholesale_price: number(form, "wholesale_price", 0, 9999999999.99), wholesale_min_qty: minimum,
     brand: text(form, "brand") || null, model: text(form, "model") || null, sku: text(form, "sku", 100) || null,
     source_url: text(form, "source_url", 2000) ? checkedSupplierUrl(text(form, "source_url", 2000)) : null,
     supplier_live_price: rawCost ? number(form, "supplier_live_price", 0, 9999999999.99) : null,
@@ -112,9 +142,11 @@ export function parseProductForm(form: FormData, creating: boolean) {
     payment_methods: methods.length ? [...new Set(methods)] as PaymentMethod[] : ["transferencia"] as PaymentMethod[],
     tags, specifications, warranty_terms: text(form, "warranty_terms", 3000) || null,
     is_active: active, is_featured: form.get("is_featured") === "on", is_wholesale_only: form.get("is_wholesale_only") === "on",
+    has_variants: hasVariants,
+    options_config: optionsConfig,
     updated_at: new Date().toISOString(),
   };
   const slug = slugifyProduct(text(form, "slug") || title);
   if (!slug) throw new AdminFormError("El título debe permitir generar un enlace de producto.");
-  return { fields, slug, stock };
+  return { fields, slug, stock, hasVariants, variants };
 }
