@@ -11,6 +11,8 @@ export async function GET(req: Request) {
   try {
     const { error } = await createCommerceService().rpc("expire_retail_reservations_v2");
     if (error) throw new Error();
+    const { error: automationError } = await createCommerceService().rpc("prepare_email_automations_v1");
+    if (automationError) throw new Error();
     return NextResponse.json(await processEmailOutbox());
   } catch { return NextResponse.json({ error: "Processing failed" }, { status: 503 }); }
 }

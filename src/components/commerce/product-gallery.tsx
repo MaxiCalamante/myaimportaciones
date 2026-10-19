@@ -7,16 +7,17 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
   const choices = [...new Set([image, ...images].filter(Boolean))];
   const [userSelected, setUserSelected] = useState<string | null>(null);
   const [prevImage, setPrevImage] = useState(image);
+  const [failed, setFailed] = useState<string[]>([]);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [enlarged, setEnlarged] = useState(false);
 
   if (prevImage !== image) {
     setPrevImage(image);
     setUserSelected(null);
+    setFailed([]);
   }
 
-  const selected = userSelected ?? image ?? choices[0] ?? "/placeholder-product.svg";
-  const [failed, setFailed] = useState<string[]>([]);
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [enlarged, setEnlarged] = useState(false);
+  const selected = userSelected || image || choices[0] || "/placeholder-product.svg";
 
   useEffect(() => {
     if (!enlarged) return;
@@ -40,11 +41,14 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
           src={src}
           alt={title}
           fill
-          preload
+          priority
           sizes="(min-width: 1024px) 560px, 100vw"
-          quality={90}
           className="object-contain p-6 transition-transform duration-300 ease-out group-hover:scale-105"
-          onError={() => setFailed((a) => [...a, selected])}
+          onError={() => {
+            if (selected && selected !== "/placeholder-product.svg") {
+              setFailed((a) => [...a, selected]);
+            }
+          }}
         />
         <span className="absolute bottom-3.5 right-3.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-xs border border-zinc-200/80 transition-all duration-150 group-hover:bg-white group-hover:text-zinc-950 group-hover:shadow-sm">
           <ZoomIn className="size-3.5 text-zinc-500 group-hover:text-sky-700" />
@@ -83,7 +87,11 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
                   fill
                   sizes="80px"
                   className="object-contain p-1"
-                  onError={() => setFailed((a) => [...a, url])}
+                  onError={() => {
+                    if (url && url !== "/placeholder-product.svg") {
+                      setFailed((a) => [...a, url]);
+                    }
+                  }}
                 />
               </button>
             );

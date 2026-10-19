@@ -1,4 +1,4 @@
-export interface ResendPayload { from: string; to: string[]; reply_to: string; subject: string; html: string; text: string; tags: { name: string; value: string }[] }
+export interface ResendPayload { from: string; to: string[]; reply_to: string; subject: string; html: string; text: string; tags: { name: string; value: string }[]; headers?: Record<string, string> }
 export class EmailSendError extends Error {
   constructor(public code: string, public retryable: boolean) { super(code); }
 }

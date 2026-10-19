@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmailConfig, validEmail } from "./email-config";
 import { renderTransactionalEmail, type EmailSnapshot } from "./email-templates";
 import { sendResendEmail, EmailSendError, type ResendPayload } from "./email-transport";
+import { renderOptionalEmail, type OptionalEmailSnapshot } from "./email-marketing";
 
 interface OutboxRow {
   id: string; event_key: string; event_type: string; audience: "customer" | "admin";
@@ -19,6 +20,12 @@ export async function dispatchEmailOutbox(db: SupabaseClient, config: ReturnType
       if (saveError || !changed?.length) throw new Error("No se pudo guardar el resultado del email.");
     };
     try {
+      const optional = ["campaign", "cart_reminder"].includes(row.event_type);
+      if (optional) {
+        const { data: allowed, error: consentError } = await db.rpc("can_send_optional_email_v1", { snapshot_input: row.snapshot, event_input: row.event_type });
+        if (consentError) throw new Error("No se pudo verificar el consentimiento.");
+        if (allowed !== true) { await save({ status: "skipped", last_error: "Preferencias, campaña o carrito cambiaron; no se envía.", lease_token: null, leased_until: null }); report.skipped++; continue; }
+      }
       // Activation never sends an unattended historical backlog.
       if (!row.first_attempt_at && Date.now() - Date.parse(row.created_at) > 86400000) {
         await save({ status: "skipped", last_error: "Aviso antiguo: no se envía automáticamente.", lease_token: null, leased_until: null }); report.skipped++; continue;
@@ -47,7 +54,8 @@ export async function dispatchEmailOutbox(db: SupabaseClient, config: ReturnType
       }
       const payload = row.payload || {
         from: config.from, to, reply_to: config.replyTo,
-        ...renderTransactionalEmail(row.event_type, row.audience, row.snapshot, config.origin),
+        ...(optional ? renderOptionalEmail(row.event_type, row.snapshot, config.origin) : renderTransactionalEmail(row.event_type, row.audience, row.snapshot, config.origin)),
+        ...(optional ? { headers: { "List-Unsubscribe": `<${new URL(`/api/emails/unsubscribe?token=${encodeURIComponent((row.snapshot as OptionalEmailSnapshot).unsubscribe_token || "")}`, config.origin).href}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } } : {}),
         tags: [{ name: "event", value: row.event_type }, { name: "audience", value: row.audience }, { name: "outbox_id", value: row.id }],
       };
       // Persist the exact body before touching the provider. All retries reuse it, even after config changes.

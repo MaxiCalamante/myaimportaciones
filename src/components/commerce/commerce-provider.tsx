@@ -239,6 +239,14 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     }
 
     try { window.localStorage.setItem(cartKey, JSON.stringify(cart)); } catch {}
+    const syncReminder = () => {
+      // Recovery must read the saved selection before this device can replace it.
+      if (window.location.pathname === "/recuperar-carrito") return;
+      void fetch("/api/account/reminder-cart", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart.filter(l => l.channel === "retail").slice(0, 50).map(l => ({ id: l.product.id, variant_id: l.variantId || null, quantity: l.quantity })) }), keepalive: true }).catch(() => { /* Local cart and checkout remain available; no unverified reminder is queued. */ });
+    };
+    const timer = window.setTimeout(syncReminder, 1200);
+    window.addEventListener("mya-email-preferences", syncReminder);
+    return () => { window.clearTimeout(timer); window.removeEventListener("mya-email-preferences", syncReminder); };
   }, [cart]);
 
   const addToCart = useCallback(

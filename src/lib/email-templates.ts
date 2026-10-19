@@ -3,6 +3,7 @@ import { formatPaymentMethod } from "./format";
 const formatCurrency = (value: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
 
 export const emailEventLabels: Record<string, string> = {
+  campaign: "Campaña de ofertas", cart_reminder: "Recordatorio de carrito",
   order_created: "Pedido registrado", payment_confirmed: "Pago acreditado", payment_failed: "Intento de pago rechazado o cancelado",
   order_preparing: "Preparación", order_shipped: "Despacho", tracking_updated: "Guía actualizada",
   order_delivered: "Entrega", order_cancelled: "Cancelación", reservation_expired: "Reserva vencida",
@@ -24,7 +25,7 @@ export function escapeEmailHtml(value: unknown) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 export function renderTransactionalEmail(event: string, audience: "customer" | "admin", s: EmailSnapshot, origin: string): EmailContent {
-  if (!emailEventLabels[event]) throw new Error("Evento de email desconocido.");
+  if (!emailEventLabels[event] || ["campaign", "cart_reminder"].includes(event)) throw new Error("Evento de email desconocido.");
   const admin = audience === "admin";
   const code = s.tracking_code || s.reference || "";
   const tracking = new URL("/seguimiento", origin);

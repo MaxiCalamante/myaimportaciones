@@ -45,7 +45,7 @@ test("shipment without a guide doesn't invent it, cancellation doesn't promise r
   assert.ok(guide.html.includes("GUIDE-123"));
   assert.ok(guide.html.includes("https://www.correoargentino.com.ar/formularios/e-commerce"));
   assert.match(renderTransactionalEmail("order_cancelled", "customer", {}, "https://shop.example.com").text, /no confirma un reintegro/);
-  for (const event of Object.keys(emailEventLabels)) for (const audience of ["customer", "admin"] as const) {
+  for (const event of Object.keys(emailEventLabels).filter(e => !["campaign", "cart_reminder"].includes(e))) for (const audience of ["customer", "admin"] as const) {
     const content = renderTransactionalEmail(event, audience, {}, "https://shop.example.com");
     assert.ok(content.subject && content.text && content.html);
   }

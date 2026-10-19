@@ -36,11 +36,14 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next-giveaway-qa/types/**/*.ts",
-    ".next-giveaway-qa/dev/types/**/*.ts"
+    ".next-giveaway-qa/dev/types/**/*.ts",
+    ".next-email-qa/types/**/*.ts",
+    ".next-email-qa/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "docs/**/qa-private/**",
-    ".next-giveaway-qa"
+    ".next-giveaway-qa",
+    ".next-email-qa"
   ]
 }

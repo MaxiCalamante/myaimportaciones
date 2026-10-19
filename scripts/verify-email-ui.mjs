@@ -24,12 +24,13 @@ const fake = createServer((req, res) => {
   if (path.endsWith("/auth/v1/user")) return res.end(JSON.stringify(user));
   if (path.endsWith("/profiles")) return res.end(JSON.stringify({ id: user.id, email: user.email, role, full_name: "Administrador ficticio", customer_tier: "retail" }));
   if (path.endsWith("/email_outbox")) return res.end(JSON.stringify([{ id: "33333333-3333-4333-8333-333333333333", event_type: "order_shipped", audience: "customer", status: "sent", attempts: 1, provider_id: "synthetic-id", delivery_status: "email.delivered", last_error: null, created_at: new Date().toISOString(), snapshot }]));
+  if (path.endsWith("/email_preferences")) return res.end(JSON.stringify({ promotions: false, cart_reminders: false }));
   res.end("[]");
 });
 await new Promise(done => fake.listen(3411, "127.0.0.1", done));
 const out = resolve("../scratch/email-system-2026-10-19");
 await mkdir(out, { recursive: true });
-const app = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", "3412"], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:3411", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic", SUPABASE_SERVICE_ROLE_KEY: "synthetic", NEXT_PUBLIC_SITE_URL: "http://localhost:3412", TRANSACTIONAL_EMAILS_ENABLED: "false", RESEND_API_KEY: "", RESEND_FROM_EMAIL: "", RESEND_DOMAIN_VERIFIED: "false", RESEND_WEBHOOK_SECRET: "whsec_c3ludGhldGljLXZhbGlkLWtleS0xMjM0NTY3ODkw", CRON_SECRET: "synthetic-cron", COMMERCE_CHECKOUT_ENABLED: "false" } });
+const app = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", "3412"], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NEXT_DIST_DIR: ".next-email-qa", NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:3411", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic", SUPABASE_SERVICE_ROLE_KEY: "synthetic", NEXT_PUBLIC_SITE_URL: "http://localhost:3412", TRANSACTIONAL_EMAILS_ENABLED: "false", RESEND_API_KEY: "", RESEND_FROM_EMAIL: "", RESEND_DOMAIN_VERIFIED: "false", RESEND_WEBHOOK_SECRET: "whsec_c3ludGhldGljLXZhbGlkLWtleS0xMjM0NTY3ODkw", CRON_SECRET: "synthetic-cron", COMMERCE_CHECKOUT_ENABLED: "false" } });
 let log = "";
 app.stdout?.on("data", chunk => { log += chunk.toString(); }); app.stderr?.on("data", chunk => { log += chunk.toString(); });
 let browser;
@@ -59,6 +60,7 @@ try {
     assert.equal(await page.getByRole("button", { name: "Procesar pendientes" }).isDisabled(), true);
     assert.ok(await page.getByText("Entregado al servidor del destinatario", { exact: true }).isVisible());
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+    if (overflow) { console.log(await page.evaluate(() => [...document.querySelectorAll("body *")].filter(e => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 20).map(e => ({ tag: e.tagName, cls: e.className, text: e.textContent?.slice(0, 70), right: e.getBoundingClientRect().right })))); await page.screenshot({ path: resolve(out, "overflow.png"), fullPage: true }); }
     assert.equal(overflow, false, `Page overflow at ${width}`);
     await page.getByLabel("Destinatario", { exact: true }).selectOption("admin");
     await page.getByLabel("Ocasión", { exact: true }).selectOption("payment_review");
@@ -85,6 +87,29 @@ try {
     results.push({ width, overflow, iframeOverflow, childOverflow, previewInteractions: true });
   }
   const emailHtml = await page.frames().find(f => f !== page.mainFrame()).content();
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto("http://localhost:3412/admin/emails/campanas", { waitUntil: "networkidle" });
+    await page.getByRole("heading", { name: "Campañas y carritos", exact: true }).waitFor();
+    await page.getByLabel("Asunto", { exact: true }).fill("Oferta de prueba <segura>");
+    const campaignFrame = page.frameLocator('iframe[title="Vista previa de campaña"]');
+    await campaignFrame.getByRole("heading", { name: "Encontrá tu próxima compra", exact: true }).waitFor();
+    await page.getByLabel("Vista previa", { exact: true }).selectOption("cart_reminder");
+    await campaignFrame.getByRole("heading", { name: "¿Querés retomar tu compra?", exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Campaign overflow at ${width}`);
+    assert.equal(await page.frames().find(f => f !== page.mainFrame()).evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Cart email overflow at ${width}`);
+    await page.screenshot({ path: resolve(out, `campaigns-${width}.png`), fullPage: true });
+    await page.goto("http://localhost:3412/cuenta", { waitUntil: "networkidle" });
+    await page.getByRole("heading", { name: "Tus emails, a tu manera" }).waitFor();
+    assert.equal(await page.getByRole("checkbox", { name: /Ofertas y novedades/ }).isChecked(), false);
+    assert.equal(await page.getByRole("checkbox", { name: /Recordarme mi carrito/ }).isChecked(), false);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Preferences overflow at ${width}`);
+    await page.screenshot({ path: resolve(out, `email-preferences-${width}.png`), fullPage: true });
+    await page.goto("http://localhost:3412/emails/baja?token=" + "a".repeat(64), { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Confirmar mi baja" }).waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Unsubscribe overflow at ${width}`);
+    await page.screenshot({ path: resolve(out, `email-unsubscribe-${width}.png`), fullPage: true });
+  }
   const emailPage = await context.newPage();
   await emailPage.setViewportSize({ width: 390, height: 900 });
   await emailPage.setContent(emailHtml);

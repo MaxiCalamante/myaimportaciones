@@ -133,6 +133,7 @@ docs/tools-selection-2026-10-01/*
 
 *.tsbuildinfo
 .next-giveaway-qa/
+.next-email-qa/
 docs/sorteos/qa-private/
 docs/sorteos/lint-local.json
 # Existing supplier/financial snapshots stay private on this machine.

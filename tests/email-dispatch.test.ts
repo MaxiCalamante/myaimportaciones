@@ -6,13 +6,14 @@ import { getEmailConfig } from "../src/lib/email-config";
 import { EmailSendError, type ResendPayload } from "../src/lib/email-transport";
 
 const config = getEmailConfig({ TRANSACTIONAL_EMAILS_ENABLED: "true", RESEND_API_KEY: "synthetic", RESEND_DOMAIN_VERIFIED: "true", RESEND_FROM_EMAIL: "pedidos@example.com", NEXT_PUBLIC_SITE_URL: "https://shop.example.com" });
-function fixture(overrides: Record<string, unknown> = {}, options: { currentStatus?: string; suppressed?: boolean; failResultSave?: boolean; profileEmail?: string; wholesale?: boolean } = {}) {
+function fixture(overrides: Record<string, unknown> = {}, options: { currentStatus?: string; suppressed?: boolean; failResultSave?: boolean; profileEmail?: string; wholesale?: boolean; consent?: boolean } = {}) {
   const row = { id: "12345678-1234-1234-1234-123456789abc", event_key: "order/test/created", event_type: "order_created", audience: "customer", order_id: "order-test", snapshot: { status: "pending", customer_email: "customer@example.com", shipping_name: "Test Customer", tracking_code: "ORD-TEST", payment_method: "transferencia", total_amount: 1000 }, payload: null, lease_token: "lease", attempts: 0, created_at: new Date().toISOString(), first_attempt_at: null, ...overrides };
   const updates: Record<string, unknown>[] = [];
   const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(String(input)).pathname;
     if (path.endsWith("/rpc/claim_transactional_emails_v1")) return Response.json([row]);
     if (path.endsWith("/rpc/apply_email_provider_events_v1")) return Response.json(null);
+    if (path.endsWith("/rpc/can_send_optional_email_v1")) return Response.json(options.consent === true);
     if (path.endsWith("/orders")) return Response.json({ status: options.currentStatus || "pending", carrier_tracking_code: null });
     if (path.endsWith("/profiles")) return Response.json({ email: options.profileEmail || "customer@example.com", is_approved_wholesale: options.wholesale ?? true });
     if (path.endsWith("/email_suppressions")) return Response.json(options.suppressed ? [{ email: "customer@example.com" }] : []);
@@ -39,6 +40,15 @@ test("worker persists exact payload before send and retries frozen recipients/bo
   assert.equal(f.updates.at(-1)?.status, "sent");
   const retry = fixture({ payload: firstPayload, first_attempt_at: new Date().toISOString(), attempts: 1 });
   await dispatchEmailOutbox(retry.db, { ...config, from: "new@example.com", recipients: ["new-admin@example.com"], replyTo: "new-support@example.com" }, undefined, async payload => { assert.deepEqual(payload, firstPayload); return "provider-id"; });
+});
+test("optional sends recheck consent even when a payload was frozen on a previous attempt", async () => {
+  for (const payload of [null, { from: config.from, to: ["customer@example.com"], subject: "Frozen", text: "Frozen", html: "Frozen", reply_to: config.replyTo, tags: [] }]) {
+    const f = fixture({ event_type: "campaign", order_id: null, payload });
+    const result = await dispatchEmailOutbox(f.db, config, undefined, async () => { assert.fail("Revoked/cancelled optional email must never reach provider"); });
+    assert.equal(result.skipped,1);
+  }
+  const f = fixture({ event_type: "cart_reminder", order_id: null, snapshot: { customer_email: "customer@example.com", unsubscribe_token: "a".repeat(64) } }, { consent: true });
+  assert.equal((await dispatchEmailOutbox(f.db, config, undefined, async payload => { assert.equal(payload.headers?.["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click"); assert.match(payload.text,/recuperar-carrito/); return "provider-id"; })).sent,1);
 });
 test("worker does not send disabled, obsolete, old or suppressed notifications", async () => {
   let calls = 0;

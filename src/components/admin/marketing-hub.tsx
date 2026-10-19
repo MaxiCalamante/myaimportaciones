@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Megaphone,
   Share2,
@@ -73,6 +74,7 @@ export function MarketingHub() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
+      <Link href="/admin/emails/campanas" className="flex min-h-14 items-center justify-between rounded-2xl border bg-white p-5 font-semibold text-sky-800">Ofertas por email y recordatorios de carrito <span aria-hidden="true">→</span></Link>
       {/* Header Banner */}
       <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-900 via-indigo-950 to-zinc-950 p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />

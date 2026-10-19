@@ -22,6 +22,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
   return <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
     <Link href="/admin" className="inline-flex min-h-11 items-center text-sm font-semibold text-sky-800">← Volver al panel</Link>
     <div><h1 className="text-3xl font-bold">Emails de la tienda</h1><p className="mt-2 text-zinc-600">Avisos para clientes y administradores, con historial de envío y entrega.</p></div>
+    <Link href="/admin/emails/campanas" className="inline-flex min-h-11 items-center rounded-xl bg-sky-800 px-5 py-3 font-semibold text-white">Crear ofertas y ver recordatorios →</Link>
     {notice && notices[notice] && <p role="status" className="rounded-xl border bg-sky-50 p-4">{notices[notice]}</p>}
     <section className={`rounded-2xl border p-5 ${config.enabled ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
       <h2 className="text-lg font-bold">{config.enabled ? "Envíos habilitados" : "Preparado · envíos desactivados"}</h2>

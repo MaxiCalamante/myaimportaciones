@@ -54,7 +54,8 @@ export function StickyMobileBuyBar({
     <div
       role="region"
       aria-label="Acciones rápidas de compra"
-      className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 px-3 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 animate-in slide-in-from-bottom"
+      className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 px-3 py-2.5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 animate-in slide-in-from-bottom"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-center gap-2.5">
         {/* Thumbnail & Title/Price */}

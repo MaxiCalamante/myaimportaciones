@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   images: {
+    unoptimized: true,
     qualities: [75, 90, 95],
     remotePatterns: [
       { protocol: "https", hostname: "cdn.shopify.com" },

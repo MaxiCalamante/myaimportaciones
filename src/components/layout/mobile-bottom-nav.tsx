@@ -24,7 +24,10 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const isTracking = pathname?.startsWith(orderPath);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+    <div
+      className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       <nav aria-label="Navegación principal móvil" className="flex items-center justify-around h-16 px-2">
         {/* Home */}
         <Link

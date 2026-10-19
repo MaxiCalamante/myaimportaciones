@@ -566,7 +566,7 @@ export function SiteHeader({
             <Link
               aria-label="Panel admin"
               onClick={() => setOpen(false)}
-              className={iconButtonClass}
+              className={`${iconButtonClass} max-sm:hidden`}
               href="/admin"
               title="Panel admin"
             >
