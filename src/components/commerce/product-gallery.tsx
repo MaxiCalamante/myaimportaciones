@@ -50,6 +50,13 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
           <ZoomIn className="size-3.5 text-zinc-500 group-hover:text-sky-700" />
           <span>Ampliar foto</span>
         </span>
+        {choices.length > 1 && (
+          <span className="absolute bottom-3.5 left-3.5 inline-flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-white shadow-xs sm:hidden">
+            <span>{choices.indexOf(selected) >= 0 ? choices.indexOf(selected) + 1 : 1}</span>
+            <span className="opacity-60">/</span>
+            <span>{choices.length}</span>
+          </span>
+        )}
       </button>
 
       {/* Thumbnails Navigation */}

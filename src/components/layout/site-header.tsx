@@ -610,6 +610,23 @@ export function SiteHeader({
               </span>
             )}
           </button>
+          {/* Direct Search Trigger for Mobile */}
+          <button
+            aria-label="Buscar productos"
+            className={`md:hidden ${iconButtonClass}`}
+            onClick={() => {
+              setOpen(true);
+              setTimeout(() => {
+                const el = document.getElementById("mobile-search-input");
+                el?.focus();
+              }, 120);
+            }}
+            type="button"
+            title="Buscar"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+
           <button
             aria-label="Abrir menu"
             aria-expanded={open}
@@ -625,7 +642,7 @@ export function SiteHeader({
       </div>
 
       {open && (
-        <div id="mobile-site-menu" className={`absolute inset-x-0 top-full border-t px-4 py-3 xl:hidden max-h-[calc(100dvh-8rem-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain pb-6 shadow-2xl ${
+        <div id="mobile-site-menu" className={`absolute inset-x-0 top-full border-t px-4 py-3 xl:hidden max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain pb-28 shadow-2xl ${
           isWholesale ? "border-zinc-800 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-900"
         }`}>
           <div className="relative mb-3">
@@ -634,6 +651,7 @@ export function SiteHeader({
             }`}>
               <Search className="h-4 w-4 text-zinc-500" />
               <input
+                id="mobile-search-input"
                 aria-label="Buscar productos"
                 className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500"
                 placeholder="Buscar productos..."

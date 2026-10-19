@@ -4,14 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, LayoutGrid, ShoppingBag, Truck, MessageCircle } from "lucide-react";
 import { useCommerce } from "@/components/commerce/commerce-provider";
-import { getWhatsAppUrl } from "@/lib/site";
 
 export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
   const { cartCount, setCartOpen, openWhatsApp } = useCommerce();
 
-  // Hide on admin routes and product detail pages (handled by StickyMobileBuyBar)
-  if (pathname?.startsWith("/admin") || pathname?.startsWith("/producto/")) {
+  // Hide on admin routes, product detail (handled by StickyMobileBuyBar) and checkout (frictionless tunnel)
+  if (
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/producto/") ||
+    pathname?.startsWith("/checkout")
+  ) {
     return null;
   }
 
@@ -21,7 +24,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
   const isTracking = pathname?.startsWith(orderPath);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200 pb-[env(safe-area-inset-bottom)] shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
       <nav aria-label="Navegación principal móvil" className="flex items-center justify-around h-16 px-2">
         {/* Home */}
         <Link

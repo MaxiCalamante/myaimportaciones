@@ -23,7 +23,7 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
 
   const whatsappMessage = `Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} × ${line.product.title}${line.variantTitle ? ` (${line.variantTitle})` : ""}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}; entrega a cotizar.`;
   return <div className="fixed inset-0 z-50 bg-zinc-950/55" onClick={() => setCartOpen(false)}>
-    <aside ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="cart-title" className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl" onClick={event => event.stopPropagation()} onKeyDown={event => {
+    <aside ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="cart-title" className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl rounded-l-3xl overflow-hidden" onClick={event => event.stopPropagation()} onKeyDown={event => {
       if (event.key === "Escape") setCartOpen(false);
       if (event.key === "Tab") {
         const nodes = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled)');

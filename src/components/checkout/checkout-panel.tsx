@@ -106,6 +106,7 @@ export function CheckoutPanel({
     }, 350);
 
     return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, cart.length, checkoutEnabled, shippingCalculation.isValid]);
 
   const refreshQuote = () => startTransition(async () => {
@@ -405,6 +406,7 @@ export function CheckoutPanel({
                   maxLength={12}
                   placeholder="Ej. 7000, 1425, 5000..."
                   autoComplete="postal-code"
+                  inputMode="numeric"
                 />
               </label>
             </div>
@@ -490,6 +492,7 @@ export function CheckoutPanel({
                   name="email"
                   type="email"
                   autoComplete="email"
+                  inputMode="email"
                   required
                   maxLength={254}
                   value={customerEmail}
@@ -499,7 +502,7 @@ export function CheckoutPanel({
               </label>
               <label className="block">
                 <span className="font-semibold text-xs text-zinc-700">Teléfono / WhatsApp</span>
-                <input className={field} name="phone" type="tel" autoComplete="tel" required minLength={8} maxLength={40} placeholder="Ej. 2494638919" />
+                <input className={field} name="phone" type="tel" autoComplete="tel" inputMode="tel" required minLength={8} maxLength={40} placeholder="Ej. 2494638919" />
               </label>
             </div>
 

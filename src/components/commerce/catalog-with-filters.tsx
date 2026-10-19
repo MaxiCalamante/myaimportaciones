@@ -107,7 +107,6 @@ export function CatalogWithFilters({
       return { minCatalogPrice: min, maxCatalogPrice: max, smartPresets: [] };
     }
 
-    const step = range > 100000 ? 5000 : 1000;
     prices.sort((a,b) => a-b);
     const p1 = prices[Math.floor((prices.length-1)*0.25)];
     const p2 = prices[Math.floor((prices.length-1)*0.50)];
@@ -696,7 +695,7 @@ export function CatalogWithFilters({
             </div>
           ) : (
             <>
-              <div className="grid gap-4 sm:gap-5 grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:gap-5 grid-cols-2 lg:grid-cols-3">
                 {displayedProducts.map((product) => (
                   <ProductCard channel={channel} key={product.id} product={product} />
                 ))}
@@ -725,7 +724,7 @@ export function CatalogWithFilters({
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-zinc-950/40 backdrop-blur-xs" onClick={() => setMobileOpen(false)} />
-          <div className="relative ml-auto flex h-full w-full max-w-xs flex-col bg-white p-6 shadow-2xl animate-in slide-in-from-right duration-250">
+          <div className="relative ml-auto flex h-full w-full max-w-xs flex-col bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl rounded-l-3xl animate-in slide-in-from-right duration-250">
             <div className="flex items-center justify-between mb-6 border-b pb-3 border-zinc-100">
               <h2 className="text-base font-bold text-zinc-950 flex items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4 text-zinc-700" /> Filtros del Catálogo

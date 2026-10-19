@@ -314,7 +314,7 @@ export function ProductDetailInteractive({
 
         {/* Dimension & Options Selector */}
         {isVariantMode && (
-          <div className="space-y-4 rounded-2xl border border-zinc-200/90 bg-white p-4 sm:p-5 shadow-xs">
+          <div id="variant-options-section" className="space-y-4 rounded-2xl border border-zinc-200/90 bg-white p-4 sm:p-5 shadow-xs scroll-mt-24">
             {dimensions.map((dim) => {
               const currentVal = selectedOptions[dim.name];
               return (
