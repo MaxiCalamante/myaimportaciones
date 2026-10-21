@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ShoppingBag, ArrowRight } from "lucide-react";
+import { ShoppingBag, ArrowRight, Building2, CreditCard } from "lucide-react";
 import type { Profile } from "@/lib/auth";
 import type { OrderQuote } from "@/lib/order-pricing";
 import { createOrderAction, quoteOrderAction, type CheckoutInput } from "@/app/checkout/actions";
@@ -515,15 +515,77 @@ export function CheckoutPanel({
 
             <div className="border-t border-zinc-100 pt-5">
               <h2 className="text-xl font-bold text-zinc-950">3. Medio de pago</h2>
-              <select aria-label="Medio de pago" className={field} value={paymentMethod} onChange={e => setPayment(e.target.value as CheckoutInput["paymentMethod"])}>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setPayment("transferencia")}
+                  className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all cursor-pointer ${
+                    paymentMethod === "transferencia"
+                      ? "border-sky-600 bg-sky-50/40 shadow-xs ring-1 ring-sky-600"
+                      : "border-zinc-200 bg-white hover:border-zinc-300"
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="flex items-center gap-2 font-bold text-sm text-zinc-950">
+                      <Building2 className="size-4 text-sky-700" />
+                      Transferencia bancaria
+                    </span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-800 border border-emerald-200">
+                      3% OFF
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-600 leading-relaxed">
+                    Alias y CBU al confirmar. Acreditación ágil sin recargos.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!mercadoPagoEnabled}
+                  onClick={() => mercadoPagoEnabled && setPayment("mercado_pago")}
+                  className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all ${
+                    !mercadoPagoEnabled
+                      ? "border-zinc-200 bg-zinc-50/60 opacity-60 cursor-not-allowed"
+                      : paymentMethod === "mercado_pago"
+                      ? "border-sky-600 bg-sky-50/40 shadow-xs ring-1 ring-sky-600 cursor-pointer"
+                      : "border-zinc-200 bg-white hover:border-zinc-300 cursor-pointer"
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="flex items-center gap-2 font-bold text-sm text-zinc-950">
+                      <CreditCard className="size-4 text-zinc-600" />
+                      Mercado Pago
+                    </span>
+                    {!mercadoPagoEnabled && (
+                      <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-semibold text-zinc-600">
+                        Próximamente
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
+                    Tarjetas de crédito, débito o dinero en cuenta oficial.
+                  </p>
+                </button>
+              </div>
+
+              {/* Accessible hidden select for form/screen-reader compatibility */}
+              <select
+                aria-label="Medio de pago"
+                className="sr-only"
+                value={paymentMethod}
+                onChange={e => setPayment(e.target.value as CheckoutInput["paymentMethod"])}
+              >
                 <option value="transferencia">Transferencia bancaria directa</option>
                 <option value="mercado_pago" disabled={!mercadoPagoEnabled}>Tarjetas y dinero en cuenta con Mercado Pago{!mercadoPagoEnabled ? " — próximamente" : ""}</option>
               </select>
+
               {paymentMethod === "transferencia" && (
-                <p className="mt-2 text-xs text-slate-600">Al confirmar verás el alias, CVU y el importe exacto para transferir. Verificamos la acreditación antes de preparar tu paquete.</p>
+                <p className="mt-3 text-xs text-slate-600 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3">
+                  💡 <strong className="text-emerald-950">Ahorrá un 3% extra:</strong> Al confirmar el pedido te mostramos el alias y CBU de MYA Importaciones para transferir directamente. Verificamos la acreditación antes de preparar tu paquete.
+                </p>
               )}
               {paymentMethod === "mercado_pago" && (
-                <p className="mt-2 text-xs text-slate-600">Ingresás los datos de tu tarjeta únicamente en Mercado Pago. Podés pagar en cuotas según las promociones de tu banco.</p>
+                <p className="mt-3 text-xs text-slate-600">Ingresás los datos de tu tarjeta únicamente en Mercado Pago. Podés pagar en cuotas según las promociones de tu banco.</p>
               )}
             </div>
           </div>
@@ -578,6 +640,15 @@ export function CheckoutPanel({
                 <div className="flex justify-between text-emerald-700 font-semibold">
                   <span>Descuento ({quote?.promotion}):</span>
                   <span>−{formatCurrency(quote!.discount)}</span>
+                </div>
+              )}
+              {!validQuote && paymentMethod === "transferencia" && (
+                <div className="flex items-center justify-between text-xs text-emerald-700 font-medium bg-emerald-50/80 rounded-lg px-2.5 py-1.5 border border-emerald-200/60">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                    Beneficio transferencia:
+                  </span>
+                  <span className="font-bold">3% OFF al confirmar</span>
                 </div>
               )}
               {validQuote && quote.couponMessage && (

@@ -20,6 +20,7 @@ import {
   Smartphone,
   ArrowRight,
   MessageCircle,
+  Gem,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,6 +31,7 @@ import { formatCurrency } from "@/lib/format";
 
 const POPULAR_SEARCHES = [
   { label: "SKIN1004 Centella", query: "SKIN1004" },
+  { label: "Lattafa Yara", query: "Lattafa" },
   { label: "Medicube", query: "Medicube" },
   { label: "Shiseido Fino", query: "Shiseido" },
   { label: "Kérastase", query: "Kérastase" },
@@ -170,6 +172,7 @@ export function SiteHeader({
   const getCategoryIcon = (slug: string, className = "h-4 w-4") => {
     if (slug.startsWith("electronica")) return <Smartphone className={className} />;
     if (slug.includes("herramienta")) return <Wrench className={className} />;
+    if (slug.includes("perfumeria") || slug.includes("perfume")) return <Gem className={className} />;
     if (slug.includes("cosmetica")) return <Sparkles className={className} />;
     if (slug.includes("capilar")) return <Droplets className={className} />;
     return <LayoutGrid className={className} />;

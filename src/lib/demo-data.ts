@@ -156,6 +156,36 @@ export const demoCategories: Category[] = [
     "imageUrl": "https://www.totalherramientasoficial.com.py/img/11890/produtos/1500/656d12ebddb13b1c18085409d9cb5a34.png",
     "wholesaleOnly": false,
     "displayOrder": 15
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000005",
+    "name": "Perfumería",
+    "slug": "perfumeria",
+    "parentId": null,
+    "description": "Perfumes árabes de alta gama, fragancias virales y body mists importados de Dubai.",
+    "imageUrl": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/perfumes/categoria-perfumeria-yara.jpg",
+    "wholesaleOnly": false,
+    "displayOrder": 5
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000071",
+    "name": "Perfumes Árabes",
+    "slug": "perfumes-arabes",
+    "parentId": "20000000-0000-0000-0000-000000000005",
+    "description": "Fragancias de Dubai originales: Lattafa Yara, Asad, Bade'e Al Oud y perfumería oriental.",
+    "imageUrl": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/perfumes/lattafa-yara-rosa-100ml.jpg",
+    "wholesaleOnly": false,
+    "displayOrder": 16
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000072",
+    "name": "Body Mists & Brumas",
+    "slug": "body-mists-brumas",
+    "parentId": "20000000-0000-0000-0000-000000000005",
+    "description": "Brumas corporales y splashes virales Lattafa y Victoria's Secret de larga duración.",
+    "imageUrl": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/perfumes/lattafa-mist-yara-pink.jpg",
+    "wholesaleOnly": false,
+    "displayOrder": 17
   }
 ];
 

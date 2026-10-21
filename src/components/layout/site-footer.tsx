@@ -83,6 +83,9 @@ export function SiteFooter() {
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/catalogo?category=cosmetica-coreana"}>
               Cosmética Coreana (K-Beauty)
             </Link>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=perfumeria" : "/catalogo?category=perfumeria"}>
+              Perfumería & Fragancias Árabes
+            </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=herramientas-equipamiento" : "/catalogo?category=herramientas-equipamiento"}>
               Herramientas Total Tools & Wadfow
             </Link>

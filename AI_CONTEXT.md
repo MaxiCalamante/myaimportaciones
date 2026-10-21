@@ -1,8 +1,165 @@
 # MYA Importaciones — contexto vigente
 
+## Calculador de Envíos en 1 Clic, Alertas de Escasez y Banners de Garantía/Origen — 21/10/2026
+
+Por requerimiento expreso del dueño ("hace los 3 luego commit , push y apaga la pc"):
+
+### 1. Calculador de Envíos en 1 Clic en Ficha de Producto:
+- En [`ProductDetailInteractive`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/product-detail-interactive.tsx) se incorporaron botones de cotización rápida inmediata para las principales plazas de destino: **CABA (1000)**, **Tandil (7000)**, **Córdoba (5000)**, **Rosario (2000)** y **Mar del Plata (7600)**.
+- El usuario puede consultar con un solo toque el plazo y costo estimado oficial de Correo Argentino (Clásico, Expreso, Sucursal o Retiro en Tandil) antes de agregar al carrito.
+
+### 2. Alertas Visuales de Escasez y Stock Bajo:
+- En [`ProductDetailInteractive`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/product-detail-interactive.tsx): Cuando un producto o variante con stock inmediato en Tandil cuenta con 3 o menos unidades disponibles, se despliega una alerta visual ambar: `¡Última unidad disponible!` o `¡Últimas X unidades en stock!` con indicador pulsante.
+- En [`ProductCard`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/product-card.tsx): En la vista de catálogo y grillas de productos se muestra el distintivo de escasez para incentivar la toma de decisión antes del agotamiento.
+
+### 3. Banners Especializados de Garantía y Origen en Electrónica y Herramientas:
+- **Electrónica:** Tarjeta destacada con sellos de garantía que certifica que los equipos Apple y Samsung son 100% nuevos en empaque original sellado de fábrica con número de serie verificable ante el fabricante, despacho con embalaje reforzado y seguro oficial por Correo Argentino, y comprobante de compra con respaldo directo desde Tandil.
+- **Herramientas (Total Tools & Wadfow):** Tarjeta técnica con sellos que explicitan accesorios y baterías incluidos en el kit, compatibilidad de baterías 20V Li-Ion bajo la plataforma P20S compartida y revisión de integridad previa al despacho.
+
+---
+
+## Ejecución de Fichas Técnicas, Promoción de Transferencia y Auditoría de Herramientas — 21/10/2026
+
+Por requerimiento expreso del dueño ("hace las 3"):
+
+### 1. Fichas Técnicas Detalladas en Electrónica (23 productos insignia):
+- **Dispositivos Apple:**
+  - `apple-imac-m4-24`: Chip Apple M4 (CPU 8/10 núcleos, GPU 8/10 núcleos, Neural Engine 16 núcleos), Pantalla Retina 4.5K de 24 pulgadas (4480×2520, 500 nits, P3), memoria unificada, puertos Thunderbolt 4 / USB-C, Wi-Fi 6E, audio espacial, teclado Magic Keyboard y ratón Magic Mouse incluidos.
+  - `apple-macbook-pro-m5`: Chip Apple M5 Pro / Max, pantalla Liquid Retina XDR de 14.2"/16.2" con ProMotion 120Hz, hasta 1600 nits pico HDR, HDMI 2.1, lector SDXC, MagSafe 3.
+  - `apple-macbook-air-m5`: Chip Apple M5 con diseño ultradelgado sin ventilador, pantalla Liquid Retina de 13.6"/15.3", teclado Magic Keyboard con Touch ID, puertos MagSafe 3 y Thunderbolt 4.
+  - `apple-macbook-neo-13`: Chip Apple Silicon serie M ultraligero de 13.3", pantalla Retina True Tone, autonomía de hasta 18 horas.
+  - `apple-ipad-a16-11th-gen` & `apple-ipad-air-11-m4`: Fichas completas con procesador, pantalla Liquid Retina, compatibilidad con Apple Pencil y Magic Keyboard, conectores USB-C y altavoces estéreo.
+  - Familia iPhone (`apple-iphone-18-pro-max`, `18-pro`, `17-pro-max`, `17-pro`, `17`, `17e`, `16`, `15`): Pantalla Super Retina XDR, Dynamic Island, conectividad 5G, Ceramic Shield, puerto USB-C y resistencia IP68.
+- **Dispositivos Samsung:**
+  - Teléfonos Galaxy serie A (`samsung-galaxy-a57`, `a37`, `a27`, `a17`, `a16`, `a07`): Pantallas Super AMOLED FHD+ 120Hz/90Hz, procesadores Octa-Core, cámaras de hasta 50MP OIS, baterías de 5.000 mAh con carga rápida de 25W/45W y soporte Knox Security.
+  - Tablets Galaxy Tab (`samsung-galaxy-tab-s10-lite`, `tab-a11-plus`, `tab-a11`): Pantallas inmersivas, sonido Dolby Atmos, conectividad Wi-Fi dual band, ranura MicroSD expandible hasta 1TB y baterías de hasta 7.040 mAh.
+- **Renderizado Dinámico:** Renderizado automático como tabla `<dl>` responsiva en la ficha de producto (`/producto/[slug]`), optimizando la indexación SEO y facilitando la decisión de compra sin necesidad de consultar especificaciones externas.
+
+### 2. Promoción de Transferencia Bancaria en Carrito y Checkout (-3% OFF):
+- **Carrito lateral (`src/components/commerce/cart-drawer.tsx`):**
+  - Incorporada tarjeta destacada de ahorro inmediato en el footer del carrito:
+    `Por transferencia: $ XX.XXX (-3% OFF)` con indicador visual esmeralda y valor calculado en tiempo real.
+- **Página de Checkout (`src/components/checkout/checkout-panel.tsx`):**
+  - **Selector de Medio de Pago Interactivo:** Reemplazado el `<select>` tradicional por tarjetas interactivas de pago con estados visuales activos/inactivos:
+    - *Transferencia bancaria directa*: badge destacado `3% OFF`, con aclaración de provisión instantánea de CBU/Alias y despacho prioritario.
+    - *Mercado Pago*: con badge dinámico `Próximamente` si no está habilitado, o selector accesible para tarjetas y dinero en cuenta.
+    - Accesibilidad total garantizada manteniendo el `<select className="sr-only">` para navegadores y lectores de pantalla.
+  - **Aviso en Resumen de Compra:** Badge y desglose del beneficio de transferencia bancaria visible inmediatamente, anticipando el ahorro antes y durante la cotización del pedido.
+
+### 3. Auditoría de Accesorios y Baterías en Herramientas (16 herramientas 20V):
+- **Equipos a Batería Total Tools & Wadfow Auditados:**
+  - `total-rotomartillo-inalambrico-sds-plus-20v`: Declarado explícitamente "Incluye 2 baterías 20V 4.0Ah Li-Ion + Cargador inteligente rápido", maletín de transporte y 3 brocas SDS Plus.
+  - `total-llave-de-impacto-inalambrica-brushless-20v`: Declarado "Incluye 2 baterías 20V 2.0Ah + Cargador rápido", 3 dados de impacto (17, 19, 21 mm) y clip para cinturón.
+  - `total-amoladora-angular-inalambrica-brushless-20v`: Declarado "Incluye 2 baterías 20V 4.0Ah Li-Ion + Cargador rápido", empuñadura lateral antivibratoria, guarda y llave.
+  - `total-taladro-percutor-inalambrico-brushless-20v`: Declarado "Incluye 2 baterías 20V 2.0Ah + Cargador rápido", maletín reforzado y set de puntas/brocas.
+  - Herramientas sin batería incluida (Bare Tool): Clasificadas con "Solo cuerpo de máquina (Bare tool) · Compatible con batería Total P20S 20V Li-Ion compartido" para evitar malentendidos de compra.
+- **Validación técnica:**
+  - TypeScript: `tsc --noEmit` superado sin errores.
+  - Pruebas automatizadas: 183/183 pasando (`npm test`).
+  - Next.js Turbopack build: 43 rutas estáticas y dinámicas compiladas exitosamente.
+
+## Creación de la Categoría Perfumería y Lanzamiento de Productos de Alto Margen — 21/10/2026
+
+Por requerimiento expreso del dueño ("Hacé el uno y el dos: publicá los productos que tienen buen margen y también creá la nueva categoría Perfumería y agregá diferentes perfumes árabes y los nuevos que encuentres"):
+
+### 1. Nueva Categoría Raíz "Perfumería" y Subcategorías:
+- **Categoría Raíz:** `Perfumería` (`id`: `20000000-0000-0000-0000-000000000005`, `slug`: `perfumeria`, `display_order`: 5). Descripción: *Perfumes árabes de alta gama, fragancias virales y body mists importados de Dubai.*
+- **Subcategoría 1:** `Perfumes árabes` (`id`: `10000000-0000-0000-0000-000000000071`, `slug`: `perfumes-arabes`).
+- **Subcategoría 2:** `Body mists y brumas` (`id`: `10000000-0000-0000-0000-000000000072`, `slug`: `body-mists-brumas`).
+- **Restauración de Limpieza Facial:** Se protegió y restauró `Limpieza & exfoliantes` (`10000000-0000-0000-0000-000000000007`) bajo Cosmética Coreana, manteniendo sus 20 productos intactos sin solapamientos.
+
+### 2. Productos Publicados con Alto Margen Comercial (Fórmula: Costo USD × 1,20 pasador × $1.600):
+1. **Lattafa Body Splash Mist 250 ml** (`lattafa-body-splash-mist-250-ml`): 6 variantes (Yara Pink, Yara Tous Mango, Mayar Floral, Haya Berry, Fakhar Rose Gold, Noble Blush). Costo USD 7.80 ($14.976 ARS) -> Precio Venta $32.900 ARS (Margen: 54,5%).
+2. **Lattafa Yara Eau de Parfum 100 ml** (`lattafa-yara-eau-de-parfum-100-ml`): 3 variantes (Yara Rosa Clásico, Yara Moi Blanco, Yara Tous Mango). Costo USD 15.50 ($29.760 ARS) -> Precio Venta $59.900 ARS (Margen: 50,3%).
+3. **Lattafa Asad Eau de Parfum 100 ml** (`lattafa-asad-eau-de-parfum-100-ml`): 2 variantes (Asad Clásico Negro $64.900 ARS, Asad Zanzibar Azul $67.900 ARS). Costo USD 16.50 ($31.680 ARS) -> Margen: 51,2%.
+4. **Lattafa Bade'e Al Oud Eau de Parfum 100 ml** (`lattafa-badee-al-oud-eau-de-parfum-100-ml`): 3 variantes (Oud for Glory Negro, Honor & Glory Blanco, Amethyst Fusion Violeta). Costo USD 16.90 ($32.448 ARS) -> Precio Venta $64.900 ARS (Margen: 50,0%).
+5. **Apple Adaptador de Corriente USB-C 20W** (`apple-adaptador-de-corriente-usb-c-20w`): Costo USD 13.90 ($26.688 ARS) -> Precio Venta $54.900 ARS (Margen: 51,4%).
+6. **Apple EarPods con Conector USB-C** (`apple-earpods-conector-usb-c`): Costo USD 13.50 ($25.920 ARS) -> Precio Venta $52.900 ARS (Margen: 51,0%).
+7. **JBL Tune 520BT Auriculares Inalámbricos Bluetooth** (`jbl-tune-520bt-auriculares-inalambricos-bluetooth`): Costo USD 23.00 ($44.160 ARS) -> Precio Venta $88.900 ARS (Margen: 50,3%).
+8. **Tree Hut Shea Sugar Scrub Exfoliante Corporal 510 g** (`tree-hut-shea-sugar-scrub-exfoliante-corporal-510-g`): 3 variantes (Moroccan Rose, Coco Colada, Watermelon). Costo USD 10.20 ($19.584 ARS) -> Precio Venta $39.900 ARS (Margen: 50,9%).
+9. **Anua Heartleaf 77% Soothing Toner 250 ml** (`anua-heartleaf-77-soothing-toner-250-ml`): Costo USD 13.90 ($26.688 ARS) -> Precio Venta $53.900 ARS (Margen: 50,5%).
+
+### 3. Frontend & Navegación:
+- **Header (`site-header.tsx`):** Ícono `Gem` para `perfumeria`, inclusión de `Lattafa Yara` en búsquedas populares sugeridas.
+- **Footer (`site-footer.tsx`):** Enlace directo a `Perfumería & Fragancias Árabes` (`/catalogo?category=perfumeria`).
+- **Home (`storefront-sections.tsx`):** Tarjeta destacada de Perfumería con badge `Perfumería Árabe & Exclusiva`, temática ámbar y tag de fragancias de Dubai.
+- **Carrusel Principal (`storefront_carousel` en Supabase):** Slide visual dedicado a *Fragancias Virales de Dubai* con enlace directo a la nueva categoría.
+- **Filtros Facetados de Marca y Formato:** Se reasignaron los Body Splashes activos de Victoria's Secret a `body-mists-brumas`, permitiendo filtrar la categoría Perfumería por marcas (`Lattafa`, `Victoria's Secret`) y por formato (`Eau de Parfum 100 ml` vs `Body Splash 250 ml`).
+- **Nuevos Virales Árabes Incorporados:**
+  - `Lattafa Khamrah EDP 100 ml`: 2 variantes (Clásico Canela & Praliné \$79.900, Qahwa Café Árabe & Cardamomo \$84.900).
+  - `Lattafa Fakhar EDP 100 ml`: 2 variantes (Black Masculino \$64.900, Rose Femenino \$64.900).
+  - `Lattafa Qaed Al Fursan EDP 90 ml`: Piña ahumada unisex (\$54.900).
+  - `Lattafa Yara EDP 100 ml`: Incorporada 4.ª variante *Yara Candy (Grosella & Malvavisco)* (\$64.900).
+- **Swatches de Color (`variant-swatches.ts`):** Añadidas muestras cromáticas para notas y esencias (`candy`, `qahwa`, `café`, `canela`, `rose gold`, `oud`).
+- **Monitoreo y Vinculación con Proveedores Oficiales (`product_costs`, `supplier_offers`, `supplier_discovery_jobs`):**
+  - Se vincularon todas las publicaciones de perfumería con sus fuentes oficiales de Ciudad del Este (Atacado USA y Star Company).
+  - Registrados los costos landed exactos con 20% de pasador y FX 1.600 en `product_costs`.
+  - Ofertas verificadas registradas en `supplier_offers` permitiendo comparativa dual de abastecimiento.
+  - Tareas de seguimiento programadas en `supplier_discovery_jobs` para el motor Edge en la nube sin procesos locales en la PC.
+- **Almacenamiento Vercel:** Cero archivos agregados a `public/`. Todas las imágenes residen en Supabase Storage (`product-images/perfumes/` y `product-images/electronics-2026-10-08/`).
+- **Validación técnica:** 183/183 pruebas aprobadas (`npm test`), 0 errores de TypeScript (`npm run type-check`), compilación limpia Turbopack de 43 rutas (`npm run build`).
+
+## Sin automatizaciones en la PC — 21/10/2026
+
+El dueño prohibió explícitamente tareas periódicas y ventanas de consola en su PC. Se eliminó `MYA - Seguimiento de proveedores` del Programador de Windows y la automatización local de Codex `mya-revisar-abastecimiento-y-comparables`. Ambos scripts PowerShell anteriores ahora rechazan su ejecución. Nunca reinstalarlos ni crear un reemplazo local. El seguimiento debe alojarse en Vercel/Supabase. La función Edge `supplier-tracking` reutiliza el motor de fichas, cruces exactos y precios con tickets privados de un uso; ver operación y límites actuales en `docs/suppliers/README.md`. Los catálogos que requieren navegador no pasan a estar cubiertos por declarar el worker en la nube: mantener explícita esa limitación y carga manual/CSV, sin volver a usar la PC automáticamente.
+
 ## Ventas y clientes — 21/10/2026
 
 Publicadas `/admin/ventas`, `/admin/ventas/[id]`, `/admin/clientes` y `/admin/clientes/[id]`, con búsqueda, filtros, paginación y refresco cada30segundos. Distinguir cuenta compradora y destinatario; leer detalle y límites en `docs/VENTAS-Y-CLIENTES-2026-10-21.md`. La selección por cuenta vive en `account_carts`, solo referencias y cantidades, con RLS y RPC validada; no identifica invitados ni habilita marketing. Se conservan confirmaciones de pago y funciones de gestión anteriores. Los emails futuros incluyen variante/SKU y enlace administrativo al pedido. 181 pruebas aprobadas, UI autenticada a320/390/768/1440 y prueba administrativa de email con entrega confirmada. Despliegue final `dpl_xMLiL3NU4r6pYYS1pWYNL7fPCLA8` promovido a `myaimportaciones.com`. Evidencia con datos personales solo en `scratch/suppliers-private/`; no hubo compras ni pagos de prueba. No repetir envíos históricos ni modificar preferencias de marketing.
+
+## Unificación Integral de Catálogo con Variantes y Corrección de Imágenes en Toda la Tienda — 21/10/2026
+
+Por requerimiento expreso del dueño ("Agrupes las IMac como hiciste con los iphone... hace lo mismo con las Mac y toda otra publicacion que pase algo similar... despues revisa todo que a algunos productos la imagen que tienen puesta no es la de los productos que dice el titulo, pone la imagen correcta al producto que corresponde recorda lo que haciamos con las imagenes que no las guardabamos para no saturar vercel... hace lo mismo con las diferentes categorias de la pagina web si corresponde"):
+
+### 1. Electrónica:
+- **Apple iMac:** 10 publicaciones repetidas unificadas en `Apple iMac 24″ M4` (`apple-imac-m4-24`), con selectores de color (Azul, Plata, Verde) y configuración de memoria y puertos (16 GB / 256 GB 2 puertos, 16 GB / 256 GB 4 puertos, 16 GB / 512 GB 4 puertos, 24 GB / 512 GB 4 puertos). Preservado `Apple iMac Intel 21,5″` como publicación independiente.
+- **Apple MacBooks:** `Apple MacBook Neo 13″` (4 items a 1 con Color y Capacidad), `Apple MacBook Pro M5 (14″ / 16″)` (8 items a 1 con Pantalla/Chip, Configuración y Color), `Apple MacBook Air M5` (8 variantes actualizadas y 12 duplicados desactivados).
+- **Apple iPads:** `Apple iPad A16 (11.ª generación)` (7 items a 1 con Color y Almacenamiento), `Apple iPad Air 11″ M4` (3 items a 1 con Color).
+- **Apple iPhones:** Unificados `iPhone 15`, `iPhone 16`, `iPhone 17`, `iPhone 17 Pro`, `iPhone 17 Pro Max`, `iPhone 17e`, `iPhone 18 Pro` y `iPhone 18 Pro Max` con variantes oficiales de Color y Capacidad.
+- **Samsung Galaxy:** Unificados con variantes completas y fotos oficiales: `Galaxy A07`, `Galaxy A16`, `Galaxy A17`, `Galaxy A27`, `Galaxy A37`, `Galaxy A57 5G`, `Galaxy Tab A11`, `Galaxy Tab A11+` y `Galaxy Tab S10 Lite`.
+- **Swatches y Fotos Reales:** Actualizados swatches cromáticos en `src/lib/variant-swatches.ts`. Corrección semántica de fotos oficiales para Galaxy A57 5G, Galaxy A16, iPhone 17, iPhone 17 Pro Max e iPhone 15 desde Supabase Storage (`product-images/electronics-2026-10-08/`). Catálogo optimizado de 143 a 32 publicaciones insignia.
+
+### 2. Cosmética Coreana:
+- **Victoria's Secret Body Splash Mist:** Corregida variante Bare Vanilla en el producto padre: su imagen apuntaba a la foto de Aqua Kiss por una colisión previa; se asignó su fotografía real de Bare Vanilla (`mya-import-20261007-f12c98ec-...jpg`). Desactivada la publicación individual duplicada `BODY SPLASH VICTORIA'S SECRET BARE VANILLA 250ML` (`ee047303`).
+- **Victoria's Secret Shimmer Loción Corporal Body Lotion 236 ml:** Se unificaron 3 publicaciones individuales sueltas en una publicación única con selector de Fragancia: `Beach`, `Bikini` y `Tidal`, cada una con su foto oficial y SKU exacto (`MYA-VS-17478`, `MYA-VS-17479`, `MYA-VS-17480`).
+- **SKIN1004 Madagascar Centella (Presentaciones Multi-Tamaño):**
+  - `SKIN1004 Madagascar Centella Light Cleansing Oil`: Unificadas presentaciones de 30 ml ($32.400) y 200 ml ($39.800).
+  - `SKIN1004 Madagascar Centella Toning Toner`: Unificadas presentaciones de 30 ml ($18.100) y 210 ml ($38.200).
+  - `SKIN1004 Madagascar Centella Poremizing Fresh Ampoule`: Unificadas presentaciones de 50 ml ($43.100) y 100 ml ($48.500).
+  - `SKIN1004 Madagascar Centella Hyalu-Cica Sleeping Pack`: Unificadas presentaciones de 30 ml ($18.990) y 100 ml ($48.200).
+  - `SKIN1004 Madagascar Centella Hyalu-Cica Water-Fit Sun Serum`: Unificadas presentaciones de 15 ml ($24.900) y 50 ml ($61.750).
+- **Medicube Multi-Tamaños:**
+  - `Medicube Hypochlorous Acid Daily Facial Spray`: Unificadas presentaciones de 50 ml ($37.700) y 125 ml ($48.600).
+  - `Medicube Collagen Jelly Cream`: Unificadas presentaciones de 50 ml ($45.400) y 110 ml ($58.900).
+- **Desactivación de Duplicados en Cosmética:** Desactivados `Medicube Zero Pore One Day Cream 50 ml` duplicado (`394724b8`) y `Celimax The Vita-A Retinal Shot` duplicado (`26d02aab`).
+- **Alojamiento Remoto:** `Dr. Althea 345 Relief Cream 50 ml` fue migrado de su origen externo a Supabase Storage (`product-images/dr-althea-345-relief-cream-50ml.jpg`) con cero bytes en `public/`.
+- **Catálogo de Cosmética:** Optimizado de 168 a exactamente 157 publicaciones consolidadas.
+
+### 3. Cuidado Capilar:
+- **Shiseido Tsubaki Kit Premium Cool Repair:** Desactivada publicación duplicada exacta (`90f0ed0d`), conservando la publicación insignia activa (`202031b1`).
+- **Shiseido Fino Premium Touch Hair Oil Aceite Capilar 70 ml:** Unificadas las versiones Clásico Reparador ($57.100) y Airy Smooth Toque Ligero ($71.100) en una sola publicación con selector interactivo de Tipo.
+- **Shiseido Tsubaki Shampoos y Acondicionadores (Botella con Dosificador 450 ml vs Repuesto Recarga Económica 300 ml):**
+  - `Shiseido Tsubaki Premium Moist & Repair Shampoo`: 300 ml ($40.500) vs 450 ml ($119.700).
+  - `Shiseido Tsubaki Premium Moist & Repair Conditioner`: 300 ml ($40.500) vs 450 ml ($71.100).
+  - `Shiseido Tsubaki Premium EX Damage Care & Repair Shampoo`: 300 ml ($40.500) vs 450 ml ($119.700).
+  - `Shiseido Tsubaki Premium EX Damage Care & Repair Conditioner`: 300 ml ($40.500) vs 450 ml ($71.100).
+  - `Shiseido Tsubaki Premium Volume & Repair Shampoo`: 300 ml ($40.500) vs 450 ml ($119.700).
+  - `Shiseido Tsubaki Premium Volume & Repair Conditioner`: 300 ml ($40.500) vs 450 ml ($71.100).
+- **Catálogo de Cuidado Capilar:** Optimizado de 53 a 45 publicaciones ordenadas y limpias.
+
+### 4. Herramientas y Equipamiento:
+- **Total Medidor láser de distancia:** Unificadas publicaciones en un producto con selector de Alcance: `35 metros` ($45.900) y `85 metros` ($77.400).
+- **Total Soldadora inverter MMA Industrial:** Unificadas publicaciones en un producto con selector de Corriente: `160A` ($337.900) y `250A` ($378.000).
+- **Total Taladro percutor y atornillador brushless 20V:** Unificadas publicaciones en un producto con selector de Torque: `55 Nm` ($166.900) y `66 Nm` ($185.900).
+- **Wadfow Aspiradora seco y húmedo:** Unificadas publicaciones en un producto con selector de Capacidad: `30 Litros · 1200W` ($183.900) y `35 Litros · 1100W` ($203.900).
+- **Wadfow Sierra caladora:** Unificadas publicaciones en un producto con selector de Potencia: `400 W` ($69.900) y `570 W Pendular` ($83.600).
+- **Total Rotomartillo brushless 20V SDS Plus:** Unificadas publicaciones en un producto con selector de Impacto: `2,4 Joules` ($343.900) y `4,5 Joules` ($424.900).
+- **Catálogo de Herramientas:** Optimizado de 79 a 73 publicaciones limpias y técnicas.
+
+### 5. Garantía de Almacenamiento y Reglas de Despliegue:
+- **Cero imágenes en `/public`:** No se guardó ninguna imagen localmente en el repositorio ni en la carpeta pública de Vercel. Todas las fotos operan desde URLs remotas de Supabase Storage (`product-images`) o CDNs oficiales autenticados.
+- **Preservación de Datos:** Ningún producto fue eliminado destructivamente de la base de datos (`DELETE`); los ítems redundantes fueron desactivados con `is_active: false` protegiendo la integridad referencial y el histórico.
+- **Validación:** 183/183 pruebas unitarias aprobadas, `type-check` sin errores (0 advertencias), y Next.js Turbopack build completado exitosamente (43 rutas).
 
 ## Auditoría y Optimización Integral de UI/UX Frontend Mobile para Clientes — 20/10/2026
 

@@ -184,12 +184,20 @@ export function ProductCard({
               </div>
             )}
           </div>
-          <span
-            className={`mt-2 inline-flex max-w-full rounded-md border px-2 py-1 text-[10px] font-medium ${shippingInfo.badgeClass}`}
-            title={shippingInfo.shippingTimeDescription}
-          >
-            {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Disponible para envío" : "Disponibilidad a confirmar"}
-          </span>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`inline-flex max-w-full rounded-md border px-2 py-1 text-[10px] font-medium ${shippingInfo.badgeClass}`}
+              title={shippingInfo.shippingTimeDescription}
+            >
+              {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Disponible para envío" : "Disponibilidad a confirmar"}
+            </span>
+            {shippingInfo.isImmediate && product.stock > 0 && product.stock <= 3 && (
+              <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">
+                <span className="size-1 rounded-full bg-amber-500 animate-pulse" />
+                {product.stock === 1 ? "¡Última un.!" : `¡Últimas ${product.stock} un.!`}
+              </span>
+            )}
+          </div>
         </div>
 
         {product.hasVariants ? (

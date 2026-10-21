@@ -81,15 +81,17 @@ export async function runSupplierAutomation(db:SupabaseClient,options:{worker:st
   const config=validateTrackingConfig(settings.config as TrackingConfig);if(!config.enabled)return {checked:0,success:0,errors:0,disabled:true};
   const {data:run,error:runError}=await db.from('supplier_sync_runs').insert({worker:options.worker}).select('id').single();if(runError||!run)throw new Error('No se pudo iniciar el registro de seguimiento.');
   const report={checked:0,success:0,errors:0,prices:0};
+  let claimedJobs:SyncJob[]=[];
   try{
     const {data:jobs,error}=await db.rpc('claim_supplier_jobs_v1',{limit_input:options.limit??20});if(error)throw new Error(error.message);
+    claimedJobs=(jobs??[])as SyncJob[];
     const suppliers=await db.from('suppliers').select('*').eq('is_active',true);if(suppliers.error)throw new Error('No se pudo leer proveedores.');
     const started=Date.now();
     for(const job of (jobs??[])as SyncJob[]){
       if(Date.now()-started>(options.timeBudgetMs??42000)){await db.from('supplier_sync_queue').update({state:'ready',leased_until:null}).in('id',(jobs as SyncJob[]).filter(j=>j.id===job.id||(jobs as SyncJob[]).indexOf(j)>(jobs as SyncJob[]).indexOf(job)).map(j=>j.id));break;}
       const supplier=(suppliers.data as IntelligenceSupplier[]).find(s=>s.id===job.supplier_id);if(!supplier)continue;
       let cadence=10000;try{cadence=(await publicReadRules(job.source_url)).delay;}catch{/* processSupplierJob records the source restriction. */}
-      const slot=await db.rpc('reserve_supplier_source_slot_v1',{supplier_input:supplier.id,delay_input:cadence});if(slot.error)throw new Error('No se pudo coordinar la consulta del proveedor.');
+      const slot=await db.rpc('reserve_supplier_source_slot_v1',{supplier_input:supplier.id,delay_input:cadence});if(slot.error)throw new Error(`No se pudo coordinar la consulta del proveedor: ${slot.error.message}`);
       const delay=Number(slot.data)||0;
       if(Date.now()-started+delay+15000>(options.timeBudgetMs??42000)){
         await db.from('supplier_sync_queue').update({state:'ready',leased_until:null}).in('id',(jobs as SyncJob[]).slice((jobs as SyncJob[]).indexOf(job)).map(j=>j.id));break;
@@ -99,7 +101,7 @@ export async function runSupplierAutomation(db:SupabaseClient,options:{worker:st
     }
     const r=await db.from('supplier_sync_runs').update({completed_at:new Date().toISOString(),status:report.errors?'partial':'success',report}).eq('id',run.id);if(r.error)throw new Error('No se pudo cerrar el historial de sincronización.');
     return report;
-  }catch(error){await db.from('supplier_sync_runs').update({completed_at:new Date().toISOString(),status:'error',report:{...report,error:error instanceof Error?error.message:'Error'}}).eq('id',run.id);throw error;}
+  }catch(error){if(claimedJobs.length)await db.from('supplier_sync_queue').update({state:'ready',leased_until:null}).eq('state','running').in('id',claimedJobs.map(j=>j.id));await db.from('supplier_sync_runs').update({completed_at:new Date().toISOString(),status:'error',report:{...report,error:error instanceof Error?error.message:'Error'}}).eq('id',run.id);throw error;}
 }
 export async function repriceProduct(db:SupabaseClient,productId:string,config:TrackingConfig,policy:ImportPolicy){
   const keep=async(reason:string)=>{

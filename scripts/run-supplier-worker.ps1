@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
+throw 'Procesador periódico local retirado por el dueño el 21/10/2026. Usar el seguimiento alojado en Vercel/Supabase; no volver a programar ejecuciones en esta PC.'
+<# Retired runner retained only as historical source; never execute it.
 $supplierProject = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $supplierLogs = Join-Path $supplierProject 'scratch\suppliers-private'
 New-Item -ItemType Directory -Path $supplierLogs -Force | Out-Null
@@ -13,3 +15,4 @@ Set-Location -LiteralPath $supplierProject
 $supplierExitCode = $LASTEXITCODE
 [System.IO.File]::AppendAllText((Join-Path $supplierLogs 'launcher.log'), ((Get-Date -Format o) + ' worker exited ' + $supplierExitCode + [Environment]::NewLine))
 exit $supplierExitCode
+#>

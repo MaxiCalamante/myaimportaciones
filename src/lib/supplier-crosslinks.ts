@@ -102,11 +102,11 @@ async function inspectDetail(db:SupabaseClient,job:DiscoveryJob,supplier:Intelli
  if(prior)Object.assign(prior,offer);else catalog.offers.push(offer);
  return{seen:1,linked:await matchAndLinkOffer(db,offer,catalog)==='linked'?1:0,complete:true};
 }
-export async function runSupplierDiscovery(db:SupabaseClient,catalog:CrosslinkCatalog,collect:(supplier:IntelligenceSupplier,query:string,startUrl:string|null,beforeSearch:()=>Promise<unknown>)=>Promise<CatalogPage>,options:{limit?:number;timeBudgetMs?:number}={}){
+export async function runSupplierDiscovery(db:SupabaseClient,catalog:CrosslinkCatalog,collect:(supplier:IntelligenceSupplier,query:string,startUrl:string|null,beforeSearch:()=>Promise<unknown>)=>Promise<CatalogPage>,options:{limit?:number;timeBudgetMs?:number;detailsOnly?:boolean;worker?:string}={}){
  const enabled=await db.from('supplier_tracking_settings').select('config').eq('id',true).single();if(enabled.error)throw new Error('No se pudo verificar el seguimiento.');if(!enabled.data.config.enabled)return{checked:0,linked:0,errors:0};
- const {data:jobs,error}=await db.rpc('claim_supplier_discovery_v1',{limit_input:options.limit??18});if(error)throw new Error(error.message);
+ const {data:jobs,error}=await db.rpc(options.detailsOnly?'claim_supplier_cloud_details_v1':'claim_supplier_discovery_v1',{limit_input:options.limit??18});if(error)throw new Error(error.message);
  const started=Date.now(),pending=[...(jobs??[])as DiscoveryJob[]],report={checked:0,seen:0,linked:0,errors:0};
- const run=await db.from('supplier_sync_runs').insert({worker:'local-cross-supplier-discovery'}).select('id').single();if(run.error)throw new Error('No se pudo registrar el cruce de proveedores.');
+ const run=await db.from('supplier_sync_runs').insert({worker:options.worker??'local-cross-supplier-discovery'}).select('id').single();if(run.error)throw new Error('No se pudo registrar el cruce de proveedores.');
  const task=async()=>{while(pending.length&&Date.now()-started<(options.timeBudgetMs??180000)-45000){
   const job=pending.shift()!,supplier=catalog.suppliers.find(s=>s.id===job.supplier_id);if(!supplier)continue;
   try{

@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
+throw 'Instalación local deshabilitada por el dueño el 21/10/2026. El seguimiento de MYA debe ejecutarse en Vercel/Supabase. No crear tareas de Windows ni procesos periódicos en esta PC.'
+<# Retired installer retained only as historical source; never execute it.
 $supplierProject = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $supplierRunner = Join-Path $PSScriptRoot 'run-supplier-worker.ps1'
 if (-not (Test-Path -LiteralPath $supplierRunner -PathType Leaf)) { throw 'Falta el procesador de proveedores.' }
@@ -17,3 +19,4 @@ $supplierSettings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -E
 Register-ScheduledTask -TaskName $supplierTaskName -Action $supplierAction -Trigger $supplierTrigger -Principal $supplierPrincipal -Settings $supplierSettings -Description 'Lee catálogos públicos y fuentes verificadas de MYA; registra historial y aplica sólo cambios dentro de las reglas configuradas. Necesita sesión iniciada y conexión a internet.' -Force | Out-Null
 Get-ScheduledTask -TaskName $supplierTaskName | Select-Object TaskName, State
 Get-ScheduledTaskInfo -TaskName $supplierTaskName | Select-Object NextRunTime, LastTaskResult
+#>

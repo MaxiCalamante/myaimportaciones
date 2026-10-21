@@ -190,6 +190,14 @@ export function CategoryStrip({ categories }: { categories: Category[] }) {
         bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
       };
     }
+    if (slug.includes("perfumeria") || slug.includes("perfume")) {
+      return {
+        badge: "Perfumería Árabe & Exclusiva",
+        tagClass: "bg-amber-600 text-white",
+        count: "Perfumes de Dubai y body mists virales",
+        bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
+      };
+    }
     return {
       badge: "Importación Directa",
       tagClass: "bg-sky-600 text-white",

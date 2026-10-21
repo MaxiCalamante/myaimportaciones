@@ -15,6 +15,8 @@ import {
   Clock,
   CreditCard,
   ChevronDown,
+  ShieldCheck,
+  Wrench,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { ElectronicsPrice } from "./electronics-price";
@@ -248,6 +250,12 @@ export function ProductDetailInteractive({
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className={`inline-flex items-center gap-1.5 font-medium ${inStock ? "text-emerald-800" : "text-amber-800"}`}><span className={`size-1.5 shrink-0 rounded-full ${inStock ? "bg-emerald-600" : "bg-amber-500"}`}/>{inStock ? "Disponible" : "Disponibilidad a confirmar"}</span>
             <span className="text-zinc-500">{isImmediate ? "Stock en Tandil" : shippingTimeInfo.deliveryText}</span>
+            {inStock && isImmediate && targetItem.stock > 0 && targetItem.stock <= 3 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-300 px-2.5 py-0.5 text-xs font-bold text-amber-900 shadow-2xs">
+                <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                {targetItem.stock === 1 ? "¡Última unidad disponible!" : `¡Últimas ${targetItem.stock} unidades en stock!`}
+              </span>
+            )}
           </div>
           {channel === "wholesale" && <p className="mt-2 text-xs text-zinc-500">Mínimo {product.wholesaleMinQuantity} unidades</p>}
         </div>
@@ -477,6 +485,30 @@ export function ProductDetailInteractive({
           )}
         </div>
 
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span className="text-[11px] text-zinc-500 font-medium">Cotización en 1 clic:</span>
+          {[
+            { label: "CABA", cp: "1000" },
+            { label: "Tandil", cp: "7000" },
+            { label: "Córdoba", cp: "5000" },
+            { label: "Rosario", cp: "2000" },
+            { label: "Mar del Plata", cp: "7600" },
+          ].map((c) => (
+            <button
+              key={c.cp}
+              type="button"
+              onClick={() => setPostalCode(c.cp)}
+              className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
+                postalCode === c.cp
+                  ? "border-sky-600 bg-sky-50 text-sky-800 font-bold shadow-2xs"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+              }`}
+            >
+              {c.label} ({c.cp})
+            </button>
+          ))}
+        </div>
+
         {shippingCalculation.isValid && (
           <div className="space-y-2 animate-in fade-in duration-150">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-1.5">
@@ -565,6 +597,64 @@ export function ProductDetailInteractive({
           </span>}
         </div>
       </div>
+
+      {/* Category-Specific Trust & Origin Banner */}
+      {(() => {
+        const isElectronics = /electr[oó]nica|smartphone|apple|samsung|celular|tablet|notebook/i.test(product.categoryName) || /iphone|macbook|ipad|galaxy/i.test(product.title);
+        const isTools = /herramienta/i.test(product.categoryName) || /total|wadfow/i.test(product.brand || "") || /rotomartillo|amoladora|taladro|atornillador|llave de impacto|ingleteadora/i.test(product.title);
+
+        if (isElectronics) {
+          return (
+            <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4 space-y-2.5 text-xs text-sky-950 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-sky-900 border-b border-sky-200/80 pb-2">
+                <ShieldCheck className="size-4 text-sky-700 shrink-0" />
+                <span>Garantía Oficial y Origen · Electrónica MYA</span>
+              </div>
+              <ul className="space-y-1.5 text-sky-900/90 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-sky-700 shrink-0">✓</span>
+                  <span><strong>100% Nuevos y Sellados:</strong> Equipos en empaque original sellado con número de serie oficial verificado ante el fabricante.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-sky-700 shrink-0">✓</span>
+                  <span><strong>Despacho Protegido:</strong> Embalaje reforzado y despacho oficial por Correo Argentino con código de seguimiento nacional.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-sky-700 shrink-0">✓</span>
+                  <span><strong>Garantía de Funcionamiento:</strong> Comprobante de compra y respaldo directo de MYA Importaciones desde Tandil.</span>
+                </li>
+              </ul>
+            </div>
+          );
+        }
+
+        if (isTools) {
+          return (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-2.5 text-xs text-amber-950 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-amber-950 border-b border-amber-200/80 pb-2">
+                <Wrench className="size-4 text-amber-700 shrink-0" />
+                <span>Herramientas Profesionales Certificadas · Total Tools & Wadfow</span>
+              </div>
+              <ul className="space-y-1.5 text-amber-950/90 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-amber-700 shrink-0">✓</span>
+                  <span><strong>Accesorios y Baterías Declarados:</strong> Detalle explícito de baterías 20V, cargador inteligente y maletín incluidos en cada kit.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-amber-700 shrink-0">✓</span>
+                  <span><strong>Plataforma P20S Compartida:</strong> Baterías de litio 20V compatibles entre todas las herramientas inalámbricas del sistema.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-amber-700 shrink-0">✓</span>
+                  <span><strong>Inspección Técnica:</strong> Control de integridad de embalaje antes de salir de nuestro depósito central en Tandil.</span>
+                </li>
+              </ul>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Trust & Guarantee Badges */}
       <TrustGuaranteeBadges variant="compact" />
