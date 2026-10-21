@@ -140,6 +140,21 @@ try {
   assert.equal(providerWrites, 0, "foreign sender must not write history or suppressions");
   role = "customer";
   await page.goto("http://localhost:3412/admin/emails", { waitUntil: "networkidle" }); assert.ok(page.url().includes("/cuenta"));
+  const privacyContext = await browser.newContext();
+  const trackerRequests = [];
+  await privacyContext.route("**/*", route => {
+    if (/googletagmanager|facebook\.net|analytics\.tiktok/.test(route.request().url())) trackerRequests.push(route.request().url());
+    return new URL(route.request().url()).hostname === "localhost" ? route.continue() : route.abort();
+  });
+  await privacyContext.addInitScript(() => {
+    localStorage.setItem("mya_analytics_consent", "granted");
+    localStorage.setItem("mya_marketing_config", JSON.stringify({ enabled: true, metaPixelId: "123456789", ga4Id: "G-SYNTHETIC", gtmId: "GTM-SYNTHETIC", tiktokPixelId: "SYNTHETIC12345" }));
+  });
+  const privacyPage = await privacyContext.newPage();
+  await privacyPage.goto("http://localhost:3412/emails/baja?token=" + "a".repeat(64), { waitUntil: "networkidle" });
+  await privacyPage.getByRole("button", { name: "Confirmar mi baja" }).waitFor();
+  assert.deepEqual(trackerRequests, [], "unsubscribe tokens must never be shared with advertising scripts, even with general analytics consent");
+  await privacyContext.close();
   assert.deepEqual(errors, []);
   const report = { evidence: "local actual routes with synthetic Supabase/auth; no live writes or email sending", results, authTemplates: 13, anonymousRedirect: true, customerRedirect: true, cronAuth: true, disabledCron: true, unsignedWebhookRejected: true, foreignWebhookIgnoredWithoutWrites: true, pageErrors: errors };
   await writeFile(resolve(out, "verification.json"), JSON.stringify(report, null, 2));

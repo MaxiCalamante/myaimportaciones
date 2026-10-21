@@ -5,6 +5,7 @@ import { parseProductForm } from "../src/lib/admin-product";
 import { mapProduct } from "../src/lib/catalog-data";
 import { reconcileCart } from "../src/lib/cart-reconcile";
 import { productStructuredData } from "../src/lib/seo";
+import { getColorSwatch, COLOR_SWATCH_MAP } from "../src/lib/variant-swatches";
 import type { CartLine, Product, ProductOptionDimension } from "../src/lib/types";
 
 test("admin-variants: parseOptionsConfig parses, trims, deduplicates, and validates dimensions", () => {
@@ -322,4 +323,57 @@ test("seo: productStructuredData outputs AggregateOffer with variant price range
   assert.equal(offers?.offers?.length, 2);
   assert.equal(offers?.offers[0].sku, "VS-BV");
   assert.equal(offers?.offers[1].sku, "VS-PS");
+});
+
+test("variant-swatches: getColorSwatch resolves accurate color swatches for devices and cosmetics", () => {
+  const ultramar = getColorSwatch("Azul ultramar");
+  assert.ok(ultramar);
+  assert.equal(ultramar.bg, "#1d4ed8");
+
+  const orange = getColorSwatch("Naranja cósmico");
+  assert.ok(orange);
+  assert.equal(orange.bg, "#f97316");
+
+  const salvia = getColorSwatch("Verde salvia");
+  assert.ok(salvia);
+  assert.equal(salvia.bg, "#84cc16");
+
+  const midnight = getColorSwatch("Medianoche");
+  assert.ok(midnight);
+  assert.equal(midnight.bg, "#0f172a");
+
+  const unknown = getColorSwatch("Edición Especial Galaxia Desconocida");
+  assert.equal(unknown, null);
+});
+
+test("variant-selector: matches multi-dimensional selection to exact variant record", () => {
+  const iphone16Variants = [
+    { id: "v1", title: "Azul ultramar · 128 GB", options: { Color: "Azul ultramar", Capacidad: "128 GB" }, retailPrice: 1503500, sku: "IPH16-128-BLU" },
+    { id: "v2", title: "Blanco · 128 GB", options: { Color: "Blanco", Capacidad: "128 GB" }, retailPrice: 1532500, sku: "IPH16-128-WHT" },
+    { id: "v3", title: "Negro · 128 GB", options: { Color: "Negro", Capacidad: "128 GB" }, retailPrice: 1532500, sku: "IPH16-128-BLK" },
+    { id: "v4", title: "Negro · 256 GB", options: { Color: "Negro", Capacidad: "256 GB" }, retailPrice: 1650000, sku: "IPH16-256-BLK" },
+  ];
+
+  const selectVariant = (selectedOptions: Record<string, string>) => {
+    return iphone16Variants.find(v => {
+      return Object.entries(selectedOptions).every(([k, val]) => v.options[k as keyof typeof v.options] === val);
+    }) || null;
+  };
+
+  // Case 1: Selecting Azul ultramar + 128 GB
+  const match1 = selectVariant({ Color: "Azul ultramar", Capacidad: "128 GB" });
+  assert.ok(match1);
+  assert.equal(match1.id, "v1");
+  assert.equal(match1.retailPrice, 1503500);
+  assert.equal(match1.sku, "IPH16-128-BLU");
+
+  // Case 2: Switching to Negro + 256 GB
+  const match2 = selectVariant({ Color: "Negro", Capacidad: "256 GB" });
+  assert.ok(match2);
+  assert.equal(match2.id, "v4");
+  assert.equal(match2.retailPrice, 1650000);
+
+  // Case 3: Invalid combination
+  const match3 = selectVariant({ Color: "Azul ultramar", Capacidad: "256 GB" });
+  assert.equal(match3, null);
 });

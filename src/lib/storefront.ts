@@ -55,7 +55,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
       .select(
         options?.admin
           ? "*, categories(name), product_variants(*)"
-          : `${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, retail_price, is_active, stock, supplier_available, fulfillment_mode, options)`,
+          : `${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`,
       );
     if (!options?.admin) query = query.eq("is_active", true);
 

@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu, Images, Mail, Gift } from "lucide-react";
+import { Activity, Boxes, ChartNoAxesCombined, LayoutDashboard, Menu, Images, Mail, ShoppingBag, Users } from "lucide-react";
 import { useRef } from "react";
 
 const sections = [
   { href: "/admin", label: "Panel", icon: LayoutDashboard },
+  { href: "/admin/ventas", label: "Ventas", icon: ShoppingBag },
+  { href: "/admin/clientes", label: "Clientes", icon: Users },
   { href: "/admin/carrusel", label: "Carrusel", icon: Images },
-  { href: "/admin/sorteo", label: "Sorteo en vivo", icon: Gift },
   { href: "/admin/proveedores", label: "Proveedores", icon: Boxes },
+  { href: "/admin/proveedores/inteligencia", label: "Compras y pasador", icon: ChartNoAxesCombined },
   { href: "/admin/operaciones", label: "Operaciones", icon: Boxes },
   { href: "/admin/costos", label: "Stock y costos", icon: ChartNoAxesCombined },
   { href: "/admin/estado", label: "Estado de la tienda", icon: Activity },
@@ -19,7 +21,7 @@ const sections = [
 export function AdminSectionNav() {
   const pathname = usePathname();
   const menu = useRef<HTMLDetailsElement>(null);
-  const activeSection = sections.find(section => section.href === pathname)?.label;
+  const activeSection = sections.find(section => section.href === pathname)?.label ?? sections.find(section => section.href !== '/admin' && pathname.startsWith(section.href + '/'))?.label;
   return (
     <div className="border-b border-zinc-200 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">

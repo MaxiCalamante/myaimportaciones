@@ -45,6 +45,9 @@ html {
 }
 
 .storefront-shell { min-height: 100dvh; }
+.storefront-shell main { min-width: 0; }
+.product-buy-bar { padding-bottom: env(safe-area-inset-bottom); }
+.privacy-banner { bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
 .content-page {
   margin: 2rem auto;
   border: 1px solid #e4e4e7;
@@ -71,10 +74,13 @@ html {
 }
 @media (max-width: 767px) {
   .storefront-shell { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
-  .storefront-shell:has([data-product-page]) { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)); }
-  .storefront-shell:has([data-product-page]) .privacy-banner { bottom: calc(9.5rem + env(safe-area-inset-bottom)); }
+  .storefront-shell:has([data-product-page]) { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
+  .storefront-shell:has([data-product-page]) .privacy-banner { bottom: calc(7rem + env(safe-area-inset-bottom)); }
   :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]) { font-size: 1rem; }
   .content-page { margin: 1rem; }
+}
+@media (min-width: 768px) {
+  .privacy-banner { bottom: 1.5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

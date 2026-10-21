@@ -1,14 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import { ShoppingCart, MessageCircle, ShoppingBag } from "lucide-react";
+import { Check, MessageCircle, ShoppingBag, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
-import type { Product } from "@/lib/types";
 
 interface Props {
-  product: Product;
   price: number;
-  transferPrice: number;
+  quantity: number;
   added: boolean;
   onAddToCart: () => void;
   onOpenWhatsApp: () => void;
@@ -16,122 +13,37 @@ interface Props {
   onOpenCart: () => void;
   visible: boolean;
   disabled?: boolean;
-  imageUrl?: string;
-  buttonText?: string;
+  needsSelection?: boolean;
   variantTitle?: string;
 }
 
-export function StickyMobileBuyBar({
-  product,
-  price,
-  transferPrice,
-  added,
-  onAddToCart,
-  onOpenWhatsApp,
-  cartCount,
-  onOpenCart,
-  visible,
-  disabled,
-  imageUrl,
-  buttonText,
-  variantTitle,
-}: Props) {
+export function StickyMobileBuyBar({ price, quantity, added, onAddToCart, onOpenWhatsApp, cartCount, onOpenCart, visible, disabled, needsSelection, variantTitle }: Props) {
   if (!visible) return null;
-  const displayImage = imageUrl || product.imageUrl || "/placeholder-product.svg";
-
-  const handleCtaClick = () => {
-    if (disabled) {
-      const el = document.getElementById("variant-options-section");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-    }
-    onAddToCart();
-  };
-
+  const label = added ? "Agregado" : disabled ? needsSelection ? "Elegir" : "Consultar" : "Agregar";
+  const Icon = added ? Check : disabled ? MessageCircle : ShoppingCart;
+  function purchase() {
+    if (!disabled) return onAddToCart();
+    if (!needsSelection) return onOpenWhatsApp();
+    const options = document.getElementById("variant-options-section");
+    options?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+    options?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+  }
   return (
-    <div
-      role="region"
-      aria-label="Acciones rápidas de compra"
-      className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 px-3 py-2.5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 animate-in slide-in-from-bottom"
-      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-    >
-      <div className="flex items-center gap-2.5">
-        {/* Thumbnail & Title/Price */}
-        <div className="relative size-11 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
-          <Image
-            src={displayImage}
-            alt={product.title}
-            fill
-            sizes="44px"
-            className="object-contain p-1"
-          />
+    <section aria-label="Acciones rápidas de compra" className="product-buy-bar fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-4 pt-3 backdrop-blur-lg md:hidden">
+      <div className="mx-auto grid max-w-xl grid-cols-[minmax(0,1fr)_auto_2.75rem] items-center gap-2 pb-3">
+        <div className="min-w-0 pr-1">
+          <p className="truncate text-[11px] font-medium text-zinc-500">{needsSelection ? "Elegí una opción" : `Total · ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`}</p>
+          <p className="whitespace-nowrap text-[clamp(0.95rem,4.5vw,1.125rem)] font-bold leading-6 tracking-tight tabular-nums text-zinc-950">{formatCurrency(price * quantity)}</p>
+          {variantTitle && <p className="truncate text-[10px] text-zinc-500" title={variantTitle}>{variantTitle}</p>}
         </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-bold text-zinc-900 leading-tight">
-            {product.title}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {variantTitle && (
-              <span className="truncate max-w-[90px] rounded bg-sky-100 px-1.5 py-0.2 text-[10px] font-bold text-sky-800">
-                {variantTitle}
-              </span>
-            )}
-            <span className="text-sm font-black text-zinc-950 font-mono">
-              {formatCurrency(price)}
-            </span>
-            {transferPrice < price && (
-              <span className="text-[10px] font-bold text-emerald-700">
-                ({formatCurrency(transferPrice)} transf.)
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Cart Trigger with Badge */}
-        <button
-          type="button"
-          onClick={onOpenCart}
-          className="relative grid size-11 shrink-0 place-items-center rounded-xl border border-zinc-200 bg-white text-zinc-700 active:scale-95 transition-transform"
-          aria-label={`Ver carrito (${cartCount} productos)`}
-        >
-          <ShoppingBag className="size-4.5" />
-          {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-sky-700 text-[9px] font-black text-white">
-              {cartCount > 9 ? "9+" : cartCount}
-            </span>
-          )}
+        <button type="button" onClick={purchase} aria-label={disabled ? needsSelection ? "Elegir opciones del producto" : "Consultar disponibilidad por WhatsApp" : "Agregar al carrito desde el resumen"} className="inline-flex h-12 min-w-24 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 text-sm font-semibold text-white transition-colors hover:bg-sky-800 active:scale-[0.98] sm:min-w-28">
+          <Icon className="size-4 shrink-0"/><span>{label}</span>
         </button>
-
-        {/* WhatsApp Consultation */}
-        <button
-          type="button"
-          onClick={onOpenWhatsApp}
-          className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white active:scale-95 transition-transform shadow-xs"
-          aria-label="Consultar por WhatsApp"
-          title="Consultar por WhatsApp"
-        >
-          <MessageCircle className="size-4.5" />
-        </button>
-
-        {/* Add to Cart CTA */}
-        <button
-          type="button"
-          onClick={handleCtaClick}
-          className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-xl px-3.5 text-xs font-bold transition active:scale-95 shadow-xs shrink-0 cursor-pointer ${
-            added
-              ? "bg-emerald-600 text-white"
-              : disabled
-              ? "bg-sky-50 text-sky-900 border border-sky-300 ring-2 ring-sky-600/20 animate-pulse font-extrabold"
-              : "bg-sky-700 text-white hover:bg-sky-800"
-          }`}
-        >
-          <ShoppingCart className="size-3.5" />
-          <span>{added ? "¡Agregado!" : buttonText || "Comprar"}</span>
+        <button type="button" onClick={onOpenCart} aria-label={`Ver carrito (${cartCount} productos)`} className="relative grid size-11 place-items-center rounded-xl border border-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-50">
+          <ShoppingBag className="size-5"/>
+          {cartCount > 0 && <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-zinc-950 px-1 text-[10px] leading-4 text-white">{cartCount > 99 ? "99+" : cartCount}</span>}
         </button>
       </div>
-    </div>
+    </section>
   );
 }

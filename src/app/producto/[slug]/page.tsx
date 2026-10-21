@@ -65,7 +65,7 @@ export default async function ProductPage({ params }: Props) {
 
       <div data-product-page className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
         {/* Breadcrumb */}
-        <nav aria-label="Ubicación del producto" className="mb-6 flex items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap">
+        <nav aria-label="Ubicación del producto" className="mb-4 flex min-w-0 items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap no-scrollbar [&>svg]:shrink-0">
           <Link href="/" className="hover:text-zinc-900 transition flex items-center gap-1">
             <ArrowLeft className="h-3.5 w-3.5" /> Inicio
           </Link>
@@ -78,7 +78,7 @@ export default async function ProductPage({ params }: Props) {
             {product.categoryName}
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
-          <span className="font-semibold text-zinc-900 truncate max-w-xs">{product.title}</span>
+          <span className="min-w-0 truncate font-medium text-zinc-900">{product.title}</span>
         </nav>
 
         {/* Product Showcase (Gallery + Interactive Info) */}
@@ -90,10 +90,10 @@ export default async function ProductPage({ params }: Props) {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
                   <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}
                 </span>
-                <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight">
+                <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-semibold text-zinc-950 tracking-tight leading-tight">
                   {product.title}
                 </h1>
-                <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">
+                <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
                   {[["Marca", product.brand], ["Modelo", product.model], ["Código", product.sku]]
                     .filter(([, value]) => value)
                     .map(([label, value]) => (
@@ -125,13 +125,15 @@ export default async function ProductPage({ params }: Props) {
                 )}
               </div>
 
-              <p className="whitespace-pre-line break-words text-sm sm:text-base leading-relaxed text-zinc-600">
-                {product.description}
-              </p>
+
             </>
           }
           afterInteractive={
             <>
+              <details className="group rounded-2xl border border-zinc-200 bg-white px-4 sm:px-5">
+                <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 text-sm font-semibold text-zinc-900">Descripción del producto<ChevronRight className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-90"/></summary>
+                <p className="whitespace-pre-line break-words pb-5 text-sm leading-7 text-zinc-600">{product.description}</p>
+              </details>
               {alternativeProduct && (
                 <Link
                   href={`/producto/${alternativeProduct.slug}`}
@@ -145,7 +147,7 @@ export default async function ProductPage({ params }: Props) {
                   {Object.entries(product.specifications ?? {})
                     .filter(([k, v]) => v && !k.startsWith("_seo_"))
                     .map(([k, v]) => (
-                      <div key={k} className="grid gap-1 py-3 sm:grid-cols-[1fr_2fr] sm:gap-4">
+                      <div key={k} className="grid min-w-0 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4">
                         <dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt>
                         <dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd>
                       </div>

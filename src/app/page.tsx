@@ -16,7 +16,12 @@ import { SocialProofSection } from "@/components/commerce/social-proof-section";
 import { siteConfig } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = pageMetadata({ title: siteConfig.shareTitle, description: siteConfig.description, path: "/" });
+export const metadata: Metadata = pageMetadata({
+  title: siteConfig.shareTitle,
+  description: siteConfig.description,
+  path: "/",
+  image: "/compartir?tipo=tienda",
+});
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
   const { category } = await searchParams;

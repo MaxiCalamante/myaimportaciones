@@ -33,7 +33,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         <Link
           href="/"
           aria-current={isHome ? "page" : undefined}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition ${
+          className={`flex flex-col items-center justify-center flex-1 h-full transition active:scale-95 ${
             isHome ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
         >
@@ -45,7 +45,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         <Link
           href="/catalogo"
           aria-current={isCatalog ? "page" : undefined}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition ${isCatalog ? "text-sky-700 font-bold" : "text-zinc-600 hover:text-zinc-950"}`}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition active:scale-95 ${isCatalog ? "text-sky-700 font-bold" : "text-zinc-600 hover:text-zinc-950"}`}
         >
           <LayoutGrid className="h-5 w-5" />
           <span className="text-[10px] mt-1">Catálogo</span>
@@ -55,7 +55,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="relative flex flex-col items-center justify-center flex-1 h-full text-zinc-600 hover:text-zinc-950 transition cursor-pointer"
+          className="relative flex flex-col items-center justify-center flex-1 h-full text-zinc-600 hover:text-zinc-950 transition active:scale-95 cursor-pointer"
         >
           <div className="relative">
             <ShoppingBag className="h-5 w-5" />
@@ -72,7 +72,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         <Link
           href={orderPath}
           aria-current={isTracking ? "page" : undefined}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition ${
+          className={`flex flex-col items-center justify-center flex-1 h-full transition active:scale-95 ${
             isTracking ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
         >
@@ -84,7 +84,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
         <button
           type="button"
           onClick={() => openWhatsApp("Hola MYA Importaciones! Quisiera hacer una consulta.")}
-          className="flex flex-col items-center justify-center flex-1 h-full text-emerald-700 font-semibold hover:text-emerald-800 transition cursor-pointer"
+          className="flex flex-col items-center justify-center flex-1 h-full text-emerald-700 font-semibold hover:text-emerald-800 transition active:scale-95 cursor-pointer"
         >
           <MessageCircle className="h-5 w-5" />
           <span className="text-[10px] mt-1">WhatsApp</span>

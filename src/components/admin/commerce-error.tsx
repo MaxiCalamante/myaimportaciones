@@ -1,0 +1,2 @@
+'use client';
+export function CommerceError({reset}:{reset:()=>void}) {return <div role="alert" className="mx-auto my-10 max-w-xl space-y-4 rounded-2xl border border-amber-200 bg-white p-6"><h1 className="text-xl font-bold">No pudimos cargar esta información</h1><p className="text-sm text-zinc-600">Revisá tu conexión y volvé a intentarlo. Si tu sesión venció, iniciá sesión nuevamente.</p><button onClick={reset} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white">Reintentar</button></div>;}

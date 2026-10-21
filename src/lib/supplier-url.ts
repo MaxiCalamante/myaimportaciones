@@ -2,12 +2,16 @@ const supplierHosts = new Set([
   "atacadousa.com.py", "www.atacadousa.com.py",
   "starcompany-py.com", "www.starcompany-py.com",
   "totalherramientasoficial.com.py", "www.totalherramientasoficial.com.py",
+  "atacadoconnect.com", "www.atacadoconnect.com",
+  "vencellalberdi.com", "www.vencellalberdi.com", "neoimport.net", "www.neoimport.net",
+  "madridcenterimportados.com", "www.madridcenterimportados.com",
+  "atlanticoshop.com.py", "www.atlanticoshop.com.py", "mobilezone.com.py", "www.mobilezone.com.py",
 ]);
 
 export function supplierUrl(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "https:" || url.username || url.password || url.port || !supplierHosts.has(url.hostname)) {
-    throw new Error("Usá un enlace HTTPS de Atacado USA, Star Company o Total/Wadfow.");
+    throw new Error("Usá un enlace HTTPS de uno de los nueve proveedores oficiales de MYA.");
   }
   return url.href;
 }

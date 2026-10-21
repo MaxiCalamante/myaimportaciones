@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { ShoppingBag, ArrowRight } from "lucide-react";
 import type { Profile } from "@/lib/auth";
 import type { OrderQuote } from "@/lib/order-pricing";
 import { createOrderAction, quoteOrderAction, type CheckoutInput } from "@/app/checkout/actions";
@@ -25,6 +26,7 @@ export function CheckoutPanel({
 }) {
   const {
     cart,
+    cartReady,
     cartTotal,
     clearCart,
     postalCode,
@@ -125,7 +127,7 @@ export function CheckoutPanel({
     }
   });
 
-  const field = "mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-950 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600 text-sm";
+  const field = "mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-950 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600 text-base sm:text-sm";
 
   // Pantalla de confirmación y experiencia post-venta
   if (result) return (
@@ -300,14 +302,14 @@ export function CheckoutPanel({
         </div>
       )}
 
-      {!cart.length ? (
-        <p className="mt-8">Tu carrito está vacío. <Link href="/catalogo" className="text-sky-700 underline font-semibold">Explorar productos</Link></p>
+      {!cartReady ? <div role="status" className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6"><p className="text-sm text-zinc-600">Recuperando tu carrito…</p><div aria-hidden="true" className="h-28 animate-pulse rounded-xl bg-zinc-100 motion-reduce:animate-none"/></div> : !cart.length ? (
+        <div className="my-8 rounded-2xl border border-zinc-200 bg-white px-5 py-10 text-center"><ShoppingBag className="mx-auto size-10 text-sky-700"/><h2 className="mt-4 text-xl font-semibold text-zinc-950">Tu carrito está vacío</h2><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-zinc-500">Elegí tus productos y revisá tu selección acá antes de confirmar la compra.</p><Link href="/catalogo" className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white hover:bg-sky-800">Explorar productos<ArrowRight className="size-4"/></Link></div>
       ) : !checkoutEnabled ? (
-        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
             <h2 className="text-xl font-bold text-zinc-950">Coordiná tu compra</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">Confirmamos disponibilidad, costo y plazo de entrega por Correo Argentino según tu destino antes de indicarte cómo pagar.</p>
-            <button type="button" onClick={() => openWhatsApp(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}${line.variantTitle ? ` (${line.variantTitle})` : ""}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}.`)} className="mt-6 w-full block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700 cursor-pointer">Consultar este carrito por WhatsApp</button>
+            <button type="button" onClick={() => openWhatsApp(`Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} x ${line.product.title}${line.variantTitle ? ` (${line.variantTitle})` : ""}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}.`)} className="mt-6 w-full block rounded-xl bg-emerald-600 px-5 py-3 text-center font-bold text-white hover:bg-emerald-700 cursor-pointer">Consultar por WhatsApp</button>
             <Link href="/catalogo" className="mt-4 inline-block text-sm font-semibold text-sky-700 underline underline-offset-2">Seguir viendo productos</Link>
           </div>
           <aside className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
@@ -317,13 +319,13 @@ export function CheckoutPanel({
               const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
               return <p key={lineKey} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}<strong className="mt-1 block text-zinc-950">{formatCurrency(l.quantity * unitPrice)}</strong></p>;
             })}</div>
-            <p className="mt-4 flex justify-between font-bold"><span>Subtotal de referencia</span><span>{formatCurrency(cartTotal)}</span></p>
+            <p className="mt-4 grid gap-1 border-t border-zinc-100 pt-4 [&>span:first-child]:text-xs [&>span:first-child]:font-medium [&>span:first-child]:text-zinc-500 [&>span:last-child]:text-2xl [&>span:last-child]:font-semibold [&>span:last-child]:tabular-nums"><span>Subtotal de referencia</span><span>{formatCurrency(cartTotal)}</span></p>
             <p className="mt-2 text-xs text-zinc-500">Entrega y precio final sujetos a confirmación.</p>
           </aside>
         </div>
       ) : (
         <form
-          className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_380px]"
+          className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]"
           onSubmit={e => {
             e.preventDefault();
             if (!checkoutEnabled || pending) return;
@@ -526,7 +528,7 @@ export function CheckoutPanel({
             </div>
           </div>
 
-          <aside className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 lg:sticky lg:top-24 shadow-xs">
+          <aside className="min-w-0 space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 lg:sticky lg:top-24 shadow-xs">
             <h2 className="text-xl font-bold">Resumen de compra</h2>
             <div className="divide-y divide-zinc-100 max-h-56 overflow-y-auto pr-1">
               {cart.map(l => {
@@ -534,7 +536,7 @@ export function CheckoutPanel({
                 const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
                 return (
                   <div key={lineKey} className="py-2 text-xs">
-                    <div className="flex justify-between gap-3 font-medium text-zinc-800">
+                    <div className="grid gap-1 font-medium text-zinc-800">
                       <span>{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}</span>
                       <span className="shrink-0 tabular-nums font-bold text-zinc-950">{formatCurrency(l.quantity * unitPrice)}</span>
                     </div>
@@ -559,17 +561,17 @@ export function CheckoutPanel({
 
             {/* Desglose dinámico en tiempo real */}
             <div aria-live="polite" className="space-y-2 rounded-xl bg-zinc-50 p-4 text-sm border border-zinc-200">
-              <div className="flex justify-between text-zinc-600">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-zinc-600 [&>span:last-child]:max-w-36 [&>span:last-child]:text-right">
                 <span>Productos:</span>
                 <span>{formatCurrency(validQuote ? quote.subtotal : cartTotal)}</span>
               </div>
-              <div className="flex justify-between text-zinc-600">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-zinc-600 [&>span:last-child]:max-w-36 [&>span:last-child]:text-right">
                 <span>Envío ({selectedShippingOption?.name || "Correo Argentino"}):</span>
                 <span>{!validQuote ? "A confirmar" : quote.shippingQuotedSeparately ? "A cotizar por separado" : formatCurrency(quote.shipping)}</span>
               </div>
               {shippingCalculation.isValid && (
                 <p className="text-[11px] text-sky-800 font-medium">
-                  📍 Destino: {shippingCalculation.zoneName} ({selectedShippingOption?.estimatedDays})
+                  Destino: {shippingCalculation.zoneName} ({selectedShippingOption?.estimatedDays})
                 </p>
               )}
               {validQuote && quote.discount > 0 && (
@@ -581,7 +583,7 @@ export function CheckoutPanel({
               {validQuote && quote.couponMessage && (
                 <p className="text-xs text-amber-700">{quote.couponMessage}</p>
               )}
-              <div className="border-t border-zinc-200 pt-2 flex justify-between text-lg font-black text-zinc-950">
+              <div className="grid gap-1 border-t border-zinc-200 pt-3 text-zinc-950 [&>span:first-child]:text-xs [&>span:first-child]:font-medium [&>span:first-child]:text-zinc-500 [&>span:last-child]:text-2xl [&>span:last-child]:font-semibold [&>span:last-child]:tabular-nums">
                 <span>{!validQuote ? "Subtotal de productos:" : quote.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
                 <span>{formatCurrency(validQuote ? quote.total : cartTotal)}</span>
               </div>

@@ -7,8 +7,7 @@ const faqs = [
   { question: "¿Dónde consultar el modelo y la presentación?", answer: "Cada ficha informa la marca, el modelo, las fotos y las especificaciones disponibles. Si necesitás confirmar una presentación, compatibilidad o condición particular, consultanos antes de elegir. La garantía comercial adicional se informa en la ficha cuando corresponde." },
   { question: "¿Qué medios de pago están disponibles?", answer: "El resumen de compra muestra los medios habilitados y las promociones aplicables. La acreditación de un pago se confirma después de verificarlo; crear un pedido no significa que ya esté pagado." },
   { question: "¿Quién puede asesorarme?", answer: "Agustina te acompaña en cosmética y cuidado capilar. Máximo te ayuda con herramientas, tecnología y consultas de entrega. Encontrás ambos contactos en el sitio." },
-  { question: "¿Cómo consultar envíos o retiro?", answer: "Enviamos a Argentina. El costo y el plazo dependen del destino y del producto. Consultá las condiciones de compra y coordiná con MYA cualquier retiro antes de acercarte." },
-  { question: "¿Cómo participar del sorteo de MYA?", answer: "La participación se realiza en la publicación de Instagram @_myaimportaciones. En /sorteo podés consultar el horario previsto, seguir una selección iniciada por MYA y ver el estado de revisión del resultado. Las condiciones de Instagram se revisan manualmente." },
+  { question: "¿Hacen sorteos en MYA?", answer: "Realizamos sorteos especiales en fechas destacadas a través de nuestra cuenta oficial de Instagram @_myaimportaciones. Seguinos para participar y enterarte de los próximos eventos y novedades." },
 ];
 
 const categoryLinks = [
@@ -116,7 +115,7 @@ export function StoreSeoFaq() {
                 <Link
                   key={brand.name}
                   href={brand.href}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50/50 hover:text-sky-800 shadow-2xs"
+                  className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50/50 hover:text-sky-800 shadow-2xs active:scale-95"
                 >
                   <span>{brand.name}</span>
                   <span className="text-[10px] font-normal text-slate-400">· {brand.subtitle}</span>
@@ -145,7 +144,7 @@ export function StoreSeoFaq() {
                 className="group py-4 sm:py-5 first:pt-0 last:pb-0"
                 open={index === 0}
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900 hover:text-sky-700 transition text-sm sm:text-base focus-visible:outline-2 focus-visible:outline-sky-700 rounded-md">
+                <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-4 py-1 font-semibold text-slate-900 hover:text-sky-700 transition text-sm sm:text-base focus-visible:outline-2 focus-visible:outline-sky-700 rounded-md">
                   <span>{faq.question}</span>
                   <span className="shrink-0 text-slate-400 transition group-open:rotate-180">
                     ▼

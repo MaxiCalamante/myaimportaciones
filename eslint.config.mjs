@@ -17,9 +17,11 @@ const eslintConfig = defineConfig([
   ], rules: { "@typescript-eslint/no-explicit-any": "off" } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    "scratch/suppliers-private/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     ".next-giveaway-qa/**",
+    ".next-email-qa/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

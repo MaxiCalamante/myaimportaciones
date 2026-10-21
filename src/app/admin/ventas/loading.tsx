@@ -1,0 +1,1 @@
+export default function Loading() {return <div role="status" aria-label="Cargando ventas" className="mx-auto max-w-7xl space-y-5 p-5"><div className="h-10 w-40 animate-pulse rounded-xl bg-zinc-200"/><div className="h-28 animate-pulse rounded-2xl bg-zinc-200"/><div className="h-60 animate-pulse rounded-2xl bg-zinc-100"/></div>;}

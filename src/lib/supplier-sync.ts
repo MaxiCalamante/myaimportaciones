@@ -113,10 +113,10 @@ export async function checkAndUpdateProductSupplierStock(productId: string): Pro
 
   const check = await checkSupplierProductAvailability(product.source_url, product.sku, product.brand);
 
-  // If the supplier is definitively out of stock or not found, set supplier_available to false.
+  // If the supplier is explicitly out of stock, set supplier_available to false.
   // If it's in stock, set supplier_available to true.
   // If there was a network error, keep current availability to prevent accidental disruption, but record status.
-  const newAvailable = check.status === "in_stock" ? true : check.status === "out_of_stock" || check.status === "not_found" ? false : Boolean(product.supplier_available);
+  const newAvailable = check.status === "in_stock" ? true : check.status === "out_of_stock" ? false : Boolean(product.supplier_available);
 
   const { error: updateError } = await supabase.rpc("update_product_supplier_sync_v1", {
     product_id_input: productId,
@@ -200,7 +200,7 @@ export async function runBatchSupplierStockSync(options?: {
       const newAvailable =
         check.status === "in_stock"
           ? true
-          : check.status === "out_of_stock" || check.status === "not_found"
+          : check.status === "out_of_stock"
           ? false
           : Boolean(p.supplier_available);
 
@@ -235,7 +235,7 @@ export async function runBatchSupplierStockSync(options?: {
     const chunkResults = await Promise.all(chunkPromises);
     for (const res of chunkResults) {
       if (res.status === "in_stock") inStock++;
-      else if (res.status === "out_of_stock" || res.status === "not_found") outOfStock++;
+      else if (res.status === "out_of_stock") outOfStock++;
       else errors++;
       results.push(res);
     }

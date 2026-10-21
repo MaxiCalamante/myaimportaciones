@@ -38,9 +38,12 @@
     ".next-giveaway-qa/types/**/*.ts",
     ".next-giveaway-qa/dev/types/**/*.ts",
     ".next-email-qa/types/**/*.ts",
-    ".next-email-qa/dev/types/**/*.ts"
+    ".next-email-qa/dev/types/**/*.ts",
+    ".next-storefront-qa/types/**/*.ts",
+    ".next-storefront-qa/dev/types/**/*.ts"
   ],
   "exclude": [
+    "scratch/suppliers-private/**",
     "node_modules",
     "docs/**/qa-private/**",
     ".next-giveaway-qa",

@@ -16,7 +16,7 @@ export function MarketingScripts() {
  const initialized = useRef(new Set<string>());
  const lastPage = useRef("");
  useEffect(() => {
-  if (!config?.enabled || !config.consent) {
+  if (pathname.startsWith("/emails/") || !config?.enabled || !config.consent) {
    window.fbq?.("consent", "revoke"); window.gtag?.("consent", "update", { analytics_storage: "denied", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" }); window.ttq?.revokeConsent(); lastPage.current = ""; return;
   }
   const meta = /^\d+$/.test(config.metaPixelId) ? config.metaPixelId : "";

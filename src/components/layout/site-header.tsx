@@ -57,7 +57,7 @@ export function SiteHeader({
   const [apiResults, setApiResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [completedSearch, setCompletedSearch] = useState("");
-  const { cartCount, favoritesCount, setCartOpen, setSelectedProduct, openWhatsApp } = useCommerce();
+  const { cartCount, favoritesCount, setCartOpen, openWhatsApp } = useCommerce();
 
   // Cancel stale searches so a slower previous response cannot replace the current query.
   useEffect(() => {
@@ -435,8 +435,6 @@ export function SiteHeader({
           </Link>
 
           {profile ? <Link className={`${linkClass} whitespace-nowrap`} href="/cuenta">Mis pedidos</Link> : <Link className={linkClass} href="/seguimiento">Seguimiento</Link>}
-
-          <Link className={`${linkClass} whitespace-nowrap`} href="/sorteo" aria-current={pathname === "/sorteo" ? "page" : undefined}>Sorteo</Link>
           {toggleChannelLink}
         </nav>
 
@@ -450,7 +448,7 @@ export function SiteHeader({
             <Search className="h-4 w-4 text-zinc-500" />
             <input
               aria-label="Buscar productos"
-              className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500"
+              className="h-full min-w-0 flex-1 bg-transparent text-base sm:text-sm outline-none placeholder:text-zinc-500"
               placeholder="Buscar productos..."
               type="text"
               value={searchQuery}
@@ -576,7 +574,7 @@ export function SiteHeader({
           <Link
             aria-label="Cuenta"
             onClick={() => setOpen(false)}
-            className={iconButtonClass}
+            className={`${iconButtonClass} max-sm:hidden`}
             href={profile ? "/cuenta" : "/login"}
             title={profile ? "Mi cuenta" : "Iniciar sesión"}
           >
@@ -585,7 +583,7 @@ export function SiteHeader({
           <Link
             aria-label="Favoritos"
             onClick={() => setOpen(false)}
-            className={`relative ${iconButtonClass}`}
+            className={`relative ${iconButtonClass} max-sm:hidden`}
             href="/favoritos"
             title="Favoritos"
           >
@@ -653,7 +651,7 @@ export function SiteHeader({
               <input
                 id="mobile-search-input"
                 aria-label="Buscar productos"
-                className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500"
+                className="h-full min-w-0 flex-1 bg-transparent text-base sm:text-sm outline-none placeholder:text-zinc-500"
                 placeholder="Buscar productos..."
                 type="text"
                 value={searchQuery}
@@ -665,6 +663,7 @@ export function SiteHeader({
                   <X className="h-4 w-4" />
                 </button>
               )}
+              <button type="button" onClick={showSearchResults} aria-label="Ver resultados de búsqueda" className="grid size-11 shrink-0 place-items-center rounded-r-xl bg-sky-700 text-white hover:bg-sky-800"><ArrowRight className="size-4"/></button>
             </div>
 
             {/* Quick Suggestions on Mobile when empty */}
@@ -698,7 +697,7 @@ export function SiteHeader({
 
             {/* Results Dropdown Mobile */}
             {searchQuery.trim().length >= 2 && !searchPending && searchResults.length > 0 && (
-              <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-2 shadow-2xl z-50 max-h-60 overflow-y-auto ${
+              <div className={`relative mt-3 rounded-xl border p-2 shadow-2xl z-50 max-h-[45dvh] overflow-y-auto ${
                 isWholesale
                   ? "border-zinc-800 bg-zinc-900 text-zinc-100"
                   : "border-zinc-200 bg-white text-zinc-900"
@@ -710,12 +709,12 @@ export function SiteHeader({
                       <button
                         key={product.id}
                         onClick={() => {
-                          setSelectedProduct(product);
+                          router.push(`/producto/${product.slug}`);
                           setSearchQuery("");
                           setOpen(false);
                           menuButtonRef.current?.focus();
                         }}
-                        className={`w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition cursor-pointer ${
+                        className={`w-full flex items-center gap-3 rounded-xl px-2 py-3 text-left text-sm transition cursor-pointer ${
                           isWholesale ? "hover:bg-zinc-800 text-zinc-200" : "hover:bg-zinc-200 text-zinc-800"
                         }`}
                       >
@@ -727,10 +726,10 @@ export function SiteHeader({
                           className="h-8 w-8 rounded object-contain p-0.5 bg-zinc-50 border border-zinc-100"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate text-xs">{product.title}</p>
-                          <p className="text-[10px] text-zinc-500">{product.categoryName}</p>
+                          <p className="line-clamp-2 text-sm font-medium leading-5">{product.title}</p>
+                          <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-900">{formatCurrency(price)}</p>
                         </div>
-                        <span className="font-bold text-xs">{formatCurrency(price)}</span>
+                        <ArrowRight className="size-4 shrink-0 text-zinc-400"/>
                       </button>
                     );
                   })}
@@ -738,9 +737,9 @@ export function SiteHeader({
               </div>
             )}
 
-            {searchPending && <p role="status" className={`absolute left-0 right-0 z-50 mt-2 rounded-xl border p-3 text-sm shadow-lg ${isWholesale ? "border-zinc-800 bg-zinc-900 text-zinc-200" : "border-zinc-200 bg-white text-zinc-600"}`}>Buscando productos…</p>}
+            {searchPending && <p role="status" className={`relative mt-3 rounded-xl border p-3 text-sm shadow-lg ${isWholesale ? "border-zinc-800 bg-zinc-900 text-zinc-200" : "border-zinc-200 bg-white text-zinc-600"}`}>Buscando productos…</p>}
             {searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchPending && (
-              <div className={`absolute left-0 right-0 mt-2 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-500 ${
+              <div className={`relative mt-3 rounded-xl border p-3 shadow-2xl z-50 text-center text-xs text-zinc-500 ${
                 isWholesale ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
               }`}>
                 No se encontraron productos.
@@ -768,12 +767,10 @@ export function SiteHeader({
               {profile ? "Mis pedidos" : "Seguimiento de pedidos"}
             </Link>
 
-            <Link className={`rounded-lg px-3 py-2 text-sm font-medium ${isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"}`} href="/sorteo" onClick={() => setOpen(false)} aria-current={pathname === "/sorteo" ? "page" : undefined}>Sorteo · Día de la Madre</Link>
-
             {/* Categorías en menú móvil: 4 Rubros Principales con subcategorías desplegables al tocar */}
             {mainCategories.length > 0 && (
               <div className={`py-2 my-1.5 rounded-2xl border ${isWholesale ? "border-zinc-800 bg-zinc-900/40" : "border-zinc-200/80 bg-zinc-50/50"}`}>
-                <div className="px-3 py-1 flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1">
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                     Rubros Principales
                   </p>

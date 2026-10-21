@@ -1,5 +1,94 @@
 # MYA Importaciones — contexto vigente
 
+## Ventas y clientes — 21/10/2026
+
+Publicadas `/admin/ventas`, `/admin/ventas/[id]`, `/admin/clientes` y `/admin/clientes/[id]`, con búsqueda, filtros, paginación y refresco cada30segundos. Distinguir cuenta compradora y destinatario; leer detalle y límites en `docs/VENTAS-Y-CLIENTES-2026-10-21.md`. La selección por cuenta vive en `account_carts`, solo referencias y cantidades, con RLS y RPC validada; no identifica invitados ni habilita marketing. Se conservan confirmaciones de pago y funciones de gestión anteriores. Los emails futuros incluyen variante/SKU y enlace administrativo al pedido. 181 pruebas aprobadas, UI autenticada a320/390/768/1440 y prueba administrativa de email con entrega confirmada. Despliegue final `dpl_xMLiL3NU4r6pYYS1pWYNL7fPCLA8` promovido a `myaimportaciones.com`. Evidencia con datos personales solo en `scratch/suppliers-private/`; no hubo compras ni pagos de prueba. No repetir envíos históricos ni modificar preferencias de marketing.
+
+## Auditoría y Optimización Integral de UI/UX Frontend Mobile para Clientes — 20/10/2026
+
+Por requerimiento expreso del dueño ("revisa toda la ui ux frontend de mobile lado cliente se vea y siente premiun responsive etc"):
+- **Prevención de Zoom Automático en iOS Safari:**
+  - En formularios y buscadores (`CheckoutPanel`, `SiteHeader` buscador desktop/móvil, `CatalogSearchControls` buscador móvil, inputs de rango de precio mínimo/máximo y buscador de marcas en drawer), se actualizaron las clases de tamaño de fuente a `text-base sm:text-sm` (y `text-base sm:text-xs`). Esto garantiza un tamaño mínimo de 16px en dispositivos móviles, impidiendo que Safari en iPhone haga auto-zoom y desplace o deforme la interfaz al tocar cualquier campo de texto.
+- **Espaciado y Limpieza en Pie de Página Mobile:**
+  - En `SiteFooter` (`src/components/layout/site-footer.tsx`), se agregó separación inferior responsiva (`pb-24 md:pb-6`), garantizando que la barra fija de navegación inferior (`MobileBottomNav`) nunca tape los enlaces de contacto, legales, medios de pago o copyright.
+- **Micro-interacciones y Feedback Háptico Táctil:**
+  - En `MobileBottomNav` (`src/components/layout/mobile-bottom-nav.tsx`), se añadió `active:scale-95` a todos los botones principales (Inicio, Catálogo, Carrito, Seguimiento, WhatsApp), otorgando una sensación de respuesta física inmediata al pulsar con el dedo en pantallas táctiles.
+  - En la ficha de producto interactiva (`ProductDetailInteractive` y `StickyMobileBuyBar`), las opciones de variantes y dimensiones cuentan con un área de toque mínima garantizada de 44px (`min-h-[44px]`), anillo de foco activo y feedback táctil (`active:scale-98`), cumpliendo con los estándares de diseño móvil (Apple HIG y Google Material).
+- **Hero y Beneficios Comerciales en Portada Mobile:**
+  - En `StoreHero` (`src/components/commerce/storefront-sections.tsx`), se ajustó el escalado del título a `text-3xl sm:text-5xl lg:text-6xl`, eliminando saltos de línea antiestéticos en pantallas angostas (360px a 390px).
+  - En `RetailHighlights` (`src/components/commerce/storefront-sections.tsx`), la presentación se transformó de una lista vertical monótona a una cuadrícula compacta y elegante de 2x2 en móviles (`grid-cols-2 gap-3 p-4`), con tarjetas estéticas de fondo suave y bordes refinados que ahorran scroll vertical.
+- **Acordeones y Puntos de Toque Accesibles:**
+  - En las preguntas frecuentes con datos estructurados (`StoreSeoFaq` y ficha de producto), los elementos `<summary>` disponen de `min-h-[44px]` y espaciado optimizado para facilitar el despliegue sin fallas táctiles. Los chips de marcas incorporan `min-h-[38px] active:scale-95`.
+  - En `SocialProofSection`, el llamado a la acción por WhatsApp se configuró en ancho completo centrado para dispositivos móviles (`w-full sm:w-auto justify-center`).
+- **Validación técnica integral:**
+  - 176/176 pruebas automatizadas aprobadas (`npm test`).
+  - TypeScript 100% verificado sin errores (`npm run type-check`).
+  - Compilación de producción con Turbopack exitosa (40 rutas) sin advertencias (`npm run build`).
+
+## Retiro de Sorteo del Navbar y Mejoras Integrales en Control de Stock, Proveedores y Precios — 20/10/2026
+
+Por requerimiento expreso del dueño ("ok saca del navbar a sorteo , segui mejorando la ecommerce fijate que falta tanto lado cliente como lado admin como productos control de stock proveedores, precios etc"):
+- **Navegación:**
+  - Se retiró el enlace "Sorteo en vivo" de `AdminSectionNav` (`src/components/admin/admin-section-nav.tsx`), limpiando la barra de navegación del panel de administración.
+- **Lado Cliente (Storefront & Catálogo):**
+  - **Muestras de color interactivas en `ProductCard` (`src/components/commerce/product-card.tsx`):** Ahora las tarjetas de producto en el catálogo, inicio y productos relacionados exhiben pequeños círculos de muestra de color (`ColorSwatches`). Al pasar el cursor o hacer clic sobre un color, la miniatura del producto conmuta inmediatamente a la foto de ese color específico.
+  - **Consultas públicas enriquecidas (`src/lib/storefront.ts`):** `getStorefrontData` incluye `image_url, sku, title` para las variantes, habilitando la previsualización fotográfica sin costo extra de red.
+  - **Precios claros por variantes:** Para productos con precios variables, la tarjeta muestra `Desde $ X` y píldoras descriptivas para dimensiones adicionales.
+- **Lado Admin (Control Center, Precios y Stock):**
+  - **Filtro por Tipo de Producto:** Nuevo selector en `ProductControlCenter` para filtrar por "Todos", "✨ Con Variantes" o "📦 Simples".
+  - **Búsqueda por SKU/Título de Variante:** La barra de búsqueda ahora busca también en los títulos y códigos SKU de las variantes de cada producto.
+  - **Desglose de variantes expandible en tabla:** Al hacer clic en la píldora `X variantes`, se despliega una sub-tabla dentro de la fila mostrando foto, título, opciones, SKU (con copia a 1 clic), precio individual, stock y estado activo de cada variante.
+  - **Precios y Márgenes:** En `ProductControlCenter` y `ProductProfitControl` (`/admin/costos`), los productos con variantes muestran el rango de precios (`$ Min – $ Max · Rango variantes`) y el total de stock acumulado entre todas las variantes activas.
+- **Validación técnica:**
+  - 176/176 pruebas automatizadas aprobadas (`npm test`).
+  - TypeScript limpio sin errores (`npm run type-check`).
+  - Compilación de producción limpia en Turbopack con 40 rutas (`npm run build`).
+
+## Carga y Experiencia Interactiva de Variantes Multidimensionales (Colores, Almacenamiento, Pantalla) — 20/10/2026
+
+Por requerimiento expreso del dueño ("ayer hicimos ese selector de variante de producto por ej colores o diseños o modelos pero no lo implmentraste o sea no cargaste las variantes que se necesitan y que cambie sewgun modelo color etc"):
+- **Carga de Productos Unificados con Variantes en Supabase (`scripts/seed-unified-variants.mjs`):**
+  - **Apple iPhone 16 (`apple-iphone-16`):** 6 variantes activas con fotos por color (Azul ultramar, Blanco, Negro, Rosa, Verde azulado) en 128 GB y 256 GB, con precios individuales exactos y SKU unificados.
+  - **Apple iPhone 17 (`apple-iphone-17`):** 5 variantes activas (Azul neblina, Blanco, Lavanda, Negro, Verde salvia) en 256 GB con fotos individuales en alta definición de Supabase Storage.
+  - **Apple iPhone 17 Pro Max (`apple-iphone-17-pro-max`):** 5 variantes activas en acabados Naranja cósmico, Azul profundo y Plata con capacidades escalonadas (256 GB, 512 GB, 1 TB).
+  - **Apple MacBook Air M5 (`apple-macbook-air-m5`):** 8 variantes combinadas por tamaño de pantalla (13,6″ y 15,3″) y colores (Azul cielo, Blanco estrella, Medianoche, Plata).
+  - **Samsung Galaxy A57 5G (`samsung-galaxy-a57`):** 4 variantes por color (Azul hielo, Azul marino, Gris, Violeta).
+  - **Samsung Galaxy A16 (`samsung-galaxy-a16`):** 3 variantes por color (Gris, Negro, Verde).
+  - Se suman a los productos de perfumería, cosmética y herramientas que ya poseían variantes activas (Victoria's Secret Body Mist, Shimmer, Loción, Medicube AGE-R, Centella Ampoule, Total Taladro).
+- **Selector Visual de Muestras de Color (`Color Swatches`, `src/lib/variant-swatches.ts`):**
+  - Mapeo de paleta cromática de alta fidelidad para dispositivos y cosmética (Negro, Blanco estrella, Medianoche, Azul ultramar, Azul neblina, Azul profundo, Azul cielo, Azul hielo, Rosa, Verde salvia, Verde azulado, Lavanda, Violeta, Naranja cósmico, Titanio natural, Plata, Grafito, etc.).
+  - Botones circulares con anillo activo exterior, feedback visual y tooltip del color seleccionado.
+- **Interacción Dinámica en Ficha de Producto (`ProductShowcase` y `ProductDetailInteractive`):**
+  - Preselección automática de la primera variante disponible en stock al cargar la página (evita estados vacíos o sin precio).
+  - Cambio instantáneo de la foto principal en la galería al seleccionar color o diseño.
+  - Galería unificada de miniaturas que incluye la foto base y las fotos de cada variante.
+  - Badge dinámico debajo del título mostrando la variante activa seleccionada y su SKU en tiempo real.
+  - Actualización inmediata del precio, cuotas estimadas, stock verificado y modo de entrega.
+- **Validación técnica:**
+  - 176/176 pruebas automatizadas aprobadas (`npm test`).
+  - TypeScript limpio sin errores (`npm run type-check`).
+  - Compilación de producción limpia en Turbopack con 40 rutas (`npm run build`).
+
+## Open Graph Dinámico y Branding Premium al Compartir Enlaces — 20/10/2026
+
+Por requerimiento expreso del dueño ("mejora los gra´th que sale al compartir mya importaciones dejalo lindo y premiun con buen branding y que cambie segun si pasaron el link de la pagina, una categoria y un producto"):
+- **Motor Open Graph Dinámico (`/compartir`, `src/app/compartir/route.tsx`):**
+  - Generación de tarjetas visuales en resolución estándar 1200x630 con `ImageResponse` (`@vercel/og`), íconos vectoriales SVG puros (cero dependencia de fuentes externas) y procesamiento de imágenes con `sharp`.
+  - **Link de Producto (`/producto/[slug]`):** Presentación e-commerce de lujo con 2 columnas. A la izquierda: marco contenedor de estudio con foto nítida centrada, badges `100% ORIGINAL` y marca. A la derecha: logotipo oficial MYA, badge `TIENDA OFICIAL`, rubro, título completo, precio online destacado en pesos con formato de moneda (`$ XX.XXX ARS`), etiqueta de cuotas disponibles, sellos de envío por Correo Argentino y pagos seguros por Mercado Pago, y procedencia Tandil.
+  - **Link de Categoría (`/catalogo?category=...` o marca):** Banner temático oficial centrado con logotipo MYA, badge de catálogo oficial verificado, título de categoría o marca, propuesta de valor del rubro y 3 tarjetas de beneficios comerciales.
+  - **Link Principal de la Tienda (`/` o general):** Portada institucional de e-commerce con propuesta de valor integral, 4 pilares de catálogo (Cosmética Coreana, Electrónica & Apple, Cuidado Capilar, Herramientas Pro) y sellos de confianza.
+- **Integración SEO & Metadatos (`src/lib/seo.ts`, `src/app/page.tsx`, `src/app/catalogo/page.tsx`):**
+  - Generadores `buildProductShareImageUrl` y `buildCatalogShareImageUrl` vinculados a `productMetadata`, `catalogSeo` y `pageMetadata`.
+  - Configuración explícita de `openGraph.images` con dimensiones 1200x630, `image/png` y `twitter:card: "summary_large_image"` optimizado para WhatsApp, Facebook, iMessage, Twitter/X y Telegram.
+- **Validación técnica:**
+  - 174/174 pruebas automatizadas aprobadas (`npm test`).
+  - TypeScript limpio sin errores (`npm run type-check`).
+  - Compilación de producción limpia en Turbopack con 40 rutas (`npm run build`).
+
+## Proveedores y costos de importación — 20/10/2026
+
+Registro de los nueve proveedores oficiales, métodos verificables, configuración del pasador, datos privados e instrucciones de operación: [docs/suppliers/README.md](docs/suppliers/README.md). La implementación nueva reutiliza administración, permisos y costos existentes. Antes de consultar o cambiar abastecimiento, leer ese documento y distinguir su evidencia local, migración y despliegue. Tarifas del 16/10/2026 y FX ARS 1.600 son históricos; no certifican cotización actual. Simulaciones y propuestas nunca incrementan stock ni publican productos.
+
 Actualizado el 08/10/2026. Las decisiones más recientes prevalecen sobre estados históricos. Fuente mantenida: este archivo, dentro de Tienda WEB. El contexto anterior queda en docs/AI_CONTEXT-HISTORICO.md y no define políticas vigentes.
 
 ## Eliminación de la Categoría Vacía "Smartphones & Tecnología" — 08/10/2026

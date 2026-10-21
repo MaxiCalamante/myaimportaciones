@@ -256,8 +256,8 @@ export function CatalogSearchControls({
     SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Destacados";
 
   return (
-    <div className="catalog-controls w-full" aria-busy={pending}>
-      {pending && <p role="status" className="mb-2 text-xs font-semibold text-sky-700">Actualizando productos…</p>}
+    <div className="catalog-controls min-w-0 w-full" aria-busy={pending}>
+      {pending && <p role="status" className="sr-only">Actualizando productos…</p>}
       {/* ========================================================================= */}
       {/* MOBILE CONTROLS (< sm)                                                    */}
       {/* ========================================================================= */}
@@ -278,7 +278,7 @@ export function CatalogSearchControls({
                 ? `Buscar en ${category.name.replace(/\s*\(.*?\)/, "")}...`
                 : "Buscar producto, marca o modelo..."
             }
-            className="h-11 w-full rounded-2xl border border-zinc-200/90 bg-white pl-10 pr-9 text-sm text-zinc-900 shadow-2xs outline-none transition placeholder:text-zinc-400 focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
+            className="h-12 min-w-0 w-full rounded-xl border border-zinc-200 bg-white pl-10 pr-24 text-base sm:text-sm text-zinc-900 shadow-2xs outline-none transition placeholder:text-zinc-400 focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
           />
           {searchInput ? (
             <button
@@ -287,16 +287,17 @@ export function CatalogSearchControls({
                 setSearchInput("");
                 if (query) navigateWithParams({ q: "" });
               }}
-              className="absolute right-0 grid size-11 place-items-center rounded-xl text-zinc-500 hover:text-zinc-700"
+              className="absolute right-12 grid size-11 place-items-center rounded-xl text-zinc-500 hover:text-zinc-700"
               aria-label="Borrar búsqueda"
             >
               <X className="h-4 w-4" />
             </button>
           ) : null}
+          <button type="submit" aria-label="Buscar en el catálogo" className="absolute right-1 grid size-10 place-items-center rounded-lg bg-sky-700 text-white hover:bg-sky-800"><Search className="size-4"/></button>
         </form>
 
         {/* Mobile Action Row: Filtros button & Ordenar por selector */}
-        <div className="flex items-center gap-2">
+        <div className="grid min-w-0 grid-cols-2 items-center gap-2">
           {/* Botón Filtros Drawer */}
           <button
             type="button"
@@ -327,7 +328,7 @@ export function CatalogSearchControls({
           </button>
 
           {/* Quick Sort selector with Native Picker overlay */}
-          <div className="relative flex-1 rounded-xl focus-within:ring-2 focus-within:ring-sky-600 focus-within:ring-offset-2">
+          <div className="relative min-w-0 rounded-xl focus-within:ring-2 focus-within:ring-sky-600 focus-within:ring-offset-2">
             <div
               aria-hidden="true"
               className="flex h-11 w-full items-center justify-between rounded-xl border border-zinc-200/90 bg-white px-3.5 text-xs font-semibold text-zinc-800 shadow-2xs transition hover:bg-zinc-50"
@@ -550,7 +551,7 @@ export function CatalogSearchControls({
               onClick={() => handleRemoveChip("q")}
               className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800 hover:bg-sky-100 transition active:scale-95"
             >
-              <span className="min-w-0 break-words">&ldquo;{query}&rdquo;</span>
+              <span className="min-w-0 break-all">&ldquo;{query}&rdquo;</span>
               <X className="h-3 w-3" />
             </button>
           ) : null}
@@ -627,7 +628,7 @@ export function CatalogSearchControls({
             aria-modal="true"
             aria-label="Filtros del catálogo"
             onKeyDown={event => { if (event.key === "Escape") setIsDrawerOpen(false); }}
-            className="relative z-10 flex max-h-[88dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 animate-in slide-in-from-bottom"
+            className="relative z-10 flex min-h-0 max-h-[90dvh] w-full min-w-0 flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 animate-in slide-in-from-bottom"
           >
             {/* Top Drag Indicator */}
             <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-zinc-300" />
@@ -778,7 +779,7 @@ export function CatalogSearchControls({
                         value={brandSearch}
                         onChange={(e) => setBrandSearch(e.target.value)}
                         placeholder="Filtrar marcas..."
-                        className="h-9 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-3 text-xs outline-none focus:border-sky-500 focus:bg-white"
+                        className="h-9 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-3 text-base sm:text-xs outline-none focus:border-sky-500 focus:bg-white"
                       />
                     </div>
                   )}
@@ -841,7 +842,7 @@ export function CatalogSearchControls({
                       placeholder="0"
                       value={draftMin}
                       onChange={(e) => setDraftMin(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                      className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base sm:text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                     />
                   </div>
                   <div>
@@ -855,7 +856,7 @@ export function CatalogSearchControls({
                       placeholder="Sin tope"
                       value={draftMax}
                       onChange={(e) => setDraftMax(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                      className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base sm:text-sm text-zinc-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                     />
                   </div>
                 </div>

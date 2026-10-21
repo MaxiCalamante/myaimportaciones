@@ -23,7 +23,7 @@ export const demoCategories: Category[] = [
     "slug": "cuidado-capilar",
     "parentId": null,
     "description": "Mascarillas de colágeno y tratamientos capilares virales Karseell Maca Essence de restauración profunda.",
-    "imageUrl": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/mya-import-20261007-90fdc4ae-e480-5e47-a9fc-351d0c0e2bcb.jpg",
+    "imageUrl": "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/cuidado-capilar-karseell.webp",
     "wholesaleOnly": false,
     "displayOrder": 2
   },

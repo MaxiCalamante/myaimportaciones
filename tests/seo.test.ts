@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { catalogSeo, productMetadata, productStructuredData, jsonLd } from "../src/lib/seo";
+import { catalogSeo, productMetadata, productStructuredData, jsonLd, buildProductShareImageUrl, buildCatalogShareImageUrl } from "../src/lib/seo";
 import { merchantFeed, verifiedGtin } from "../src/lib/merchant-feed";
 import { resolveSiteOrigin } from "../src/lib/site-origin";
 import { parseProductForm } from "../src/lib/admin-product";
@@ -62,4 +62,26 @@ test("admin SEO fields persist in existing product specifications, clear to auto
   const saved = parseProductForm(form, false); assert.equal(saved.fields.specifications._seo_title, "Título editorial");
   form.set("specifications", "_seo_title: anterior"); form.set("seo_title", ""); assert.equal(parseProductForm(form, false).fields.specifications._seo_title, undefined);
   form.set("seo_title", "<script>"); assert.throws(() => parseProductForm(form, false), /texto simple/);
+});
+test("dynamic Open Graph cards adapt to product, category and store branding with standard 1200x630 dimensions", () => {
+  const productShare = buildProductShareImageUrl(product);
+  assert.ok(productShare.startsWith("/compartir?"));
+  assert.ok(productShare.includes("tipo=producto"));
+  assert.ok(productShare.includes("slug=producto-50-ml"));
+  assert.ok(productShare.includes("precio=12300"));
+  assert.ok(productShare.includes("marca=Marca"));
+
+  const meta = productMetadata(product);
+  const ogImages = (meta.openGraph?.images as Array<{ url: string; width?: number; height?: number }>) || [];
+  assert.ok(ogImages.length >= 1);
+  assert.equal(ogImages[0].width, 1200);
+  assert.equal(ogImages[0].height, 630);
+  assert.ok(ogImages[0].url.includes("/compartir?tipo=producto"));
+
+  const catShare = buildCatalogShareImageUrl({ category });
+  assert.ok(catShare.includes("tipo=categoria"));
+  assert.ok(catShare.includes("cat=Cuidado+facial"));
+
+  const catalogMeta = catalogSeo({ category: "cuidado" }, [category], ["Marca"]);
+  assert.ok(catalogMeta.image?.includes("tipo=categoria"));
 });

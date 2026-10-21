@@ -22,7 +22,7 @@ test("campaigns and cart recovery enforce consent, cancellation, deduplication, 
     const schema = readFileSync("supabase/schema.sql", "utf8");
     await db.exec(schema.slice(schema.indexOf("do $$"), schema.indexOf("create or replace function public.handle_new_user")));
     await db.exec("create function public.is_admin() returns boolean language sql as $$ select coalesce(current_setting('test.admin',true),'false')='true' $$;");
-    for (const file of ["20260921134833_retail_integrity.sql", "20260921185112_catalog_identity.sql", "20260922140934_supplier_fulfillment.sql", "20261010120000_transactional_emails.sql", "20261019120000_email_account_and_aftersales.sql", "20261019200000_email_campaigns_and_cart.sql"]) await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
+    for (const file of ["20260921134833_retail_integrity.sql", "20260921185112_catalog_identity.sql", "20260922140934_supplier_fulfillment.sql", "20261010120000_transactional_emails.sql", "20261019120000_email_account_and_aftersales.sql", "20261019200000_email_campaigns_and_cart.sql", "20261019210000_email_cart_frequency_guard.sql"]) await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
     const first = randomUUID(), second = randomUUID(), product = randomUUID();
     for (const [id, email] of [[first, "one@example.com"], [second, "two@example.com"]]) {
       await db.query("insert into auth.users(id,email,email_confirmed_at) values($1,$2,now());", [id,email]);
@@ -74,6 +74,8 @@ test("campaigns and cart recovery enforce consent, cancellation, deduplication, 
     assert.equal(await allowed("campaign",promotion),false,"reconsent cannot revive an old message");
     await db.query("select save_email_cart_v1($1::jsonb)",[cart]);
     await db.exec("update email_saved_carts set updated_at=now()-interval '25 hours'; select prepare_email_automations_v1();");
+    assert.equal((await db.query("select * from email_outbox where event_type='cart_reminder'")).rows.length,1,"unsubscribe/reconsent cannot bypass the weekly cap");
+    await db.exec("update email_outbox set created_at=now()-interval '8 days' where event_type='cart_reminder'; select prepare_email_automations_v1();");
     const purchaseReminder = await snapshot("cart_reminder");
     assert.equal(await allowed("cart_reminder",purchaseReminder),true);
     // A committed order from the same email (including a guest order) cancels recovery.

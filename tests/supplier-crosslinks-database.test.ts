@@ -1,0 +1,42 @@
+import test from'node:test';import assert from'node:assert/strict';import{readFileSync}from'node:fs';import{PGlite}from'@electric-sql/pglite';
+test('vínculos privados transaccionales, variantes, evidencia concurrente, auditoría y leases',async()=>{
+ const db=new PGlite();try{
+  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create function auth.uid()returns uuid language sql as $$select null::uuid$$;
+   create function is_admin()returns boolean language sql as $$select current_setting('test.admin',true)='true'$$;
+   create table suppliers(id uuid primary key default gen_random_uuid(),name text,website text,notes text,is_active boolean default true,created_at timestamptz default now());
+   create table categories(id uuid primary key,slug text,parent_id uuid);
+   create table products(id uuid primary key,title text,brand text,model text,sku text,source_url text,category_id uuid,retail_price numeric,stock integer,fulfillment_mode text,supplier_available boolean,supplier_last_checked_at timestamptz,supplier_stock_status text,is_active boolean default true,updated_at timestamptz);
+   create table product_variants(id uuid primary key,product_id uuid references products(id),title text,sku text,options jsonb,supplier_available boolean,fulfillment_mode text,updated_at timestamptz);
+   create table product_costs(product_id uuid references products(id),ml_url text,ml_price numeric,ml_checked_at timestamptz);
+   grant usage on schema auth to authenticated,service_role;`);
+  for(const file of['20261020120000_supplier_intelligence','20261020170000_supplier_automation','20261020180000_supplier_automation_guards','20261020190000_supplier_worker_coordination','20261020200000_supplier_manual_references','20261020210000_supplier_crosslinks','20261020220000_supplier_link_stock_evidence'])await db.exec(readFileSync(`supabase/migrations/${file}.sql`,'utf8'));
+  const product='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222',variant='33333333-3333-4333-8333-333333333333';
+  await db.query("insert into products(id,title,brand,model,retail_price,stock,source_url)values($1,'Medicube Jelly 50 ml','Medicube','Jelly 50 ml',222,7,'https://existing.test/source'),($2,'Variantes',null,null,333,9,null)",[product,other]);
+  await db.query("insert into product_variants(id,product_id,title,options)values($1,$2,'Blue','{\"Color\":\"Blue\"}')",[variant,other]);
+  const supplier=(await db.query<{id:string}>("select id from suppliers where official_key='star-company'")).rows[0].id;
+  await db.exec("set role authenticated;select set_config('test.admin','false',false)");
+  assert.equal((await db.query('select * from supplier_discovery_jobs')).rows.length,0);
+  await assert.rejects(db.query('select link_supplier_offer_v1($1)',[{}]),/Forbidden/);
+  await db.exec('reset role;set role service_role');
+  const makeOffer=async(key:string)=>(await db.query<{id:string}>('select record_supplier_observation_v1($1)id',[{supplier_id:supplier,external_id:key,variant_key:'base',title:'MEDICUBE JELLY 50ML',source_url:'https://www.starcompany-py.com/p',origin_cost:10,currency:'USD',availability:'in_stock',verification:'pending',observed_at:new Date().toISOString(),method:'product_page',evidence:{sourceTitle:'MEDICUBE JELLY 50ML'}}])).rows[0].id;
+  const offer=await makeOffer('1');const input={offerId:offer,productId:product,variantId:null,sourceTitle:'MEDICUBE JELLY 50ML',productSnapshot:{title:'Medicube Jelly 50 ml',brand:'Medicube',model:'Jelly 50 ml'},method:'exact_identity',reason:'Identidad completa',evidence:{}};
+  const link=async(p:unknown)=>(await db.query<{result:string}>('select link_supplier_offer_v1($1)result',[p])).rows[0].result;
+  await assert.rejects(link({...input,sourceTitle:'OTRO PRODUCTO'}),/Supplier identity changed/);
+  await assert.rejects(link({...input,productSnapshot:{...input.productSnapshot,title:'Otro'}}),/Product identity changed/);
+  assert.equal(await link(input),'linked');assert.equal(await link(input),'unchanged');
+  await db.exec('reset role');assert.equal((await db.query('select * from supplier_link_decisions')).rows.length,1);
+  assert.deepEqual((await db.query('select stock,retail_price,source_url from products where id=$1',[product])).rows[0],{stock:7,retail_price:'222',source_url:'https://existing.test/source'});
+  assert.equal((await db.query('select * from supplier_sync_queue where offer_id=$1',[offer])).rows.length,1);
+  await db.exec('set role service_role');
+  const second=await makeOffer('2'),variantInput={...input,offerId:second,productId:other,productSnapshot:{title:'Variantes',brand:null,model:null}};
+  await db.query("update supplier_offers set evidence=evidence||'{\"availabilityBasis\":\"listed_orderable\"}'::jsonb where id=$1",[second]);
+  await assert.rejects(link(variantInput),/Exact variant required/);
+  assert.equal(await link({...variantInput,variantId:variant,variantSnapshot:{title:'Blue',options:{Color:'Blue'}}}),'linked');
+  assert.equal((await db.query<{availability:string}>('select availability from supplier_offers where id=$1',[second])).rows[0].availability,'unknown');
+  await assert.rejects(link({...input,productId:other,variantId:variant,productSnapshot:variantInput.productSnapshot,variantSnapshot:{title:'Blue',options:{Color:'Blue'}}}),/Already linked/);
+  await db.query("insert into supplier_discovery_jobs(supplier_id,kind,query)values($1,'search','Medicube')",[supplier]);
+  await db.exec('reset role;update suppliers set automation_authorized=true;set role service_role');
+  assert.equal((await db.query('select * from claim_supplier_discovery_v1(1)')).rows.length,1);assert.equal((await db.query('select * from claim_supplier_discovery_v1(1)')).rows.length,0);
+  await db.exec('reset role;set role anon');await assert.rejects(db.query('select * from supplier_link_decisions'),/permission denied/);
+ }finally{await db.close();}
+});

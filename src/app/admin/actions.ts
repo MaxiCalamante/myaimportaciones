@@ -649,6 +649,9 @@ export async function updateOrderStatusAction(
   scheduleTransactionalEmails(orderId);
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
+  revalidatePath("/admin/ventas");
+  revalidatePath(`/admin/ventas/${orderId}`);
+  revalidatePath("/admin/clientes");
   revalidatePath("/cuenta");
 }
 export interface BulkProductItem {

@@ -11,6 +11,7 @@ import type { Product, ProductChannel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { getProductShippingTimeInfo } from "@/lib/shipping";
+import { getColorSwatch } from "@/lib/variant-swatches";
 
 export function ProductCard({
   product,
@@ -29,6 +30,14 @@ export function ProductCard({
   const initialImage = product.imageUrl || "/placeholder-product.svg";
   const [imageSrc, setImageSrc] = useState(initialImage);
 
+  const colorDim = product.hasVariants
+    ? product.optionsConfig?.find((d) => /color|tono|acabado/i.test(d.name))
+    : undefined;
+  const otherDims = product.hasVariants
+    ? product.optionsConfig?.filter((d) => !/color|tono|acabado/i.test(d.name))
+    : [];
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+
   const cartItem = cart.find(
     (line) => line.product.id === product.id && line.channel === channel
   );
@@ -36,13 +45,13 @@ export function ProductCard({
   const shippingInfo = getProductShippingTimeInfo(product);
 
   return (
-    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-lg">
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white transition-[box-shadow,border-color] duration-200 hover:border-zinc-300 hover:shadow-md">
       <div className="relative">
       <Link
         href={`/producto/${product.slug}`}
-        className="relative block aspect-[4/3] cursor-pointer overflow-hidden border-b border-zinc-100 bg-slate-50 p-3 sm:aspect-square sm:p-5"
+        className="relative block aspect-square cursor-pointer overflow-hidden border-b border-zinc-100 bg-slate-50 p-3 sm:aspect-square sm:p-5"
       >
-        <div className="relative h-full w-full">
+        <div className="absolute inset-3 sm:inset-5">
           <Image
             alt={product.title}
             className="object-contain transition-transform duration-150 group-hover:scale-105"
@@ -53,9 +62,9 @@ export function ProductCard({
             quality={75}
           />
         </div>
-        <div className="absolute left-2 top-2 flex flex-col gap-1 items-start sm:left-3 sm:top-3">
+        <div className="absolute left-2 top-2 flex max-w-[calc(100%-3.75rem)] flex-col items-start gap-1 sm:left-3 sm:top-3">
           {product.brand && (
-            <span className="max-w-[calc(100%-4rem)] truncate rounded-lg bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-800 shadow-2xs border border-zinc-200/50">
+            <span className="max-w-full truncate rounded-lg bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-800 shadow-2xs border border-zinc-200/50">
               {product.brand}
             </span>
           )}
@@ -97,44 +106,89 @@ export function ProductCard({
         <div className="mt-auto pt-3">
           <div>
             <p className="text-[11px] text-zinc-500 sm:text-xs">
-              {channel === "wholesale" ? "Precio mayorista" : "Precio en pesos"}
+              {channel === "wholesale" ? "Precio mayorista" : product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? "Desde · precio en pesos" : "Precio en pesos"}
             </p>
-            <p className="text-lg font-bold tabular-nums text-zinc-950 sm:text-xl">
-              {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
-                <>
-                  <span className="text-xs font-semibold text-zinc-500 mr-1.5 font-sans">Desde</span>
-                  {formatCurrency(product.minPrice)}
-                </>
-              ) : (
-                formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)
-              )}
+            <p data-product-price className="whitespace-nowrap text-[clamp(0.95rem,4.1vw,1.125rem)] font-semibold tracking-tight tabular-nums text-zinc-950 sm:text-xl">
+              {formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)}
             </p>
             {channel === "retail" && <ElectronicsPrice product={product} />}
-            {channel === "retail" && <p className="mt-1 text-[11px] text-emerald-800">Consultá las condiciones de compra</p>}
+
 
             {channel === "wholesale" ? (
               <p className="mt-1 text-xs text-zinc-500">
                 Minimo {product.wholesaleMinQuantity} unidades
               </p>
             ) : null}
-            {product.hasVariants && product.optionsConfig && product.optionsConfig.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                {product.optionsConfig.map((opt) => (
-                  <span
-                    key={opt.name}
-                    className="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 border border-sky-200/70"
-                  >
-                    {opt.values.length} {opt.name.toLowerCase()}s
-                  </span>
-                ))}
+            {product.hasVariants && (
+              <div className="mt-2 space-y-1.5">
+                {colorDim && colorDim.values.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1" aria-label="Colores disponibles">
+                    {colorDim.values.slice(0, 6).map((col) => {
+                      const swatch = getColorSwatch(col);
+                      const isSelected = activeColor === col;
+                      const variantWithImg = product.variants?.find(
+                        (v) => v.options[colorDim.name] === col && v.imageUrl
+                      );
+                      return (
+                        <button
+                          key={col}
+                          type="button"
+                          aria-label={`Ver en color ${col}`}
+                          title={col}
+                          onMouseEnter={() => {
+                            if (variantWithImg?.imageUrl) {
+                              setImageSrc(variantWithImg.imageUrl);
+                              setActiveColor(col);
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (variantWithImg?.imageUrl) {
+                              setImageSrc(variantWithImg.imageUrl);
+                              setActiveColor(col);
+                            }
+                          }}
+                          aria-pressed={isSelected}
+                          className={`size-6 rounded-full border-[5px] border-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)] transition-transform duration-150 hover:scale-110 cursor-pointer ${
+                            isSelected
+                              ? "ring-2 ring-sky-600 ring-offset-1 scale-110"
+                              : "hover:ring-1 hover:ring-zinc-400"
+                          }`}
+                          style={{
+                            backgroundColor: swatch?.bg || "#cbd5e1",
+                            borderColor: swatch?.border || "rgba(0,0,0,0.15)",
+                          }}
+                        />
+                      );
+                    })}
+                    {colorDim.values.length > 6 && (
+                      <span className="text-[10px] font-bold text-zinc-400">
+                        +{colorDim.values.length - 6}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {otherDims && otherDims.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    {otherDims.map((opt) => (
+                      <span
+                        key={opt.name}
+                        className="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 border border-sky-200/70"
+                      >
+                        {opt.values.length} {opt.name.toLowerCase()}s
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
           <span
-            className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${shippingInfo.badgeClass}`}
+            className={`mt-2 inline-flex max-w-full rounded-md border px-2 py-1 text-[10px] font-medium ${shippingInfo.badgeClass}`}
             title={shippingInfo.shippingTimeDescription}
           >
-            {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Envío Correo Argentino" : "Disponibilidad a confirmar"}
+            {shippingInfo.isImmediate ? "Stock en Tandil" : isVerifiedStock(product) ? "Disponible para envío" : "Disponibilidad a confirmar"}
           </span>
         </div>
 

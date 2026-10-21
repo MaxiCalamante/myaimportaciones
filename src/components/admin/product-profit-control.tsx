@@ -175,7 +175,8 @@ export function ProductProfitControl({
           const matchModel = p.model ? p.model.toLowerCase().includes(q) : false;
           const matchBrand = p.brand ? p.brand.toLowerCase().includes(q) : false;
           const matchUrl = p.sourceUrl ? p.sourceUrl.toLowerCase().includes(q) : false;
-          if (!matchTitle && !matchSku && !matchModel && !matchBrand && !matchUrl) return false;
+          const matchVariant = p.variants ? p.variants.some((v) => v.title.toLowerCase().includes(q) || (v.sku ? v.sku.toLowerCase().includes(q) : false)) : false;
+          if (!matchTitle && !matchSku && !matchModel && !matchBrand && !matchUrl && !matchVariant) return false;
         }
 
         // Category
@@ -681,6 +682,13 @@ export function ProductProfitControl({
                                     </span>
                                   )}
 
+                                  {p.hasVariants && (
+                                    <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                                      <Layers className="inline h-2.5 w-2.5 mr-0.5" />
+                                      {p.variants?.length ? `${p.variants.length} var.` : "Variantes"}
+                                    </span>
+                                  )}
+
                                   {priceConflicts.has(p.id) && (
                                     <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
                                       Foto compartida
@@ -795,9 +803,18 @@ export function ProductProfitControl({
                           {/* 4. Precio de Venta (PVP) */}
                           <td data-label="Precio de venta" className="px-3 py-3.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-black text-zinc-900">
-                                {money(p.retailPrice)}
-                              </span>
+                              {p.hasVariants && p.minPrice && p.maxPrice && p.minPrice < p.maxPrice ? (
+                                <div>
+                                  <span className="text-sm font-black text-zinc-950 block">
+                                    {money(p.minPrice)} – {money(p.maxPrice)}
+                                  </span>
+                                  <span className="text-[10px] text-purple-700 font-bold">Rango variantes</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-black text-zinc-900">
+                                  {money(p.retailPrice)}
+                                </span>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setSelectedQuickPriceProduct(p)}

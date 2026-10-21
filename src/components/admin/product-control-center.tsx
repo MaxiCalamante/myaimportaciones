@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { ProductEditor } from "./product-editor";
 import {
@@ -69,6 +69,8 @@ export function ProductControlCenter({
   const [supplierLinkFilter, setSupplierLinkFilter] = useState<"all" | "with_link" | "without_link">("all");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
+  const [productTypeFilter, setProductTypeFilter] = useState<"all" | "variants" | "simple">("all");
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "price_asc" | "price_desc" | "status" | "recent">("recent");
 
   // Pagination state
@@ -132,10 +134,12 @@ export function ProductControlCenter({
     let supplier = 0;
     let supplierAvailable = 0;
     let withSupplierLink = 0;
+    let withVariants = 0;
     const total = products.length;
 
     for (let i = 0; i < total; i++) {
       const p = products[i];
+      if (p.hasVariants) withVariants++;
       if (p.active !== false) active++;
       if (p.fulfillmentMode === "supplier") {
         supplier++;
@@ -158,6 +162,7 @@ export function ProductControlCenter({
       supplierPaused,
       withSupplierLink,
       withoutSupplierLink,
+      withVariants,
       activeRate: total > 0 ? Math.round((active / total) * 100) : 0,
     };
   }, [products]);
@@ -175,8 +180,13 @@ export function ProductControlCenter({
           const matchBrand = p.brand ? p.brand.toLowerCase().includes(term) : false;
           const matchModel = p.model ? p.model.toLowerCase().includes(term) : false;
           const matchTags = p.tags ? p.tags.some((t) => t.toLowerCase().includes(term)) : false;
-          if (!matchTitle && !matchSku && !matchBrand && !matchModel && !matchTags) return false;
+          const matchVariant = p.variants ? p.variants.some((v) => v.title.toLowerCase().includes(term) || (v.sku ? v.sku.toLowerCase().includes(term) : false)) : false;
+          if (!matchTitle && !matchSku && !matchBrand && !matchModel && !matchTags && !matchVariant) return false;
         }
+
+        // Product Type Filter (Variants vs Simple)
+        if (productTypeFilter === "variants" && !p.hasVariants) return false;
+        if (productTypeFilter === "simple" && p.hasVariants) return false;
 
         // Shop Status (Active / Paused)
         if (statusFilter === "active" && p.active === false) return false;
@@ -227,7 +237,7 @@ export function ProductControlCenter({
         }
         return 0; // default recent/original
       });
-  }, [products, search, statusFilter, availabilityFilter, fulfillmentFilter, categoryFilter, brandFilter, sortBy, categories]);
+  }, [products, search, statusFilter, availabilityFilter, fulfillmentFilter, productTypeFilter, categoryFilter, brandFilter, sortBy, categories]);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
@@ -712,6 +722,20 @@ export function ProductControlCenter({
               <option value="without_link">⚠️ Sin link proveedor ({stats.withoutSupplierLink})</option>
             </select>
 
+            {/* Product Type (All / With Variants / Simple) */}
+            <select
+              value={productTypeFilter}
+              onChange={(e) => {
+                setProductTypeFilter(e.target.value as "all" | "variants" | "simple");
+                setPage(1);
+              }}
+              className="h-10 rounded-xl border border-zinc-300 px-3 outline-none focus:border-purple-600 bg-white font-bold cursor-pointer"
+            >
+              <option value="all">Tipo: Todos ({products.length})</option>
+              <option value="variants">✨ Con Variantes ({stats.withVariants})</option>
+              <option value="simple">📦 Simples ({products.length - stats.withVariants})</option>
+            </select>
+
             {/* Fulfillment Mode Dropdown */}
             <select
               value={fulfillmentFilter}
@@ -899,12 +923,12 @@ export function ProductControlCenter({
                   const isActive = product.active !== false;
 
                   return (
-                    <tr
-                      key={product.id}
-                      className={`hover:bg-zinc-50/60 transition-colors ${
-                        isSelected ? "bg-emerald-50/30" : ""
-                      } ${!isActive ? "opacity-75 bg-zinc-50/40" : ""}`}
-                    >
+                    <Fragment key={product.id}>
+                      <tr
+                        className={`hover:bg-zinc-50/60 transition-colors ${
+                          isSelected ? "bg-emerald-50/30" : ""
+                        } ${!isActive ? "opacity-75 bg-zinc-50/40" : ""}`}
+                      >
                       {/* Select Checkbox */}
                       <td data-label="Seleccionar" className="px-4 py-3.5 text-center">
                         <input
@@ -961,9 +985,18 @@ export function ProductControlCenter({
                               )}
 
                               {product.hasVariants && (
-                                <span className="inline-flex items-center gap-1 rounded bg-purple-50 border border-purple-200 px-1.5 py-0.5 text-[10px] font-bold text-purple-800">
-                                  <Layers className="h-2.5 w-2.5" /> Variantes
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                                  className="inline-flex items-center gap-1 rounded bg-purple-50 hover:bg-purple-100 border border-purple-200 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 transition-colors cursor-pointer"
+                                  title="Ver desglose de variantes en la tabla"
+                                >
+                                  <Layers className="h-2.5 w-2.5" />
+                                  {product.variants?.length ? `${product.variants.length} variantes` : "Variantes"}
+                                  <span className="text-[9px] text-purple-600 font-normal">
+                                    {expandedProductId === product.id ? "▲" : "▼"}
+                                  </span>
+                                </button>
                               )}
 
                               {product.sourceUrl && (
@@ -1001,9 +1034,20 @@ export function ProductControlCenter({
                       <td data-label="Precios" className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
                           <div>
-                            <div className="font-black text-zinc-950 text-sm">
-                              {formatCurrency(product.retailPrice)}
-                            </div>
+                            {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
+                              <>
+                                <div className="font-black text-zinc-950 text-sm">
+                                  {formatCurrency(product.minPrice)} – {formatCurrency(product.maxPrice)}
+                                </div>
+                                <div className="text-[10px] font-bold text-purple-700">
+                                  Rango variantes
+                                </div>
+                              </>
+                            ) : (
+                              <div className="font-black text-zinc-950 text-sm">
+                                {formatCurrency(product.retailPrice)}
+                              </div>
+                            )}
                             <div className="text-[11px] text-zinc-400 font-medium">
                               Mayorista: {formatCurrency(product.wholesalePrice)} (mín {product.wholesaleMinQuantity})
                             </div>
@@ -1135,7 +1179,11 @@ export function ProductControlCenter({
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 border border-indigo-200">
                                 <Boxes className="h-3 w-3 text-indigo-600" />
-                                Stock Propio ({product.stockVerifiedAt ? `${product.stock} un.` : "Sin verificar"})
+                                {product.hasVariants && product.variants?.length
+                                  ? `Stock Total: ${product.stock} un. (${product.variants.length} var.)`
+                                  : product.stockVerifiedAt
+                                  ? `Stock Propio (${product.stock} un.)`
+                                  : "Stock Propio (Sin verificar)"}
                               </span>
                             )}
                           </div>
@@ -1198,8 +1246,105 @@ export function ProductControlCenter({
                         </div>
                       </td>
                     </tr>
-                  );
-                })
+
+                    {/* Expandable Variants Sub-Table */}
+                    {expandedProductId === product.id && product.hasVariants && product.variants && (
+                      <tr className="bg-purple-50/40 border-b border-purple-200/70">
+                        <td colSpan={7} className="px-6 py-4">
+                          <div className="rounded-xl border border-purple-200/80 bg-white p-4 shadow-xs">
+                            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex size-7 items-center justify-center rounded-lg bg-purple-100 text-purple-800">
+                                  <Layers className="size-4" />
+                                </span>
+                                <div>
+                                  <h4 className="text-sm font-bold text-zinc-950">
+                                    Desglose de variantes: {product.title}
+                                  </h4>
+                                  <p className="text-xs text-zinc-500">
+                                    {product.variants.length} variantes configuradas · Control individual de precio, SKU y stock
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setEditingProduct(product)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-purple-700 transition cursor-pointer"
+                              >
+                                <Edit className="size-3.5" /> Editar en Gestor Completo
+                              </button>
+                            </div>
+
+                            <div className="mt-3 overflow-x-auto">
+                              <table className="w-full text-left text-xs">
+                                <thead>
+                                  <tr className="border-b border-zinc-200 text-zinc-500 font-semibold">
+                                    <th className="pb-2">Variante</th>
+                                    <th className="pb-2">Opciones</th>
+                                    <th className="pb-2">SKU</th>
+                                    <th className="pb-2 text-right">Precio Minorista</th>
+                                    <th className="pb-2 text-center">Stock</th>
+                                    <th className="pb-2 text-center">Estado</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-100">
+                                  {product.variants.map((v) => (
+                                    <tr key={v.id} className="hover:bg-zinc-50/70">
+                                      <td className="py-2.5 font-bold text-zinc-900 flex items-center gap-2">
+                                        {v.imageUrl && (
+                                          <div className="relative size-8 rounded border border-zinc-200 bg-white overflow-hidden shrink-0">
+                                            <img src={v.imageUrl} alt={v.title} className="size-full object-contain p-0.5" />
+                                          </div>
+                                        )}
+                                        <span>{v.title}</span>
+                                      </td>
+                                      <td className="py-2.5 text-zinc-600">
+                                        <div className="flex flex-wrap gap-1">
+                                          {Object.entries(v.options || {}).map(([dim, val]) => (
+                                            <span key={dim} className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 border border-zinc-200">
+                                              <strong>{dim}:</strong> {val}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </td>
+                                      <td className="py-2.5 font-mono text-[11px] text-zinc-500">
+                                        {v.sku ? (
+                                          <span className="bg-zinc-100 px-1.5 py-0.5 rounded font-bold text-zinc-800">
+                                            {v.sku}
+                                          </span>
+                                        ) : (
+                                          "—"
+                                        )}
+                                      </td>
+                                      <td className="py-2.5 text-right font-black text-zinc-950">
+                                        {formatCurrency(v.retailPrice)}
+                                      </td>
+                                      <td className="py-2.5 text-center font-bold">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                                          v.stock > 0 ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"
+                                        }`}>
+                                          {v.stock} un.
+                                        </span>
+                                      </td>
+                                      <td className="py-2.5 text-center">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                          v.isActive ? "bg-emerald-100 text-emerald-800" : "bg-zinc-200 text-zinc-600"
+                                        }`}>
+                                          {v.isActive ? "Activo" : "Inactivo"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })
               )}
             </tbody>
           </table>

@@ -188,7 +188,7 @@ export function SiteFooter() {
       </div>
       
       {/* Guarantees bar & Copyright */}
-      <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 py-6 sm:px-6 lg:px-8 text-center text-xs text-zinc-400 space-y-2">
+      <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 pt-6 pb-24 sm:px-6 md:pb-6 lg:px-8 text-center text-xs text-zinc-400 space-y-2">
         <p className="text-zinc-400 font-medium">
           Precios en pesos argentinos · Consultá entrega y condiciones de compra
         </p>

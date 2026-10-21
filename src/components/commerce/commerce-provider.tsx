@@ -21,11 +21,13 @@ import {
 } from "@/lib/shipping";
 import { trackAdsEvent } from "@/lib/analytics";
 import { reconcileCart } from "@/lib/cart-reconcile";
+import { accountCartStorageKey, mergeGuestCart } from "@/lib/account-cart";
 
 export type { CartLine } from "@/lib/types";
 
 interface CommerceContextValue {
   cart: CartLine[];
+  cartReady: boolean;
   favoriteIds: string[];
   favoritesReady: boolean;
   cartOpen: boolean;
@@ -65,7 +67,6 @@ interface CommerceContextValue {
 }
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
-const cartKey = "mm-cart";
 
 const postalCodeKey = "mya_postal_code";
 const provinceKey = "mya_province";
@@ -73,8 +74,12 @@ const cityKey = "mya_city";
 const addressKey = "mya_address";
 const shippingOptionKey = "mya_shipping_option";
 
-export function CommerceProvider({ children }: { children: ReactNode }) {
+export function CommerceProvider({ children, accountId }: { children: ReactNode; accountId?: string }) {
+  const cartKey = accountCartStorageKey(accountId);
+  const accountCartKnown = useRef(false);
+  const accountSyncQueue = useRef(Promise.resolve());
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [cartReady, setCartReady] = useState(false);
   const cartRef = useRef(cart);
   const [cartNotice, setCartNotice] = useState("");
   useEffect(() => { cartRef.current = cart; }, [cart]);
@@ -140,6 +145,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     const timer = window.setTimeout(() => {
       try {
         const storedCart = window.localStorage.getItem(cartKey);
+        const guestCart = accountId ? window.localStorage.getItem("mm-cart") : null;
+        accountCartKnown.current = storedCart !== null || Boolean(guestCart && guestCart !== "[]");
         for (const key of [postalCodeKey, provinceKey, cityKey, addressKey, shippingOptionKey]) window.localStorage.removeItem(key);
 
         const storedPostalCode = window.sessionStorage.getItem(postalCodeKey);
@@ -148,12 +155,18 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         const storedAddress = window.sessionStorage.getItem(addressKey);
         const storedShippingOption = window.sessionStorage.getItem(shippingOptionKey);
 
-        if (storedCart) {
-          const parsed: unknown = JSON.parse(storedCart);
-          if (Array.isArray(parsed)) setCart(parsed.filter((l: CartLine) => {
+        if (storedCart || guestCart) {
+          const parse = (raw: string | null): CartLine[] => { const parsed: unknown = JSON.parse(raw || "[]");
+          return Array.isArray(parsed) ? parsed.filter((l: CartLine) => {
             const effectivePrice = l?.variantPrice ?? l?.product?.retailPrice;
             return l?.product?.id && typeof l.product.title === "string" && Number.isFinite(effectivePrice) && effectivePrice > 0 && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail");
-          }));
+          }) : []; };
+          const restored = mergeGuestCart(parse(storedCart), parse(guestCart));
+          setCart(restored);
+          if (accountId && guestCart) {
+            if (accountCartKnown.current) window.localStorage.setItem(cartKey, JSON.stringify(restored));
+            window.localStorage.removeItem("mm-cart");
+          }
         }
 
         if (storedPostalCode) {
@@ -174,11 +187,12 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* Ignore malformed or unavailable browser storage. */ } finally {
         hydrated.current = true;
+        setCartReady(true);
       }
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [accountId, cartKey]);
 
   const setPostalCode = useCallback((code: string) => {
     setPostalCodeState(code);
@@ -238,19 +252,26 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    try { window.localStorage.setItem(cartKey, JSON.stringify(cart)); } catch {}
+    try { if (!accountId || accountCartKnown.current) window.localStorage.setItem(cartKey, JSON.stringify(cart)); } catch {}
     const syncReminder = () => {
       // Recovery must read the saved selection before this device can replace it.
       if (window.location.pathname === "/recuperar-carrito") return;
-      void fetch("/api/account/reminder-cart", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart.filter(l => l.channel === "retail").slice(0, 50).map(l => ({ id: l.product.id, variant_id: l.variantId || null, quantity: l.quantity })) }), keepalive: true }).catch(() => { /* Local cart and checkout remain available; no unverified reminder is queued. */ });
+      if (!accountId || !accountCartKnown.current) return;
+      const items = cart.filter(l => l.channel === "retail").map(l => ({ id: l.product.id, variant_id: l.variantId || null, quantity: l.quantity }));
+      accountSyncQueue.current = accountSyncQueue.current.then(async () => {
+        const response = await fetch("/api/account/cart", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile_id: accountId, items }), keepalive: true, signal: AbortSignal.timeout(10000) });
+        if (!response.ok) throw new Error();
+      }).catch(() => setCartNotice("Tu carrito sigue en este dispositivo, pero no pudimos sincronizarlo con tu cuenta. Volvé a intentarlo actualizando la página."));
     };
     const timer = window.setTimeout(syncReminder, 1200);
     window.addEventListener("mya-email-preferences", syncReminder);
-    return () => { window.clearTimeout(timer); window.removeEventListener("mya-email-preferences", syncReminder); };
-  }, [cart]);
+    window.addEventListener("focus", syncReminder);
+    return () => { window.clearTimeout(timer); window.removeEventListener("mya-email-preferences", syncReminder); window.removeEventListener("focus", syncReminder); };
+  }, [cart, cartReady, accountId, cartKey]);
 
   const addToCart = useCallback(
     (product: Product, channel: ProductChannel, quantity = 1, variant?: ProductVariant | null) => {
+      accountCartKnown.current = true;
       if ((!WHOLESALE_ENABLED && channel === "wholesale") || !Number.isInteger(quantity) || quantity < 1) return;
       const targetItem = variant || product;
       if (!isVerifiedStock(targetItem)) return;
@@ -307,6 +328,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
   const updateQuantity = useCallback(
     (productId: string, channel: ProductChannel, quantity: number, variantId?: string | null) => {
+      accountCartKnown.current = true;
       setCart((current) =>
         current
           .map((line) => {
@@ -332,6 +354,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   );
 
   const removeFromCart = useCallback((productId: string, channel: ProductChannel, variantId?: string | null) => {
+    accountCartKnown.current = true;
     setCart((current) =>
       current.filter(
         (line) =>
@@ -414,6 +437,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       cart,
+      cartReady,
       favoriteIds,
       favoritesReady,
       cartOpen,
@@ -426,7 +450,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       removeFromCart,
       toggleFavorite,
       isFavorite,
-      clearCart: () => setCart([]),
+      clearCart: () => { accountCartKnown.current = true; setCart([]); },
       selectedProduct,
       setSelectedProduct,
       postalCode,
@@ -454,6 +478,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     [
       addToCart,
       cart,
+      cartReady,
       cartCount,
       cartOpen,
       cartTotal,

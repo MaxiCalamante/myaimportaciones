@@ -13,12 +13,13 @@ export const emailEventLabels: Record<string, string> = {
   email_test: "Prueba de configuración",
 };
 export interface EmailSnapshot {
+  order_id?: string; buyer_name?: string; buyer_email?: string;
   customer_email?: string; shipping_name?: string; shipping_phone?: string; shipping_address?: string;
   order_notes?: string; tracking_code?: string; status?: string; payment_method?: string;
   subtotal_amount?: number; discount_amount?: number; shipping_amount?: number; total_amount?: number;
   shipping_option?: string; reservation_expires_at?: string; carrier_tracking_code?: string;
   reference?: string; reason?: string; profile_id?: string;
-  items?: { product_title: string; quantity: number; unit_price: number }[];
+  items?: { product_title: string; quantity: number; unit_price: number; variant_title?: string | null; variant_sku?: string | null }[];
 }
 export interface EmailContent { subject: string; html: string; text: string }
 export function escapeEmailHtml(value: unknown) {
@@ -33,7 +34,8 @@ export function renderTransactionalEmail(event: string, audience: "customer" | "
   // Customer enters their email on the tracking page; keep personal data out of URLs.
   const accountEvent = ["account_welcome", "wholesale_approved", "wholesale_revoked"].includes(event);
   const withdrawalEvent = event.startsWith("withdrawal_");
-  const actionUrl = admin ? new URL("/admin", origin).href : accountEvent ? new URL(event === "wholesale_approved" ? "/mayorista" : "/cuenta", origin).href : tracking.href;
+  const orderAdminPath = s.order_id && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s.order_id) ? `/admin/ventas/${s.order_id}` : `/admin/ventas${s.tracking_code ? `?buscar=${encodeURIComponent(s.tracking_code)}` : ''}`;
+  const actionUrl = admin ? new URL(accountEvent || withdrawalEvent || event === 'email_test' ? '/admin' : orderAdminPath, origin).href : accountEvent ? new URL(event === "wholesale_approved" ? "/mayorista" : "/cuenta", origin).href : tracking.href;
   let title = emailEventLabels[event];
   const paragraphs: string[] = [];
   switch (event) {
@@ -73,12 +75,15 @@ export function renderTransactionalEmail(event: string, audience: "customer" | "
   }
   if (s.shipping_option === "delivery_quote_separately") paragraphs.push("El total corresponde a los productos. El envío se cotiza y abona por separado.");
   const items = s.items || [];
+  const itemTitle = (i: NonNullable<EmailSnapshot['items']>[number]) => [i.product_title, i.variant_title && !i.product_title.includes(i.variant_title) ? i.variant_title : '', admin && i.variant_sku ? `SKU: ${i.variant_sku}` : ''].filter(Boolean).join(' · ');
   const details = [
     code ? `Pedido: ${code}` : "",
     s.total_amount !== undefined ? `Total: ${formatCurrency(Number(s.total_amount))}` : "",
     s.payment_method ? `Medio de pago: ${formatPaymentMethod(s.payment_method)}` : "",
     s.shipping_address ? `Entrega: ${s.shipping_address}` : "",
-    admin && s.shipping_name ? `Cliente: ${s.shipping_name}` : "",
+    admin && s.shipping_name ? `A nombre de: ${s.shipping_name}` : "",
+    admin && s.buyer_name ? `Cuenta compradora: ${s.buyer_name}` : "",
+    admin && s.buyer_email ? `Email de la cuenta: ${s.buyer_email}` : "",
     admin && s.customer_email ? `Email: ${s.customer_email}` : "",
     admin && s.shipping_phone ? `Teléfono: ${s.shipping_phone}` : "",
     admin && s.order_notes ? `Notas: ${s.order_notes}` : "",
@@ -90,7 +95,7 @@ export function renderTransactionalEmail(event: string, audience: "customer" | "
   const supportUrl = getWhatsAppUrl(withdrawalEvent ? `Hola MYA, consulto por mi solicitud ${s.reference || code}.` : accountEvent ? "Hola MYA, necesito ayuda con mi cuenta." : `Hola MYA, consulto por el pedido ${code}.`);
   const button = (url: string, label: string) => `<a href="${escapeEmailHtml(url)}" style="display:inline-block;background:#075985;color:#fff;text-decoration:none;padding:14px 20px;border-radius:10px;font-weight:bold;margin:8px 8px 8px 0">${label}</a>`;
   const subject = `${title}${code ? ` · ${code}` : ""} | MYA Importaciones`.replace(/[\r\n]/g, " ");
-  const html = `<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"></head><body style="margin:0;background:#f4f4f5;font-family:Arial,sans-serif;color:#18181b"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:24px 12px"><table role="presentation" width="100%" style="max-width:600px;margin:auto;background:white;border-radius:16px" cellpadding="0" cellspacing="0"><tr><td style="background:#18181b;padding:28px;color:white;border-radius:16px 16px 0 0"><strong style="font-size:23px">MYA Importaciones</strong><p style="color:#bae6fd;margin-bottom:0">Desde Tandil a todo el país</p></td></tr><tr><td style="padding:28px;overflow-wrap:anywhere"><h1 style="font-size:24px;line-height:1.3">${escapeEmailHtml(title)}</h1>${paragraphs.map(p => `<p style="line-height:1.65;font-size:15px">${escapeEmailHtml(p)}</p>`).join("")}<div style="background:#f4f4f5;padding:16px;border-radius:12px">${details.map(d => `<p style="margin:6px 0;line-height:1.5;font-size:14px">${escapeEmailHtml(d)}</p>`).join("")}</div>${items.length ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">${items.map(i => `<tr><td style="padding:12px 0;border-bottom:1px solid #e4e4e7;font-size:14px">${escapeEmailHtml(i.product_title)}<br><span style="color:#52525b">${i.quantity} × ${formatCurrency(Number(i.unit_price))}</span></td><td style="text-align:right;border-bottom:1px solid #e4e4e7;font-size:14px">${formatCurrency(i.quantity * Number(i.unit_price))}</td></tr>`).join("")}</table>` : ""}${showGuide ? `<p><strong>Guía del envío: ${escapeEmailHtml(s.carrier_tracking_code)}</strong></p>${button(guideUrl, knownCorreo ? "Consultar el correo" : "Ver la guía del pedido")}` : ""}${button(withdrawalEvent && !admin ? supportUrl : actionUrl, admin ? "Abrir administración" : withdrawalEvent ? "Consultar mi solicitud" : accountEvent ? "Ver mi cuenta" : "Ver mi pedido")}<p style="font-size:14px">${admin ? "" : `<a href="${escapeEmailHtml(supportUrl)}">Hablar con Máximo y Agustina</a>`}</p><p style="border-top:1px solid #e4e4e7;padding-top:20px;font-size:12px;color:#71717a;line-height:1.6">Este es un aviso relacionado con tu ${withdrawalEvent ? "solicitud" : accountEvent ? "cuenta" : "pedido"}. MYA Importaciones · Tandil, Buenos Aires.</p></td></tr></table></td></tr></table></body></html>`;
-  const text = [title, ...paragraphs, ...details, ...items.map(i => `${i.quantity} × ${i.product_title}: ${formatCurrency(i.quantity * Number(i.unit_price))}`), showGuide ? `Guía: ${s.carrier_tracking_code}\nCorreo: ${guideUrl}` : "", `Consultar: ${withdrawalEvent && !admin ? supportUrl : actionUrl}`, admin ? "" : `Ayuda: ${supportUrl}`, "MYA Importaciones · Tandil, Buenos Aires."].filter(Boolean).join("\n\n");
+  const html = `<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"></head><body style="margin:0;background:#f4f4f5;font-family:Arial,sans-serif;color:#18181b"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:24px 12px"><table role="presentation" width="100%" style="max-width:600px;margin:auto;background:white;border-radius:16px" cellpadding="0" cellspacing="0"><tr><td style="background:#18181b;padding:28px;color:white;border-radius:16px 16px 0 0"><strong style="font-size:23px">MYA Importaciones</strong><p style="color:#bae6fd;margin-bottom:0">Desde Tandil a todo el país</p></td></tr><tr><td style="padding:28px;overflow-wrap:anywhere"><h1 style="font-size:24px;line-height:1.3">${escapeEmailHtml(title)}</h1>${paragraphs.map(p => `<p style="line-height:1.65;font-size:15px">${escapeEmailHtml(p)}</p>`).join("")}<div style="background:#f4f4f5;padding:16px;border-radius:12px">${details.map(d => `<p style="margin:6px 0;line-height:1.5;font-size:14px">${escapeEmailHtml(d)}</p>`).join("")}</div>${items.length ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">${items.map(i => `<tr><td style="padding:12px 0;border-bottom:1px solid #e4e4e7;font-size:14px">${escapeEmailHtml(itemTitle(i))}<br><span style="color:#52525b">${i.quantity} × ${formatCurrency(Number(i.unit_price))}</span></td><td style="text-align:right;border-bottom:1px solid #e4e4e7;font-size:14px">${formatCurrency(i.quantity * Number(i.unit_price))}</td></tr>`).join("")}</table>` : ""}${showGuide ? `<p><strong>Guía del envío: ${escapeEmailHtml(s.carrier_tracking_code)}</strong></p>${button(guideUrl, knownCorreo ? "Consultar el correo" : "Ver la guía del pedido")}` : ""}${button(withdrawalEvent && !admin ? supportUrl : actionUrl, admin ? "Abrir administración" : withdrawalEvent ? "Consultar mi solicitud" : accountEvent ? "Ver mi cuenta" : "Ver mi pedido")}<p style="font-size:14px">${admin ? "" : `<a href="${escapeEmailHtml(supportUrl)}">Hablar con Máximo y Agustina</a>`}</p><p style="border-top:1px solid #e4e4e7;padding-top:20px;font-size:12px;color:#71717a;line-height:1.6">Este es un aviso relacionado con tu ${withdrawalEvent ? "solicitud" : accountEvent ? "cuenta" : "pedido"}. MYA Importaciones · Tandil, Buenos Aires.</p></td></tr></table></td></tr></table></body></html>`;
+  const text = [title, ...paragraphs, ...details, ...items.map(i => `${i.quantity} × ${itemTitle(i)}: ${formatCurrency(i.quantity * Number(i.unit_price))}`), showGuide ? `Guía: ${s.carrier_tracking_code}\nCorreo: ${guideUrl}` : "", `Consultar: ${withdrawalEvent && !admin ? supportUrl : actionUrl}`, admin ? "" : `Ayuda: ${supportUrl}`, "MYA Importaciones · Tandil, Buenos Aires."].filter(Boolean).join("\n\n");
   return { subject, html, text };
 }

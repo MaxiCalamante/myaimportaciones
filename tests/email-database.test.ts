@@ -11,6 +11,8 @@ test("transactional email outbox follows committed order events, snapshots items
     await db.exec(schema.slice(schema.indexOf("do $$"), schema.indexOf("create or replace function public.handle_new_user")));
     await db.exec("create function public.is_admin() returns boolean language sql as $$ select true $$;");
     for (const file of ["20260921134833_retail_integrity.sql", "20260921185112_catalog_identity.sql", "20260922140934_supplier_fulfillment.sql", "20261010120000_transactional_emails.sql", "20261019120000_email_account_and_aftersales.sql"]) await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
+    await db.exec('alter table order_items add column variant_title text, add column variant_sku text');
+    await db.exec(readFileSync('supabase/migrations/20261021091000_sales_email_details.sql','utf8'));
     const category = randomUUID(), product = randomUUID();
     await db.query("insert into categories(id,name,slug) values($1,'Test','test')", [category]);
     await db.query("insert into products(id,category_id,title,slug,retail_price,stock,stock_verified_at) values($1,$2,'Test product','test',1000,20,now())", [product, category]);
@@ -18,6 +20,9 @@ test("transactional email outbox follows committed order events, snapshots items
     const create = async (p = payload) => (await db.query<{ o: { id: string } }>("select create_retail_order_v2($1::jsonb) o", [JSON.stringify(p)])).rows[0].o;
     const rows = async () => (await db.query<{ event_type: string; audience: string; snapshot: { items: { product_title: string }[] } }>("select event_type,audience,snapshot from email_outbox order by created_at,id")).rows;
     const order = await create();
+    const createdSnapshot=(await db.query<{snapshot:{order_id:string}}>("select snapshot from email_outbox where order_id=$1 limit 1",[order.id])).rows[0].snapshot;
+    assert.equal(createdSnapshot.order_id,order.id);
+    await db.query("update order_items set variant_title='Azul 256 GB',variant_sku='EXACT-SKU' where order_id=$1",[order.id]);
     assert.equal((await rows()).length, 2);
     assert.equal((await rows())[0].snapshot.items[0].product_title, "Test product");
     await create(); assert.equal((await rows()).length, 2);
@@ -33,6 +38,8 @@ test("transactional email outbox follows committed order events, snapshots items
     await db.query("select reconcile_retail_payment_with_emails_v1($1,'pay',1000,'approved')", [order.id]);
     await db.query("select reconcile_retail_payment_v2($1,'pay',1000,'approved')", [order.id]);
     assert.equal((await rows()).filter(r => r.event_type === "payment_confirmed").length, 2);
+    const paidSnapshot=(await db.query<{snapshot:{items:{variant_title:string;variant_sku:string}[]}}>("select snapshot from email_outbox where order_id=$1 and event_type='payment_confirmed' and audience='admin'",[order.id])).rows[0].snapshot;
+    assert.equal(paidSnapshot.items[0].variant_title,'Azul 256 GB');assert.equal(paidSnapshot.items[0].variant_sku,'EXACT-SKU');
     await db.query("select reconcile_retail_payment_with_emails_v1($1,'pay',1000,'rejected')", [order.id]);
     assert.equal((await rows()).filter(r => r.event_type === "payment_failed").length, 1);
     await db.query("select set_retail_order_status_v2($1,'preparing')", [order.id]);

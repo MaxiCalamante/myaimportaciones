@@ -56,7 +56,7 @@ export function StoreHero({ slides = defaultCarouselSlides, preview = false }: {
               <p className="text-sm font-semibold uppercase text-sky-300 tracking-wider">
                 {slide.eyebrow}
               </p>
-              <h2 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
+              <h2 className="mt-4 max-w-xl text-3xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
                 {slide.title}
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-zinc-200 sm:text-lg">
@@ -133,15 +133,18 @@ export function RetailHighlights() {
 
   return (
     <section className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 p-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-4 lg:px-8">
         {items.map((item) => (
-          <div className="flex items-start gap-3.5" key={item.title}>
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
-              <item.icon className="h-5 w-5" />
+          <div
+            className="flex flex-col sm:flex-row items-start gap-2.5 sm:gap-3.5 rounded-2xl bg-zinc-50/80 p-3 border border-zinc-100 sm:rounded-none sm:bg-transparent sm:border-0 sm:p-0"
+            key={item.title}
+          >
+            <span className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100 shadow-2xs">
+              <item.icon className="h-4 w-4 sm:h-5 sm:w-5" />
             </span>
             <div>
-              <p className="text-sm font-bold text-zinc-950">{item.title}</p>
-              <p className="mt-0.5 text-xs text-zinc-500 leading-snug">{item.desc}</p>
+              <p className="text-xs sm:text-sm font-bold text-zinc-950 leading-tight">{item.title}</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-zinc-500 leading-snug line-clamp-2 sm:line-clamp-none">{item.desc}</p>
             </div>
           </div>
         ))}

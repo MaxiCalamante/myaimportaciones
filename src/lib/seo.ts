@@ -14,9 +14,36 @@ export function concise(value: string, max = 165) {
 }
 export function pageMetadata({ title, description, path, image = "/compartir", index = true }: { title: string; description: string; path: string; image?: string; index?: boolean }): Metadata {
   const fullTitle = title.includes("MYA Importaciones") ? title : `${title} | MYA Importaciones`;
-  return { title: { absolute: fullTitle }, description, alternates: { canonical: publicUrl(path) }, robots: { index, follow: true },
-    openGraph: { title: fullTitle, description, url: publicUrl(path), type: "website", locale: "es_AR", siteName: "MYA Importaciones", images: [{ url: publicUrl(image), alt: title }] },
-    twitter: { card: "summary_large_image", title: fullTitle, description, images: [publicUrl(image)] } };
+  const imgUrl = publicUrl(image);
+  return {
+    title: { absolute: fullTitle },
+    description,
+    alternates: { canonical: publicUrl(path) },
+    robots: { index, follow: true },
+    openGraph: {
+      title: fullTitle,
+      description,
+      url: publicUrl(path),
+      type: "website",
+      locale: "es_AR",
+      siteName: "MYA Importaciones",
+      images: [
+        {
+          url: imgUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+          type: "image/png",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: fullTitle,
+      description,
+      images: [imgUrl],
+    },
+  };
 }
 export function productDescription(product: Product) {
   const facts = Object.entries(product.specifications || {}).filter(([key, value]) => value && !/url|proveedor|costo|seo/i.test(key)).slice(0, 3).map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`).join(". ");
@@ -24,8 +51,87 @@ export function productDescription(product: Product) {
   const text = raw.toLocaleLowerCase("es-AR").startsWith(product.title.toLocaleLowerCase("es-AR")) ? raw.slice(product.title.length).replace(/^[\s.,:;]+/, "") : raw;
   return concise(`${product.title}. ${text ? text + " " : ""}Consultá disponibilidad y comprá con envíos a Argentina.`);
 }
+export function buildProductShareImageUrl(product: {
+  slug?: string;
+  title?: string;
+  retailPrice?: number;
+  brand?: string;
+  categoryName?: string;
+  imageUrl?: string;
+}): string {
+  const sp = new URLSearchParams();
+  sp.set("tipo", "producto");
+  if (product.slug) sp.set("slug", product.slug);
+  if (product.title) sp.set("titulo", product.title);
+  if (product.retailPrice && product.retailPrice > 0) sp.set("precio", String(product.retailPrice));
+  if (product.brand) sp.set("marca", product.brand);
+  if (product.categoryName) sp.set("cat", product.categoryName);
+  if (product.imageUrl) sp.set("img", product.imageUrl);
+  return `/compartir?${sp.toString()}`;
+}
+export function buildCatalogShareImageUrl(seo: {
+  category?: Category;
+  brand?: string;
+  title?: string;
+  description?: string;
+}): string {
+  const sp = new URLSearchParams();
+  if (seo.category) {
+    sp.set("tipo", "categoria");
+    sp.set("cat", seo.category.name);
+    sp.set("slug", seo.category.slug);
+    if (seo.category.description) sp.set("desc", concise(seo.category.description, 140));
+  } else if (seo.brand) {
+    sp.set("tipo", "categoria");
+    sp.set("marca", seo.brand);
+    sp.set("cat", `Productos ${seo.brand}`);
+  } else {
+    sp.set("tipo", "catalogo");
+    sp.set("cat", "Catálogo Completo");
+  }
+  return `/compartir?${sp.toString()}`;
+}
 export function productMetadata(product: Product, canonicalSlug = product.slug): Metadata {
-  return { ...pageMetadata({ title: product.specifications?._seo_title || product.title, description: product.specifications?._seo_description || productDescription(product), path: `/producto/${canonicalSlug}`, image: product.imageUrl || "/compartir" }), other: { "product:price:amount": String(product.retailPrice), "product:price:currency": "ARS" } };
+  const shareImage = buildProductShareImageUrl(product);
+  const title = product.specifications?._seo_title || product.title;
+  const description = product.specifications?._seo_description || productDescription(product);
+  const path = `/producto/${canonicalSlug}`;
+  const base = pageMetadata({
+    title,
+    description,
+    path,
+    image: shareImage,
+  });
+
+  return {
+    ...base,
+    openGraph: {
+      ...base.openGraph,
+      images: [
+        {
+          url: publicUrl(shareImage),
+          width: 1200,
+          height: 630,
+          alt: `${product.title} | MYA Importaciones`,
+          type: "image/png",
+        },
+        ...(product.imageUrl
+          ? [
+              {
+                url: publicUrl(product.imageUrl),
+                alt: product.title,
+              },
+            ]
+          : []),
+      ],
+    },
+    other: {
+      "product:price:amount": String(product.retailPrice),
+      "product:price:currency": "ARS",
+      ...(product.brand ? { "product:brand": product.brand } : {}),
+      ...(product.categoryName ? { "product:category": product.categoryName } : {}),
+    },
+  };
 }
 export function productCondition(product: Product) {
   const condition = product.specifications?.["Condición"] || "";
@@ -108,6 +214,7 @@ export function catalogSeo(params: CatalogParams, categories: Category[], brands
   const label = category?.name || (brand ? `Productos ${brand}` : "Catálogo de productos");
   const title = `${params.q ? `Búsqueda: ${concise(params.q, 65)}` : label + " en Argentina"}${page > 1 ? ` · Página ${page}` : ""}`;
   const description = concise(category?.description ? `${category.name}: ${category.description} Precios en pesos y envíos a Argentina.` : brand ? `Explorá ${brand} en MYA Importaciones. Consultá las presentaciones, modelos y disponibilidad del catálogo, con precios en pesos y envíos a toda Argentina.` : "Explorá cosmética, cuidado capilar, tecnología y herramientas. Consultá precios en pesos, disponibilidad y envíos a toda Argentina.");
-  return { path, index: valid && !filtered, title, description, category, brand, page };
+  const image = buildCatalogShareImageUrl({ category, brand, title, description });
+  return { path, index: valid && !filtered, title, description, category, brand, page, image };
 }
 export function breadcrumbData(items: { name: string; path: string }[]) { return { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map((item, i) => ({ "@type": "ListItem", position: i + 1, name: item.name, item: publicUrl(item.path) })) }; }

@@ -1,4 +1,4 @@
-import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
+import { PUBLIC_PRODUCT_COLUMNS, type DbProduct } from "@/lib/catalog-data";
 import { EmptyCatalog } from "@/components/commerce/empty-catalog";
 import Link from "next/link";
 import { permanentRedirect, notFound } from "next/navigation";
@@ -68,7 +68,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id)
       : visibleCategories.map(c => c.id);
     if (ids.length) {
-      let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
+      let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
       if (brand) query = query.eq("brand", brand);
       if (family) query = query.eq("model", family);
       if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`);
@@ -76,7 +76,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       if (maxPrice) query = query.lte("retail_price", Number(maxPrice));
       query = sort === "price_asc" ? query.order("retail_price") : sort === "price_desc" ? query.order("retail_price", { ascending: false }) : sort === "name_asc" ? query.order("title") : query.order("is_featured", { ascending: false }).order("title");
       const result = await query.order("id").range((page - 1) * pageSize, page * pageSize - 1);
-      products = (result.data ?? []).map(p => mapProduct(p));
+      products = ((result.data ?? []) as unknown as DbProduct[]).map(p => mapProduct(p));
       count = result.count ?? 0;
       failed = failed || Boolean(result.error);
     }
@@ -206,10 +206,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">
             {root && root.id !== category?.id ? root.name : brand ? `Marca · ${brand}` : "Catálogo oficial"}
           </p>
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
+          <h1 className="break-words text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
             {q ? `Búsqueda: "${q}"` : brand ? `${brand} en Argentina` : category?.name ?? "Todos los productos"}
           </h1>
-          <p className="mt-1 text-xs sm:text-sm text-zinc-500 max-w-2xl">
+          <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-zinc-500 sm:block">
             {q
               ? `Resultados disponibles para "${q}" con disponibilidad informada y envíos a todo el país.`
               : brand
@@ -217,7 +217,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                 : category?.description || "Explorá productos importados con precios en pesos, envíos a Argentina y atención personalizada."}
           </p>
         </div>
-        <div className="mt-1 sm:mt-0 flex items-center">
+        <div className="mt-1 hidden items-center sm:mt-0 sm:flex">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-600"></span>
             {count} {count === 1 ? "producto" : "productos"}
@@ -226,6 +226,22 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       </div>
 
       {brand && !q && brandCategories.length > 0 && <p className="mb-4 max-w-3xl text-sm leading-6 text-zinc-600">En la selección de {brand} encontrás {brandCategories.slice(0, 6).map((item, i) => <span key={item.id}>{i ? ", " : ""}<Link className="text-sky-800 underline underline-offset-2" href={catalogUrl({category:item.slug,brand})}>{item.name.toLocaleLowerCase("es-AR")}</Link></span>)}. Revisá el detalle y la presentación de cada producto para comparar antes de comprar.</p>}
+      <div className="mb-5">
+      <CatalogSearchControls
+        key={JSON.stringify([category?.slug, q, brand, family, sort, minPrice, maxPrice])}
+        categories={visibleCategories}
+        category={category}
+        brands={brands}
+        brandsByCategory={brandsByCategory}
+        query={q}
+        brand={brand}
+        family={family}
+        sort={sort}
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        totalCount={count}
+      />
+      </div>
       {/* Horizontal Subcategory / Category quick chips */}
       {(root || visibleCategories.length > 0) && (
         <div className="mb-3 sm:mb-5">
@@ -269,7 +285,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {brands.length > 0 && !q && !brand && <nav aria-label="Explorar marcas del catálogo" className="mb-4 flex flex-wrap gap-2">{(category ? brandsByCategory[category.id] || [] : brands).slice(0, 16).map(({ brand: value }) => <Link key={value} href={"/catalogo?brand=" + encodeURIComponent(value)} className="rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:border-sky-400">{value}</Link>)}</nav>}
+      {brands.length > 0 && !q && !brand && <nav aria-label="Explorar marcas del catálogo" className="mb-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:flex-wrap">{(category ? brandsByCategory[category.id] || [] : brands).slice(0, 16).map(({ brand: value }) => <Link key={value} href={"/catalogo?brand=" + encodeURIComponent(value)} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-sky-400">{value}</Link>)}</nav>}
       {/* Search and Filters Controls */}
       {electronics && (
         <div className="mb-4 space-y-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-3 sm:p-4">
@@ -285,20 +301,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           {family && <p className="text-sm font-semibold text-sky-900">Modelo: {family}</p>}
         </div>
       )}
-      <CatalogSearchControls
-        key={JSON.stringify([category?.slug, q, brand, family, sort, minPrice, maxPrice])}
-        categories={visibleCategories}
-        category={category}
-        brands={brands}
-        brandsByCategory={brandsByCategory}
-        query={q}
-        brand={brand}
-        family={family}
-        sort={sort}
-        minPrice={minPrice}
-        maxPrice={maxPrice}
-        totalCount={count}
-      />
+
 
       {/* Results Header */}
       <div className="mt-4 sm:mt-6 flex items-center justify-between border-b border-zinc-200/80 pb-3 text-xs sm:text-sm text-zinc-600">
@@ -363,7 +366,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       {pages > 1 && (
         <nav
           aria-label="Páginas del catálogo"
-          className="mt-8 sm:mt-10 flex items-center justify-center gap-3 text-sm"
+          className="mt-8 flex items-center justify-between gap-2 text-sm sm:mt-10 sm:justify-center sm:gap-3"
         >
           <Link
             aria-disabled={page <= 1}
