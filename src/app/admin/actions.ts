@@ -6,7 +6,7 @@ import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { getAdminClient } from "@/lib/admin-auth";
 import { parseProductForm, productImageUrl, httpsUrl, validId, validateImageContent } from "@/lib/admin-product";
-import { prepareProductImages } from "@/lib/admin-media";
+import { prepareProductImages, cleanupOrphanProductImages } from "@/lib/admin-media";
 import {
   checkAndUpdateProductSupplierStock,
   runBatchSupplierStockSync,
@@ -245,11 +245,11 @@ async function updateProduct(formData: FormData) {
   const { fields, hasVariants, variants } = parseProductForm(formData, false);
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: matches, error: readError } = await readAdminProducts(db, { ids: [id], size: 1 });
-  let existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null } | undefined;
+  let existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null; retail_price?: number; wholesale_price?: number } | undefined;
   if (!existing) {
     const { data: fallbackProduct } = await db
       .from("products")
-      .select("id, image_url, image_urls, stock, fulfillment_mode, supplier_available, source_url")
+      .select("id, image_url, image_urls, stock, fulfillment_mode, supplier_available, source_url, retail_price, wholesale_price")
       .eq("id", id)
       .maybeSingle();
     if (fallbackProduct) existing = fallbackProduct as unknown as NonNullable<typeof existing>;
@@ -273,6 +273,39 @@ async function updateProduct(formData: FormData) {
     if (error || !data) {
       console.error("[updateProduct] Update error:", error);
       throw new AdminFormError(error ? `No se pudo guardar la ficha: ${error.message}` : "No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
+    }
+
+    // Log audit event if prices or stock changed
+    const prevRetail = Number(existing.retail_price ?? 0);
+    const nextRetail = Number(fields.retail_price ?? 0);
+    const prevWholesale = Number(existing.wholesale_price ?? 0);
+    const nextWholesale = Number(fields.wholesale_price ?? 0);
+    const prevStock = Number(existing.stock ?? 0);
+    const nextStock = hasVariants
+      ? variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0)
+      : prevStock;
+
+    const priceChanged = (prevRetail > 0 && prevRetail !== nextRetail) || (prevWholesale > 0 && prevWholesale !== nextWholesale);
+    const stockChanged = hasVariants && prevStock !== nextStock;
+
+    if (priceChanged || stockChanged) {
+      const { data: { user } } = await db.auth.getUser();
+      await logProductAuditEvent(
+        id,
+        priceChanged && stockChanged ? "price_and_stock_update" : priceChanged ? "price_update" : "stock_update",
+        {
+          retail_price: prevRetail,
+          wholesale_price: prevWholesale,
+          stock: prevStock,
+        },
+        {
+          retail_price: nextRetail,
+          wholesale_price: nextWholesale,
+          stock: nextStock,
+        },
+        "Actualización desde editor de ficha",
+        user?.email || "Administrador"
+      );
     }
 
     if (hasVariants) {
@@ -397,6 +430,13 @@ export async function quickUpdateProductPriceAction(productId: string, retailPri
   const supabase = await getAdminClient();
   if (!Number.isFinite(retailPrice) || retailPrice <= 0) throw new Error("El precio minorista debe ser mayor a cero.");
   if (wholesalePrice !== undefined && (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) throw new Error("El precio mayorista no es válido.");
+
+  const { data: currentProduct } = await supabase
+    .from("products")
+    .select("retail_price, wholesale_price")
+    .eq("id", productId)
+    .maybeSingle();
+
   const updateData: Record<string, unknown> = {
     retail_price: retailPrice,
     updated_at: new Date().toISOString(),
@@ -409,6 +449,23 @@ export async function quickUpdateProductPriceAction(productId: string, retailPri
     .update(updateData)
     .eq("id", productId);
   if (error) throw new Error(error.message);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  await logProductAuditEvent(
+    productId,
+    "quick_price_update",
+    {
+      retail_price: currentProduct?.retail_price ?? null,
+      wholesale_price: currentProduct?.wholesale_price ?? null,
+    },
+    {
+      retail_price: retailPrice,
+      ...(wholesalePrice !== undefined ? { wholesale_price: wholesalePrice } : {}),
+    },
+    "Edición rápida de precio",
+    user?.email || "Administrador"
+  );
+
   revalidatePath("/");
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
@@ -456,11 +513,22 @@ export async function bulkUpdateProductStatusAction(
       is_active: false,
     };
   } else if (action === "permanent_delete") {
+    const { data: deletingProducts } = await supabase
+      .from("products")
+      .select("id, image_url, image_urls")
+      .in("id", productIds);
+    const candidateUrls = deletingProducts?.flatMap(p => [p.image_url, ...(p.image_urls || [])]).filter((u): u is string => Boolean(u)) ?? [];
+
     const { error } = await supabase
       .from("products")
       .delete()
       .in("id", productIds);
     if (error) throw new Error(error.message);
+
+    if (candidateUrls.length > 0) {
+      await cleanupOrphanProductImages(supabase, candidateUrls, productIds);
+    }
+
     revalidatePath("/");
     invalidateAdminStorefrontCache();
     revalidatePath("/admin");
@@ -528,6 +596,30 @@ export async function bulkAdjustPricesAction(
   if (results.some((result) => result.error)) {
     throw new Error("Algunos precios no se pudieron actualizar. Recargá el catálogo antes de reintentar.");
   }
+
+  // Record audit logs for bulk adjustment
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const adminEmail = user?.email || "Administrador";
+    const note = `Ajuste masivo (${type === "percentage" ? (amount >= 0 ? `+${amount}%` : `${amount}%`) : (amount >= 0 ? `+$${amount}` : `-$${Math.abs(amount)}`)})`;
+    const auditInserts = nextPrices.map((np) => {
+      const orig = currentProducts.find(c => c.id === np.id);
+      return {
+        product_id: np.id,
+        changed_by: adminEmail,
+        action: "bulk_price_adjustment",
+        old_data: { retail_price: orig?.retail_price ?? null },
+        new_data: { retail_price: np.price },
+        notes: note,
+      };
+    });
+    if (auditInserts.length > 0) {
+      await supabase.from("product_audit_logs").insert(auditInserts);
+    }
+  } catch (err) {
+    console.warn("[bulkAdjustPricesAction] Error registrando auditoría:", err);
+  }
+
   revalidatePath("/");
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
@@ -676,13 +768,15 @@ export async function permanentDeleteProductAction(productId: string) {
 
     const { data: product, error: fetchError } = await supabase
       .from("products")
-      .select("id, title")
+      .select("id, title, image_url, image_urls")
       .eq("id", id)
       .maybeSingle();
 
     if (fetchError || !product) {
       throw new AdminFormError("El producto ya no existe o fue eliminado definitivamente.");
     }
+
+    const candidateUrls = [product.image_url, ...(product.image_urls || [])].filter((u): u is string => Boolean(u));
 
     // Permanent delete: cascades automatically to supplier offers, queue, market refs, decisions, variants
     const { error } = await supabase
@@ -693,6 +787,11 @@ export async function permanentDeleteProductAction(productId: string) {
     if (error) {
       console.error("[permanentDeleteProductAction] Error al eliminar definitivamente:", error);
       throw new AdminFormError(`No se pudo eliminar definitivamente: ${error.message}`);
+    }
+
+    // Safely remove any orphaned storage images
+    if (candidateUrls.length > 0) {
+      await cleanupOrphanProductImages(supabase, candidateUrls, [id]);
     }
 
     refreshCatalog();
@@ -707,6 +806,20 @@ export async function permanentDeleteProductAction(productId: string) {
 export async function emptyTrashAction(daysThreshold?: number) {
   return runAdminFormAction(async () => {
     const supabase = await getAdminClient();
+
+    let findQuery = supabase
+      .from("products")
+      .select("id, image_url, image_urls")
+      .not("deleted_at", "is", null);
+
+    if (typeof daysThreshold === "number" && daysThreshold > 0) {
+      const cutoff = new Date(Date.now() - daysThreshold * 86400000).toISOString();
+      findQuery = findQuery.lt("deleted_at", cutoff);
+    }
+
+    const { data: deletingProducts } = await findQuery;
+    const candidateUrls = deletingProducts?.flatMap(p => [p.image_url, ...(p.image_urls || [])]).filter((u): u is string => Boolean(u)) ?? [];
+    const deletingIds = deletingProducts?.map(p => p.id) ?? [];
 
     let query = supabase
       .from("products")
@@ -724,6 +837,11 @@ export async function emptyTrashAction(daysThreshold?: number) {
       throw new AdminFormError(`No se pudo vaciar la papelera: ${error.message}`);
     }
 
+    // Safely clean up orphaned storage photos for purged products
+    if (candidateUrls.length > 0) {
+      await cleanupOrphanProductImages(supabase, candidateUrls, deletingIds);
+    }
+
     refreshCatalog();
     revalidatePath("/admin");
     revalidatePath("/mayorista");
@@ -731,6 +849,72 @@ export async function emptyTrashAction(daysThreshold?: number) {
 
     return { success: true, count: count ?? 0 };
   });
+}
+
+export interface ProductAuditLogEntry {
+  id: string;
+  productId: string;
+  changedBy: string;
+  action: string;
+  oldData: Record<string, unknown>;
+  newData: Record<string, unknown>;
+  notes: string | null;
+  createdAt: string;
+}
+
+export async function logProductAuditEvent(
+  productId: string,
+  action: string,
+  oldData: Record<string, unknown>,
+  newData: Record<string, unknown>,
+  notes?: string,
+  adminEmail?: string
+) {
+  try {
+    const supabase = await getAdminClient();
+    let email = adminEmail;
+    if (!email) {
+      const { data: { user } } = await supabase.auth.getUser();
+      email = user?.email || "Administrador";
+    }
+    await supabase.from("product_audit_logs").insert({
+      product_id: productId,
+      changed_by: email,
+      action,
+      old_data: oldData,
+      new_data: newData,
+      notes: notes ?? null,
+    });
+  } catch (err) {
+    console.warn("[logProductAuditEvent] Error registrando auditoría:", err);
+  }
+}
+
+export async function getProductAuditLogsAction(productId: string): Promise<ProductAuditLogEntry[]> {
+  validId(productId);
+  const supabase = await getAdminClient();
+  const { data, error } = await supabase
+    .from("product_audit_logs")
+    .select("id, product_id, changed_by, action, old_data, new_data, notes, created_at")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error || !data) {
+    console.error("[getProductAuditLogsAction] Error:", error);
+    return [];
+  }
+
+  return data.map((item) => ({
+    id: item.id,
+    productId: item.product_id,
+    changedBy: item.changed_by,
+    action: item.action,
+    oldData: (item.old_data as Record<string, unknown>) ?? {},
+    newData: (item.new_data as Record<string, unknown>) ?? {},
+    notes: item.notes,
+    createdAt: item.created_at,
+  }));
 }
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
   const supabase = await getAdminClient();

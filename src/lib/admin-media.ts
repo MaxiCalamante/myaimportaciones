@@ -65,3 +65,83 @@ export async function prepareProductImages(db: SupabaseClient, form: FormData, e
 
   return { urls, paths };
 }
+
+/**
+ * Extracts the storage object path from a Supabase storage public URL.
+ * Example:
+ * https://<ref>.supabase.co/storage/v1/object/public/product-images/products/photo-1.webp
+ * -> "products/photo-1.webp"
+ */
+export function extractProductImagePath(url: string, bucket = "product-images"): string | null {
+  if (!url || typeof url !== "string") return null;
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const index = url.indexOf(marker);
+  if (index !== -1) {
+    const rawPath = url.slice(index + marker.length).split("?")[0].split("#")[0];
+    return decodeURIComponent(rawPath).trim();
+  }
+  return null;
+}
+
+/**
+ * Safely removes orphaned product images from Supabase Storage upon permanent deletion.
+ * Verifies that no remaining products (active, paused, or cloned) are still referencing the images.
+ */
+export async function cleanupOrphanProductImages(
+  db: SupabaseClient,
+  candidateUrls: string[],
+  deletingProductIds: string[]
+): Promise<number> {
+  const candidatePaths = [
+    ...new Set(
+      candidateUrls
+        .map(u => extractProductImagePath(u))
+        .filter((p): p is string => Boolean(p && p.length > 0))
+    ),
+  ];
+
+  if (candidatePaths.length === 0) return 0;
+
+  // Query remaining products that are NOT being deleted
+  let query = db.from("products").select("image_url, image_urls");
+  if (deletingProductIds.length > 0) {
+    query = query.not("id", "in", `(${deletingProductIds.join(",")})`);
+  }
+
+  const { data: remainingProducts, error } = await query;
+  if (error) {
+    console.warn("[cleanupOrphanProductImages] Error consultando productos restantes:", error);
+    return 0;
+  }
+
+  const referencedPaths = new Set<string>();
+  if (remainingProducts) {
+    for (const prod of remainingProducts) {
+      if (prod.image_url) {
+        const path = extractProductImagePath(prod.image_url);
+        if (path) referencedPaths.add(path);
+      }
+      if (Array.isArray(prod.image_urls)) {
+        for (const u of prod.image_urls) {
+          const path = extractProductImagePath(u);
+          if (path) referencedPaths.add(path);
+        }
+      }
+    }
+  }
+
+  const pathsToRemove = candidatePaths.filter(p => !referencedPaths.has(p));
+  if (pathsToRemove.length === 0) return 0;
+
+  try {
+    const { error: removeError } = await db.storage.from("product-images").remove(pathsToRemove);
+    if (removeError) {
+      console.warn("[cleanupOrphanProductImages] Error eliminando fotos de storage:", removeError);
+      return 0;
+    }
+    return pathsToRemove.length;
+  } catch (err) {
+    console.warn("[cleanupOrphanProductImages] Excepción al remover fotos:", err);
+    return 0;
+  }
+}

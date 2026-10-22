@@ -1,5 +1,55 @@
 # MYA Importaciones — contexto vigente
 
+## Limpieza de Storage al Purgar, Recorte Guiado de Fotos y Auditoría Histórica de Precios/Stock — 22/10/2026
+
+Por requerimiento expreso del dueño ("ok hace los 3"):
+
+### 1. Limpieza Automática de Fotos Huérfanas en Supabase Storage al Purgar:
+- **Seguridad contra borrado accidental de clones:**
+  - En [`src/lib/admin-media.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/admin-media.ts): implementadas `extractProductImagePath` y `cleanupOrphanProductImages`.
+  - Antes de eliminar físicamente un archivo del bucket `product-images`, se consulta en `public.products` si alguna otra publicación (activa, pausada o clonada) continúa referenciando la misma foto o URL.
+  - Sólo se eliminan los archivos efectivamente huérfanos, garantizando cero imágenes rotas en productos clonados y liberando cuota de almacenamiento en Supabase.
+- **Acciones integradas en [`src/app/admin/actions.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts):**
+  - `permanentDeleteProductAction(productId)`: purga el producto de Postgres y limpia sus fotos de storage si no están compartidas.
+  - `emptyTrashAction(daysThreshold)`: al vaciar o purgar la papelera por retención, limpia todas las fotos huérfanas de las publicaciones purgadas.
+  - `bulkUpdateProductStatusAction(ids, "permanent_delete")`: limpieza atómica en eliminaciones masivas definitivas.
+
+### 2. Crop y Recorte Guiado de Fotos en el Navegador (1:1, 4:5 y Libre):
+- **Componente [`ImageCropperModal`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/image-cropper-modal.tsx):**
+  - Herramienta de encuadre táctil y responsiva basada en canvas HTML5 sin dependencias externas pesadas.
+  - **Presets de aspecto:**
+    - `1:1 Cuadrado`: estándar para fichas de producto de e-commerce y thumbnails.
+    - `4:5 Vertical`: ideal para cosmética, cuidado personal y publicaciones tipo Instagram.
+    - `Libre`: conserva las proporciones originales.
+  - **Herramientas de encuadre:**
+    - Zoom regulable (1x a 3x con slider y botones rápidos).
+    - Desplazamiento y arrastre (drag-to-pan) con mouse o gestos táctiles en smartphones.
+    - Rotación en 90° con un clic (`RotateCw`), ideal para fotos sacadas en smartphones con orientación invertida.
+    - Regla de tercios visual superpuesta para centrar el producto.
+  - **Compresión WebP en el cliente:** Exporta directamente a WebP de alta fidelidad garantizando un peso menor a **750 KB** antes de subir.
+- **Integración en [`src/components/admin/product-editor.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-editor.tsx):**
+  - Cada miniatura de la galería cuenta con un botón directo `Crop` ("Encuadrar y recortar") para ajustar tanto fotos recién subidas como fotos existentes de la ficha.
+
+### 3. Registro Histórico de Cambios en Precios y Stock por Admin (Auditoría de Ficha):
+- **Base de Datos y RLS:**
+  - Tabla `public.product_audit_logs` creada con migraciones en [`supabase/migrations/20261022144500_product_audit_logs.sql`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/supabase/migrations/20261022144500_product_audit_logs.sql).
+  - Llave foránea `product_id REFERENCES public.products(id) ON DELETE CASCADE`.
+  - Columnas: `id, product_id, changed_by, action, old_data, new_data, notes, created_at`.
+  - Políticas de seguridad RLS restringidas exclusivamente a usuarios autenticados con rol `admin`.
+- **Captura Automática de Auditoría:**
+  - En [`src/app/admin/actions.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts):
+    - `quickUpdateProductPriceAction`: registra cambios rápidos de precio minorista/mayorista.
+    - `bulkAdjustPricesAction`: registra ajustes masivos por lote con el porcentaje o importe aplicado.
+    - `updateProductAction`: detecta y registra automáticamente variaciones de precios o stock al guardar desde el editor modal.
+    - `getProductAuditLogsAction(productId)`: consulta el historial ordenado cronológicamente.
+- **Interfaz Visual en [`src/components/admin/product-audit-modal.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-audit-modal.tsx):**
+  - Botón "Historial" (`History`) incorporado en la tabla desktop y en las tarjetas móviles de [`src/components/admin/product-control-center.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-control-center.tsx).
+  - Modal con timeline visual, cálculo automático del porcentaje de variación (+/- %), comparación visual tachada del valor anterior vs nuevo, fecha/hora `es-AR` y email del administrador responsable.
+- **Suite de Pruebas:**
+  - Tests en [`tests/product-lifecycle.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/product-lifecycle.test.ts) (198/198 tests aprobados).
+
+---
+
 ## Trazabilidad de Auditoría en Papelera, Purga Programada y Reordenamiento Visual de Fotos con Portada — 22/10/2026
 
 Por requerimiento expreso del dueño ("hace las 3"):

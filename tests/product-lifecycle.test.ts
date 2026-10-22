@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mapProduct, PUBLIC_PRODUCT_COLUMNS, type DbProduct } from "../src/lib/catalog-data";
-import { prepareProductImages } from "../src/lib/admin-media";
+import { prepareProductImages, extractProductImagePath, cleanupOrphanProductImages } from "../src/lib/admin-media";
 
 test("product-lifecycle: PUBLIC_PRODUCT_COLUMNS includes deleted_at and deleted_by for soft delete and audit", () => {
   assert.ok(
@@ -136,4 +136,75 @@ test("product-lifecycle: product cloning initializes as draft with copied title 
   assert.equal(clonedSku, "AURI-BT-01-COPIA", "Cloned sku should append -COPIA");
   assert.equal(clonedActive, false, "Cloned product must default to inactive (draft) for admin review");
   assert.equal(clonedFeatured, false, "Cloned product must default to not featured");
+});
+
+test("product-lifecycle: extractProductImagePath correctly parses Supabase storage paths and ignores external URLs", () => {
+  const supabaseUrl1 = "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/products/photo-123.webp";
+  const supabaseUrlWithParams = "https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/electronics-2026/abe24b7c.jpg?v=123#thumb";
+  const externalUrl = "https://www.totalherramientasoficial.com.py/img/8437/produtos/1500/cbb4a4.jpg";
+  const unsplashUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff";
+
+  assert.equal(extractProductImagePath(supabaseUrl1), "products/photo-123.webp");
+  assert.equal(extractProductImagePath(supabaseUrlWithParams), "electronics-2026/abe24b7c.jpg");
+  assert.equal(extractProductImagePath(externalUrl), null, "External supplier URL should not match Supabase storage");
+  assert.equal(extractProductImagePath(unsplashUrl), null, "Unsplash URL should not match Supabase storage");
+  assert.equal(extractProductImagePath(""), null);
+});
+
+test("product-lifecycle: cleanupOrphanProductImages protects images shared with cloned/remaining products", async () => {
+  const sharedPath = "products/shared-perfume.webp";
+  const orphanPath = "products/orphan-to-delete.webp";
+  const sharedUrl = `https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/${sharedPath}`;
+  const orphanUrl = `https://gqcdurxndbeeugjfworx.supabase.co/storage/v1/object/public/product-images/${orphanPath}`;
+
+  const deletingProductId = "11111111-1111-4111-8111-111111111111";
+  const clonedProductId = "22222222-2222-4222-8222-222222222222";
+
+  const removedPaths: string[] = [];
+
+  // Mock Supabase DB client
+  const mockDb = {
+    from: (table: string) => {
+      assert.equal(table, "products");
+      return {
+        select: (cols: string) => {
+          assert.equal(cols, "image_url, image_urls");
+          return {
+            not: (col: string, op: string, val: string) => {
+              // Simulated remaining products query (only returns clonedProductId)
+              return Promise.resolve({
+                data: [
+                  {
+                    image_url: sharedUrl,
+                    image_urls: [sharedUrl],
+                  },
+                ],
+                error: null,
+              });
+            },
+          };
+        },
+      };
+    },
+    storage: {
+      from: (bucket: string) => {
+        assert.equal(bucket, "product-images");
+        return {
+          remove: (paths: string[]) => {
+            removedPaths.push(...paths);
+            return Promise.resolve({ error: null });
+          },
+        };
+      },
+    },
+  } as any;
+
+  const count = await cleanupOrphanProductImages(
+    mockDb,
+    [sharedUrl, orphanUrl],
+    [deletingProductId]
+  );
+
+  assert.equal(count, 1, "Only the orphan path should be removed");
+  assert.deepEqual(removedPaths, [orphanPath], "Shared path must be preserved for cloned product");
 });

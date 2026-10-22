@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
-import { Camera, ImagePlus, X, CopyPlus, Star, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { Camera, ImagePlus, X, CopyPlus, Star, ChevronLeft, ChevronRight, GripVertical, Crop } from "lucide-react";
 import type { Category, Product, ProductOptionDimension } from "@/lib/types";
 import { createProductAction, updateProductAction, getProductVariantsAction } from "@/app/admin/actions";
 import { MAX_PRODUCT_IMAGES } from "@/lib/admin-product";
@@ -10,6 +10,7 @@ import { optimizeProductPhoto } from "@/lib/image-upload";
 import { publicUrl, productDescription } from "@/lib/seo";
 import { VariantManager } from "./variant-manager";
 import type { VariantFormInput } from "@/lib/admin-variants";
+import { ImageCropperModal } from "./image-cropper-modal";
 
 const fieldClass = "mt-1 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-base text-zinc-950 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-200";
 
@@ -70,6 +71,7 @@ export function ProductEditor({
     }));
   });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [croppingItem, setCroppingItem] = useState<EditorGalleryItem | null>(null);
 
   const galleryItemsRef = useRef(galleryItems);
   useEffect(() => {
@@ -161,6 +163,24 @@ export function ProductEditor({
       }
       return current.filter(p => p.id !== id);
     });
+  };
+
+  const handleCropComplete = (croppedFile: File, previewUrl: string) => {
+    if (!croppingItem) return;
+    setGalleryItems(current =>
+      current.map(item => {
+        if (item.id === croppingItem.id) {
+          if (item.file) URL.revokeObjectURL(item.url);
+          return {
+            ...item,
+            file: croppedFile,
+            url: previewUrl,
+          };
+        }
+        return item;
+      })
+    );
+    setCroppingItem(null);
   };
 
   const handleSetCover = (index: number) => {
@@ -636,6 +656,17 @@ export function ProductEditor({
                       <GripVertical className="size-4" />
                     </div>
 
+                    {/* Crop button (top right, next to delete) */}
+                    <button
+                      type="button"
+                      aria-label={`Recortar foto ${i + 1}`}
+                      className="absolute right-10.5 top-1.5 grid size-8 place-items-center rounded-xl border border-zinc-200 bg-white/95 text-zinc-600 shadow-xs hover:bg-sky-50 hover:text-sky-700 transition cursor-pointer"
+                      onClick={() => setCroppingItem(item)}
+                      title="Encuadrar y recortar (1:1 o 4:5)"
+                    >
+                      <Crop className="size-4" />
+                    </button>
+
                     {/* Delete button (top right) */}
                     <button
                       type="button"
@@ -811,6 +842,16 @@ export function ProductEditor({
           </div>
         </footer>
       </form>
+
+      {/* Guided Crop Modal */}
+      {croppingItem && (
+        <ImageCropperModal
+          isOpen={Boolean(croppingItem)}
+          imageUrl={croppingItem.url}
+          onClose={() => setCroppingItem(null)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </dialog>
   );
 }

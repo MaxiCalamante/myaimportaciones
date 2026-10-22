@@ -32,7 +32,9 @@ import {
   CopyPlus,
   Clock,
   ShieldAlert,
+  History,
 } from "lucide-react";
+import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Category, Product, StockLog } from "@/lib/types";
 import {
@@ -90,6 +92,7 @@ export function ProductControlCenter({
   // Modals state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [cloningProduct, setCloningProduct] = useState<Product | null>(null);
+  const [auditingProduct, setAuditingProduct] = useState<Product | null>(null);
   const [quickPriceProduct, setQuickPriceProduct] = useState<Product | null>(null);
   const [quickSupplierProduct, setQuickSupplierProduct] = useState<Product | null>(null);
   const [copiedSupplierLink, setCopiedSupplierLink] = useState<string | null>(null);
@@ -1544,6 +1547,15 @@ export function ProductControlCenter({
                                 <CopyPlus className="h-4 w-4" />
                               </button>
 
+                              <button
+                                type="button"
+                                onClick={() => setAuditingProduct(product)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer bg-white shadow-2xs"
+                                title="Historial y auditoría de cambios"
+                              >
+                                <History className="h-4 w-4" />
+                              </button>
+
                               <a
                                 href={`/producto/${product.slug}`}
                                 target="_blank"
@@ -1963,6 +1975,16 @@ export function ProductControlCenter({
                           <span className="hidden sm:inline">Precio</span>
                         </button>
 
+                        <button
+                          type="button"
+                          onClick={() => setAuditingProduct(product)}
+                          className="h-11 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                          title="Historial de cambios y auditoría"
+                        >
+                          <History className="size-4" />
+                          <span className="hidden sm:inline">Historial</span>
+                        </button>
+
                         <a
                           href={`/producto/${product.slug}`}
                           target="_blank"
@@ -2234,6 +2256,13 @@ export function ProductControlCenter({
             router.refresh();
             showToast("Proveedor actualizado.", "success");
           }}
+        />
+      )}
+      {auditingProduct && (
+        <ProductAuditModal
+          isOpen={Boolean(auditingProduct)}
+          product={auditingProduct}
+          onClose={() => setAuditingProduct(null)}
         />
       )}
     </div>
