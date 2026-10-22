@@ -391,7 +391,7 @@ Logística / Despacho: +${calcShippingPercent}%
 
   // Handle delete actions
   const handleDeleteProduct = (productId: string, title: string) => {
-    if (!confirm(`¿Estás seguro de eliminar el producto "${title}"?`)) return;
+    if (!confirm(`¿Mover "${title}" a la papelera de reciclaje? Podrás restaurarlo o eliminarlo definitivamente cuando quieras.`)) return;
 
     startTransition(async () => {
       try {

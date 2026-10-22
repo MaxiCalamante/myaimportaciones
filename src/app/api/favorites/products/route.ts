@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   if (ids.length > 50 || ids.some(id => !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id))) return NextResponse.json({ error: "Lista inválida" }, { status: 400 });
   if (!ids.length) return NextResponse.json([]);
   const db = await createServerSupabaseClient();
-  const { data, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(*)`).in("id", ids).eq("is_active", true).eq("is_wholesale_only", false);
+  const { data, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(*)`).in("id", ids).eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null);
   if (error) return NextResponse.json({ error: "No disponible" }, { status: 503 });
   return NextResponse.json(data.map(p => mapProduct(p)), { headers: { "Cache-Control": "private, no-store" } });
 }

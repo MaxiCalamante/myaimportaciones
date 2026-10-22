@@ -91,6 +91,7 @@ export interface Product {
   variants?: ProductVariant[];
   minPrice?: number;
   maxPrice?: number;
+  deletedAt?: string | null;
 }
 
 export interface StorefrontData {

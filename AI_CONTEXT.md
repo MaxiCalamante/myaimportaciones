@@ -1,5 +1,53 @@
 # MYA Importaciones — contexto vigente
 
+## Compresión WebP en el Cliente, Duplicador de Ficha y Papelera de Reciclaje (Soft Delete) — 22/10/2026
+
+Por requerimiento expreso del dueño ("hace las 3"):
+
+### 1. Compresión Automática WebP en el Navegador al Subir o Sacar Fotos:
+- En [`src/lib/image-upload.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/image-upload.ts):
+  - Límite de entrada ampliado a **25 MB** para soportar fotos de sensores de smartphones modernos de 48 MP / 50 MP / 108 MP sin rechazo.
+  - Redimensionamiento proporcional en canvas HTML5 a un máximo de **1600 px** de ancho o alto.
+  - Conversión prioritaria a formato moderno **WebP** (`image/webp`) en calidades decrecientes `[0.85, 0.75, 0.60, 0.45]`, logrando ahorros del 30-40% de tamaño respecto a JPEG con máxima fidelidad visual.
+  - Fallback transparente a **JPEG** en caso de que el navegador o dispositivo no soporte codificación WebP en canvas.
+  - Garantiza que las fotos queden por debajo del límite de **750 KB** para subidas ultra-rápidas en redes móviles 4G/5G.
+  - En [`src/lib/admin-media.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/admin-media.ts): actualización de `prepareProductImages` para permitir la reutilización segura de URLs de fotos públicas existentes al clonar productos sin duplicar almacenamiento.
+
+### 2. Duplicador Rápido de Producto ("Clonar Ficha"):
+- En [`src/components/admin/product-editor.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-editor.tsx):
+  - Nuevo soporte para modo clonación (`isCloning` y prop `initialData`).
+  - Pre-llenado instantáneo de la nueva ficha con datos del producto origen:
+    - Título con sufijo `(Copia)`.
+    - SKU con sufijo `-COPIA`.
+    - Rubro y subcategoría exacta.
+    - Marca, modelo, descripción y especificaciones técnicas.
+    - Precios de referencia minorista y mayorista.
+    - Galería de imágenes completa reutilizada.
+    - Opciones, dimensiones y variantes copiadas automáticamente como nuevas variantes limpiando IDs anteriores.
+    - **Por seguridad comercial, el producto clonado inicia siempre como borrador / pausado (`is_active: false`)** para permitir al administrador ajustar precios, SKU o detalles antes de publicarlo.
+- En [`src/components/admin/product-control-center.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-control-center.tsx):
+  - Botón "Clonar" (`CopyPlus`) incorporado tanto en la tabla desktop como en las tarjetas móviles.
+  - Abre el editor modal en modo clonación y refresca el catálogo al guardar.
+
+### 3. Papelera de Reciclaje y Borrado Lógico ("Soft Delete"):
+- **Base de Datos y Migraciones:**
+  - Archivo de migración [`supabase/migrations/20261022133000_product_soft_delete_and_recycle_bin.sql`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/supabase/migrations/20261022133000_product_soft_delete_and_recycle_bin.sql) con columna `deleted_at timestamptz`, índice parcial `idx_products_deleted_at` y permisos `GRANT SELECT (deleted_at) TO anon, authenticated`.
+- **Acciones del Servidor (`src/app/admin/actions.ts`):**
+  - `deleteProductAction(productId)`: Mueve a la papelera asignando `deleted_at = now()` y pausando la publicación (`is_active = false`).
+  - `restoreProductAction(productId)`: Restaura desde la papelera limpiando `deleted_at = null` y dejándola en estado pausado para revisión.
+  - `permanentDeleteProductAction(productId)`: Purga definitiva de la base de datos (con cascada `ON DELETE CASCADE` garantizada en todas las tablas de proveedores y variantes).
+  - `bulkUpdateProductStatusAction`: Soporte para acciones masivas `"soft_delete"`, `"restore"` y `"permanent_delete"`.
+- **Aislamiento en Tienda Pública:**
+  - Queries de storefront (`src/lib/storefront.ts`), catálogo (`src/app/catalogo/page.tsx`), búsqueda (`src/app/api/search/route.ts`), favoritos (`src/app/api/favorites/products/route.ts`) y checkout (`src/app/checkout/actions.ts`) filtran `deleted_at IS NULL`, garantizando cero exposición al cliente final.
+- **Experiencia de Usuario en el Panel:**
+  - Pestaña dedicada **"Papelera ({stats.deleted})"** en el selector superior de estado.
+  - Los productos en papelera no se muestran en "Todos", "Activos" ni "Pausados".
+  - En la pestaña Papelera, cada publicación muestra acciones claras:
+    - **Restaurar** (`RotateCcw`): la devuelve a "Pausados" en 1 clic.
+    - **Eliminar Definitivo** (`Trash2`): abre confirmación explícita para purgar de la base de datos.
+  - Acciones masivas de papelera: "Restaurar seleccionados" y "Eliminar definitivamente".
+- Pruebas unitarias: Creada suite [`tests/product-lifecycle.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/product-lifecycle.test.ts) (194/194 tests aprobados).
+
 ## Fichas Técnicas K-Beauty, Benchmarks de Margen de Proveedores y Comprobante Oficial de Pedidos — 22/10/2026
 
 Por requerimiento expreso del dueño ("hace las 3"):

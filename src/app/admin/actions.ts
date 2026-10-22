@@ -418,7 +418,7 @@ export async function quickUpdateProductPriceAction(productId: string, retailPri
 
 export async function bulkUpdateProductStatusAction(
   productIds: string[],
-  action: "activate" | "pause" | "supplier_available" | "supplier_pause" | "set_mode_supplier" | "set_mode_own"
+  action: "activate" | "pause" | "supplier_available" | "supplier_pause" | "set_mode_supplier" | "set_mode_own" | "soft_delete" | "restore" | "permanent_delete"
 ) {
   const supabase = await getAdminClient();
   if (!Array.isArray(productIds) || !productIds.length || productIds.length > 200) throw new Error("Seleccioná entre 1 y 200 productos.");
@@ -442,6 +442,27 @@ export async function bulkUpdateProductStatusAction(
       supplier_stock_status: "unknown",
       supplier_last_checked_at: null,
     };
+  } else if (action === "soft_delete") {
+    updatePayload = {
+      deleted_at: new Date().toISOString(),
+      is_active: false,
+    };
+  } else if (action === "restore") {
+    updatePayload = {
+      deleted_at: null,
+      is_active: false,
+    };
+  } else if (action === "permanent_delete") {
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .in("id", productIds);
+    if (error) throw new Error(error.message);
+    revalidatePath("/");
+    invalidateAdminStorefrontCache();
+    revalidatePath("/admin");
+    revalidatePath("/catalogo");
+    return { success: true, count: productIds.length };
   } else if (action === "set_mode_supplier" || action === "set_mode_own") {
     let changed = 0;
     for (const id of [...new Set(productIds)].sort()) {
@@ -565,7 +586,7 @@ export async function deleteProductAction(productId: string) {
     const id = validId(productId);
     const supabase = await getAdminClient();
 
-    // Verify product exists before deleting
+    // Verify product exists before soft-deleting
     const { data: product, error: fetchError } = await supabase
       .from("products")
       .select("id, title")
@@ -576,15 +597,93 @@ export async function deleteProductAction(productId: string) {
       throw new AdminFormError("El producto ya no existe o fue eliminado previamente.");
     }
 
-    // Delete product (cascades automatically to supplier offers, queue, market refs, decisions, variants)
+    // Soft delete: move to recycle bin by setting deleted_at and is_active=false
+    const { error } = await supabase
+      .from("products")
+      .update({
+        deleted_at: new Date().toISOString(),
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.error("[deleteProductAction] Error al enviar producto a la papelera:", error);
+      throw new AdminFormError(`No se pudo enviar el producto a la papelera: ${error.message}`);
+    }
+
+    refreshCatalog();
+    revalidatePath("/admin");
+    revalidatePath("/mayorista");
+    revalidatePath("/catalogo");
+
+    return { success: true, id, title: product.title };
+  });
+}
+
+export async function restoreProductAction(productId: string) {
+  return runAdminFormAction(async () => {
+    const id = validId(productId);
+    const supabase = await getAdminClient();
+
+    const { data: product, error: fetchError } = await supabase
+      .from("products")
+      .select("id, title")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError || !product) {
+      throw new AdminFormError("El producto no fue encontrado en la papelera.");
+    }
+
+    // Restore: clear deleted_at, restore as paused draft
+    const { error } = await supabase
+      .from("products")
+      .update({
+        deleted_at: null,
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.error("[restoreProductAction] Error al restaurar producto:", error);
+      throw new AdminFormError(`No se pudo restaurar el producto: ${error.message}`);
+    }
+
+    refreshCatalog();
+    revalidatePath("/admin");
+    revalidatePath("/mayorista");
+    revalidatePath("/catalogo");
+
+    return { success: true, id, title: product.title };
+  });
+}
+
+export async function permanentDeleteProductAction(productId: string) {
+  return runAdminFormAction(async () => {
+    const id = validId(productId);
+    const supabase = await getAdminClient();
+
+    const { data: product, error: fetchError } = await supabase
+      .from("products")
+      .select("id, title")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError || !product) {
+      throw new AdminFormError("El producto ya no existe o fue eliminado definitivamente.");
+    }
+
+    // Permanent delete: cascades automatically to supplier offers, queue, market refs, decisions, variants
     const { error } = await supabase
       .from("products")
       .delete()
       .eq("id", id);
 
     if (error) {
-      console.error("[deleteProductAction] Error al eliminar producto:", error);
-      throw new AdminFormError(`No se pudo eliminar el producto: ${error.message}`);
+      console.error("[permanentDeleteProductAction] Error al eliminar definitivamente:", error);
+      throw new AdminFormError(`No se pudo eliminar definitivamente: ${error.message}`);
     }
 
     refreshCatalog();

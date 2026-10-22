@@ -5,7 +5,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function prepareProductImages(db: SupabaseClient, form: FormData, existing: string[] = []) {
   const supplied = form.has("gallery_present");
   const kept = supplied ? form.getAll("keep_image_url").filter((value): value is string => typeof value === "string") : existing;
-  if (kept.some(url => !existing.includes(url))) throw new AdminFormError("La galería cambió. Volvé a abrir la ficha.");
+  if (existing.length > 0) {
+    if (kept.some(url => !existing.includes(url))) throw new AdminFormError("La galería cambió. Volvé a abrir la ficha.");
+  } else {
+    for (const url of kept) productImageUrl(url);
+  }
   const custom = String(form.get("custom_image_url") ?? "").trim();
   const urls = [...new Set([...kept, ...(custom ? [productImageUrl(custom)] : [])])];
   const files = [...form.getAll("images"), form.get("image")].filter((value): value is File => value instanceof File && value.size > 0);

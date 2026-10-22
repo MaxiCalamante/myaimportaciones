@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
-import { Camera, ImagePlus, X } from "lucide-react";
+import { Camera, ImagePlus, X, CopyPlus } from "lucide-react";
 import type { Category, Product, ProductOptionDimension } from "@/lib/types";
 import { createProductAction, updateProductAction, getProductVariantsAction } from "@/app/admin/actions";
 import { MAX_PRODUCT_IMAGES } from "@/lib/admin-product";
@@ -13,30 +13,62 @@ import type { VariantFormInput } from "@/lib/admin-variants";
 
 const fieldClass = "mt-1 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-base text-zinc-950 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-200";
 
-export function ProductEditor({ product, categories, onClose, onSaved }: { product?: Product; categories: Category[]; onClose: () => void; onSaved: () => void }) {
+export interface ProductEditorProps {
+  product?: Product;
+  initialData?: Partial<Product>;
+  isCloning?: boolean;
+  categories: Category[];
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+export function ProductEditor({
+  product,
+  initialData,
+  isCloning = false,
+  categories,
+  onClose,
+  onSaved,
+}: ProductEditorProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [pending, startTransition] = useTransition();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState(product?.fulfillmentMode ?? "supplier");
-  const category = categories.find(c => c.id === product?.categoryId);
+
+  const sourceData = isCloning ? initialData : product;
+  const isEditing = Boolean(product?.id && !isCloning);
+
+  const [mode, setMode] = useState<"supplier" | "own_stock">(sourceData?.fulfillmentMode ?? "supplier");
+  const category = categories.find(c => c.id === sourceData?.categoryId);
   const [parentId, setParentId] = useState(() => {
     if (category?.parentId) return category.parentId;
     if (category?.id) return category.id;
     const firstParent = categories.find(c => !c.parentId);
     return firstParent?.id ?? "";
   });
-  const [childId, setChildId] = useState(() => category?.parentId ? category.id : "");
-  const [kept, setKept] = useState<string[]>([...new Set([product?.imageUrl, ...(product?.imageUrls ?? [])].filter((url): url is string => Boolean(url)))]);
+  const [childId, setChildId] = useState(() => (category?.parentId ? category.id : ""));
+  const [kept, setKept] = useState<string[]>([
+    ...new Set(
+      [sourceData?.imageUrl, ...(sourceData?.imageUrls ?? [])].filter(
+        (url): url is string => Boolean(url)
+      )
+    ),
+  ]);
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const photoRef = useRef(photos);
-  useEffect(() => { photoRef.current = photos; }, [photos]);
+  useEffect(() => {
+    photoRef.current = photos;
+  }, [photos]);
 
   // Product Variants state
-  const [hasVariants, setHasVariants] = useState(Boolean(product?.hasVariants));
-  const [optionsConfig, setOptionsConfig] = useState<ProductOptionDimension[]>(product?.optionsConfig ?? []);
+  const [hasVariants, setHasVariants] = useState(Boolean(sourceData?.hasVariants));
+  const [optionsConfig, setOptionsConfig] = useState<ProductOptionDimension[]>(
+    sourceData?.optionsConfig ?? []
+  );
   const [variants, setVariants] = useState<VariantFormInput[]>([]);
-  const [loadingVariants, setLoadingVariants] = useState(() => Boolean(product?.id));
+  const [loadingVariants, setLoadingVariants] = useState(() =>
+    Boolean(product?.id || (isCloning && initialData?.id))
+  );
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -45,17 +77,24 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Load existing variants if editing a product
-    if (product?.id) {
-      getProductVariantsAction(product.id)
+    // Load existing variants if editing a product OR cloning from an existing product
+    const sourceId = product?.id || (isCloning ? initialData?.id : undefined);
+    if (sourceId) {
+      getProductVariantsAction(sourceId)
         .then(data => {
           if (data && data.length > 0) {
-            setVariants(data as VariantFormInput[]);
+            // For cloning: strip IDs so they are inserted as new variants
+            const mappedVariants = isCloning
+              ? (data as VariantFormInput[]).map(v => ({ ...v, id: "" }))
+              : (data as VariantFormInput[]);
+            setVariants(mappedVariants);
             setHasVariants(true);
           }
         })
         .catch(() => {})
         .finally(() => setLoadingVariants(false));
+    } else {
+      setLoadingVariants(false);
     }
 
     return () => {
@@ -64,7 +103,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
       previous?.focus();
       photoRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
     };
-  }, [product?.id]);
+  }, [product?.id, isCloning, initialData?.id]);
 
   async function addPhotos(files: FileList | null) {
     if (!files?.length) return;
@@ -111,7 +150,9 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
     setError("");
     startTransition(async () => {
       try {
-        const result = product ? await updateProductAction(form) : await createProductAction(form);
+        const result = isEditing
+          ? await updateProductAction(form)
+          : await createProductAction(form);
         if (!result.success) {
           setError(result.error);
           return;
@@ -137,27 +178,36 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
     >
       <form onSubmit={submit}>
         <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b bg-white px-4 py-3 sm:px-6">
-          <div>
-            <h2 id="product-editor-title" className="text-lg font-bold">
-              {product ? "Editar producto" : "Nuevo producto"}
-            </h2>
-            <p className="text-xs text-zinc-600">
-              Precios en pesos argentinos. Configurá ficha, variantes y stock con control de concurrencia.
-            </p>
+          <div className="flex items-center gap-2.5">
+            {isCloning && (
+              <span className="flex size-9 items-center justify-center rounded-xl bg-purple-100 text-purple-800">
+                <CopyPlus className="size-5" />
+              </span>
+            )}
+            <div>
+              <h2 id="product-editor-title" className="text-lg font-bold">
+                {isCloning ? "Clonar producto" : isEditing ? "Editar producto" : "Nuevo producto"}
+              </h2>
+              <p className="text-xs text-zinc-600">
+                {isCloning
+                  ? "Creando una nueva publicación basada en una ficha existente. Guardá como borrador o publicala."
+                  : "Precios en pesos argentinos. Configurá ficha, variantes y stock con control de concurrencia."}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             aria-label="Cerrar editor"
             disabled={pending || processing}
             onClick={onClose}
-            className="grid size-11 shrink-0 place-items-center rounded-xl border disabled:opacity-40 hover:bg-zinc-100 transition"
+            className="grid size-11 shrink-0 place-items-center rounded-xl border disabled:opacity-40 hover:bg-zinc-100 transition cursor-pointer"
           >
             <X className="size-5" />
           </button>
         </header>
 
         <div className="space-y-7 px-4 py-5 sm:px-6">
-          {product && <input type="hidden" name="id" value={product.id} />}
+          {isEditing && <input type="hidden" name="id" value={product!.id} />}
 
           {/* Ficha básica */}
           <fieldset disabled={pending || processing} className="grid gap-4 sm:grid-cols-2">
@@ -169,7 +219,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 required
                 minLength={2}
                 maxLength={200}
-                defaultValue={product?.title}
+                defaultValue={isCloning && sourceData?.title ? `${sourceData.title} (Copia)` : sourceData?.title}
                 className={fieldClass}
                 autoFocus
               />
@@ -219,7 +269,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
               <input
                 name="brand"
                 maxLength={200}
-                defaultValue={product?.brand}
+                defaultValue={sourceData?.brand}
                 className={fieldClass}
               />
             </label>
@@ -228,7 +278,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
               <input
                 name="model"
                 maxLength={200}
-                defaultValue={product?.model}
+                defaultValue={sourceData?.model}
                 className={fieldClass}
               />
             </label>
@@ -237,7 +287,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
               <input
                 name="sku"
                 maxLength={100}
-                defaultValue={product?.sku}
+                defaultValue={isCloning && sourceData?.sku ? `${sourceData.sku}-COPIA` : sourceData?.sku}
                 className={fieldClass}
               />
             </label>
@@ -250,7 +300,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 min="0"
                 max="9999999999.99"
                 step="0.01"
-                defaultValue={product?.retailPrice ?? ""}
+                defaultValue={sourceData?.retailPrice ?? ""}
                 className={fieldClass}
               />
               <span className="mt-1 block text-xs font-normal text-zinc-600">
@@ -259,15 +309,15 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                   : "Podés dejarlo vacío en un borrador. Para publicar debe ser mayor a cero."}
               </span>
             </label>
-            <input type="hidden" name="wholesale_price" value={product?.wholesalePrice ?? 0} />
-            <input type="hidden" name="wholesale_min_qty" value={product?.wholesaleMinQuantity ?? 1} />
+            <input type="hidden" name="wholesale_price" value={sourceData?.wholesalePrice ?? 0} />
+            <input type="hidden" name="wholesale_min_qty" value={sourceData?.wholesaleMinQuantity ?? 1} />
             <label className="text-sm font-semibold sm:col-span-2">
               Descripción
               <textarea
                 name="description"
                 rows={4}
                 maxLength={10000}
-                defaultValue={product?.description}
+                defaultValue={sourceData?.description}
                 className={fieldClass}
                 placeholder="Presentación, contenido y detalles reales del producto."
               />
@@ -283,9 +333,9 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
             variants={variants}
             setVariants={setVariants}
             galleryUrls={allGalleryUrls}
-            basePrice={product?.retailPrice ?? 0}
+            basePrice={sourceData?.retailPrice ?? 0}
             baseFulfillmentMode={mode}
-            baseSupplierAvailable={product?.supplierAvailable ?? true}
+            baseSupplierAvailable={sourceData?.supplierAvailable ?? true}
             disabled={pending || processing || loadingVariants}
           />
 
@@ -303,8 +353,8 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 <input
                   name="seo_title"
                   maxLength={90}
-                  defaultValue={product?.specifications?._seo_title || ""}
-                  placeholder={product?.title || "Nombre comercial del producto"}
+                  defaultValue={sourceData?.specifications?._seo_title || ""}
+                  placeholder={sourceData?.title || "Nombre comercial del producto"}
                   className={fieldClass}
                 />
               </label>
@@ -313,12 +363,12 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 <input
                   name="seo_description"
                   maxLength={180}
-                  defaultValue={product?.specifications?._seo_description || ""}
-                  placeholder={product ? productDescription(product) : "Se genera con el nombre y los detalles del producto."}
+                  defaultValue={sourceData?.specifications?._seo_description || ""}
+                  placeholder={isEditing && product ? productDescription(product) : "Se genera con el nombre y los detalles del producto."}
                   className={fieldClass}
                 />
               </label>
-              {product && (
+              {isEditing && product && (
                 <p className="mt-3 break-all text-xs text-zinc-600">
                   URL canónica: {publicUrl(`/producto/${product.slug}`)}
                 </p>
@@ -346,7 +396,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 <input
                   type="checkbox"
                   name="supplier_available"
-                  defaultChecked={product?.supplierAvailable ?? false}
+                  defaultChecked={sourceData?.supplierAvailable ?? false}
                   className="mt-1 size-5 shrink-0"
                 />
                 <span>
@@ -356,7 +406,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                   </span>
                 </span>
               </label>
-            ) : product && !hasVariants ? (
+            ) : isEditing && product && !hasVariants ? (
               <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
                 Stock registrado: {product.stockVerifiedAt ? `${product.stock} unidades` : "sin verificar"}. Para modificar cantidades de productos simples, usá{" "}
                 <Link href="/admin/operaciones" className="font-bold underline">
@@ -390,7 +440,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 name="source_url"
                 type="url"
                 maxLength={2000}
-                defaultValue={product?.sourceUrl ?? ""}
+                defaultValue={sourceData?.sourceUrl ?? ""}
                 placeholder="https://..."
                 className={fieldClass}
               />
@@ -398,7 +448,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 Sólo visible en administración.
               </span>
             </label>
-            <input type="hidden" name="supplier_live_price" value={product?.supplierLivePrice ?? ""} />
+            <input type="hidden" name="supplier_live_price" value={sourceData?.supplierLivePrice ?? ""} />
             <p className="text-xs text-zinc-600">
               Cargá costos, moneda, cambio y gastos reales en{" "}
               <Link href="/admin/costos" className="underline">
@@ -414,7 +464,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 step="0.001"
                 min="0"
                 max="1000"
-                defaultValue={product?.specifications?.peso_kg ?? ""}
+                defaultValue={sourceData?.specifications?.peso_kg ?? ""}
                 className={fieldClass}
               />
               <span className="mt-1 block text-xs font-normal text-zinc-600">
@@ -473,7 +523,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                   <button
                     type="button"
                     aria-label={`Quitar foto ${i + 1}`}
-                    className="absolute right-1 top-1 grid size-9 place-items-center rounded-xl border bg-white shadow-xs hover:bg-red-50 hover:text-red-600 transition"
+                    className="absolute right-1 top-1 grid size-9 place-items-center rounded-xl border bg-white shadow-xs hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
                     onClick={() => {
                       if (photo.file) {
                         URL.revokeObjectURL(photo.url);
@@ -513,7 +563,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 rows={4}
                 maxLength={30000}
                 className={fieldClass}
-                defaultValue={Object.entries(product?.specifications ?? {})
+                defaultValue={Object.entries(sourceData?.specifications ?? {})
                   .filter(([k]) => k !== "peso_kg" && !k.startsWith("_seo_"))
                   .map(([k, v]) => `${k}: ${v}`)
                   .join("\n")}
@@ -529,7 +579,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                 name="warranty_terms"
                 rows={2}
                 maxLength={3000}
-                defaultValue={product?.warrantyTerms ?? ""}
+                defaultValue={sourceData?.warrantyTerms ?? ""}
                 className={fieldClass}
               />
             </label>
@@ -538,11 +588,11 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
               <input
                 name="tags"
                 maxLength={1000}
-                defaultValue={product?.tags.join(", ")}
+                defaultValue={sourceData?.tags?.join(", ")}
                 className={fieldClass}
               />
             </label>
-            {(product?.paymentMethods ?? ["transferencia"]).map(method => (
+            {(sourceData?.paymentMethods ?? ["transferencia"]).map(method => (
               <input key={method} type="hidden" name="payment_methods" value={method} />
             ))}
             <input type="hidden" name="is_active_present" value="true" />
@@ -551,7 +601,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
               <input
                 type="checkbox"
                 name="is_active"
-                defaultChecked={product?.active ?? false}
+                defaultChecked={isCloning ? false : (sourceData?.active ?? false)}
                 className="size-5 rounded border-zinc-300 text-sky-600"
               />
               Publicar en el catálogo (requiere foto y precio).
@@ -560,12 +610,12 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
               <input
                 type="checkbox"
                 name="is_featured"
-                defaultChecked={product?.featured ?? false}
+                defaultChecked={isCloning ? false : (sourceData?.featured ?? false)}
                 className="size-5 rounded border-zinc-300 text-sky-600"
               />
               Destacar en la página de inicio.
             </label>
-            {product?.wholesaleOnly && <input type="hidden" name="is_wholesale_only" value="on" />}
+            {sourceData?.wholesaleOnly && <input type="hidden" name="is_wholesale_only" value="on" />}
           </fieldset>
         </div>
 
@@ -595,7 +645,9 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                   <span className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   <span>Guardando…</span>
                 </>
-              ) : product ? (
+              ) : isCloning ? (
+                "Crear copia del producto"
+              ) : isEditing ? (
                 "Guardar cambios"
               ) : (
                 "Guardar producto"

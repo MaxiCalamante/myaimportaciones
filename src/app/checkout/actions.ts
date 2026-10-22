@@ -47,7 +47,7 @@ async function resolveQuote(input: CheckoutInput) {
     if (line.variantId) variantIds.add(line.variantId);
   }
   const db = createCommerceService();
-  const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...productIds]);
+  const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...productIds]).is("deleted_at", null);
   if (error || products?.length !== productIds.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
   let dbVariants: { id: string; product_id: string; title: string; retail_price: number; stock: number; stock_verified_at: string | null; fulfillment_mode: string; supplier_available: boolean; is_active: boolean }[] = [];
   if (variantIds.size > 0) {

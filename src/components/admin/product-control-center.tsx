@@ -28,6 +28,8 @@ import {
   Boxes,
   Plus,
   Link as LinkIcon,
+  RotateCcw,
+  CopyPlus,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Category, Product, StockLog } from "@/lib/types";
@@ -40,6 +42,8 @@ import {
   bulkUpdateProductStatusAction,
   bulkAdjustPricesAction,
   deleteProductAction,
+  restoreProductAction,
+  permanentDeleteProductAction,
   quickUpdateSupplierLinkAction,
 } from "@/app/admin/actions";
 
@@ -61,7 +65,7 @@ export function ProductControlCenter({
 
   // Filters state
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "trash">("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<
     "all" | "in_stock" | "out_of_stock" | "supplier_available" | "supplier_paused" | "own_stock"
   >("all");
@@ -82,6 +86,7 @@ export function ProductControlCenter({
 
   // Modals state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [cloningProduct, setCloningProduct] = useState<Product | null>(null);
   const [quickPriceProduct, setQuickPriceProduct] = useState<Product | null>(null);
   const [quickSupplierProduct, setQuickSupplierProduct] = useState<Product | null>(null);
   const [copiedSupplierLink, setCopiedSupplierLink] = useState<string | null>(null);
@@ -131,6 +136,8 @@ export function ProductControlCenter({
   // KPI Metrics (computed in a single O(N) pass without extra array allocations)
   const stats = useMemo(() => {
     let active = 0;
+    let paused = 0;
+    let deleted = 0;
     let supplier = 0;
     let supplierAvailable = 0;
     let withSupplierLink = 0;
@@ -139,23 +146,30 @@ export function ProductControlCenter({
 
     for (let i = 0; i < total; i++) {
       const p = products[i];
+      if (p.deletedAt) {
+        deleted++;
+        continue;
+      }
       if (p.hasVariants) withVariants++;
       if (p.active !== false) active++;
+      else paused++;
       if (p.fulfillmentMode === "supplier") {
         supplier++;
         if (p.supplierAvailable) supplierAvailable++;
       }
       if (p.sourceUrl) withSupplierLink++;
     }
-    const paused = total - active;
-    const ownStock = total - supplier;
+    const nonDeleted = total - deleted;
+    const ownStock = nonDeleted - supplier;
     const supplierPaused = supplier - supplierAvailable;
-    const withoutSupplierLink = total - withSupplierLink;
+    const withoutSupplierLink = nonDeleted - withSupplierLink;
 
     return {
-      total,
+      total: nonDeleted,
+      totalWithTrash: total,
       active,
       paused,
+      deleted,
       supplier,
       ownStock,
       supplierAvailable,
@@ -163,7 +177,7 @@ export function ProductControlCenter({
       withSupplierLink,
       withoutSupplierLink,
       withVariants,
-      activeRate: total > 0 ? Math.round((active / total) * 100) : 0,
+      activeRate: nonDeleted > 0 ? Math.round((active / nonDeleted) * 100) : 0,
     };
   }, [products]);
 
@@ -188,9 +202,16 @@ export function ProductControlCenter({
         if (productTypeFilter === "variants" && !p.hasVariants) return false;
         if (productTypeFilter === "simple" && p.hasVariants) return false;
 
-        // Shop Status (Active / Paused)
-        if (statusFilter === "active" && p.active === false) return false;
-        if (statusFilter === "paused" && p.active !== false) return false;
+        // Soft delete / Trash Filter
+        const isDeleted = Boolean(p.deletedAt);
+        if (statusFilter === "trash") {
+          if (!isDeleted) return false;
+        } else {
+          if (isDeleted) return false;
+          // Shop Status (Active / Paused)
+          if (statusFilter === "active" && p.active === false) return false;
+          if (statusFilter === "paused" && p.active !== false) return false;
+        }
 
         // Supplier Link Filter
         if (supplierLinkFilter === "with_link" && !p.sourceUrl) return false;
@@ -350,8 +371,14 @@ export function ProductControlCenter({
   };
 
   // Bulk Status Actions
-  const handleBulkAction = (action: "activate" | "pause" | "supplier_available" | "supplier_pause") => {
+  const handleBulkAction = (action: "activate" | "pause" | "supplier_available" | "supplier_pause" | "soft_delete" | "restore" | "permanent_delete") => {
     if (selectedIds.length === 0) return;
+    if (action === "permanent_delete" && !confirm(`⚠️ ¿Eliminar definitivamente los ${selectedIds.length} productos seleccionados?\n\nEsta acción NO se puede deshacer y borrará permanentemente sus datos.`)) {
+      return;
+    }
+    if (action === "soft_delete" && !confirm(`¿Mover a la papelera los ${selectedIds.length} productos seleccionados?`)) {
+      return;
+    }
     startTransition(async () => {
       try {
         await bulkUpdateProductStatusAction(selectedIds, action);
@@ -410,9 +437,9 @@ export function ProductControlCenter({
     setTimeout(() => setCopiedSupplierLink(null), 2500);
   };
 
-  // Delete product helper
-  const handleDeleteProduct = (productId: string, title: string) => {
-    if (confirm(`¿Estás seguro de eliminar permanentemente "${title}"?`)) {
+  // Soft delete product helper (move to trash)
+  const handleSoftDeleteProduct = (productId: string, title: string) => {
+    if (confirm(`¿Mover "${title}" a la papelera de reciclaje?\n\nPodrás restaurarlo o eliminarlo definitivamente cuando quieras.`)) {
       startTransition(async () => {
         try {
           const result = await deleteProductAction(productId);
@@ -421,9 +448,45 @@ export function ProductControlCenter({
             return;
           }
           router.refresh();
-          showToast(`Producto "${title}" eliminado exitosamente.`, "success");
+          showToast(`Producto "${title}" movido a la papelera.`, "info");
         } catch (err: unknown) {
-          showToast(err instanceof Error ? err.message : "Error al eliminar producto.", "error");
+          showToast(err instanceof Error ? err.message : "Error al enviar a papelera.", "error");
+        }
+      });
+    }
+  };
+
+  // Restore product helper
+  const handleRestoreProduct = (productId: string, title: string) => {
+    startTransition(async () => {
+      try {
+        const result = await restoreProductAction(productId);
+        if (result && !result.success) {
+          showToast(result.error, "error");
+          return;
+        }
+        router.refresh();
+        showToast(`Producto "${title}" restaurado exitosamente (en estado pausado).`, "success");
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : "Error al restaurar producto.", "error");
+      }
+    });
+  };
+
+  // Permanent purge product helper
+  const handlePermanentDeleteProduct = (productId: string, title: string) => {
+    if (confirm(`⚠️ ¿ELIMINAR DEFINITIVAMENTE "${title}"?\n\nEsta acción NO se puede deshacer y borrará el producto de la base de datos.`)) {
+      startTransition(async () => {
+        try {
+          const result = await permanentDeleteProductAction(productId);
+          if (result && !result.success) {
+            showToast(result.error, "error");
+            return;
+          }
+          router.refresh();
+          showToast(`Producto "${title}" eliminado definitivamente.`, "success");
+        } catch (err: unknown) {
+          showToast(err instanceof Error ? err.message : "Error al eliminar definitivamente.", "error");
         }
       });
     }
@@ -673,18 +736,20 @@ export function ProductControlCenter({
                 onClick={() => {
                   setStatusFilter("all");
                   setPage(1);
+                  setSelectedIds([]);
                 }}
                 className={`rounded-lg px-3 py-1.5 font-bold transition-all ${
                   statusFilter === "all" ? "bg-white text-zinc-900 shadow-xs" : "text-zinc-500 hover:text-zinc-800"
                 }`}
               >
-                Todos ({products.length})
+                Todos ({stats.total})
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setStatusFilter("active");
                   setPage(1);
+                  setSelectedIds([]);
                 }}
                 className={`rounded-lg px-3 py-1.5 font-bold transition-all ${
                   statusFilter === "active" ? "bg-emerald-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-800"
@@ -697,12 +762,28 @@ export function ProductControlCenter({
                 onClick={() => {
                   setStatusFilter("paused");
                   setPage(1);
+                  setSelectedIds([]);
                 }}
                 className={`rounded-lg px-3 py-1.5 font-bold transition-all ${
                   statusFilter === "paused" ? "bg-amber-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-800"
                 }`}
               >
                 Pausados ({stats.paused})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("trash");
+                  setPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all ${
+                  statusFilter === "trash" ? "bg-rose-600 text-white shadow-xs" : "text-zinc-500 hover:text-rose-700"
+                }`}
+                title="Publicaciones en papelera de reciclaje"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Papelera ({stats.deleted})</span>
               </button>
             </div>
 
@@ -845,42 +926,74 @@ export function ProductControlCenter({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => handleBulkAction("activate")}
-                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 transition-colors cursor-pointer"
-              >
-                Activar en tienda
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBulkAction("pause")}
-                className="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5 transition-colors cursor-pointer"
-              >
-                Pausar en tienda
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBulkAction("supplier_available")}
-                className="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5 transition-colors cursor-pointer"
-              >
-                Habilitar mayorista
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBulkAction("supplier_pause")}
-                className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 transition-colors cursor-pointer"
-              >
-                Pausar mayorista
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsBulkPriceModalOpen(true)}
-                className="rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <Percent className="h-3.5 w-3.5 text-emerald-400" />
-                Ajustar precios
-              </button>
+              {statusFilter === "trash" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("restore")}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="size-3.5" />
+                    <span>Restaurar seleccionados</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("permanent_delete")}
+                    className="flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1.5 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Eliminar definitivamente</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("activate")}
+                    className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 transition-colors cursor-pointer"
+                  >
+                    Activar en tienda
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("pause")}
+                    className="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5 transition-colors cursor-pointer"
+                  >
+                    Pausar en tienda
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("supplier_available")}
+                    className="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5 transition-colors cursor-pointer"
+                  >
+                    Habilitar mayorista
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("supplier_pause")}
+                    className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 transition-colors cursor-pointer"
+                  >
+                    Pausar mayorista
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkPriceModalOpen(true)}
+                    className="rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Percent className="h-3.5 w-3.5 text-emerald-400" />
+                    Ajustar precios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkAction("soft_delete")}
+                    className="flex items-center gap-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950 border border-zinc-700 px-3 py-1.5 text-rose-300 transition-colors cursor-pointer"
+                    title="Mover seleccionados a la papelera"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Papelera</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -917,9 +1030,13 @@ export function ProductControlCenter({
                       <div className="h-12 w-12 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-400 mb-3">
                         <Package className="h-6 w-6" />
                       </div>
-                      <p className="font-bold text-zinc-800 text-base">No se encontraron productos</p>
+                      <p className="font-bold text-zinc-800 text-base">
+                        {statusFilter === "trash" ? "La papelera está vacía" : "No se encontraron productos"}
+                      </p>
                       <p className="text-xs text-zinc-400 mt-1">
-                        {search || categoryFilter || brandFilter || statusFilter !== "all" || availabilityFilter !== "all"
+                        {statusFilter === "trash"
+                          ? "Las publicaciones que envíes a la papelera aparecerán acá para que puedas restaurarlas o eliminarlas definitivamente."
+                          : search || categoryFilter || brandFilter || statusFilter !== "all" || availabilityFilter !== "all"
                           ? "Probá ajustando o limpiando los filtros de búsqueda aplicados."
                           : "Comenzá creando tu primer producto con el botón '+ Nuevo Producto'."}
                       </p>
@@ -1234,33 +1351,68 @@ export function ProductControlCenter({
                       {/* Row Actions */}
                       <td data-label="Acciones" className="px-4 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setEditingProduct(product)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer bg-white shadow-2xs"
-                            title="Editar ficha completa"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
+                          {statusFilter === "trash" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreProduct(product.id, product.title)}
+                                className="inline-flex h-8 items-center gap-1 px-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer font-bold text-xs shadow-2xs"
+                                title="Restaurar de la papelera"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                <span>Restaurar</span>
+                              </button>
 
-                          <a
-                            href={`/producto/${product.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer bg-white shadow-2xs"
-                            title="Ver en la tienda pública"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
+                              <button
+                                type="button"
+                                onClick={() => handlePermanentDeleteProduct(product.id, product.title)}
+                                className="inline-flex h-8 items-center gap-1 px-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer font-bold text-xs shadow-2xs"
+                                title="Eliminar definitivamente de la base de datos"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Definitivo</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setEditingProduct(product)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer bg-white shadow-2xs"
+                                title="Editar ficha completa"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteProduct(product.id, product.title)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer bg-white shadow-2xs"
-                            title="Eliminar producto"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                              <button
+                                type="button"
+                                onClick={() => setCloningProduct(product)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer bg-white shadow-2xs"
+                                title="Clonar / duplicar ficha"
+                              >
+                                <CopyPlus className="h-4 w-4" />
+                              </button>
+
+                              <a
+                                href={`/producto/${product.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer bg-white shadow-2xs"
+                                title="Ver en la tienda pública"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSoftDeleteProduct(product.id, product.title)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer bg-white shadow-2xs"
+                                title="Mover a la papelera"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1372,8 +1524,14 @@ export function ProductControlCenter({
           {paginatedProducts.length === 0 ? (
             <div className="p-8 text-center text-zinc-500">
               <Package className="size-10 text-zinc-400 mx-auto mb-2" />
-              <p className="font-bold text-zinc-800">No se encontraron productos</p>
-              <p className="text-xs text-zinc-400 mt-1">Ajustá los filtros o creá un nuevo producto.</p>
+              <p className="font-bold text-zinc-800">
+                {statusFilter === "trash" ? "Papelera vacía" : "No se encontraron productos"}
+              </p>
+              <p className="text-xs text-zinc-400 mt-1">
+                {statusFilter === "trash"
+                  ? "Las publicaciones que elimines aparecerán acá para que puedas recuperarlas."
+                  : "Ajustá los filtros o creá un nuevo producto."}
+              </p>
             </div>
           ) : (
             paginatedProducts.map((product) => {
@@ -1544,48 +1702,83 @@ export function ProductControlCenter({
 
                   {/* Touch Action Bar */}
                   <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
-                    <button
-                      type="button"
-                      onClick={() => setEditingProduct(product)}
-                      className="flex-1 h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition cursor-pointer"
-                    >
-                      <Edit className="size-4" />
-                      <span>Editar</span>
-                    </button>
+                    {statusFilter === "trash" ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreProduct(product.id, product.title)}
+                          className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition cursor-pointer"
+                        >
+                          <RotateCcw className="size-4" />
+                          <span>Restaurar a pausados</span>
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuickPriceProduct(product);
-                        setQuickRetailPrice(product.retailPrice);
-                        setQuickWholesalePrice(product.wholesalePrice);
-                      }}
-                      className="h-11 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
-                      title="Editar precio rápido"
-                    >
-                      <DollarSign className="size-4 text-emerald-700" />
-                      <span className="hidden sm:inline">Precio</span>
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePermanentDeleteProduct(product.id, product.title)}
+                          className="h-11 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs active:scale-98 transition cursor-pointer"
+                          title="Eliminar definitivamente de la base de datos"
+                        >
+                          <Trash2 className="size-4" />
+                          <span>Eliminar definitivo</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct(product)}
+                          className="flex-1 h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition cursor-pointer"
+                        >
+                          <Edit className="size-4" />
+                          <span>Editar</span>
+                        </button>
 
-                    <a
-                      href={`/producto/${product.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-11 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
-                      title="Ver en tienda pública"
-                    >
-                      <ExternalLink className="size-4 text-sky-700" />
-                      <span className="hidden sm:inline">Ver</span>
-                    </a>
+                        <button
+                          type="button"
+                          onClick={() => setCloningProduct(product)}
+                          className="h-11 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                          title="Clonar / duplicar ficha"
+                        >
+                          <CopyPlus className="size-4" />
+                          <span className="hidden sm:inline">Clonar</span>
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteProduct(product.id, product.title)}
-                      className="h-11 px-3.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
-                      title="Eliminar producto"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickPriceProduct(product);
+                            setQuickRetailPrice(product.retailPrice);
+                            setQuickWholesalePrice(product.wholesalePrice);
+                          }}
+                          className="h-11 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                          title="Editar precio rápido"
+                        >
+                          <DollarSign className="size-4 text-emerald-700" />
+                          <span className="hidden sm:inline">Precio</span>
+                        </button>
+
+                        <a
+                          href={`/producto/${product.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-11 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                          title="Ver en tienda pública"
+                        >
+                          <ExternalLink className="size-4 text-sky-700" />
+                          <span className="hidden sm:inline">Ver</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSoftDeleteProduct(product.id, product.title)}
+                          className="h-11 px-3.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                          title="Mover a papelera"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -1809,6 +2002,21 @@ export function ProductControlCenter({
             setEditingProduct(null);
             router.refresh();
             showToast("Producto actualizado exitosamente.", "success");
+          }}
+        />
+      )}
+
+      {/* Product Cloning Modal */}
+      {cloningProduct && (
+        <ProductEditor
+          initialData={cloningProduct}
+          isCloning
+          categories={categories}
+          onClose={() => setCloningProduct(null)}
+          onSaved={() => {
+            setCloningProduct(null);
+            router.refresh();
+            showToast("Copia del producto creada exitosamente.", "success");
           }}
         />
       )}

@@ -68,7 +68,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id)
       : visibleCategories.map(c => c.id);
     if (ids.length) {
-      let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).in("category_id", ids);
+      let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null).in("category_id", ids);
       if (brand) query = query.eq("brand", brand);
       if (family) query = query.eq("model", family);
       if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`);

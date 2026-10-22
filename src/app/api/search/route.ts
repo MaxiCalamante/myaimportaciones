@@ -7,7 +7,7 @@ export async function GET(request: Request) {
  if (q.length < 2) return NextResponse.json({ results: [] });
  try {
   const db = await createServerSupabaseClient();
-  const { data, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories!inner(name,slug)`).eq("is_active", true).eq("is_wholesale_only", false).or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`).order("is_featured", { ascending: false }).limit(12);
+  const { data, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories!inner(name,slug)`).eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null).or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`).order("is_featured", { ascending: false }).limit(12);
   if (error) return NextResponse.json({ results: [] }, { status: 503 });
   return NextResponse.json({ results: (data ?? []).slice(0, 8).map(p => mapProduct(p)) });
  } catch { return NextResponse.json({ results: [] }, { status: 503 }); }
