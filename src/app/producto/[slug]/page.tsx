@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductShowcase } from "@/components/commerce/product-showcase";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Star, Truck } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
 import { ProductCard } from "@/components/commerce/product-card";
 import { breadcrumbData, productMetadata, productStructuredData } from "@/lib/seo";
 import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
+import { getProductReviews } from "@/lib/product-reviews";
+import { ProductReviewsSection } from "@/components/commerce/product-reviews-section";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -42,6 +44,8 @@ export default async function ProductPage({ params }: Props) {
   const relatedProducts = products
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
+
+  const { reviews, summary } = getProductReviews(product);
 
   const productJsonLd = productStructuredData(product);
 
@@ -87,9 +91,22 @@ export default async function ProductPage({ params }: Props) {
           beforeInteractive={
             <>
               <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
-                  <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
+                    <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}
+                  </span>
+                  <a
+                    href="#opiniones"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 border border-amber-200/80 transition hover:bg-amber-100/80 cursor-pointer"
+                  >
+                    <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                    <span className="font-bold tabular-nums">{summary.averageRating.toFixed(1)}</span>
+                    <span className="text-zinc-400">·</span>
+                    <span className="text-amber-800 underline decoration-amber-300 underline-offset-2">
+                      {summary.totalReviews} opiniones
+                    </span>
+                  </a>
+                </div>
                 <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-semibold text-zinc-950 tracking-tight leading-tight">
                   {product.title}
                 </h1>
@@ -124,8 +141,6 @@ export default async function ProductPage({ params }: Props) {
                   </div>
                 )}
               </div>
-
-
             </>
           }
           afterInteractive={
@@ -168,6 +183,13 @@ export default async function ProductPage({ params }: Props) {
               </div>
             </>
           }
+        />
+
+        {/* Customer Verified Reviews Section */}
+        <ProductReviewsSection
+          reviews={reviews}
+          summary={summary}
+          productTitle={product.title}
         />
 
         {/* Related Products */}

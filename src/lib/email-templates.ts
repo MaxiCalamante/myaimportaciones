@@ -35,7 +35,8 @@ export function renderTransactionalEmail(event: string, audience: "customer" | "
   const accountEvent = ["account_welcome", "wholesale_approved", "wholesale_revoked"].includes(event);
   const withdrawalEvent = event.startsWith("withdrawal_");
   const orderAdminPath = s.order_id && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s.order_id) ? `/admin/ventas/${s.order_id}` : `/admin/ventas${s.tracking_code ? `?buscar=${encodeURIComponent(s.tracking_code)}` : ''}`;
-  const actionUrl = admin ? new URL(accountEvent || withdrawalEvent || event === 'email_test' ? '/admin' : orderAdminPath, origin).href : accountEvent ? new URL(event === "wholesale_approved" ? "/mayorista" : "/cuenta", origin).href : tracking.href;
+  const orderPermalink = s.tracking_code ? new URL(`/pedido/${encodeURIComponent(s.tracking_code)}`, origin).href : tracking.href;
+  const actionUrl = admin ? new URL(accountEvent || withdrawalEvent || event === 'email_test' ? '/admin' : orderAdminPath, origin).href : accountEvent ? new URL(event === "wholesale_approved" ? "/mayorista" : "/cuenta", origin).href : orderPermalink;
   let title = emailEventLabels[event];
   const paragraphs: string[] = [];
   switch (event) {

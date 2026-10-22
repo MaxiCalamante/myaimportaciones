@@ -9,6 +9,7 @@ import {
   Truck,
   Check,
   Copy,
+  Printer,
   ArrowRight,
   ExternalLink,
   ShoppingBag,
@@ -75,6 +76,12 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
     setTimeout(() => setCopiedField(null), 2500);
   };
 
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   const currentStep = getStepIndex(order.status);
   const isCancelled = order.status === "cancelled";
 
@@ -92,11 +99,37 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      {/* Header & Status Banner */}
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 pb-6">
+      {/* Print-Only Official Invoice / Packing Header */}
+      <div className="hidden print:block border-b-2 border-zinc-950 pb-5 mb-6">
+        <div className="flex justify-between items-start">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20">
+            <h1 className="text-2xl font-black tracking-tight text-zinc-950 uppercase">
+              MYA IMPORTACIONES
+            </h1>
+            <p className="text-xs text-zinc-600 mt-0.5">
+              Comprobante Oficial de Pedido · Depósito Central Tandil
+            </p>
+            <p className="text-xs text-zinc-600">
+              WhatsApp: +54 9 249 463-8919 · www.myaimportaciones.com
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] text-zinc-500 uppercase font-bold block">
+              Comprobante N°
+            </span>
+            <span className="font-mono text-xl font-black text-zinc-950 block">
+              #{order.tracking_code}
+            </span>
+            <span className="text-xs text-zinc-600 block mt-0.5">{formattedDate}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Header & Status Banner */}
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs space-y-6 print:border-none print:shadow-none print:p-0">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 pb-6 print:border-zinc-200">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 print:hidden">
               <ShoppingBag className="size-3.5" /> Comprobante Oficial MYA
             </span>
             <h1 className="mt-2 text-2xl sm:text-3xl font-black text-zinc-950">
@@ -107,27 +140,37 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => copyToClipboard(order.tracking_code, "tracking")}
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-800 transition cursor-pointer shadow-2xs"
-          >
-            {copiedField === "tracking" ? (
-              <>
-                <Check className="size-4 text-emerald-600" />
-                <span>¡Código Copiado!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="size-4 text-zinc-500" />
-                <span>Copiar Código</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2 print:hidden">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-3.5 py-2.5 text-xs font-bold text-zinc-800 transition cursor-pointer shadow-2xs"
+            >
+              <Printer className="size-4 text-zinc-600" />
+              <span>Imprimir / PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(order.tracking_code, "tracking")}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 px-3.5 py-2.5 text-xs font-bold text-zinc-800 transition cursor-pointer shadow-2xs"
+            >
+              {copiedField === "tracking" ? (
+                <>
+                  <Check className="size-4 text-emerald-600" />
+                  <span>¡Código Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="size-4 text-zinc-500" />
+                  <span>Copiar Código</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Stepper Timeline */}
-        <div>
+        <div className="print:hidden">
           <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">
             Estado del Pedido
           </h2>
@@ -180,12 +223,12 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
 
       {/* Transfer Information Box (if pending payment or bank transfer) */}
       {order.payment_method === "transferencia" && (
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-6 sm:p-7 shadow-xs space-y-4 print:border print:border-emerald-200 print:p-4">
           <div className="flex items-center gap-2 font-bold text-emerald-950 text-base">
             <ShieldCheck className="size-5 text-emerald-700" />
             <span>Datos para la Transferencia Bancaria Directa</span>
           </div>
-          <p className="text-xs sm:text-sm text-emerald-900 leading-relaxed">
+          <p className="text-xs sm:text-sm text-emerald-900 leading-relaxed print:text-xs">
             Para validar tu compra y despachar tu encomienda desde nuestro depósito central de Tandil, realizá la transferencia por el total exacto:
           </p>
 
@@ -212,7 +255,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
               <button
                 type="button"
                 onClick={() => copyToClipboard(siteConfig.bankTransfer.cvu, "cvu")}
-                className="shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-800 transition cursor-pointer"
+                className="shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-800 transition cursor-pointer print:hidden"
               >
                 {copiedField === "cvu" ? "✓ Copiado" : "Copiar CVU"}
               </button>
@@ -228,7 +271,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
               <button
                 type="button"
                 onClick={() => copyToClipboard(siteConfig.bankTransfer.alias, "alias")}
-                className="shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-800 transition cursor-pointer"
+                className="shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-800 transition cursor-pointer print:hidden"
               >
                 {copiedField === "alias" ? "✓ Copiado" : "Copiar Alias"}
               </button>
@@ -250,7 +293,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
             href={getWhatsAppUrl(whatsappTransferMessage)}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white p-4 font-bold text-sm shadow-xs transition cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white p-4 font-bold text-sm shadow-xs transition cursor-pointer print:hidden"
           >
             <MessageCircle className="size-4" />
             <span>Enviar Comprobante por WhatsApp →</span>
@@ -260,7 +303,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
 
       {/* Mercado Pago payment recovery button */}
       {order.payment_method === "mercado_pago" && order.status === "pending" && order.payment_url && (
-        <div className="rounded-3xl border border-sky-200 bg-sky-50/60 p-6 shadow-xs space-y-3">
+        <div className="rounded-3xl border border-sky-200 bg-sky-50/60 p-6 shadow-xs space-y-3 print:hidden">
           <h3 className="font-bold text-sky-950 text-base">Completá tu pago con Mercado Pago</h3>
           <p className="text-xs sm:text-sm text-sky-900 leading-relaxed">
             Tu pedido está reservado. Si aún no completaste el pago, podés acceder directamente a la pasarela segura de Mercado Pago:
@@ -276,7 +319,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
 
       {/* Carrier Tracking Code (Correo Argentino) */}
       {order.carrier_tracking_code && (
-        <div className="rounded-3xl border border-amber-300 bg-amber-50/70 p-6 shadow-xs space-y-3">
+        <div className="rounded-3xl border border-amber-300 bg-amber-50/70 p-6 shadow-xs space-y-3 print:border print:border-amber-300">
           <div className="flex items-center gap-2 font-bold text-amber-950 text-base">
             <Truck className="size-5 text-amber-700" />
             <span>Guía Oficial de Correo Argentino</span>
@@ -292,7 +335,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
               href={`https://www.correoargentino.com.ar/formularios/e-commerce?id=${encodeURIComponent(order.carrier_tracking_code)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-xs font-bold shadow-2xs transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-xs font-bold shadow-2xs transition print:hidden"
             >
               <span>Rastrear en Correo Argentino</span>
               <ExternalLink className="size-3.5" />
@@ -302,9 +345,9 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
       )}
 
       {/* Items Breakdown */}
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs space-y-5">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs space-y-5 print:border print:border-zinc-300 print:shadow-none print:p-4">
         <h2 className="text-lg font-bold text-zinc-950">Artículos del Pedido</h2>
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-zinc-100 print:divide-zinc-200">
           {order.order_items.map((item) => (
             <div key={item.id} className="py-3.5 flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -326,7 +369,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
         </div>
 
         {/* Totals */}
-        <div className="border-t border-zinc-100 pt-4 space-y-2 text-sm">
+        <div className="border-t border-zinc-100 pt-4 space-y-2 text-sm print:border-zinc-200">
           <div className="flex justify-between text-zinc-600 text-xs sm:text-sm">
             <span>Subtotal</span>
             <span className="tabular-nums font-medium">{formatCurrency(order.subtotal_amount)}</span>
@@ -351,9 +394,9 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
       </div>
 
       {/* Shipping & Delivery Details */}
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs space-y-4">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs space-y-4 print:border print:border-zinc-300 print:shadow-none print:p-4">
         <h2 className="text-lg font-bold text-zinc-950">Destino y Entrega</h2>
-        <div className="grid sm:grid-cols-2 gap-4 text-xs sm:text-sm bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
+        <div className="grid sm:grid-cols-2 gap-4 text-xs sm:text-sm bg-zinc-50 p-4 rounded-2xl border border-zinc-100 print:bg-white print:border-none print:p-0">
           <div>
             <span className="text-[11px] text-zinc-500 block uppercase font-semibold">Destinatario</span>
             <strong className="text-zinc-900 block font-semibold">{order.shipping_name}</strong>
@@ -363,7 +406,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
             <span className="text-[11px] text-zinc-500 block uppercase font-semibold">Dirección de Entrega</span>
             <span className="text-zinc-800 font-medium block">{order.shipping_address}</span>
           </div>
-          <div className="sm:col-span-2 border-t border-zinc-200/80 pt-3">
+          <div className="sm:col-span-2 border-t border-zinc-200/80 pt-3 print:border-zinc-200">
             <span className="text-[11px] text-zinc-500 block uppercase font-semibold">Medio de Pago</span>
             <span className="text-zinc-800 font-medium block">
               {formatPaymentMethod(order.payment_method)}
@@ -372,8 +415,22 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
         </div>
       </div>
 
+      {/* Print Footer */}
+      <div className="hidden print:block mt-8 pt-4 border-t border-zinc-200 text-center text-[11px] text-zinc-500">
+        <p>Comprobante de compra emitido por MYA Importaciones · Depósito Central Tandil · Despachos oficiales Correo Argentino.</p>
+        <p className="mt-0.5">¡Gracias por tu compra! Ante cualquier duda comunicate con nosotros indicando tu código #{order.tracking_code}.</p>
+      </div>
+
       {/* Footer Support & Navigation */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row gap-3 pt-2 print:hidden">
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="rounded-2xl border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 p-3.5 text-center font-bold text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Printer className="size-4 text-zinc-600" />
+          <span>Imprimir / Guardar en PDF</span>
+        </button>
         <Link
           href="/"
           className="flex-1 rounded-2xl border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 p-3.5 text-center font-bold text-sm shadow-2xs transition"

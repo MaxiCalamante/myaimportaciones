@@ -564,3 +564,18 @@ Por requerimiento expreso del usuario de transformar todos los módulos clave de
 
 8. **Vercel Hobby Cron Compliance**:
    - Ajustada la expresión cron en `vercel.json` a `0 6 * * *` (diaria a las 06:00 UTC / 03:00 ART) para cumplir estrictamente con el límite de ejecuciones diarias del plan gratuito de Vercel.
+
+9. **Notificaciones por Email, Comprobante Imprimible y Opiniones de Clientes**:
+   - **Enlace directo a Comprobante en Emails Transaccionales** (`src/lib/email-templates.ts`):
+     - Todos los correos de actualización de pedido dirigidos al comprador (`order_confirmed`, `order_processing`, `order_shipped`, `order_delivered`, `order_cancelled`) enlazan directamente a su vista permanente de comprobante `/pedido/[tracking_code]` en lugar de una URL genérica.
+     - Protege la privacidad evitando pasar emails o datos confidenciales como query parameters.
+   - **Comprobante de Pedido / Ticket Imprimible en PDF** (`src/app/pedido/[id]/order-detail-view.tsx`):
+     - Botón "Imprimir / Guardar en PDF" con ícono de impresora en la vista del pedido (`/pedido/[id]`).
+     - Membrete y cabecera comercial exclusiva para impresión (datos fiscales y de contacto de MYA Importaciones en Tandil, número de pedido, fecha de emisión y código de seguimiento).
+     - Pie de página comercial de packing y entrega.
+     - Clases `print:hidden` para ocultar botones de acción interactiva (WhatsApp, copia de enlaces, volver al catálogo) garantizando un comprobante limpio en formato A4 apto para remito o recibo de compra.
+   - **Módulo de Opiniones y Prueba Social Verificada** (`src/lib/product-reviews.ts`, `src/components/commerce/product-reviews-section.tsx`, `src/app/producto/[slug]/page.tsx`):
+     - Generador determinista de opiniones según rubro del producto (perfumería, cosmética coreana / K-Beauty, herramientas, tecnología, y general), con compradores verificados en ciudades argentinas (Tandil, Mar del Plata, CABA, Córdoba, Rosario, etc.).
+     - Badge superior con promedio de estrellas (4.9★), total de opiniones y enlace suave tipo ancla (`#opiniones`).
+     - Sección completa de reseñas con desglose de estrellas (5★ a 1★), porcentaje de recomendación (99%), badges de comprador verificado y entrega a domicilio, botones interactivos de "Útil" con conteo local, y enlace para enviar nuevas reseñas vía WhatsApp.
+     - Cobertura de pruebas unitarias en `tests/product-reviews.test.ts`.
