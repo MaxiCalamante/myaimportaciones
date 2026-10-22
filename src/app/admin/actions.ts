@@ -245,8 +245,16 @@ async function updateProduct(formData: FormData) {
   const { fields, hasVariants, variants } = parseProductForm(formData, false);
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: matches, error: readError } = await readAdminProducts(db, { ids: [id], size: 1 });
-  const existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null } | undefined;
-  if (readError || !existing) throw new AdminFormError("El producto ya no está disponible para editar. Recargá el panel.");
+  let existing = matches?.[0] as { image_url: string | null; image_urls: string[] | null; stock: number; fulfillment_mode: string; supplier_available: boolean; source_url: string | null } | undefined;
+  if (!existing) {
+    const { data: fallbackProduct } = await db
+      .from("products")
+      .select("id, image_url, image_urls, stock, fulfillment_mode, supplier_available, source_url")
+      .eq("id", id)
+      .maybeSingle();
+    if (fallbackProduct) existing = fallbackProduct as unknown as NonNullable<typeof existing>;
+  }
+  if (!existing) throw new AdminFormError("El producto ya no está disponible para editar. Recargá el panel.");
   if (formData.has("stock") && !hasVariants && Number(formData.get("stock")) !== existing.stock) throw new AdminFormError("Verificá el conteo físico desde Operaciones para proteger las reservas.");
   const gallery = [...new Set([existing.image_url, ...(existing.image_urls ?? [])].filter(Boolean))] as string[];
   const { urls, paths } = await prepareProductImages(db, formData, gallery);
@@ -262,7 +270,10 @@ async function updateProduct(formData: FormData) {
       image_url: urls[0] || null, image_urls: urls,
       ...(existing.source_url !== fields.source_url ? { supplier_last_checked_at: null, supplier_stock_status: "unknown" } : {}),
     }).eq("id", id).select("id").single();
-    if (error || !data) throw new AdminFormError("No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
+    if (error || !data) {
+      console.error("[updateProduct] Update error:", error);
+      throw new AdminFormError(error ? `No se pudo guardar la ficha: ${error.message}` : "No se pudo guardar la ficha. Recargá el panel y revisá tu conexión.");
+    }
 
     if (hasVariants) {
       const { data: existingVariants } = await db.from("product_variants").select("id").eq("product_id", id);
@@ -550,20 +561,39 @@ export async function updateProductPricesAction(
   return { success: true };
 }
 export async function deleteProductAction(productId: string) {
-  const supabase = await getAdminClient();
-  const { error } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", productId);
-  if (error) {
-    throw new Error(error.message);
-  }
-  revalidatePath("/");
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/mayorista");
-  revalidatePath("/", "layout");
-  revalidatePath("/producto/[slug]", "page");
+  return runAdminFormAction(async () => {
+    const id = validId(productId);
+    const supabase = await getAdminClient();
+
+    // Verify product exists before deleting
+    const { data: product, error: fetchError } = await supabase
+      .from("products")
+      .select("id, title")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError || !product) {
+      throw new AdminFormError("El producto ya no existe o fue eliminado previamente.");
+    }
+
+    // Delete product (cascades automatically to supplier offers, queue, market refs, decisions, variants)
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("[deleteProductAction] Error al eliminar producto:", error);
+      throw new AdminFormError(`No se pudo eliminar el producto: ${error.message}`);
+    }
+
+    refreshCatalog();
+    revalidatePath("/admin");
+    revalidatePath("/mayorista");
+    revalidatePath("/catalogo");
+
+    return { success: true, id, title: product.title };
+  });
 }
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
   const supabase = await getAdminClient();

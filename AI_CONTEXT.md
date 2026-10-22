@@ -579,3 +579,22 @@ Por requerimiento expreso del usuario de transformar todos los módulos clave de
      - Badge superior con promedio de estrellas (4.9★), total de opiniones y enlace suave tipo ancla (`#opiniones`).
      - Sección completa de reseñas con desglose de estrellas (5★ a 1★), porcentaje de recomendación (99%), badges de comprador verificado y entrega a domicilio, botones interactivos de "Útil" con conteo local, y enlace para enviar nuevas reseñas vía WhatsApp.
      - Cobertura de pruebas unitarias en `tests/product-reviews.test.ts`.
+
+10. **Permisos y UI/UX de Edición, Carga y Eliminación de Productos en Admin Panel**:
+    - **Solución a Error de Eliminación (Foreign Keys en Cascada)**:
+      - Migración `20261022130000_cascade_product_deletes_and_admin_permissions.sql` aplicada en Supabase Postgres.
+      - Las claves foráneas en las tablas de automatización de proveedores (`supplier_offers`, `supplier_sync_queue`, `supplier_market_references`, `supplier_price_decisions`, `supplier_link_decisions`) ahora cuentan con `ON DELETE CASCADE` para `product_id` y `variant_id`. Previene el error `23503 foreign_key_violation` al intentar borrar productos que tenían cotizaciones o registros en cola.
+      - Permisos `grant delete, update, insert` concedidos a usuarios `authenticated` con rol `admin`.
+    - **Acción del Servidor `deleteProductAction` Robusta** (`src/app/admin/actions.ts`):
+      - Envuelta con `runAdminFormAction` retornando `{ success: true }` o mensaje legible de error en lugar de excepciones Next.js opacas.
+      - Revalida cachés (`/admin`, `/mayorista`, `/catalogo`) y el storefront.
+    - **Acción del Servidor `updateProductAction` con Fallback Resiliente** (`src/app/admin/actions.ts`):
+      - Consulta directa de rescate si el RPC `admin_catalog_page` no encuentra la fila.
+      - Mensajes de error específicos propagados al formulario.
+    - **Unificación de Modal de Edición**:
+      - Eliminado el modal duplicado y desactualizado en `AdminDashboard` (`admin-dashboard.tsx`), unificando toda edición bajo el componente completo `ProductEditor` (`product-editor.tsx`).
+    - **UI/UX Responsive para Móvil y Desktop** (`src/components/admin/product-control-center.tsx`, `src/components/admin/product-editor.tsx`):
+      - Vista de tarjetas móviles (`block lg:hidden`) para celulares: botones táctiles grandes (≥44px), imagen con preview, toggle instantáneo de Activo/Pausado, toggle de disponibilidad de proveedor, desglose de variantes en tarjeta y barra de acciones táctiles (Editar, Precio rápido, Ver en tienda, Eliminar).
+      - Tabla de escritorio (`hidden lg:block`) optimizada con botones de acción ampliados y legibles.
+      - Botón "+ Nuevo Producto" visible en la barra de herramientas principal tanto en mobile como en desktop.
+      - `ProductEditor` adaptado a pantallas táctiles con botones Cancelar y Guardar a pantalla completa en móvil, botones de Cámara y Galería lado a lado, y cabecera/pie flotantes fijos (`z-20`).

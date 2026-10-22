@@ -20,8 +20,13 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
   const [error, setError] = useState("");
   const [mode, setMode] = useState(product?.fulfillmentMode ?? "supplier");
   const category = categories.find(c => c.id === product?.categoryId);
-  const [parentId, setParentId] = useState(category?.parentId ?? category?.id ?? "");
-  const [childId, setChildId] = useState(category?.parentId ? category.id : "");
+  const [parentId, setParentId] = useState(() => {
+    if (category?.parentId) return category.parentId;
+    if (category?.id) return category.id;
+    const firstParent = categories.find(c => !c.parentId);
+    return firstParent?.id ?? "";
+  });
+  const [childId, setChildId] = useState(() => category?.parentId ? category.id : "");
   const [kept, setKept] = useState<string[]>([...new Set([product?.imageUrl, ...(product?.imageUrls ?? [])].filter((url): url is string => Boolean(url)))]);
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const photoRef = useRef(photos);
@@ -87,6 +92,10 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending || processing) return;
+    if (!parentId) {
+      setError("Por favor seleccioná una categoría o rubro principal.");
+      return;
+    }
     const form = new FormData(event.currentTarget);
     form.set("category_id", parentId);
     form.set("subcategory_id", childId);
@@ -127,7 +136,7 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
       className="fixed inset-0 m-auto max-h-[92dvh] w-[calc(100%-1rem)] max-w-4xl overflow-y-auto rounded-2xl border-0 bg-white p-0 text-zinc-950 shadow-2xl backdrop:bg-black/60 sm:w-[calc(100%-3rem)]"
     >
       <form onSubmit={submit}>
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-white px-4 py-3 sm:px-6">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b bg-white px-4 py-3 sm:px-6">
           <div>
             <h2 id="product-editor-title" className="text-lg font-bold">
               {product ? "Editar producto" : "Nuevo producto"}
@@ -420,10 +429,10 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
             <p className="text-sm text-zinc-600">
               Hasta 4 fotos generales. La primera será la portada. Las variantes pueden asociarse a cualquiera de estas fotos sin duplicar almacenamiento.
             </p>
-            <div className="flex flex-wrap gap-3">
-              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-semibold text-sky-900 hover:bg-sky-100 transition">
-                <ImagePlus className="size-5" />
-                Galería / archivos
+            <div className="flex flex-col sm:flex-row gap-3">
+              <label className="flex-1 min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-bold text-sky-900 hover:bg-sky-100 active:scale-98 transition flex shadow-2xs">
+                <ImagePlus className="size-5 text-sky-700" />
+                <span>Galería / archivos</span>
                 <input
                   aria-label="Seleccionar fotos de galería"
                   type="file"
@@ -437,9 +446,9 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
                   }}
                 />
               </label>
-              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 text-sm font-semibold hover:bg-zinc-50 transition">
-                <Camera className="size-5" />
-                Tomar foto
+              <label className="flex-1 min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-300 px-4 text-sm font-bold text-zinc-800 hover:bg-zinc-50 active:scale-98 transition flex shadow-2xs">
+                <Camera className="size-5 text-zinc-600" />
+                <span>Tomar foto</span>
                 <input
                   aria-label="Tomar foto con la cámara"
                   type="file"
@@ -560,27 +569,37 @@ export function ProductEditor({ product, categories, onClose, onSaved }: { produ
           </fieldset>
         </div>
 
-        <footer className="sticky bottom-0 border-t bg-white px-4 py-3 sm:px-6">
+        <footer className="sticky bottom-0 z-20 border-t border-zinc-200 bg-white px-4 py-3 sm:px-6 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
           {error && (
-            <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
-              {error}
-            </p>
+            <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800 border border-red-200 flex items-start gap-2">
+              <span className="font-bold shrink-0">Aviso:</span>
+              <span className="flex-1">{error}</span>
+            </div>
           )}
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
             <button
               type="button"
               disabled={pending || processing}
               onClick={onClose}
-              className="min-h-11 rounded-xl border border-zinc-300 px-4 text-sm font-semibold disabled:opacity-40 hover:bg-zinc-100 transition"
+              className="min-h-12 w-full sm:w-auto rounded-xl border border-zinc-300 px-5 text-sm font-semibold disabled:opacity-40 hover:bg-zinc-100 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={pending || processing || !categories.length}
-              className="min-h-11 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white disabled:opacity-40 hover:bg-sky-800 transition shadow-sm"
+              className="min-h-12 w-full sm:w-auto rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-98 px-6 text-sm font-bold text-white disabled:opacity-40 transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
             >
-              {pending ? "Guardando…" : product ? "Guardar cambios" : "Guardar producto"}
+              {pending ? (
+                <>
+                  <span className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <span>Guardando…</span>
+                </>
+              ) : product ? (
+                "Guardar cambios"
+              ) : (
+                "Guardar producto"
+              )}
             </button>
           </div>
         </footer>

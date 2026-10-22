@@ -46,6 +46,7 @@ import { PricingEngine } from "@/components/admin/pricing-engine";
 import { SupplierResaleSystem } from "@/components/admin/supplier-resale-system";
 import { MarketingHub } from "@/components/admin/marketing-hub";
 import { ProductControlCenter } from "@/components/admin/product-control-center";
+import { ProductEditor } from "@/components/admin/product-editor";
 import { CreateProductModal } from "@/components/admin/create-product-modal";
 import { BulkImportModal } from "@/components/admin/bulk-import-modal";
 import { CategoryModal } from "@/components/admin/category-modal";
@@ -2359,246 +2360,18 @@ Logística / Despacho: +${calcShippingPercent}%
       />
 
 
-      {/* MODAL: EDITAR PRODUCTO (Con Sticky Header/Footer y Scrollbar Fina - Resuelve overflow y invisibilidad de botón) */}
+      {/* MODAL: EDITAR PRODUCTO UNIFICADO */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-2 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl max-h-[92dvh] flex flex-col rounded-2xl bg-white border border-zinc-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-            
-            {/* Sticky Header */}
-            <div className="flex items-center justify-between border-b border-zinc-200 p-4 sm:p-5 bg-white flex-shrink-0 z-10">
-              <h3 className="text-base sm:text-lg font-bold text-zinc-950 flex items-center gap-2 truncate">
-                <Edit className="h-5 w-5 text-emerald-600 shrink-0" />
-                <span className="truncate">Editar Producto</span>
-              </h3>
-              <button
-                onClick={() => setEditingProduct(null)}
-                className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-150 hover:text-zinc-900 transition-colors cursor-pointer shrink-0"
-                type="button"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Form containing scrollable body and sticky footer */}
-            <form onSubmit={handleEditProductSubmit} className="flex-1 flex flex-col overflow-hidden" encType="multipart/form-data">
-              
-              {/* Scrollable Content Body */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin">
-                <input type="hidden" name="id" value={editingProduct.id} />
-                <input type="hidden" name="existing_image_url" value={editingProduct.imageUrl} />
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                    Título del Producto
-                    <input
-                      className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white font-bold text-zinc-900"
-                      name="title"
-                      required
-                      defaultValue={editingProduct.title}
-                    />
-                  </label>
-                  
-                  <div className="grid gap-3 grid-cols-2">
-                    <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                      Categoría
-                      <select
-                        className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white cursor-pointer"
-                        name="category_id"
-                        required
-                        value={editSelectedParentId}
-                        onChange={(e) => {
-                          setEditSelectedParentId(e.target.value);
-                          setEditSelectedSubcategoryId("");
-                        }}
-                      >
-                        <option value="">Seleccionar...</option>
-                        {mainCategories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                      Subcategoría (Opcional)
-                      <select
-                        className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white cursor-pointer"
-                        name="subcategory_id"
-                        disabled={!editSelectedParentId}
-                        value={editSelectedSubcategoryId}
-                        onChange={(e) => setEditSelectedSubcategoryId(e.target.value)}
-                      >
-                        <option value="">Ninguna</option>
-                        {editSubcategoriesForSelectedParent.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                </div>
-
-                <label className="grid gap-1.5 text-sm font-semibold text-zinc-700">
-                  Descripción
-                  <textarea
-                    className="min-h-20 rounded-xl border border-zinc-300 p-3 outline-none focus:border-emerald-600 bg-white"
-                    name="description"
-                    defaultValue={editingProduct.description}
-                  />
-                </label>
-
-                {/* pricing & image in clean grid layout */}
-                <div className="grid gap-4 sm:grid-cols-2 items-center">
-                  <div className="flex items-center gap-3">
-                    {editingProduct.imageUrl ? (
-                      <img 
-                        src={editingProduct.imageUrl} 
-                        alt="Actual" 
-                        className="h-12 w-12 rounded-xl object-cover border border-zinc-200 shadow-sm flex-none" 
-                      />
-                    ) : (
-                      <div className="h-12 w-12 rounded-xl bg-zinc-100 border border-dashed border-zinc-300 flex items-center justify-center text-zinc-400 text-xs font-semibold flex-none">
-                        Sin foto
-                      </div>
-                    )}
-                    <label className="grid gap-1 text-xs font-semibold text-zinc-700 flex-1">
-                      Cambiar Foto (Subida directa)
-                      <input
-                        accept="image/*"
-                        className="rounded-xl border border-zinc-300 p-1.5 text-xs bg-white cursor-pointer w-full h-10 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-100 file:text-zinc-700"
-                        name="image"
-                        type="file"
-                      />
-                    </label>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    <label className="grid gap-1 text-[11px] font-bold text-zinc-650">
-                      Minorista ($)
-                      <input
-                        className="h-11 rounded-xl border border-zinc-305 px-2 outline-none focus:border-emerald-600 bg-white text-center font-bold text-sm"
-                        min="0"
-                        name="retail_price"
-                        required
-                        type="number"
-                        defaultValue={editingProduct.retailPrice}
-                      />
-                    </label>
-                    <label className="grid gap-1 text-[11px] font-bold text-zinc-650">
-                      Mayorista ($)
-                      <input
-                        className="h-11 rounded-xl border border-zinc-300 px-2 outline-none focus:border-emerald-600 bg-white text-center font-bold text-sm"
-                        min="0"
-                        name="wholesale_price"
-                        required
-                        type="number"
-                        defaultValue={editingProduct.wholesalePrice}
-                      />
-                    </label>
-                    <label className="grid gap-1 text-[11px] font-bold text-zinc-650">
-                      Mín. May.
-                      <input
-                        className="h-11 rounded-xl border border-zinc-300 px-2 outline-none focus:border-emerald-600 bg-white text-center font-bold text-sm"
-                        min="1"
-                        name="wholesale_min_qty"
-                        type="number"
-                        defaultValue={editingProduct.wholesaleMinQuantity}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <fieldset className="grid gap-2 mt-1">
-                  <legend className="text-sm font-semibold text-zinc-700">
-                    Métodos de pago aceptados
-                  </legend>
-                  <div className="flex flex-wrap gap-2">
-                    {paymentMethods.map((method) => (
-                      <label
-                        className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 cursor-pointer hover:bg-zinc-50"
-                        key={method}
-                      >
-                        <input
-                          defaultChecked={editingProduct.paymentMethods?.includes(method)}
-                          name="payment_methods"
-                          type="checkbox"
-                          value={method}
-                          className="cursor-pointer h-4 w-4 text-emerald-650 border-zinc-300 rounded"
-                        />
-                        {formatPaymentMethod(method)}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <p className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-950">El stock físico y la modalidad de entrega se verifican en Operaciones y Stock y costos.</p>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <label className="grid gap-1.5 text-sm font-semibold text-zinc-700 sm:col-span-2">
-                    Etiquetas / Tags (Separados por coma)
-                    <input
-                      className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-600 bg-white"
-                      name="tags"
-                      placeholder="oferta, nuevo, pack"
-                      defaultValue={editingProduct.tags
-                        ?.filter(
-                          (t) => !["en_stock", "en stock", "stock inmediato", "stock_inmediato"].includes(t.toLowerCase())
-                        )
-                        .join(", ")}
-                    />
-                  </label>
-                  <div className="flex flex-wrap items-end gap-4 pb-2.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700 cursor-pointer">
-                      <input 
-                        name="is_featured" 
-                        type="checkbox" 
-                        defaultChecked={editingProduct.featured}
-                        className="h-4 w-4 rounded border-zinc-300 text-emerald-605 focus:ring-emerald-600 cursor-pointer" 
-                      />
-                      Destacado
-                    </label>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700 cursor-pointer">
-                      <input 
-                        name="is_wholesale_only" 
-                        type="checkbox" 
-                        defaultChecked={editingProduct.wholesaleOnly}
-                        className="h-4 w-4 rounded border-zinc-300 text-emerald-655 focus:ring-emerald-600 cursor-pointer" 
-                      />
-                      Solo Mayorista
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sticky Footer - Always visible, corrected colors */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2.5 p-4 sm:p-5 bg-zinc-50 border-t border-zinc-200 shrink-0 z-10">
-                <button
-                  onClick={() => setEditingProduct(null)}
-                  className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 rounded-xl cursor-pointer transition-colors text-center"
-                  type="button"
-                  disabled={isPending}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2 shadow-xs text-center"
-                  type="submit"
-                  disabled={isPending}
-                >
-                  {isPending && (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  )}
-                  Guardar Cambios
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
+        <ProductEditor
+          product={editingProduct}
+          categories={data.categories}
+          onClose={() => setEditingProduct(null)}
+          onSaved={() => {
+            setEditingProduct(null);
+            router.refresh();
+          }}
+        />
       )}
-
-
 
       {/* MODAL: REGISTRAR NUEVO PROVEEDOR */}
       {isNewSupplierModalOpen && (

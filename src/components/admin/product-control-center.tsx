@@ -415,9 +415,13 @@ export function ProductControlCenter({
     if (confirm(`¿Estás seguro de eliminar permanentemente "${title}"?`)) {
       startTransition(async () => {
         try {
-          await deleteProductAction(productId);
+          const result = await deleteProductAction(productId);
+          if (result && !result.success) {
+            showToast(result.error, "error");
+            return;
+          }
           router.refresh();
-          showToast(`Producto "${title}" eliminado.`, "info");
+          showToast(`Producto "${title}" eliminado exitosamente.`, "success");
         } catch (err: unknown) {
           showToast(err instanceof Error ? err.message : "Error al eliminar producto.", "error");
         }
@@ -622,9 +626,9 @@ export function ProductControlCenter({
 
       {/* Filter and Control Toolbar */}
       <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Live Search */}
-          <div className="relative w-full max-w-lg">
+          <div className="relative flex-1 max-w-lg">
             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
             <input
               type="text"
@@ -647,6 +651,19 @@ export function ProductControlCenter({
             )}
           </div>
 
+          {onOpenCreateProduct && (
+            <button
+              type="button"
+              onClick={onOpenCreateProduct}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 shadow-xs active:scale-98 transition-all cursor-pointer shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Nuevo Producto</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
           {/* Quick Filters */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             {/* Status in Shop Filter */}
@@ -871,7 +888,8 @@ export function ProductControlCenter({
 
       {/* Main Products Table */}
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
-        <div className="overflow-x-auto">
+        {/* Desktop Multi-column Table (>= lg) */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="admin-card-table w-full min-w-[1000px] text-left text-sm">
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 text-xs font-semibold uppercase tracking-wider">
               <tr>
@@ -1348,6 +1366,231 @@ export function ProductControlCenter({
               )}
             </tbody>
           </table>
+        </div>
+        {/* Mobile Product Cards View (< lg) */}
+        <div className="block lg:hidden divide-y divide-zinc-200">
+          {paginatedProducts.length === 0 ? (
+            <div className="p-8 text-center text-zinc-500">
+              <Package className="size-10 text-zinc-400 mx-auto mb-2" />
+              <p className="font-bold text-zinc-800">No se encontraron productos</p>
+              <p className="text-xs text-zinc-400 mt-1">Ajustá los filtros o creá un nuevo producto.</p>
+            </div>
+          ) : (
+            paginatedProducts.map((product) => {
+              const isSelected = selectedIds.includes(product.id);
+              const isActive = product.active !== false;
+              const prodCategory = categories.find((c) => c.id === product.categoryId);
+              let categoryDisplay = product.categoryName;
+              if (prodCategory && prodCategory.parentId) {
+                const parent = categories.find((c) => c.id === prodCategory.parentId);
+                if (parent) categoryDisplay = `${parent.name} > ${prodCategory.name}`;
+              }
+              const isExpanded = expandedProductId === product.id;
+
+              return (
+                <div
+                  key={`mobile-${product.id}`}
+                  className={`p-4 space-y-3.5 transition-colors ${
+                    isSelected ? "bg-emerald-50/40" : "bg-white"
+                  } ${!isActive ? "opacity-80 bg-zinc-50/60" : ""}`}
+                >
+                  {/* Top info: Checkbox, Image, Title, Category */}
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectProduct(product.id)}
+                      className="mt-1 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.title}
+                        className="size-16 rounded-xl object-contain border border-zinc-200 bg-white p-1 shrink-0 shadow-2xs"
+                      />
+                    ) : (
+                      <div className="size-16 rounded-xl border border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                        <Package className="size-6" />
+                      </div>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/60 truncate max-w-[180px]">
+                          {categoryDisplay}
+                        </span>
+                        {product.brand && (
+                          <span className="text-[10px] font-bold text-zinc-700 bg-zinc-100 px-1.5 py-0.5 rounded">
+                            {product.brand}
+                          </span>
+                        )}
+                        {product.featured && (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
+                            ★ Destacado
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="mt-1 text-sm font-bold text-zinc-950 leading-snug line-clamp-2">
+                        {product.title}
+                      </h4>
+
+                      {product.sku && (
+                        <div className="mt-1 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleCopySku(product.sku!)}
+                            className="inline-flex items-center gap-1 rounded bg-zinc-100 hover:bg-zinc-200 px-1.5 py-0.5 text-[10px] font-mono font-bold text-zinc-700 transition cursor-pointer"
+                          >
+                            {copiedSku === product.sku ? <Check className="size-2.5 text-emerald-600" /> : <Copy className="size-2.5 text-zinc-400" />}
+                            SKU: {product.sku}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Middle row: Price and Status Badges */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-zinc-100">
+                    <div>
+                      {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
+                        <div className="text-base font-black text-zinc-950">
+                          {formatCurrency(product.minPrice)} – {formatCurrency(product.maxPrice)}
+                          <span className="ml-1 text-[10px] font-bold text-purple-700 block">Rango variantes</span>
+                        </div>
+                      ) : (
+                        <div className="text-base font-black text-zinc-950">
+                          {formatCurrency(product.retailPrice)}
+                        </div>
+                      )}
+                      <div className="text-[11px] text-zinc-500">
+                        Mayorista: <strong className="text-zinc-800">{formatCurrency(product.wholesalePrice)}</strong> (mín {product.wholesaleMinQuantity})
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Active Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(product)}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all shadow-2xs ${
+                          isActive
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                            : "bg-zinc-100 text-zinc-600 border border-zinc-200"
+                        }`}
+                      >
+                        <span className={`size-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+                        {isActive ? "Activo" : "Pausado"}
+                      </button>
+
+                      {/* Stock / Fulfillment Badge */}
+                      {product.fulfillmentMode === "own_stock" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
+                          Stock Tandil ({product.stock})
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSupplierAvailability(product)}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border transition ${
+                            product.supplierAvailable
+                              ? "bg-sky-50 text-sky-800 border-sky-200"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
+                          }`}
+                        >
+                          <Truck className="size-3" />
+                          {product.supplierAvailable ? "Prov. Disponible" : "Prov. Pausado"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Variants toggle if applicable */}
+                  {product.hasVariants && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
+                        className="w-full py-1.5 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold flex items-center justify-between transition cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Layers className="size-3.5 text-purple-700" />
+                          {product.variants?.length ? `${product.variants.length} variantes configuradas` : "Ver variantes"}
+                        </span>
+                        <span>{isExpanded ? "▲ Ocultar" : "▼ Desplegar"}</span>
+                      </button>
+
+                      {isExpanded && product.variants && (
+                        <div className="mt-2 space-y-2 pl-2 border-l-2 border-purple-300">
+                          {product.variants.map((v) => (
+                            <div key={v.id} className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs flex justify-between items-center">
+                              <div>
+                                <span className="font-bold text-zinc-900">{v.title}</span>
+                                {v.sku && <span className="block font-mono text-[10px] text-zinc-500">SKU: {v.sku}</span>}
+                              </div>
+                              <div className="text-right">
+                                <span className="font-bold text-zinc-900">{formatCurrency(v.retailPrice)}</span>
+                                <span className={`block text-[10px] font-semibold ${v.isActive ? "text-emerald-700" : "text-zinc-400"}`}>
+                                  {v.isActive ? "Activa" : "Pausada"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Touch Action Bar */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                    <button
+                      type="button"
+                      onClick={() => setEditingProduct(product)}
+                      className="flex-1 h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition cursor-pointer"
+                    >
+                      <Edit className="size-4" />
+                      <span>Editar</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickPriceProduct(product);
+                        setQuickRetailPrice(product.retailPrice);
+                        setQuickWholesalePrice(product.wholesalePrice);
+                      }}
+                      className="h-11 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                      title="Editar precio rápido"
+                    >
+                      <DollarSign className="size-4 text-emerald-700" />
+                      <span className="hidden sm:inline">Precio</span>
+                    </button>
+
+                    <a
+                      href={`/producto/${product.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-11 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                      title="Ver en tienda pública"
+                    >
+                      <ExternalLink className="size-4 text-sky-700" />
+                      <span className="hidden sm:inline">Ver</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProduct(product.id, product.title)}
+                      className="h-11 px-3.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition cursor-pointer"
+                      title="Eliminar producto"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Pagination & Counter Footer */}
