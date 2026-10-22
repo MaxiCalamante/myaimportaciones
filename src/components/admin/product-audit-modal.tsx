@@ -14,6 +14,8 @@ import {
   RotateCcw,
   Download,
   Check,
+  Calendar,
+  Filter,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -50,6 +52,10 @@ export function ProductAuditModal({
   const [isPending, startTransition] = useTransition();
   const [downloadingCsv, setDownloadingCsv] = useState(false);
 
+  // Filters state
+  const [dateFilter, setDateFilter] = useState<"all" | "24h" | "7d" | "30d">("all");
+  const [actionFilter, setActionFilter] = useState<"all" | "price" | "stock" | "rollback" | "bulk">("all");
+
   // Live updated prices if rolled back
   const [currentRetail, setCurrentRetail] = useState<number>(product?.retailPrice ?? 0);
   const [currentWholesale, setCurrentWholesale] = useState<number>(product?.wholesalePrice ?? 0);
@@ -80,6 +86,8 @@ export function ProductAuditModal({
       setLogs([]);
       setError(null);
       setSuccessMsg(null);
+      setDateFilter("all");
+      setActionFilter("all");
       return;
     }
     loadLogs(product.id);
@@ -109,6 +117,39 @@ export function ProductAuditModal({
       }
     });
   };
+
+  // Filtered logs computation
+  const filteredLogs = logs.filter((log) => {
+    // 1. Date filter
+    if (dateFilter !== "all") {
+      const logTime = new Date(log.createdAt).getTime();
+      const now = Date.now();
+      const hoursDiff = (now - logTime) / 3600000;
+      if (dateFilter === "24h" && hoursDiff > 24) return false;
+      if (dateFilter === "7d" && hoursDiff > 24 * 7) return false;
+      if (dateFilter === "30d" && hoursDiff > 24 * 30) return false;
+    }
+    // 2. Action filter
+    if (
+      actionFilter === "price" &&
+      !["quick_price_update", "price_update", "price_and_stock_update"].includes(log.action)
+    ) {
+      return false;
+    }
+    if (
+      actionFilter === "stock" &&
+      !["stock_update", "price_and_stock_update"].includes(log.action)
+    ) {
+      return false;
+    }
+    if (actionFilter === "rollback" && log.action !== "price_rollback") {
+      return false;
+    }
+    if (actionFilter === "bulk" && log.action !== "bulk_price_adjustment") {
+      return false;
+    }
+    return true;
+  });
 
   const handleDownloadCsv = async () => {
     if (!product || downloadingCsv) return;
@@ -196,6 +237,61 @@ export function ProductAuditModal({
           </span>
         </div>
 
+        {/* Filters Toolbar */}
+        {logs.length > 0 && (
+          <div className="px-5 py-2.5 bg-zinc-50 border-b border-zinc-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 text-zinc-500 font-semibold">
+                <Calendar className="size-3.5 text-zinc-400" />
+                <span>Período:</span>
+              </div>
+              <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-lg p-0.5">
+                {(
+                  [
+                    { id: "all", label: "Todo" },
+                    { id: "24h", label: "24h" },
+                    { id: "7d", label: "7d" },
+                    { id: "30d", label: "30d" },
+                  ] as const
+                ).map((df) => (
+                  <button
+                    key={df.id}
+                    type="button"
+                    onClick={() => setDateFilter(df.id)}
+                    className={`px-2 py-0.5 rounded-md font-semibold text-[11px] transition cursor-pointer ${
+                      dateFilter === df.id
+                        ? "bg-purple-600 text-white shadow-2xs"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                  >
+                    {df.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1 text-zinc-500 font-semibold ml-1">
+                <Filter className="size-3.5 text-zinc-400" />
+                <span>Acción:</span>
+              </div>
+              <select
+                value={actionFilter}
+                onChange={(e) => setActionFilter(e.target.value as any)}
+                className="bg-white border border-zinc-200 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-700 outline-none cursor-pointer"
+              >
+                <option value="all">Todas las acciones</option>
+                <option value="price">💲 Precios</option>
+                <option value="stock">📦 Stock</option>
+                <option value="rollback">🔄 Rollbacks</option>
+                <option value="bulk">📊 Ajustes Masivos</option>
+              </select>
+            </div>
+
+            <span className="text-[11px] font-semibold text-zinc-500">
+              {filteredLogs.length} de {logs.length} eventos
+            </span>
+          </div>
+        )}
+
         {/* Success or Error alert message */}
         {successMsg && (
           <div className="mx-5 mt-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
@@ -226,9 +322,26 @@ export function ProductAuditModal({
                 Los cambios de precios minoristas, mayoristas o ajustes masivos que realicen los administradores quedarán registrados automáticamente aquí.
               </p>
             </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <div className="size-10 rounded-2xl bg-zinc-100 text-zinc-400 flex items-center justify-center mx-auto">
+                <Filter className="size-5" />
+              </div>
+              <h4 className="font-bold text-sm text-zinc-700">Sin eventos para los filtros seleccionados</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFilter("all");
+                  setActionFilter("all");
+                }}
+                className="inline-flex items-center gap-1 text-xs font-bold text-purple-700 underline cursor-pointer"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           ) : (
             <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-zinc-200">
-              {logs.map((entry) => {
+              {filteredLogs.map((entry) => {
                 const oldRetail = Number(entry.oldData.retail_price ?? 0);
                 const newRetail = Number(entry.newData.retail_price ?? 0);
                 const oldWholesale = Number(entry.oldData.wholesale_price ?? 0);

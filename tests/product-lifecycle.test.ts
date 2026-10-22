@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mapProduct, PUBLIC_PRODUCT_COLUMNS, type DbProduct } from "../src/lib/catalog-data";
 import { prepareProductImages, extractProductImagePath, cleanupOrphanProductImages } from "../src/lib/admin-media";
+import { checkAndAlertSuddenPriceChange } from "../src/lib/price-alert";
 
 test("product-lifecycle: PUBLIC_PRODUCT_COLUMNS includes deleted_at and deleted_by for soft delete and audit", () => {
   assert.ok(
@@ -235,4 +236,151 @@ test("product-lifecycle: rollbackPrice calculation produces accurate percentage 
 
   const rollbackDeltaPct = Math.round(((oldPrice - currentPrice) / currentPrice) * 100);
   assert.equal(rollbackDeltaPct, -17, "Rollback indicates -17% discount back to original");
+});
+
+test("product-lifecycle: checkAndAlertSuddenPriceChange evaluates 30% threshold accurately", async () => {
+  // Test case 1: +30% price change should trigger alert
+  const res1 = await checkAndAlertSuddenPriceChange({
+    productId: "prod-1",
+    productTitle: "Cafetera Express",
+    oldPrice: 100000,
+    newPrice: 130000,
+    changedBy: "test@myaimportaciones.com.ar",
+  });
+  assert.equal(res1.alerted, true);
+  assert.equal(res1.deltaPct, 30);
+
+  // Test case 2: +29% price change should NOT trigger alert
+  const res2 = await checkAndAlertSuddenPriceChange({
+    productId: "prod-2",
+    productTitle: "Taza Cerámica",
+    oldPrice: 100000,
+    newPrice: 129000,
+    changedBy: "test@myaimportaciones.com.ar",
+  });
+  assert.equal(res2.alerted, false);
+  assert.equal(res2.deltaPct, 29);
+
+  // Test case 3: -30% drop should trigger alert
+  const res3 = await checkAndAlertSuddenPriceChange({
+    productId: "prod-3",
+    productTitle: "Auriculares Pro",
+    oldPrice: 100000,
+    newPrice: 70000,
+    changedBy: "test@myaimportaciones.com.ar",
+  });
+  assert.equal(res3.alerted, true);
+  assert.equal(res3.deltaPct, -30);
+
+  // Test case 4: -29% drop should NOT trigger alert
+  const res4 = await checkAndAlertSuddenPriceChange({
+    productId: "prod-4",
+    productTitle: "Funda Silicona",
+    oldPrice: 100000,
+    newPrice: 71000,
+    changedBy: "test@myaimportaciones.com.ar",
+  });
+  assert.equal(res4.alerted, false);
+  assert.equal(res4.deltaPct, -29);
+
+  // Test case 5: zero or invalid price should not alert
+  const res5 = await checkAndAlertSuddenPriceChange({
+    productId: "prod-5",
+    productTitle: "Item Nuevo",
+    oldPrice: 0,
+    newPrice: 50000,
+    changedBy: "test@myaimportaciones.com.ar",
+  });
+  assert.equal(res5.alerted, false);
+});
+
+test("product-lifecycle: bulk rollback candidate resolver selects the most recent audit price per product", () => {
+  const logs = [
+    {
+      id: "log-3",
+      product_id: "prod-A",
+      action: "quick_price_update",
+      old_data: { retail_price: 45000, wholesale_price: 38000 },
+      new_data: { retail_price: 60000, wholesale_price: 50000 },
+      created_at: "2026-10-22T14:00:00Z",
+    },
+    {
+      id: "log-2",
+      product_id: "prod-A",
+      action: "price_update",
+      old_data: { retail_price: 40000, wholesale_price: 35000 },
+      new_data: { retail_price: 45000, wholesale_price: 38000 },
+      created_at: "2026-10-21T10:00:00Z",
+    },
+    {
+      id: "log-1",
+      product_id: "prod-B",
+      action: "bulk_price_adjustment",
+      old_data: { retail_price: 25000 },
+      new_data: { retail_price: 30000 },
+      created_at: "2026-10-22T13:00:00Z",
+    },
+  ];
+
+  const rollbackCandidates = new Map<string, { retailPrice: number; wholesalePrice?: number; logDate: string }>();
+
+  for (const log of logs) {
+    if (rollbackCandidates.has(log.product_id)) continue;
+    const oldD = (log.old_data as Record<string, unknown>) ?? {};
+    const oldRetail = Number(oldD.retail_price ?? 0);
+    const oldWholesale = oldD.wholesale_price ? Number(oldD.wholesale_price) : undefined;
+    if (oldRetail > 0) {
+      rollbackCandidates.set(log.product_id, {
+        retailPrice: oldRetail,
+        wholesalePrice: oldWholesale,
+        logDate: log.created_at,
+      });
+    }
+  }
+
+  assert.equal(rollbackCandidates.size, 2);
+  const candA = rollbackCandidates.get("prod-A");
+  assert.ok(candA);
+  assert.equal(candA?.retailPrice, 45000, "Must pick the most recent previous price for prod-A (45000, not 40000)");
+  assert.equal(candA?.wholesalePrice, 38000);
+
+  const candB = rollbackCandidates.get("prod-B");
+  assert.ok(candB);
+  assert.equal(candB?.retailPrice, 25000);
+  assert.equal(candB?.wholesalePrice, undefined);
+});
+
+test("product-lifecycle: audit log filtering matches temporal and action filters correctly", () => {
+  const now = Date.now();
+  const sampleLogs = [
+    { id: "1", action: "quick_price_update", created_at: new Date(now - 2 * 3600 * 1000).toISOString() }, // 2h ago
+    { id: "2", action: "stock_update", created_at: new Date(now - 3 * 86400 * 1000).toISOString() }, // 3d ago
+    { id: "3", action: "price_rollback", created_at: new Date(now - 15 * 86400 * 1000).toISOString() }, // 15d ago
+    { id: "4", action: "bulk_price_adjustment", created_at: new Date(now - 45 * 86400 * 1000).toISOString() }, // 45d ago
+  ];
+
+  // Test 24h filter
+  const filter24h = sampleLogs.filter((l) => {
+    const cutoff = now - 24 * 60 * 60 * 1000;
+    return new Date(l.created_at).getTime() >= cutoff;
+  });
+  assert.equal(filter24h.length, 1);
+  assert.equal(filter24h[0].id, "1");
+
+  // Test 7d filter
+  const filter7d = sampleLogs.filter((l) => {
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    return new Date(l.created_at).getTime() >= cutoff;
+  });
+  assert.equal(filter7d.length, 2);
+
+  // Test action filter 'rollback'
+  const filterRollback = sampleLogs.filter((l) => l.action === "price_rollback");
+  assert.equal(filterRollback.length, 1);
+  assert.equal(filterRollback[0].id, "3");
+
+  // Test action filter 'price'
+  const filterPrice = sampleLogs.filter((l) => ["quick_price_update", "price_update", "price_and_stock_update"].includes(l.action));
+  assert.equal(filterPrice.length, 1);
+  assert.equal(filterPrice[0].id, "1");
 });

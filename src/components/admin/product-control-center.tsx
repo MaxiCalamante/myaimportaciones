@@ -46,6 +46,7 @@ import {
   quickUpdateProductPriceAction,
   bulkUpdateProductStatusAction,
   bulkAdjustPricesAction,
+  bulkRollbackPricesAction,
   deleteProductAction,
   restoreProductAction,
   permanentDeleteProductAction,
@@ -412,6 +413,28 @@ export function ProductControlCenter({
         setSelectedIds([]);
       } catch (err: unknown) {
         showToast(err instanceof Error ? err.message : "Error al ajustar precios.", "error");
+      }
+    });
+  };
+
+  // Bulk Price Rollback Execution
+  const handleBulkRollbackPrices = () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !confirm(
+        `¿Revertir el precio de los ${selectedIds.length} productos seleccionados a su valor anterior registrado en auditoría?`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const res = await bulkRollbackPricesAction(selectedIds);
+        router.refresh();
+        showToast(`Se restauró el precio anterior de ${res.count} producto(s).`, "success");
+        setSelectedIds([]);
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : "Error al revertir precios.", "error");
       }
     });
   };
@@ -1053,6 +1076,15 @@ export function ProductControlCenter({
                   >
                     <Percent className="h-3.5 w-3.5 text-emerald-400" />
                     Ajustar precios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkRollbackPrices}
+                    className="flex items-center gap-1.5 rounded-lg bg-zinc-800 hover:bg-purple-950 border border-zinc-700 px-3 py-1.5 text-purple-300 transition-colors cursor-pointer"
+                    title="Revertir el precio de los productos seleccionados a su valor anterior registrado en auditoría"
+                  >
+                    <RotateCcw className="size-3.5" />
+                    <span>Revertir precios</span>
                   </button>
                   <button
                     type="button"

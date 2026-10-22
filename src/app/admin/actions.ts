@@ -7,6 +7,7 @@ import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { getAdminClient } from "@/lib/admin-auth";
 import { parseProductForm, productImageUrl, httpsUrl, validId, validateImageContent } from "@/lib/admin-product";
 import { prepareProductImages, cleanupOrphanProductImages } from "@/lib/admin-media";
+import { checkAndAlertSuddenPriceChange } from "@/lib/price-alert";
 import {
   checkAndUpdateProductSupplierStock,
   runBatchSupplierStockSync,
@@ -306,6 +307,18 @@ async function updateProduct(formData: FormData) {
         "Actualización desde editor de ficha",
         user?.email || "Administrador"
       );
+
+      if (priceChanged && prevRetail > 0) {
+        checkAndAlertSuddenPriceChange({
+          productId: id,
+          productTitle: fields.title,
+          sku: fields.sku,
+          oldPrice: prevRetail,
+          newPrice: nextRetail,
+          changedBy: user?.email || "Administrador",
+          changeType: "Actualización desde editor de ficha",
+        }).catch((err) => console.warn("[price-alert] Error enviando alerta:", err));
+      }
     }
 
     if (hasVariants) {
@@ -433,7 +446,7 @@ export async function quickUpdateProductPriceAction(productId: string, retailPri
 
   const { data: currentProduct } = await supabase
     .from("products")
-    .select("retail_price, wholesale_price")
+    .select("retail_price, wholesale_price, title, sku")
     .eq("id", productId)
     .maybeSingle();
 
@@ -465,6 +478,18 @@ export async function quickUpdateProductPriceAction(productId: string, retailPri
     "Edición rápida de precio",
     user?.email || "Administrador"
   );
+
+  if (currentProduct?.retail_price && Number(currentProduct.retail_price) > 0) {
+    checkAndAlertSuddenPriceChange({
+      productId,
+      productTitle: currentProduct.title || "Producto",
+      sku: currentProduct.sku,
+      oldPrice: Number(currentProduct.retail_price),
+      newPrice: retailPrice,
+      changedBy: user?.email || "Administrador",
+      changeType: "Edición rápida de precio",
+    }).catch((err) => console.warn("[price-alert] Error enviando alerta:", err));
+  }
 
   revalidatePath("/");
   invalidateAdminStorefrontCache();
@@ -1110,6 +1135,99 @@ export async function exportProductAuditLogsCsvAction(productId?: string, limit:
     filename,
   };
 }
+
+export async function bulkRollbackPricesAction(productIds: string[]) {
+  if (!Array.isArray(productIds) || !productIds.length || productIds.length > 200) {
+    throw new Error("Seleccioná entre 1 y 200 productos.");
+  }
+  productIds.forEach(validId);
+  const supabase = await getAdminClient();
+
+  const { data: logs, error: logsError } = await supabase
+    .from("product_audit_logs")
+    .select("id, product_id, old_data, new_data, created_at, action")
+    .in("product_id", productIds)
+    .order("created_at", { ascending: false });
+
+  if (logsError) {
+    throw new Error(`Error al leer auditoría: ${logsError.message}`);
+  }
+
+  const rollbackCandidates = new Map<string, { retailPrice: number; wholesalePrice?: number; logDate: string }>();
+
+  for (const log of logs || []) {
+    if (rollbackCandidates.has(log.product_id)) continue;
+    const oldD = (log.old_data as Record<string, unknown>) ?? {};
+    const oldRetail = Number(oldD.retail_price ?? 0);
+    const oldWholesale = oldD.wholesale_price ? Number(oldD.wholesale_price) : undefined;
+    if (oldRetail > 0) {
+      rollbackCandidates.set(log.product_id, {
+        retailPrice: oldRetail,
+        wholesalePrice: oldWholesale,
+        logDate: log.created_at,
+      });
+    }
+  }
+
+  if (rollbackCandidates.size === 0) {
+    throw new Error("Ninguno de los productos seleccionados tiene un precio anterior registrado en la auditoría.");
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const adminEmail = user?.email || "Administrador";
+
+  let restoredCount = 0;
+  const auditInserts: any[] = [];
+
+  for (const [productId, target] of rollbackCandidates.entries()) {
+    const { data: current } = await supabase
+      .from("products")
+      .select("retail_price, wholesale_price")
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (!current) continue;
+
+    const updatePayload: Record<string, unknown> = {
+      retail_price: target.retailPrice,
+      updated_at: new Date().toISOString(),
+    };
+    if (target.wholesalePrice !== undefined) {
+      updatePayload.wholesale_price = target.wholesalePrice;
+    }
+
+    const { error: updErr } = await supabase
+      .from("products")
+      .update(updatePayload)
+      .eq("id", productId);
+
+    if (!updErr) {
+      restoredCount++;
+      auditInserts.push({
+        product_id: productId,
+        changed_by: adminEmail,
+        action: "price_rollback",
+        old_data: { retail_price: current.retail_price, wholesale_price: current.wholesale_price },
+        new_data: { retail_price: target.retailPrice, wholesale_price: target.wholesalePrice },
+        notes: "Rollback masivo al precio anterior registrado",
+      });
+    }
+  }
+
+  if (auditInserts.length > 0) {
+    await supabase.from("product_audit_logs").insert(auditInserts);
+  }
+
+  refreshCatalog();
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/mayorista");
+  revalidatePath("/catalogo");
+
+  return { success: true, count: restoredCount, requested: productIds.length };
+}
+
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
   const supabase = await getAdminClient();
   if (newRole === "customer") {

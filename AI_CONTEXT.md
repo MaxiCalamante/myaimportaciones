@@ -1,5 +1,39 @@
 # MYA Importaciones — contexto vigente
 
+## Alertas por Correo ante Cambios Bruscos de Precio, Filtros Avanzados de Auditoría y Rollback Masivo por Lote — 22/10/2026
+
+Por requerimiento expreso del dueño ("ok hace los 3 que quede todo perfecto"):
+
+### 1. Alertas Automáticas por Correo ante Cambios Bruscos de Precio (>30%):
+- **Motor de Seguridad de Precios (`src/lib/price-alert.ts`):**
+  - Implementada [`checkAndAlertSuddenPriceChange(params)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/price-alert.ts).
+  - Evalúa variaciones porcentuales relativas (`deltaPct = round(((newPrice - oldPrice) / oldPrice) * 100)`).
+  - Si la variación supera el 30% (hacia arriba `▲ +X%` o hacia abajo `▼ -X%`), compone un correo ejecutivo responsivo con diseño de marca MYA (colores de alerta `#4338ca` / `#be123c`, precio anterior tachado, precio nuevo en grande, badge porcentual, usuario administrador que efectuó el cambio, fecha y botón directo para auditar la ficha).
+  - Despacha mediante Resend (`sendResendEmail`) a los correos administrativos configurados (`config.recipients`).
+  - Degradación segura si el servicio de email no está configurado (warning en consola sin interrumpir la operación del panel).
+- **Integración en Acciones del Servidor (`src/app/admin/actions.ts`):**
+  - Integrado en `updateProduct` (guardado de formulario del editor).
+  - Integrado en `quickUpdateProductPriceAction` (actualización rápida de precios desde la tabla).
+
+### 2. Filtros Avanzados por Fecha y Tipo de Acción en el Modal de Auditoría:
+- **Experiencia de Usuario en [`ProductAuditModal`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-audit-modal.tsx):**
+  - **Filtro Temporal:** Selector con opciones `Todo`, `24 horas`, `Últimos 7 días`, `Últimos 30 días` con ícono de calendario.
+  - **Filtro por Tipo de Evento:** Pestañas estilo píldora (`Todo`, `Precios`, `Stock`, `Rollbacks`, `Ajustes Masivos`) con conteo dinámico de coincidencias.
+  - **Contador en vivo y feedback:** Muestra cuántos eventos coinciden con los filtros aplicados (ej. `Mostrando 3 de 12 eventos registrados`), con botón de limpieza rápida (`X Limpiar filtros`) y estado vacío amigable si ningún registro coincide.
+
+### 3. Reversión Masiva de Precios por Lote (Rollback Masivo):
+- **Acción del Servidor (`src/app/admin/actions.ts`):**
+  - Implementada [`bulkRollbackPricesAction(productIds)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L1139-L1230).
+  - Valida lote (1 a 200 productos), consulta la tabla `product_audit_logs` ordenada descendentemente y extrae para cada producto seleccionado su precio anterior verificado más reciente (`old_data.retail_price` y opcionalmente `wholesale_price`).
+  - Actualiza de forma segura el catálogo, inserta registros de auditoría bajo la acción `price_rollback` con notas `Rollback masivo al precio anterior registrado`, y revalida todo el caché de storefront y panel.
+- **Botón y Control en [`ProductControlCenter`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-control-center.tsx):**
+  - En la barra de acciones masivas de productos seleccionados se incorporó el botón **"Revertir precios"** (`RotateCcw`) con estilo distintivo.
+  - Solicita confirmación explícita, ejecuta `bulkRollbackPricesAction`, actualiza la tabla y muestra un toast de confirmación con la cantidad exacta de productos restaurados.
+- **Suite de Pruebas:**
+  - Nuevos tests añadidos a [`tests/product-lifecycle.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/product-lifecycle.test.ts) (203/203 tests pasando sin errores).
+
+---
+
 ## Rollback de Precios en 1 Clic, Marca de Agua Oficial MYA y Exportación de Auditoría a CSV — 22/10/2026
 
 Por requerimiento expreso del dueño ("hace las 3"):
