@@ -275,10 +275,16 @@ export function CheckoutPanel({
       {/* Enlaces de Seguimiento y Soporte */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <Link
-          href={`/seguimiento?code=${result.trackingCode}&email=${encodeURIComponent(customerEmail)}`}
+          href={`/pedido/${result.trackingCode}`}
           className="flex-1 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white p-3.5 text-center font-bold text-sm shadow-xs transition"
         >
-          Ver seguimiento de mi envío en vivo →
+          Ver comprobante oficial del pedido →
+        </Link>
+        <Link
+          href={`/seguimiento?code=${result.trackingCode}&email=${encodeURIComponent(customerEmail)}`}
+          className="flex-1 rounded-xl border border-zinc-300 hover:bg-zinc-50 text-zinc-900 p-3.5 text-center font-bold text-sm shadow-2xs transition"
+        >
+          Rastrear envío en vivo
         </Link>
         <button
           type="button"

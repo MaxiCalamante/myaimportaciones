@@ -8,8 +8,9 @@ import { offerEvidence, type SupplierOffer } from "@/lib/supplier-intelligence";
 import type { SupplierWorkspaceData } from "@/lib/supplier-workspace";
 import { approveImportPurchaseAction, configureSupplierQueryAction, importOffersAction, previewOffersAction, probeSupplierOfferAction, reviewSupplierProposalAction, saveImportPolicyAction, saveImportSimulationAction, saveOfferAction } from "@/app/admin/proveedores/intelligence-actions";
 import { formatCurrency } from "@/lib/format";
-import{SupplierAutomationPanel}from'./supplier-automation-panel';
-import{SupplierProductLinks}from'./supplier-product-links';
+import { SupplierAutomationPanel } from "./supplier-automation-panel";
+import { SupplierProductLinks } from "./supplier-product-links";
+import { evaluateCommercialMargin } from "@/lib/supplier-commercial";
 
 const field = "min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900";
 const button = "min-h-11 rounded-xl bg-zinc-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40";
@@ -20,6 +21,7 @@ function Percent({ value }: { value: number | null }) { return <>{value === null
 const emptyLine = (): ImportLine => ({ id: crypto.randomUUID(), title: "", quantity: 1, currency: "USD", origin: 0, acquisitionArsPerUnit: 0, originUnitsPerUsd: 1, kind: "general", sourceConfirmed: false });
 const emptyInput = (): ImportInput => ({ lines: [], expenses: [], expensesConfirmed: false, targetMargin: 30 });
 const tabs = ["Productos y proveedores", "Seguimiento", "Proveedores", "Comparador", "Simulador", "Pasador y logística", "Precios y stock", "Nuevos productos", "Historial"] as const;
+
 export function SupplierWorkspace({ data }: { data: SupplierWorkspaceData }) {
   const router = useRouter();
   const [tab, setTab] = useState<string>("Productos y proveedores");
@@ -32,18 +34,22 @@ export function SupplierWorkspace({ data }: { data: SupplierWorkspaceData }) {
   const [policy, setPolicy] = useState<ImportPolicy>(data.policies[0].config);
   const [query, setQuery] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
-  const [offerLimit,setOfferLimit]=useState(40);
-  const [fx, setFx] = useState(data.automation?.config.acquisitionArsPerUsd??0), [unitsPerUsd, setUnitsPerUsd] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [offerLimit, setOfferLimit] = useState(40);
+  const [fx, setFx] = useState(data.automation?.config.acquisitionArsPerUsd ?? 0), [unitsPerUsd, setUnitsPerUsd] = useState(0);
   const [extra, setExtra] = useState(0);
   const [csvSupplier, setCsvSupplier] = useState(data.suppliers[0]?.id ?? "");
   const [csv, setCsv] = useState("");
   const [csvPreview, setCsvPreview] = useState<Awaited<ReturnType<typeof previewOffersAction>>>([]);
   const [csvApproved, setCsvApproved] = useState(false);
   const [manualProduct, setManualProduct] = useState("");
+
   const act = (work: () => Promise<unknown>, success: string) => {
     setMessage(""); startTransition(async () => { try { const result = await work(); setMessage(typeof result === "string" ? result : success); router.refresh(); } catch (e) { setMessage(e instanceof Error ? e.message : "No se pudo completar la operación."); } });
   };
+
   function patchLine(id: string, values: Partial<ImportLine>) { setInput(i => ({ ...i, lines: i.lines.map(l => l.id === id ? { ...l, ...values } : l) })); }
+
   function addOffer(offer: SupplierOffer) {
     setInput(i => ({ ...i, lines: [...i.lines, { ...emptyLine(), title: `${offer.title} · ${offer.variant_key}`, offerId: offer.id, productId: offer.product_id ?? undefined,
       currency: offer.currency ?? "USD", origin: Number(offer.origin_cost ?? 0), kind: classifyImport(offer.title, offer.brand),
@@ -53,11 +59,19 @@ export function SupplierWorkspace({ data }: { data: SupplierWorkspaceData }) {
       sourceConfirmed: offerEvidence(offer, data.suppliers.find(s => s.id === offer.supplier_id)!).usable }] }));
     setTab("Simulador");
   }
+
   const calculation = useMemo(() => {
     try { return { value: activePolicy && input.lines.length ? calculateImport(input, activePolicy.config) : null, error: "" }; }
     catch (e) { return { value: null, error: e instanceof Error ? e.message : "Revisá la compra." }; }
   }, [input, activePolicy]);
-  const compared = useMemo(() => data.offers.filter(o => (!supplierFilter || o.supplier_id === supplierFilter) && `${o.title} ${o.brand} ${o.model} ${o.external_id} ${o.variant_key}`.toLowerCase().includes(query.toLowerCase())).map(o => {
+
+  const compared = useMemo(() => data.offers.filter(o => {
+    const matchesSupplier = !supplierFilter || o.supplier_id === supplierFilter;
+    const matchesQuery = !query || `${o.title} ${o.brand} ${o.model} ${o.external_id} ${o.variant_key}`.toLowerCase().includes(query.toLowerCase());
+    const prod = o.product_id ? data.products.find(p => p.id === o.product_id) : undefined;
+    const matchesCategory = !categoryFilter || prod?.category_id === categoryFilter;
+    return matchesSupplier && matchesQuery && matchesCategory;
+  }).map(o => {
     const supplier = data.suppliers.find(s => s.id === o.supplier_id)!;
     const evidence = offerEvidence(o, supplier);
     let result: ReturnType<typeof calculateImport>["lines"][number] | null = null;
@@ -69,7 +83,7 @@ export function SupplierWorkspace({ data }: { data: SupplierWorkspaceData }) {
         expenses: [{ label: "Otros gastos estimados por unidad", amountArs: extra, method: "quantity" }], expensesConfirmed: false, targetMargin: input.targetMargin }, activePolicy.config).lines[0];
     } catch { /* Missing FX remains pending. */ }
     return { o, supplier, evidence, result };
-  }).sort((a, b) => Number(b.evidence.usable) - Number(a.evidence.usable) || (a.result?.landedArs ?? Infinity) - (b.result?.landedArs ?? Infinity)), [data, supplierFilter, query, activePolicy, fx, unitsPerUsd, extra, input.targetMargin]);
+  }).sort((a, b) => Number(b.evidence.usable) - Number(a.evidence.usable) || (a.result?.landedArs ?? Infinity) - (b.result?.landedArs ?? Infinity)), [data, supplierFilter, categoryFilter, query, activePolicy, fx, unitsPerUsd, extra, input.targetMargin]);
 
   return <div className="min-w-0 space-y-6">
     <nav aria-label="Herramientas de proveedores" className="flex flex-wrap gap-2">{tabs.map(t => <button key={t} aria-current={tab === t ? "page" : undefined} onClick={() => setTab(t)} className={tab === t ? button : secondary}>{t}</button>)}</nav>
@@ -120,25 +134,52 @@ export function SupplierWorkspace({ data }: { data: SupplierWorkspaceData }) {
     </>}
 
     {tab === "Comparador" && <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Buscar modelo, marca o variante"><input className={field} value={query} onChange={e => setQuery(e.target.value)} placeholder="iPhone 16, Medicube, JBL…" /></Field>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Field label="Buscar modelo o variante"><input className={field} value={query} onChange={e => setQuery(e.target.value)} placeholder="iPhone 16, Lattafa, Anua…" /></Field>
+        <Field label="Categoría">
+          <select className={field} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+            <option value="">Todas las categorías</option>
+            {data.categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
         <Field label="Proveedor"><select className={field} value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)}><option value="">Todos los proveedores</option>{data.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-        <Field label="ARS por unidad de moneda de compra"><input className={field} type="number" min="0" step="0.0001" value={fx || ""} onChange={e => setFx(Number(e.target.value))} /></Field>
-        <Field label="Unidades de moneda por USD (ARS / PYG)"><input className={field} type="number" min="0" step="0.0001" value={unitsPerUsd || ""} onChange={e => setUnitsPerUsd(Number(e.target.value))} /></Field>
-        <Field label="Otros gastos estimados ARS por unidad"><input className={field} type="number" min="0" value={extra} onChange={e => setExtra(Number(e.target.value))} /></Field>
+        <Field label="ARS por moneda de compra"><input className={field} type="number" min="0" step="0.0001" value={fx || ""} onChange={e => setFx(Number(e.target.value))} /></Field>
+        <Field label="Unidades por USD"><input className={field} type="number" min="0" step="0.0001" value={unitsPerUsd || ""} onChange={e => setUnitsPerUsd(Number(e.target.value))} /></Field>
       </div>
       <p className="text-sm text-amber-900">Orden por costo parcial calculable y evidencia vigente. Confirmá igualdad de variante antes de comparar. Los gastos pendientes y el volumen real pueden cambiar el resultado; no es una recomendación de compra.</p>
       <p className="text-sm text-zinc-600">{data.suppliers.map(s => `${s.name}: ${data.offers.filter(o => o.supplier_id === s.id).length} ofertas`).join(" · ")}</p>
       {!compared.length && <p className="rounded-xl border p-5 text-sm">Sin ofertas registradas que coincidan. Solicitá una búsqueda desde Seguimiento o cargá una fuente real desde Proveedores.</p>}
-      <div className="grid gap-4 md:grid-cols-2">{compared.slice(0,offerLimit).map(({ o, supplier, evidence, result }) => <article key={o.id} className="min-w-0 rounded-2xl border bg-white p-5 space-y-3">
-        <div><h2 className="font-bold">{o.title}</h2><p className="break-words text-sm text-zinc-600">{supplier.name} · {o.variant_key} · ID {o.external_id}</p></div>
-        <p className="text-sm">Origen: {o.origin_cost ?? "Pendiente"} {o.currency} · {evidence.label}</p>
-        <p className="text-xs text-zinc-600">Costo: {o.cost_checked_at ?? "Sin verificar"} · Disponibilidad: {o.availability_checked_at ?? "Sin verificar"}</p>
-        <dl className="grid grid-cols-2 gap-2 text-sm"><dt>Pasador (ARS)</dt><dd><Amount value={result?.carrierArs} /></dd><dt>Costo parcial Tandil</dt><dd><Amount value={result?.landedArs} /></dd><dt>Venta MYA</dt><dd><Amount value={result?.saleArs} /></dd><dt>Contribución estimada</dt><dd><Amount value={result?.profit} /></dd><dt>Margen / recargo</dt><dd><Percent value={result?.margin ?? null} /> / <Percent value={result?.markup ?? null} /></dd></dl>
-        {o.product_id && <p className="text-xs text-zinc-600">Stock propio MYA: consultar inventario verificado en Stock y costos. Disponibilidad del proveedor separada.</p>}
-        <a href={o.source_url} target="_blank" rel="noreferrer" className="block text-sm text-sky-800 underline">Ficha de origen ↗</a>
-        <div className="flex flex-wrap gap-2"><button className={button} disabled={!o.origin_cost || pending} onClick={() => addOffer(o)}>Agregar a simulación</button><button className={secondary} disabled={pending || !supplier.automation_authorized || supplier.query_mode !== "product_page"} onClick={() => act(() => probeSupplierOfferAction(o.id), "Consulta registrada.")}>Verificar ficha</button></div>
-      </article>)}</div>
+      <div className="grid gap-4 md:grid-cols-2">{compared.slice(0,offerLimit).map(({ o, supplier, evidence, result }) => {
+        const prod = o.product_id ? data.products.find(p => p.id === o.product_id) : undefined;
+        const cat = data.categories?.find(c => c.id === prod?.category_id);
+        const evalResult = result?.landedArs && result?.saleArs
+          ? evaluateCommercialMargin(result.saleArs, result.landedArs, cat?.slug, o.title)
+          : null;
+
+        return (
+          <article key={o.id} className="min-w-0 rounded-2xl border bg-white p-5 space-y-3">
+            <div><h2 className="font-bold">{o.title}</h2><p className="break-words text-sm text-zinc-600">{supplier.name} · {o.variant_key} · ID {o.external_id}</p></div>
+            <p className="text-sm">Origen: {o.origin_cost ?? "Pendiente"} {o.currency} · {evidence.label}</p>
+            <p className="text-xs text-zinc-600">Costo: {o.cost_checked_at ?? "Sin verificar"} · Disponibilidad: {o.availability_checked_at ?? "Sin verificar"}</p>
+            <dl className="grid grid-cols-2 gap-2 text-sm"><dt>Pasador (ARS)</dt><dd><Amount value={result?.carrierArs} /></dd><dt>Costo parcial Tandil</dt><dd><Amount value={result?.landedArs} /></dd><dt>Venta MYA</dt><dd><Amount value={result?.saleArs} /></dd><dt>Contribución estimada</dt><dd><Amount value={result?.profit} /></dd><dt>Margen / recargo</dt><dd><Percent value={result?.margin ?? null} /> / <Percent value={result?.markup ?? null} /></dd></dl>
+            {evalResult && (
+              <div className={`flex flex-wrap items-center justify-between gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
+                evalResult.status === "excelente"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  : evalResult.status === "adecuado"
+                  ? "border-sky-300 bg-sky-50 text-sky-900"
+                  : "border-amber-300 bg-amber-50 text-amber-900"
+              }`}>
+                <span>Benchmark {cat?.name ?? "Categoría"}: {evalResult.benchmarkMargin}%</span>
+                <span>{evalResult.status === "excelente" ? "✓ Margen Óptimo" : evalResult.status === "adecuado" ? "✓ Margen Adecuado" : "⚠ Margen Bajo"} ({evalResult.marginPercent.toFixed(1)}%)</span>
+              </div>
+            )}
+            {o.product_id && <p className="text-xs text-zinc-600">Stock propio MYA: consultar inventario verificado en Stock y costos. Disponibilidad del proveedor separada.</p>}
+            <a href={o.source_url} target="_blank" rel="noreferrer" className="block text-sm text-sky-800 underline">Ficha de origen ↗</a>
+            <div className="flex flex-wrap gap-2"><button className={button} disabled={!o.origin_cost || pending} onClick={() => addOffer(o)}>Agregar a simulación</button><button className={secondary} disabled={pending || !supplier.automation_authorized || supplier.query_mode !== "product_page"} onClick={() => act(() => probeSupplierOfferAction(o.id), "Consulta registrada.")}>Verificar ficha</button></div>
+          </article>
+        );
+      })}</div>
       {compared.length>offerLimit&&<button className={secondary} onClick={()=>setOfferLimit(n=>n+40)}>Mostrar más ofertas ({offerLimit} de {compared.length})</button>}
       <details className="rounded-2xl border bg-white p-5"><summary className="cursor-pointer font-bold">Costos del catálogo ya documentados ({data.costs.length})</summary>
         <p className="mt-3 text-sm text-zinc-600">Referencias históricas del control de costos existente. No certifican disponibilidad actual ni comparaciones entre proveedores. Se reutiliza sólo el costo de origen; los gastos y las tarifas se revisan en el simulador.</p>
@@ -149,7 +190,32 @@ export function SupplierWorkspace({ data }: { data: SupplierWorkspaceData }) {
     {tab === "Simulador" && <>
       <div className="grid gap-3 sm:grid-cols-3"><Field label="Nombre de simulación"><input className={field} value={title} onChange={e => setTitle(e.target.value)} placeholder="Compra para revisar" maxLength={200} /></Field>
         <Field label="Versión de tarifas"><select className={field} value={policyId} onChange={e => setPolicyId(e.target.value)}>{data.policies.map(p => <option key={p.id} value={p.id}>{p.config.effectiveFrom} · {p.created_at}</option>)}</select></Field>
-        <Field label="Margen objetivo sobre venta (%)"><input className={field} type="number" min="0" max="99" value={input.targetMargin} onChange={e => setInput(i => ({ ...i, targetMargin: Number(e.target.value) }))} /></Field>
+        <div>
+          <Field label="Margen objetivo sobre venta (%)"><input className={field} type="number" min="0" max="99" value={input.targetMargin} onChange={e => setInput(i => ({ ...i, targetMargin: Number(e.target.value) }))} /></Field>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+            <span className="text-[11px] text-zinc-500 font-medium">Presets:</span>
+            {[
+              { label: "Perfumería", margin: 50 },
+              { label: "K-Beauty", margin: 45 },
+              { label: "Capilar", margin: 40 },
+              { label: "Herramientas", margin: 30 },
+              { label: "Electrónica", margin: 18 },
+            ].map(preset => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => setInput(i => ({ ...i, targetMargin: preset.margin }))}
+                className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold cursor-pointer transition ${
+                  input.targetMargin === preset.margin
+                    ? "border-sky-600 bg-sky-50 text-sky-900 font-bold shadow-2xs"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                }`}
+              >
+                {preset.label} ({preset.margin}%)
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <p className="text-sm text-zinc-600">Precio sugerido por margen: estimación sin referencia de mercado. Para fijar el precio comercial, revisá el comparable exacto y la política de MYA en <Link className="underline text-sky-800" href="/admin/costos">Stock y costos</Link>. Contribución después de los gastos cargados; no implica ganancia neta.</p>
       <div className="flex flex-wrap gap-2"><button className={secondary} onClick={() => setInput(i => ({ ...i, lines: [...i.lines, emptyLine()] }))}>Agregar artículo manual</button><button className={secondary} onClick={() => setTab("Comparador")}>Seleccionar oferta de proveedor</button></div>

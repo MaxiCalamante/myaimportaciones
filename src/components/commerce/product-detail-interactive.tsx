@@ -17,6 +17,8 @@ import {
   ChevronDown,
   ShieldCheck,
   Wrench,
+  Sparkles,
+  Gem,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { ElectronicsPrice } from "./electronics-price";
@@ -602,6 +604,8 @@ export function ProductDetailInteractive({
       {(() => {
         const isElectronics = /electr[oó]nica|smartphone|apple|samsung|celular|tablet|notebook/i.test(product.categoryName) || /iphone|macbook|ipad|galaxy/i.test(product.title);
         const isTools = /herramienta/i.test(product.categoryName) || /total|wadfow/i.test(product.brand || "") || /rotomartillo|amoladora|taladro|atornillador|llave de impacto|ingleteadora/i.test(product.title);
+        const isCosmetics = /cosm[eé]tica|k-beauty|facial|corporal|skincare|serum|t[oó]nico|limpieza|solar/i.test(product.categoryName) || /skin1004|medicube|dr\.?\s*althea|anua|celimax|numbuzin|round lab|beauty of joseon|torriden|cosrx|tree hut/i.test(product.brand || "");
+        const isPerfume = /perfum|fragancia|mist|bruma/i.test(product.categoryName) || /lattafa|asdaf|victoria'?s secret/i.test(product.brand || "");
 
         if (isElectronics) {
           return (
@@ -647,6 +651,56 @@ export function ProductDetailInteractive({
                 <li className="flex items-start gap-2">
                   <span className="font-bold text-amber-700 shrink-0">✓</span>
                   <span><strong>Inspección Técnica:</strong> Control de integridad de embalaje antes de salir de nuestro depósito central en Tandil.</span>
+                </li>
+              </ul>
+            </div>
+          );
+        }
+
+        if (isPerfume) {
+          return (
+            <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4 space-y-2.5 text-xs text-purple-950 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-purple-900 border-b border-purple-200/80 pb-2">
+                <Gem className="size-4 text-purple-700 shrink-0" />
+                <span>Perfumería Exclusiva y Esencias de Dubai · MYA Importaciones</span>
+              </div>
+              <ul className="space-y-1.5 text-purple-900/90 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-purple-700 shrink-0">✓</span>
+                  <span><strong>Fragancias 100% Auténticas:</strong> Frascos originales importados directamente de Emiratos Árabes en celofán sellado con holograma y batch code verificable.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-purple-700 shrink-0">✓</span>
+                  <span><strong>Alta Concentración y Fijación:</strong> Fórmulas Eau de Parfum de larga estela con duración superior a 8-12 horas en piel y textiles.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-purple-700 shrink-0">✓</span>
+                  <span><strong>Embalaje Especial Anti-Impacto:</strong> Acondicionado con triple capa de burbuja de alta densidad y seguro nacional por Correo Argentino.</span>
+                </li>
+              </ul>
+            </div>
+          );
+        }
+
+        if (isCosmetics) {
+          return (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 space-y-2.5 text-xs text-rose-950 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-rose-900 border-b border-rose-200/80 pb-2">
+                <Sparkles className="size-4 text-rose-600 shrink-0" />
+                <span>Autenticidad K-Beauty Certificada · Cosmética Coreana</span>
+              </div>
+              <ul className="space-y-1.5 text-rose-900/90 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-rose-600 shrink-0">✓</span>
+                  <span><strong>100% Originales de Corea del Sur:</strong> Productos legítimos en empaque sellado de fábrica con número de lote y fecha de vencimiento visible.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-rose-600 shrink-0">✓</span>
+                  <span><strong>Activos Puros Protegidos:</strong> Embalaje con aislación térmica desde Tandil para conservar la estabilidad de principios activos (Centella, PDRN, Niacinamida, Retinal).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-rose-600 shrink-0">✓</span>
+                  <span><strong>Fórmulas Seguras e Hipoalergénicas:</strong> Productos Cruelty-Free certificados, testeados dermatológicamente y no comedogénicos.</span>
                 </li>
               </ul>
             </div>

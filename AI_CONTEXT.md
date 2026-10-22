@@ -1,5 +1,45 @@
 # MYA Importaciones — contexto vigente
 
+## Fichas Técnicas K-Beauty, Benchmarks de Margen de Proveedores y Comprobante Oficial de Pedidos — 22/10/2026
+
+Por requerimiento expreso del dueño ("hace las 3"):
+
+### 1. Fichas Técnicas Detalladas en Cosmética Coreana y Cuidado Personal (20 productos insignia):
+- **Marcas Coreanas Líderes Actualizadas (Anua, SKIN1004, Dr. Althea, Celimax, Medicube, Tree Hut):**
+  - `anua-heartleaf-77-soothing-toner-250-ml` & `anua-heartleaf-pore-control-cleansing-oil-200-ml`: Especificaciones completas con 77% Houttuynia Cordata, fórmula no comedogénica para acné, doble limpieza y compresas calmantes.
+  - `skin1004-madagascar-centella-ampoule` & `skin1004-madagascar-centella-hyalu-cica-water-fit-sun-serum`: 100% Centella Asiática de Madagascar pura, SPF50+ PA++++ sin white cast, fórmula Reef-Safe y Cruelty-Free.
+  - `dr-althea-345-relief-cream-50-ml` & `dr-althea-345-relief-cream-mist-bruma-facial-60-ml`: Complejo 345 (Resveratrol, Pantenol, Houttuynia, Ceramidas), tratamiento anti-marcas post-acné y regeneración de barrera.
+  - `celimax-noni-energy-ampoule-50-ml` & `celimax-the-vita-a-retinal-shot-tightening-booster-15-ml`: Extracto de Noni concentrado (200+ nutrientes) y Retinaldehído liposomado de alta absorción.
+  - `medicube-pdrn-pink-collagen-gel-mask-4-mascarillas-de-28-g-95` & `medicube-one-day-exosome-shot-2000-30-ml-77`: Tecnología bio-médica coreana con PDRN de salmón y espículas micro-aguja Exosome.
+  - `tree-hut-shea-sugar-scrub-exfoliante-corporal-510-g`: Exfoliación con manteca de karité orgánica y aceites botánicos sin parabenos ni sulfatos.
+- **Banners Especializados de Confianza & Origen en Ficha:**
+  - **Cosmética Coreana (K-Beauty):** Sello de 100% Originales importados de Corea del Sur en caja sellada con lote y vencimiento oficial, embalaje termoprotegido desde Tandil y fórmulas Cruelty-Free hipoalergénicas.
+  - **Perfumería & Fragancias Árabes:** Sello de autenticidad de fragancias de Dubai (Lattafa), maceración garantizada, duración 8-12+ horas y embalaje anti-impacto.
+
+### 2. Motor de Benchmarks y Reglas de Margen en el Panel de Proveedores:
+- En [`src/lib/supplier-commercial.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/supplier-commercial.ts): Creado motor de evaluación comercial con benchmarks por categoría:
+  - Perfumería: 50% benchmark (mínimo 35%)
+  - Cosmética Coreana (K-Beauty): 45% benchmark (mínimo 30%)
+  - Cuidado Capilar: 40% benchmark (mínimo 25%)
+  - Herramientas: 30% benchmark (mínimo 20%)
+  - Electrónica: 18% benchmark (mínimo 12%)
+- En [`src/components/admin/supplier-workspace.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/supplier-workspace.tsx):
+  - **Filtro por Categoría en Comparador:** Selector rápido para cruzar ofertas de proveedores por categoría comercial.
+  - **Badges de Salud de Margen:** Indicador visual (Margen Óptimo ≥ benchmark, Margen Adecuado o Margen Bajo) evaluando venta vs costo landed con pasador.
+  - **Botones de Presets de Margen en Simulador:** Un clic para simular márgenes del 50%, 45%, 40%, 30% o 18%.
+  - Pruebas unitarias: Creada suite [`tests/supplier-commercial.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/supplier-commercial.test.ts) (186/186 tests aprobados).
+
+### 3. Pantalla de Confirmación y Comprobante Oficial de Pedido (`/pedido/[id]`):
+- **Página de Comprobante Permanente (`src/app/pedido/[id]/page.tsx`):**
+  - Permite acceso permalink mediante UUID del pedido o código de seguimiento (`ORD-XXXXX`).
+  - **Stepper de Estado en 5 Fases:** 1. Registrado -> 2. Pago Acreditado -> 3. En Preparación -> 4. En Camino (Correo Argentino) -> 5. Entregado.
+  - **Copia Rápida:** Botones de un toque para copiar código de seguimiento, CVU y Alias bancario de MYA.
+  - **Botón Inteligente de WhatsApp:** Genera mensaje prearmado con código de compra, monto total y destino.
+  - **Seguimiento Correo Argentino:** Enlace directo a la plataforma de rastreo oficial cuando el código de guía está disponible.
+  - Integración en Checkout: Enlace destacado en la pantalla de éxito post-compra para ver el comprobante permanente.
+
+---
+
 ## Calculador de Envíos en 1 Clic, Alertas de Escasez y Banners de Garantía/Origen — 21/10/2026
 
 Por requerimiento expreso del dueño ("hace los 3 luego commit , push y apaga la pc"):

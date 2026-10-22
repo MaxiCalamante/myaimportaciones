@@ -157,7 +157,7 @@ export async function createOrderAction(input: OrderInput) {
     if (existing.status === "cancelled" || Date.parse(existing.reservation_expires_at) < Date.now()) throw new Error("La reserva anterior venció. Consultanos con el código antes de volver a comprar.");
     if (existing.request_hash !== requestHash) throw new Error("El intento anterior tiene otros datos. Revisá el pedido antes de continuar.");
     scheduleTransactionalEmails(existing.id);
-    return { trackingCode: existing.tracking_code as string, total: Number(existing.total_amount), initPoint: existing.payment_url as string | undefined, expiresAt: existing.reservation_expires_at as string, paymentError: existing.payment_method === "mercado_pago" && !existing.payment_url ? "Pedido reservado. Contactanos con el código para recuperar el pago." : undefined };
+    return { orderId: existing.id as string, trackingCode: existing.tracking_code as string, total: Number(existing.total_amount), initPoint: existing.payment_url as string | undefined, expiresAt: existing.reservation_expires_at as string, paymentError: existing.payment_method === "mercado_pago" && !existing.payment_url ? "Pedido reservado. Contactanos con el código para recuperar el pago." : undefined };
   }
   const { db, items, quote, option } = await resolveQuote(input);
   if (option.type !== "pickup" && (!input.address.trim() || !input.city.trim())) throw new Error("Completá domicilio o sucursal exacta y localidad.");
@@ -170,7 +170,7 @@ export async function createOrderAction(input: OrderInput) {
   let initPoint: string | undefined = order.payment_url ?? undefined;
   if (input.paymentMethod === "mercado_pago" && !initPoint) {
     const payment = await createMercadoPagoPreference({ trackingCode: order.tracking_code, orderId: order.id, total: Number(order.total_amount), expiresAt: order.reservation_expires_at, payerEmail: input.email, payerName: input.name });
-    if (!payment.success || !payment.initPoint) return { trackingCode: order.tracking_code as string, total: Number(order.total_amount), initPoint: undefined, paymentError: "Tu pedido quedó reservado, pero no pudimos abrir Mercado Pago. Contactanos con el código para continuar.", expiresAt: order.reservation_expires_at as string };
+    if (!payment.success || !payment.initPoint) return { orderId: order.id as string, trackingCode: order.tracking_code as string, total: Number(order.total_amount), initPoint: undefined, paymentError: "Tu pedido quedó reservado, pero no pudimos abrir Mercado Pago. Contactanos con el código para continuar.", expiresAt: order.reservation_expires_at as string };
     const { error: saveError } = await db.from("orders").update({ payment_url: payment.initPoint, payment_preference_id: payment.preferenceId }).eq("id", order.id);
     if (saveError) throw new Error("No pudimos guardar el enlace de pago. Contactanos antes de repetir la compra.");
     initPoint = payment.initPoint;
