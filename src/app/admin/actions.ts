@@ -916,6 +916,200 @@ export async function getProductAuditLogsAction(productId: string): Promise<Prod
     createdAt: item.created_at,
   }));
 }
+
+export async function rollbackProductPriceAction(
+  productId: string,
+  targetRetailPrice: number,
+  targetWholesalePrice?: number,
+  sourceDate?: string
+) {
+  const id = validId(productId);
+  const supabase = await getAdminClient();
+
+  if (!Number.isFinite(targetRetailPrice) || targetRetailPrice <= 0) {
+    throw new Error("El precio minorista a restaurar debe ser mayor a cero.");
+  }
+  if (targetWholesalePrice !== undefined && (!Number.isFinite(targetWholesalePrice) || targetWholesalePrice < 0)) {
+    throw new Error("El precio mayorista a restaurar no es válido.");
+  }
+
+  const { data: currentProduct, error: fetchErr } = await supabase
+    .from("products")
+    .select("retail_price, wholesale_price, title")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchErr || !currentProduct) {
+    throw new Error("El producto ya no existe.");
+  }
+
+  const updateData: Record<string, unknown> = {
+    retail_price: targetRetailPrice,
+    updated_at: new Date().toISOString(),
+  };
+  if (targetWholesalePrice !== undefined && targetWholesalePrice >= 0) {
+    updateData.wholesale_price = targetWholesalePrice;
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update(updateData)
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const dateStr = sourceDate
+    ? new Date(sourceDate).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })
+    : "versión histórica";
+
+  await logProductAuditEvent(
+    id,
+    "price_rollback",
+    {
+      retail_price: currentProduct.retail_price,
+      wholesale_price: currentProduct.wholesale_price,
+    },
+    {
+      retail_price: targetRetailPrice,
+      ...(targetWholesalePrice !== undefined ? { wholesale_price: targetWholesalePrice } : {}),
+    },
+    `Rollback de precio a la versión del ${dateStr}`,
+    user?.email || "Administrador"
+  );
+
+  refreshCatalog();
+  revalidatePath("/");
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/mayorista");
+  revalidatePath("/catalogo");
+
+  return { success: true, retailPrice: targetRetailPrice, wholesalePrice: targetWholesalePrice };
+}
+
+export async function exportProductAuditLogsCsvAction(productId?: string, limit: number = 500) {
+  const supabase = await getAdminClient();
+
+  let query = supabase
+    .from("product_audit_logs")
+    .select("id, product_id, changed_by, action, old_data, new_data, notes, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (productId) {
+    validId(productId);
+    query = query.eq("product_id", productId);
+  }
+
+  const { data: logs, error } = await query;
+  if (error) {
+    throw new Error(`Error al consultar auditoría: ${error.message}`);
+  }
+
+  // Fetch product titles and skus
+  const productIds = [...new Set((logs || []).map((l) => l.product_id))];
+  const { data: products } = productIds.length
+    ? await supabase.from("products").select("id, title, sku").in("id", productIds)
+    : { data: [] };
+
+  const productMap = new Map<string, { title: string; sku?: string | null }>();
+  products?.forEach((p) => {
+    productMap.set(p.id, { title: p.title, sku: p.sku });
+  });
+
+  const header = [
+    "ID Auditoria",
+    "ID Producto",
+    "Producto",
+    "SKU",
+    "Fecha y Hora (es-AR)",
+    "Administrador",
+    "Accion",
+    "Precio Minorista Anterior",
+    "Precio Minorista Nuevo",
+    "Variacion %",
+    "Precio Mayorista Anterior",
+    "Precio Mayorista Nuevo",
+    "Stock Anterior",
+    "Stock Nuevo",
+    "Notas",
+  ];
+
+  const escapeCsv = (val: string | number | null | undefined): string => {
+    if (val === null || val === undefined) return "";
+    const str = String(val);
+    if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const actionLabels: Record<string, string> = {
+    quick_price_update: "Cambio rápido de precio",
+    bulk_price_adjustment: "Ajuste masivo de precios",
+    price_rollback: "Rollback de precio",
+    price_update: "Actualización de precio",
+    stock_update: "Ajuste de stock",
+    price_and_stock_update: "Actualización de precio y stock",
+  };
+
+  const lines = [header.join(",")];
+
+  for (const log of logs || []) {
+    const prod = productMap.get(log.product_id);
+    const oldD = (log.old_data as Record<string, unknown>) ?? {};
+    const newD = (log.new_data as Record<string, unknown>) ?? {};
+
+    const oldRetail = Number(oldD.retail_price ?? 0);
+    const newRetail = Number(newD.retail_price ?? 0);
+    let variationStr = "";
+    if (oldRetail > 0 && newRetail > 0 && oldRetail !== newRetail) {
+      const pct = Math.round(((newRetail - oldRetail) / oldRetail) * 100);
+      variationStr = `${pct > 0 ? "+" : ""}${pct}%`;
+    }
+
+    const dateFormatted = new Date(log.created_at).toLocaleString("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    lines.push(
+      [
+        escapeCsv(log.id),
+        escapeCsv(log.product_id),
+        escapeCsv(prod?.title || "Producto"),
+        escapeCsv(prod?.sku || ""),
+        escapeCsv(dateFormatted),
+        escapeCsv(log.changed_by),
+        escapeCsv(actionLabels[log.action] || log.action),
+        escapeCsv(oldRetail > 0 ? oldRetail : ""),
+        escapeCsv(newRetail > 0 ? newRetail : ""),
+        escapeCsv(variationStr),
+        escapeCsv(oldD.wholesale_price ? Number(oldD.wholesale_price) : ""),
+        escapeCsv(newD.wholesale_price ? Number(newD.wholesale_price) : ""),
+        escapeCsv(oldD.stock !== undefined ? Number(oldD.stock) : ""),
+        escapeCsv(newD.stock !== undefined ? Number(newD.stock) : ""),
+        escapeCsv(log.notes || ""),
+      ].join(",")
+    );
+  }
+
+  const filename = productId
+    ? `auditoria_producto_${productId.slice(0, 8)}_${new Date().toISOString().slice(0, 10)}.csv`
+    : `auditoria_general_mya_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  return {
+    success: true,
+    csv: lines.join("\r\n"),
+    count: (logs || []).length,
+    filename,
+  };
+}
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
   const supabase = await getAdminClient();
   if (newRole === "customer") {

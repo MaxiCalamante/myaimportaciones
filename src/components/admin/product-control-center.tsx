@@ -33,6 +33,7 @@ import {
   Clock,
   ShieldAlert,
   History,
+  Download,
 } from "lucide-react";
 import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -50,6 +51,7 @@ import {
   permanentDeleteProductAction,
   emptyTrashAction,
   quickUpdateSupplierLinkAction,
+  exportProductAuditLogsCsvAction,
 } from "@/app/admin/actions";
 
 interface ProductControlCenterProps {
@@ -102,6 +104,7 @@ export function ProductControlCenter({
   const [bulkPriceType, setBulkPriceType] = useState<"percentage" | "fixed_markup">("percentage");
   const [bulkPriceAmount, setBulkPriceAmount] = useState<number>(10);
   const [showStockAudit, setShowStockAudit] = useState(false);
+  const [isExportingGlobalAudit, setIsExportingGlobalAudit] = useState(false);
 
   // Live supplier verification state
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -428,6 +431,28 @@ export function ProductControlCenter({
     });
   };
 
+  // Export Global Audit Log to CSV
+  const handleExportGlobalAuditCsv = async () => {
+    try {
+      setIsExportingGlobalAudit(true);
+      const res = await exportProductAuditLogsCsvAction(undefined, 500);
+      const blob = new Blob(["\uFEFF" + res.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = res.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast(`Reporte de auditoría descargado (${res.count} registros).`, "success");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Error al exportar auditoría.", "error");
+    } finally {
+      setIsExportingGlobalAudit(false);
+    }
+  };
+
   // Copy SKU to clipboard helper
   const handleCopySku = (sku: string) => {
     navigator.clipboard.writeText(sku);
@@ -651,6 +676,17 @@ export function ProductControlCenter({
           >
             <TrendingUp className="h-4 w-4 text-zinc-500" />
             {showStockAudit ? "Ocultar Auditoría" : "Auditoría de Stock"}
+          </button>
+
+          <button
+            type="button"
+            disabled={isExportingGlobalAudit}
+            onClick={handleExportGlobalAuditCsv}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-4 text-xs font-semibold text-zinc-800 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            title="Descargar reporte completo de auditoría de precios y stock en CSV / Excel"
+          >
+            <Download className="h-4 w-4 text-purple-600" />
+            <span>Auditoría CSV</span>
           </button>
 
           {onOpenCreateProduct && (
@@ -2263,6 +2299,10 @@ export function ProductControlCenter({
           isOpen={Boolean(auditingProduct)}
           product={auditingProduct}
           onClose={() => setAuditingProduct(null)}
+          onPriceRolledBack={() => {
+            router.refresh();
+            showToast("Precio restaurado con éxito.", "success");
+          }}
         />
       )}
     </div>

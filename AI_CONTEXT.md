@@ -1,5 +1,37 @@
 # MYA Importaciones — contexto vigente
 
+## Rollback de Precios en 1 Clic, Marca de Agua Oficial MYA y Exportación de Auditoría a CSV — 22/10/2026
+
+Por requerimiento expreso del dueño ("hace las 3"):
+
+### 1. Rollback y Restauración de Versión de Precio en 1 Clic:
+- **Acción del Servidor (`src/app/admin/actions.ts`):**
+  - Implementada [`rollbackProductPriceAction(productId, targetRetailPrice, targetWholesalePrice?, sourceDate?)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L920-L970).
+  - Permite al administrador revertir con 1 solo toque el precio minorista y mayorista a cualquier versión histórica anterior de la ficha.
+  - Registra automáticamente un nuevo evento en `product_audit_logs` con `action: "price_rollback"`, nota detallando la fecha de origen de la versión restaurada, y ejecuta la revalidación instantánea de rutas del storefront y panel de control.
+- **Experiencia de Usuario en [`ProductAuditModal`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-audit-modal.tsx):**
+  - En cada evento del timeline con cambio de precio, cuando el valor histórico difiere del vigente se despliega el botón **"Restaurar a $X"** (`RotateCcw`).
+  - Al hacer clic, confirma la reversión, actualiza los indicadores en vivo en el modal y sincroniza el catálogo sin necesidad de recargar la página.
+
+### 2. Sello de Agua Oficial "MYA IMPORTACIONES · TANDIL" en Fotos:
+- **Encuadre y Marca de Agua en [`ImageCropperModal`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/image-cropper-modal.tsx):**
+  - Toggle intuitivo en la barra de herramientas: **"Sello MYA Activado / Desactivado"** (`ShieldCheck`).
+  - **Previsualización en tiempo real:** Muestra una pastilla flotante translúcida en la esquina inferior derecha del recuadro de recorte.
+  - **Estampado vectorial de alta fidelidad:** Al aplicar el recorte, dibuja un badge redondeado con fondo oscuro semitransparente (`rgba(9, 9, 11, 0.75)`), borde blanco suave, tipografía nítida `MYA IMPORTACIONES` en blanco y `FOTO OFICIAL · TANDIL` en celeste cielo (`#38bdf8`), protegiendo las fotos reales tomadas en el local contra plagio en Mercado Libre, redes sociales o revendedores externos antes de comprimir a WebP.
+
+### 3. Exportación de Auditoría a CSV / Excel (Individual y Global):
+- **Acción del Servidor (`src/app/admin/actions.ts`):**
+  - Implementada [`exportProductAuditLogsCsvAction(productId?, limit?)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L975-L1075).
+  - Exporta registros de auditoría completos con ID, producto, SKU, fecha/hora formato `es-AR`, email del administrador responsable, acción, precio minorista anterior, precio nuevo, variación porcentual (+/- %), precios mayoristas, stock previo/nuevo y notas.
+  - Codificación UTF-8 con BOM (`\uFEFF`) para compatibilidad directa sin caracteres rotos en Microsoft Excel y Google Sheets en Windows/Mac.
+- **Puntos de Descarga en el Panel:**
+  - **Ficha específica:** Botón **"Exportar CSV"** en la cabecera de [`ProductAuditModal`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-audit-modal.tsx).
+  - **Auditoría Global:** Botón **"Auditoría CSV"** (`Download`) en la barra de sincronización y control de [`ProductControlCenter`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-control-center.tsx) para descargar hasta 500 eventos históricos globales para control gerencial y contable.
+- **Suite de Pruebas:**
+  - Nuevos tests en [`tests/product-lifecycle.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/product-lifecycle.test.ts) (200/200 tests aprobados, 0 fallas).
+
+---
+
 ## Limpieza de Storage al Purgar, Recorte Guiado de Fotos y Auditoría Histórica de Precios/Stock — 22/10/2026
 
 Por requerimiento expreso del dueño ("ok hace los 3"):

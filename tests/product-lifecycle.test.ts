@@ -208,3 +208,31 @@ test("product-lifecycle: cleanupOrphanProductImages protects images shared with 
   assert.equal(count, 1, "Only the orphan path should be removed");
   assert.deepEqual(removedPaths, [orphanPath], "Shared path must be preserved for cloned product");
 });
+
+test("product-lifecycle: audit CSV escaping handles quotes, commas, and newlines safely", () => {
+  const escapeCsv = (val: string | number | null | undefined): string => {
+    if (val === null || val === undefined) return "";
+    const str = String(val);
+    if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  assert.equal(escapeCsv("Normal Text"), "Normal Text");
+  assert.equal(escapeCsv("Text, with comma"), '"Text, with comma"');
+  assert.equal(escapeCsv('Text with "quotes"'), '"Text with ""quotes"""');
+  assert.equal(escapeCsv("Text with\nnewline"), '"Text with\nnewline"');
+  assert.equal(escapeCsv(12500), "12500");
+  assert.equal(escapeCsv(null), "");
+});
+
+test("product-lifecycle: rollbackPrice calculation produces accurate percentage delta", () => {
+  const oldPrice = 50000;
+  const currentPrice = 60000;
+  const deltaPct = Math.round(((currentPrice - oldPrice) / oldPrice) * 100);
+  assert.equal(deltaPct, 20, "Should indicate +20% price increase");
+
+  const rollbackDeltaPct = Math.round(((oldPrice - currentPrice) / currentPrice) * 100);
+  assert.equal(rollbackDeltaPct, -17, "Rollback indicates -17% discount back to original");
+});

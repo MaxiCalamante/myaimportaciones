@@ -1,9 +1,27 @@
 "use client";
 
 import React, { useEffect, useState, useTransition } from "react";
-import { History, X, DollarSign, Package, TrendingUp, TrendingDown, Clock, User, ShieldCheck } from "lucide-react";
+import {
+  History,
+  X,
+  DollarSign,
+  Package,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  User,
+  ShieldCheck,
+  RotateCcw,
+  Download,
+  Check,
+} from "lucide-react";
 import { formatCurrency } from "@/lib/format";
-import { getProductAuditLogsAction, type ProductAuditLogEntry } from "@/app/admin/actions";
+import {
+  getProductAuditLogsAction,
+  rollbackProductPriceAction,
+  exportProductAuditLogsCsvAction,
+  type ProductAuditLogEntry,
+} from "@/app/admin/actions";
 
 export interface ProductAuditModalProps {
   isOpen: boolean;
@@ -16,42 +34,102 @@ export interface ProductAuditModalProps {
     stock: number;
   } | null;
   onClose: () => void;
+  onPriceRolledBack?: (newRetail: number, newWholesale?: number) => void;
 }
 
-export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModalProps) {
+export function ProductAuditModal({
+  isOpen,
+  product,
+  onClose,
+  onPriceRolledBack,
+}: ProductAuditModalProps) {
   const [logs, setLogs] = useState<ProductAuditLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
+
+  // Live updated prices if rolled back
+  const [currentRetail, setCurrentRetail] = useState<number>(product?.retailPrice ?? 0);
+  const [currentWholesale, setCurrentWholesale] = useState<number>(product?.wholesalePrice ?? 0);
+
+  useEffect(() => {
+    if (product) {
+      setCurrentRetail(product.retailPrice);
+      setCurrentWholesale(product.wholesalePrice);
+    }
+  }, [product]);
+
+  const loadLogs = (productId: string) => {
+    setLoading(true);
+    setError(null);
+    getProductAuditLogsAction(productId)
+      .then((data) => {
+        setLogs(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Error al cargar el historial de cambios.");
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
     if (!isOpen || !product) {
       setLogs([]);
       setError(null);
+      setSuccessMsg(null);
       return;
     }
-
-    let isMounted = true;
-    setLoading(true);
-    setError(null);
-
-    getProductAuditLogsAction(product.id)
-      .then((data) => {
-        if (isMounted) {
-          setLogs(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : "Error al cargar el historial de cambios.");
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    loadLogs(product.id);
   }, [isOpen, product]);
+
+  const handleRollback = (targetRetail: number, targetWholesale?: number, sourceDate?: string) => {
+    if (!product) return;
+    const confirmMsg = targetWholesale
+      ? `¿Restaurar el precio a ${formatCurrency(targetRetail)} minorista y ${formatCurrency(targetWholesale)} mayorista?`
+      : `¿Restaurar el precio minorista a ${formatCurrency(targetRetail)}?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    startTransition(async () => {
+      try {
+        setError(null);
+        await rollbackProductPriceAction(product.id, targetRetail, targetWholesale, sourceDate);
+        setCurrentRetail(targetRetail);
+        if (targetWholesale !== undefined) setCurrentWholesale(targetWholesale);
+        setSuccessMsg(`Precio restaurado exitosamente a ${formatCurrency(targetRetail)}.`);
+        onPriceRolledBack?.(targetRetail, targetWholesale);
+        // Refresh audit logs to show the rollback event
+        loadLogs(product.id);
+        setTimeout(() => setSuccessMsg(null), 4000);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Error al restaurar el precio.");
+      }
+    });
+  };
+
+  const handleDownloadCsv = async () => {
+    if (!product || downloadingCsv) return;
+    setDownloadingCsv(true);
+    try {
+      const res = await exportProductAuditLogsCsvAction(product.id);
+      const blob = new Blob(["\uFEFF" + res.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = res.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al exportar CSV.");
+    } finally {
+      setDownloadingCsv(false);
+    }
+  };
 
   if (!isOpen || !product) return null;
 
@@ -76,13 +154,25 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
               <p className="text-xs text-zinc-500 font-medium line-clamp-1">{product.title}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition cursor-pointer"
-          >
-            <X className="size-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              disabled={downloadingCsv || logs.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-700 font-bold text-xs transition cursor-pointer disabled:opacity-40 shadow-2xs"
+              title="Descargar historial de esta ficha en formato CSV / Excel"
+            >
+              <Download className="size-3.5 text-zinc-500" />
+              <span className="hidden sm:inline">Exportar CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
 
         {/* Current State Strip */}
@@ -90,11 +180,11 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
           <div className="flex items-center gap-4">
             <div>
               <span className="text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Minorista Actual</span>
-              <strong className="text-sm font-black text-zinc-950">{formatCurrency(product.retailPrice)}</strong>
+              <strong className="text-sm font-black text-zinc-950">{formatCurrency(currentRetail)}</strong>
             </div>
             <div>
               <span className="text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Mayorista Actual</span>
-              <strong className="text-sm font-black text-zinc-950">{formatCurrency(product.wholesalePrice)}</strong>
+              <strong className="text-sm font-black text-zinc-950">{formatCurrency(currentWholesale)}</strong>
             </div>
             <div>
               <span className="text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Stock Físico Tandil</span>
@@ -106,16 +196,25 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
           </span>
         </div>
 
+        {/* Success or Error alert message */}
+        {successMsg && (
+          <div className="mx-5 mt-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+            <Check className="size-4 text-emerald-600 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+        {error && (
+          <div className="mx-5 mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+            {error}
+          </div>
+        )}
+
         {/* Timeline Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {loading ? (
             <div className="py-16 text-center space-y-3">
               <div className="size-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-xs font-semibold text-zinc-500">Consultando registros de auditoría...</p>
-            </div>
-          ) : error ? (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
-              {error}
             </div>
           ) : logs.length === 0 ? (
             <div className="py-14 text-center space-y-3">
@@ -150,6 +249,9 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
                   minute: "2-digit",
                 });
 
+                // Target price for rollback: if oldRetail is different from currentRetail, we can restore it!
+                const canRollbackToOld = oldRetail > 0 && oldRetail !== currentRetail;
+
                 return (
                   <div key={entry.id} className="relative group">
                     {/* Bullet icon */}
@@ -165,6 +267,8 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
                               ? "⚡ Cambio rápido de precio"
                               : entry.action === "bulk_price_adjustment"
                               ? "📊 Ajuste masivo de precio"
+                              : entry.action === "price_rollback"
+                              ? "🔄 Rollback de precio"
                               : entry.action === "price_and_stock_update"
                               ? "📝 Edición de precio y stock"
                               : entry.action === "price_update"
@@ -230,11 +334,32 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
                         )}
                       </div>
 
-                      {/* Auditor Footer */}
-                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 pt-1 border-t border-zinc-100">
-                        <User className="size-3 text-zinc-400" />
-                        <span>Modificado por:</span>
-                        <strong className="text-zinc-800 font-semibold">{entry.changedBy}</strong>
+                      {/* Auditor Footer & Rollback action */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 pt-1.5 border-t border-zinc-100">
+                        <div className="flex items-center gap-1.5">
+                          <User className="size-3 text-zinc-400" />
+                          <span>Modificado por:</span>
+                          <strong className="text-zinc-800 font-semibold">{entry.changedBy}</strong>
+                        </div>
+
+                        {canRollbackToOld && (
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() =>
+                              handleRollback(
+                                oldRetail,
+                                oldWholesale > 0 ? oldWholesale : undefined,
+                                entry.createdAt
+                              )
+                            }
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs transition cursor-pointer disabled:opacity-50 active:scale-98 shadow-2xs"
+                            title={`Restaurar el precio a ${formatCurrency(oldRetail)}`}
+                          >
+                            <RotateCcw className="size-3 text-purple-600" />
+                            <span>Restaurar a {formatCurrency(oldRetail)}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -245,7 +370,10 @@ export function ProductAuditModal({ isOpen, product, onClose }: ProductAuditModa
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-zinc-200 bg-zinc-50 flex justify-end">
+        <div className="p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between">
+          <p className="text-[11px] text-zinc-500">
+            Los rollbacks de precio se registran automáticamente en la bitácora de auditoría.
+          </p>
           <button
             type="button"
             onClick={onClose}

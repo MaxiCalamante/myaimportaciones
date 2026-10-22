@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Crop, ZoomIn, ZoomOut, RotateCw, Check, X, Maximize2 } from "lucide-react";
+import { Crop, ZoomIn, ZoomOut, RotateCw, Check, X, Maximize2, ShieldCheck } from "lucide-react";
 import { MAX_UPLOAD_BYTES } from "@/lib/admin-product";
 
 export type AspectRatioType = "1:1" | "4:5" | "free";
@@ -25,6 +25,7 @@ export function ImageCropperModal({
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0); // 0, 90, 180, 270
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [watermark, setWatermark] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -157,6 +158,41 @@ export function ImageCropperModal({
       // Draw original image centered
       ctx.drawImage(img, -naturalW / 2, -naturalH / 2, naturalW, naturalH);
       ctx.restore();
+
+      // Render official MYA watermark badge if enabled
+      if (watermark) {
+        const badgeW = Math.round(targetW * 0.34);
+        const badgeH = Math.round(targetH * 0.052);
+        const margin = Math.round(targetW * 0.03);
+        const badgeX = targetW - badgeW - margin;
+        const badgeY = targetH - badgeH - margin;
+        const radius = Math.round(badgeH * 0.28);
+
+        ctx.save();
+        ctx.fillStyle = "rgba(9, 9, 11, 0.75)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+        ctx.lineWidth = Math.max(1, Math.round(targetW * 0.0015));
+
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") {
+          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, radius);
+        } else {
+          ctx.rect(badgeX, badgeY, badgeW, badgeH);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${Math.round(badgeH * 0.38)}px system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText("MYA IMPORTACIONES", badgeX + Math.round(badgeW * 0.08), badgeY + Math.round(badgeH * 0.38));
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = `bold ${Math.round(badgeH * 0.26)}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText("FOTO OFICIAL · TANDIL", badgeX + Math.round(badgeW * 0.08), badgeY + Math.round(badgeH * 0.72));
+        ctx.restore();
+      }
 
       // Compress to WebP / fallback JPEG
       const baseName = fileName.replace(/\.[^.]+$/, "");
@@ -322,6 +358,14 @@ export function ImageCropperModal({
                 }}
               />
             </div>
+
+            {/* Live Watermark Preview */}
+            {watermark && (
+              <div className="absolute right-3 bottom-3 z-30 pointer-events-none rounded-xl bg-zinc-950/85 border border-white/20 px-3 py-1.5 text-left backdrop-blur-xs shadow-lg animate-in fade-in">
+                <span className="block text-[10px] font-black tracking-wide text-white leading-tight">MYA IMPORTACIONES</span>
+                <span className="block text-[8px] font-bold tracking-wider text-sky-400 leading-tight">FOTO OFICIAL · TANDIL</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -344,7 +388,21 @@ export function ImageCropperModal({
               <span className="font-mono text-zinc-400 text-[11px] w-10 text-right">{Math.round(zoom * 100)}%</span>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setWatermark((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                  watermark
+                    ? "bg-amber-400 text-amber-950 border-amber-300 shadow-sm"
+                    : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+                }`}
+                title="Estampar el sello oficial de MYA Importaciones en la foto para protegerla contra copias de terceros"
+              >
+                <ShieldCheck className="size-3.5" />
+                <span>Sello MYA {watermark ? "Activado" : "Desactivado"}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleRotate}
