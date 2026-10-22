@@ -1,6 +1,33 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmailConfig } from "./email-config";
 import { sendResendEmail } from "./email-transport";
 import { formatCurrency } from "./format";
+
+export const DEFAULT_PRICE_ALERT_THRESHOLD = 30;
+
+export async function getPriceAlertThreshold(db?: SupabaseClient): Promise<number> {
+  const envVal = Number(process.env.PRICE_ALERT_THRESHOLD_PERCENT);
+  if (Number.isFinite(envVal) && envVal >= 5 && envVal <= 100) {
+    return Math.round(envVal);
+  }
+  if (db) {
+    try {
+      const { data } = await db
+        .from("supplier_tracking_settings")
+        .select("config")
+        .eq("id", true)
+        .maybeSingle();
+      const cfg = (data?.config as Record<string, unknown>) ?? {};
+      const configured = Number(cfg.priceAlertThresholdPercent);
+      if (Number.isFinite(configured) && configured >= 5 && configured <= 100) {
+        return Math.round(configured);
+      }
+    } catch {
+      // Fallback to default if table or column is unavailable
+    }
+  }
+  return DEFAULT_PRICE_ALERT_THRESHOLD;
+}
 
 export interface SuddenPriceAlertParams {
   productId: string;
@@ -11,32 +38,37 @@ export interface SuddenPriceAlertParams {
   changedBy: string;
   changeType?: string;
   origin?: string;
+  thresholdPct?: number;
 }
 
 /**
- * Evaluates whether a price change exceeds 30% variation (up or down).
+ * Evaluates whether a price change exceeds the alert threshold (default 30% or custom configured).
  * If so, sends an immediate executive security notification email to MYA administrators.
  */
 export async function checkAndAlertSuddenPriceChange(
   params: SuddenPriceAlertParams
 ): Promise<{ alerted: boolean; deltaPct?: number; error?: string }> {
-  const { productId, productTitle, sku, oldPrice, newPrice, changedBy, changeType, origin } = params;
+  const { productId, productTitle, sku, oldPrice, newPrice, changedBy, changeType, origin, thresholdPct } = params;
 
   if (!oldPrice || oldPrice <= 0 || !newPrice || newPrice <= 0) {
     return { alerted: false };
   }
 
+  const threshold = typeof thresholdPct === "number" && thresholdPct > 0
+    ? thresholdPct
+    : DEFAULT_PRICE_ALERT_THRESHOLD;
+
   const deltaPct = Math.round(((newPrice - oldPrice) / oldPrice) * 100);
   const absDelta = Math.abs(deltaPct);
 
-  // Trigger alert threshold: 30% or more variation
-  if (absDelta < 30) {
+  // Trigger alert threshold evaluation
+  if (absDelta < threshold) {
     return { alerted: false, deltaPct };
   }
 
   const config = getEmailConfig();
   if (!config.enabled || !config.apiKey) {
-    console.warn(`[price-alert] Alerta de precio omitida (email no configurado): ${productTitle} ${deltaPct}%`);
+    console.warn(`[price-alert] Alerta de precio omitida (email no configurado): ${productTitle} ${deltaPct}% (umbral ${threshold}%)`);
     return { alerted: true, deltaPct };
   }
 
@@ -46,7 +78,7 @@ export async function checkAndAlertSuddenPriceChange(
   const siteUrl = origin || config.origin || "https://myaimportaciones.com.ar";
   const productAdminUrl = `${siteUrl}/admin?search=${encodeURIComponent(sku || productTitle)}`;
 
-  const subject = `⚠️ ALERTA DE PRECIO: Variación brusca de ${sign}${deltaPct}% en ${productTitle}`;
+  const subject = `⚠️ ALERTA DE PRECIO: Variación brusca de ${sign}${deltaPct}% (Umbral ±${threshold}%) en ${productTitle}`;
 
   const html = `
 <!DOCTYPE html>
@@ -76,7 +108,7 @@ export async function checkAndAlertSuddenPriceChange(
     </div>
     <div class="content">
       <div class="badge">
-        Variación Significativa: ${arrow} ${sign}${deltaPct}%
+        Variación Significativa: ${arrow} ${sign}${deltaPct}% (Umbral configurado: ±${threshold}%)
       </div>
       <p style="margin: 0 0 12px 0; font-size: 15px; font-weight: 700; color: #09090b;">
         ${productTitle}
@@ -117,12 +149,12 @@ export async function checkAndAlertSuddenPriceChange(
 </html>
 `;
 
-  const text = `AVISO DE SEGURIDAD - CAMBIO BRUSCO DE PRECIO (${sign}${deltaPct}%)
+  const text = `AVISO DE SEGURIDAD - CAMBIO BRUSCO DE PRECIO (${sign}${deltaPct}% · Umbral: ±${threshold}%)
 
 Producto: ${productTitle} (ID: ${productId})
 Precio anterior: ${formatCurrency(oldPrice)}
 Precio nuevo: ${formatCurrency(newPrice)}
-Variación: ${sign}${deltaPct}%
+Variación: ${sign}${deltaPct}% (Umbral configurado: ±${threshold}%)
 Modificado por: ${changedBy}
 Acción: ${changeType || "Edición de precio"}
 Fecha: ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}

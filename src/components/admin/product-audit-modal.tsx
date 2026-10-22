@@ -16,6 +16,7 @@ import {
   Check,
   Calendar,
   Filter,
+  ChevronDown,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -54,7 +55,10 @@ export function ProductAuditModal({
 
   // Filters state
   const [dateFilter, setDateFilter] = useState<"all" | "24h" | "7d" | "30d">("all");
-  const [actionFilter, setActionFilter] = useState<"all" | "price" | "stock" | "rollback" | "bulk">("all");
+  const [actionFilter, setActionFilter] = useState<"all" | "price" | "stock" | "rollback" | "bulk" | "csv">("all");
+
+  // Pagination state for smooth lazy rendering of large event histories
+  const [visibleCount, setVisibleCount] = useState(15);
 
   // Live updated prices if rolled back
   const [currentRetail, setCurrentRetail] = useState<number>(product?.retailPrice ?? 0);
@@ -70,9 +74,10 @@ export function ProductAuditModal({
   const loadLogs = (productId: string) => {
     setLoading(true);
     setError(null);
-    getProductAuditLogsAction(productId)
+    getProductAuditLogsAction(productId, 200)
       .then((data) => {
         setLogs(data);
+        setVisibleCount(15);
         setLoading(false);
       })
       .catch((err) => {
@@ -88,6 +93,7 @@ export function ProductAuditModal({
       setSuccessMsg(null);
       setDateFilter("all");
       setActionFilter("all");
+      setVisibleCount(15);
       return;
     }
     loadLogs(product.id);
@@ -145,11 +151,17 @@ export function ProductAuditModal({
     if (actionFilter === "rollback" && log.action !== "price_rollback") {
       return false;
     }
-    if (actionFilter === "bulk" && log.action !== "bulk_price_adjustment") {
+    if (actionFilter === "bulk" && !["bulk_price_adjustment", "csv_import"].includes(log.action)) {
+      return false;
+    }
+    if (actionFilter === "csv" && log.action !== "csv_import") {
       return false;
     }
     return true;
   });
+
+  const displayedLogs = filteredLogs.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredLogs.length;
 
   const handleDownloadCsv = async () => {
     if (!product || downloadingCsv) return;
@@ -283,11 +295,12 @@ export function ProductAuditModal({
                 <option value="stock">📦 Stock</option>
                 <option value="rollback">🔄 Rollbacks</option>
                 <option value="bulk">📊 Ajustes Masivos</option>
+                <option value="csv">📁 Importación CSV</option>
               </select>
             </div>
 
             <span className="text-[11px] font-semibold text-zinc-500">
-              {filteredLogs.length} de {logs.length} eventos
+              Mostrando {displayedLogs.length} de {filteredLogs.length} eventos{filteredLogs.length < logs.length ? ` (${logs.length} en total)` : ""}
             </span>
           </div>
         )}
@@ -341,7 +354,7 @@ export function ProductAuditModal({
             </div>
           ) : (
             <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-zinc-200">
-              {filteredLogs.map((entry) => {
+              {displayedLogs.map((entry) => {
                 const oldRetail = Number(entry.oldData.retail_price ?? 0);
                 const newRetail = Number(entry.newData.retail_price ?? 0);
                 const oldWholesale = Number(entry.oldData.wholesale_price ?? 0);
@@ -376,7 +389,9 @@ export function ProductAuditModal({
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-xs text-zinc-900">
-                            {entry.action === "quick_price_update"
+                            {entry.action === "csv_import"
+                              ? "📁 Importación masiva CSV"
+                              : entry.action === "quick_price_update"
                               ? "⚡ Cambio rápido de precio"
                               : entry.action === "bulk_price_adjustment"
                               ? "📊 Ajuste masivo de precio"
@@ -478,6 +493,19 @@ export function ProductAuditModal({
                   </div>
                 );
               })}
+
+              {hasMore && (
+                <div className="pt-2 pb-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount((prev) => prev + 15)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-300 font-bold text-xs transition shadow-2xs cursor-pointer active:scale-98"
+                  >
+                    <span>Cargar más eventos ({filteredLogs.length - visibleCount} restantes)</span>
+                    <ChevronDown className="size-3.5 text-zinc-500" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

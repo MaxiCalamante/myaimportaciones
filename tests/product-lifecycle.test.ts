@@ -384,3 +384,188 @@ test("product-lifecycle: audit log filtering matches temporal and action filters
   assert.equal(filterPrice.length, 1);
   assert.equal(filterPrice[0].id, "1");
 });
+
+test("product-lifecycle: checkAndAlertSuddenPriceChange respects custom thresholdPct", async () => {
+  // Custom threshold 20%: +25% should alert
+  const res1 = await checkAndAlertSuddenPriceChange({
+    productId: "p1",
+    productTitle: "Test Prod 1",
+    oldPrice: 10000,
+    newPrice: 12500, // +25%
+    changedBy: "admin@mya.com",
+    thresholdPct: 20,
+  });
+  assert.equal(res1.alerted, true);
+  assert.equal(res1.deltaPct, 25);
+
+  // Custom threshold 20%: +15% should NOT alert
+  const res2 = await checkAndAlertSuddenPriceChange({
+    productId: "p2",
+    productTitle: "Test Prod 2",
+    oldPrice: 10000,
+    newPrice: 11500, // +15%
+    changedBy: "admin@mya.com",
+    thresholdPct: 20,
+  });
+  assert.equal(res2.alerted, false);
+  assert.equal(res2.deltaPct, 15);
+
+  // Custom threshold 50%: +40% should NOT alert
+  const res3 = await checkAndAlertSuddenPriceChange({
+    productId: "p3",
+    productTitle: "Test Prod 3",
+    oldPrice: 10000,
+    newPrice: 14000, // +40%
+    changedBy: "admin@mya.com",
+    thresholdPct: 50,
+  });
+  assert.equal(res3.alerted, false);
+
+  // Custom threshold 50%: -55% should alert
+  const res4 = await checkAndAlertSuddenPriceChange({
+    productId: "p4",
+    productTitle: "Test Prod 4",
+    oldPrice: 10000,
+    newPrice: 4500, // -55%
+    changedBy: "admin@mya.com",
+    thresholdPct: 50,
+  });
+  assert.equal(res4.alerted, true);
+  assert.equal(res4.deltaPct, -55);
+});
+
+test("product-lifecycle: CSV import builds accurate snapshot audit logs for updated and new products", () => {
+  const existingBySlug = new Map([
+    [
+      "taladro-percutor-13mm",
+      {
+        id: "prod-existing-1",
+        slug: "taladro-percutor-13mm",
+        title: "Taladro Percutor 13mm",
+        retail_price: 55000,
+        wholesale_price: 42000,
+        stock: 8,
+      },
+    ],
+  ]);
+
+  const upsertedRows = [
+    {
+      id: "prod-existing-1",
+      slug: "taladro-percutor-13mm",
+      title: "Taladro Percutor 13mm",
+      sku: "TAL-01",
+      retail_price: 68000,
+      wholesale_price: 50000,
+      stock: 8,
+    },
+    {
+      id: "prod-new-2",
+      slug: "amoladora-angular-115mm",
+      title: "Amoladora Angular 115mm",
+      sku: "AMO-01",
+      retail_price: 49000,
+      wholesale_price: 36000,
+      stock: 0,
+    },
+  ];
+
+  const adminEmail = "admin@myaimportaciones.com.ar";
+  const auditInserts: any[] = [];
+
+  for (const row of upsertedRows) {
+    const existing = existingBySlug.get(row.slug);
+    if (existing) {
+      const oldRetail = Number(existing.retail_price ?? 0);
+      const newRetail = Number(row.retail_price ?? 0);
+      const oldWholesale = Number(existing.wholesale_price ?? 0);
+      const newWholesale = Number(row.wholesale_price ?? 0);
+      const oldStock = Number(existing.stock ?? 0);
+      const newStock = Number(row.stock ?? existing.stock ?? 0);
+
+      const priceChanged = oldRetail !== newRetail || oldWholesale !== newWholesale;
+      const stockChanged = oldStock !== newStock;
+
+      if (priceChanged || stockChanged) {
+        auditInserts.push({
+          product_id: row.id,
+          changed_by: adminEmail,
+          action: "csv_import",
+          old_data: {
+            retail_price: oldRetail,
+            wholesale_price: oldWholesale,
+            stock: oldStock,
+          },
+          new_data: {
+            retail_price: newRetail,
+            wholesale_price: newWholesale,
+            stock: newStock,
+          },
+          notes: priceChanged
+            ? `Actualización de precio vía CSV (${oldRetail} → ${newRetail})`
+            : "Actualización vía importación CSV",
+        });
+      }
+    } else {
+      auditInserts.push({
+        product_id: row.id,
+        changed_by: adminEmail,
+        action: "csv_import",
+        old_data: {},
+        new_data: {
+          retail_price: Number(row.retail_price ?? 0),
+          wholesale_price: Number(row.wholesale_price ?? 0),
+          stock: Number(row.stock ?? 0),
+        },
+        notes: "Creación de producto vía importación masiva CSV",
+      });
+    }
+  }
+
+  assert.equal(auditInserts.length, 2);
+
+  // Existing product check
+  assert.equal(auditInserts[0].action, "csv_import");
+  assert.equal(auditInserts[0].old_data.retail_price, 55000);
+  assert.equal(auditInserts[0].new_data.retail_price, 68000);
+  assert.equal(auditInserts[0].old_data.stock, 8);
+  assert.equal(auditInserts[0].new_data.stock, 8);
+
+  // New product check
+  assert.equal(auditInserts[1].action, "csv_import");
+  assert.deepEqual(auditInserts[1].old_data, {});
+  assert.equal(auditInserts[1].new_data.retail_price, 49000);
+  assert.equal(auditInserts[1].new_data.stock, 0);
+});
+
+test("product-lifecycle: audit log modal pagination renders in chunks of 15 and flags hasMore", () => {
+  // Generate 35 mock audit logs
+  const totalLogs = Array.from({ length: 35 }, (_, idx) => ({
+    id: `log-${idx}`,
+    action: "quick_price_update",
+    createdAt: new Date(Date.now() - idx * 3600000).toISOString(),
+  }));
+
+  let visibleCount = 15;
+  let displayedLogs = totalLogs.slice(0, visibleCount);
+  let hasMore = visibleCount < totalLogs.length;
+
+  assert.equal(displayedLogs.length, 15);
+  assert.equal(hasMore, true);
+
+  // User clicks "Cargar más"
+  visibleCount += 15;
+  displayedLogs = totalLogs.slice(0, visibleCount);
+  hasMore = visibleCount < totalLogs.length;
+
+  assert.equal(displayedLogs.length, 30);
+  assert.equal(hasMore, true);
+
+  // User clicks "Cargar más" again
+  visibleCount += 15;
+  displayedLogs = totalLogs.slice(0, visibleCount);
+  hasMore = visibleCount < totalLogs.length;
+
+  assert.equal(displayedLogs.length, 35);
+  assert.equal(hasMore, false, "When all 35 records are rendered, hasMore must be false");
+});

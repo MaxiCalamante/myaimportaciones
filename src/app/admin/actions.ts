@@ -7,7 +7,7 @@ import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { getAdminClient } from "@/lib/admin-auth";
 import { parseProductForm, productImageUrl, httpsUrl, validId, validateImageContent } from "@/lib/admin-product";
 import { prepareProductImages, cleanupOrphanProductImages } from "@/lib/admin-media";
-import { checkAndAlertSuddenPriceChange } from "@/lib/price-alert";
+import { checkAndAlertSuddenPriceChange, getPriceAlertThreshold } from "@/lib/price-alert";
 import {
   checkAndUpdateProductSupplierStock,
   runBatchSupplierStockSync,
@@ -915,7 +915,7 @@ export async function logProductAuditEvent(
   }
 }
 
-export async function getProductAuditLogsAction(productId: string): Promise<ProductAuditLogEntry[]> {
+export async function getProductAuditLogsAction(productId: string, limit: number = 200): Promise<ProductAuditLogEntry[]> {
   validId(productId);
   const supabase = await getAdminClient();
   const { data, error } = await supabase
@@ -923,7 +923,7 @@ export async function getProductAuditLogsAction(productId: string): Promise<Prod
     .select("id, product_id, changed_by, action, old_data, new_data, notes, created_at")
     .eq("product_id", productId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
 
   if (error || !data) {
     console.error("[getProductAuditLogsAction] Error:", error);
@@ -1077,6 +1077,7 @@ export async function exportProductAuditLogsCsvAction(productId?: string, limit:
     price_update: "Actualización de precio",
     stock_update: "Ajuste de stock",
     price_and_stock_update: "Actualización de precio y stock",
+    csv_import: "Importación masiva CSV",
   };
 
   const lines = [header.join(",")];
@@ -1226,6 +1227,43 @@ export async function bulkRollbackPricesAction(productIds: string[]) {
   revalidatePath("/catalogo");
 
   return { success: true, count: restoredCount, requested: productIds.length };
+}
+
+export async function getPriceAlertThresholdAction(): Promise<number> {
+  const supabase = await getAdminClient();
+  return getPriceAlertThreshold(supabase);
+}
+
+export async function updatePriceAlertThresholdAction(newThreshold: number): Promise<{ success: boolean; threshold: number }> {
+  if (!Number.isInteger(newThreshold) || newThreshold < 5 || newThreshold > 100) {
+    throw new Error("El porcentaje de umbral debe ser un número entero entre 5 y 100.");
+  }
+  const supabase = await getAdminClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado como administrador.");
+
+  const { data: existing } = await supabase
+    .from("supplier_tracking_settings")
+    .select("config")
+    .eq("id", true)
+    .maybeSingle();
+
+  const currentConfig = (existing?.config as Record<string, unknown>) ?? {};
+  const updatedConfig = {
+    ...currentConfig,
+    priceAlertThresholdPercent: newThreshold,
+  };
+
+  const { error } = await supabase
+    .from("supplier_tracking_settings")
+    .update({ config: updatedConfig, updated_at: new Date().toISOString() })
+    .eq("id", true);
+
+  if (error) {
+    throw new Error(`No se pudo actualizar el umbral: ${error.message}`);
+  }
+
+  return { success: true, threshold: newThreshold };
 }
 
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {
@@ -1385,8 +1423,95 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
         supplier_available: existing?.supplier_available ?? false,
       };
   });
-  const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
+  const { data: upsertedRows, error } = await supabase
+    .from("products")
+    .upsert(payload, { onConflict: "slug" })
+    .select("id, slug, title, sku, retail_price, wholesale_price, stock");
+
   if (error) throw new Error(`No se pudo importar el CSV: ${error.message}`);
+
+  // Guarantee product IDs are available for audit log snapshots
+  let affectedProducts = upsertedRows;
+  if (!affectedProducts || affectedProducts.length === 0) {
+    const { data: queried } = await supabase
+      .from("products")
+      .select("id, slug, title, sku, retail_price, wholesale_price, stock")
+      .in("slug", slugs);
+    affectedProducts = queried || [];
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const adminEmail = user?.email || "Administrador CSV";
+  const alertThreshold = await getPriceAlertThreshold(supabase);
+  const auditInserts: any[] = [];
+
+  for (const row of affectedProducts) {
+    const existing = existingBySlug.get(row.slug);
+    if (existing) {
+      const oldRetail = Number(existing.retail_price ?? 0);
+      const newRetail = Number(row.retail_price ?? 0);
+      const oldWholesale = Number(existing.wholesale_price ?? 0);
+      const newWholesale = Number(row.wholesale_price ?? 0);
+      const oldStock = Number(existing.stock ?? 0);
+      const newStock = Number(row.stock ?? existing.stock ?? 0);
+
+      const priceChanged = oldRetail !== newRetail || oldWholesale !== newWholesale;
+      const stockChanged = oldStock !== newStock;
+
+      if (priceChanged || stockChanged) {
+        auditInserts.push({
+          product_id: row.id,
+          changed_by: adminEmail,
+          action: "csv_import",
+          old_data: {
+            retail_price: oldRetail,
+            wholesale_price: oldWholesale,
+            stock: oldStock,
+          },
+          new_data: {
+            retail_price: newRetail,
+            wholesale_price: newWholesale,
+            stock: newStock,
+          },
+          notes: priceChanged
+            ? `Actualización de precio vía CSV (${oldRetail} → ${newRetail})`
+            : "Actualización vía importación CSV",
+        });
+
+        // Trigger sudden price alert if variation exceeds threshold
+        if (oldRetail > 0 && newRetail > 0) {
+          await checkAndAlertSuddenPriceChange({
+            productId: row.id,
+            productTitle: row.title || "Producto CSV",
+            sku: row.sku,
+            oldPrice: oldRetail,
+            newPrice: newRetail,
+            changedBy: adminEmail,
+            changeType: "Importación masiva CSV",
+            thresholdPct: alertThreshold,
+          });
+        }
+      }
+    } else {
+      auditInserts.push({
+        product_id: row.id,
+        changed_by: adminEmail,
+        action: "csv_import",
+        old_data: {},
+        new_data: {
+          retail_price: Number(row.retail_price ?? 0),
+          wholesale_price: Number(row.wholesale_price ?? 0),
+          stock: Number(row.stock ?? 0),
+        },
+        notes: "Creación de producto vía importación masiva CSV",
+      });
+    }
+  }
+
+  if (auditInserts.length > 0) {
+    await supabase.from("product_audit_logs").insert(auditInserts);
+  }
+
   revalidatePath("/");
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");

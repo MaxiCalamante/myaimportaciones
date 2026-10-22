@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   History,
   Download,
+  Bell,
 } from "lucide-react";
 import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -53,6 +54,7 @@ import {
   emptyTrashAction,
   quickUpdateSupplierLinkAction,
   exportProductAuditLogsCsvAction,
+  updatePriceAlertThresholdAction,
 } from "@/app/admin/actions";
 
 interface ProductControlCenterProps {
@@ -106,6 +108,7 @@ export function ProductControlCenter({
   const [bulkPriceAmount, setBulkPriceAmount] = useState<number>(10);
   const [showStockAudit, setShowStockAudit] = useState(false);
   const [isExportingGlobalAudit, setIsExportingGlobalAudit] = useState(false);
+  const [priceAlertThreshold, setPriceAlertThreshold] = useState<number>(30);
 
   // Live supplier verification state
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -439,6 +442,19 @@ export function ProductControlCenter({
     });
   };
 
+  // Update Price Alert Threshold
+  const handleUpdateThreshold = (newThreshold: number) => {
+    setPriceAlertThreshold(newThreshold);
+    startTransition(async () => {
+      try {
+        await updatePriceAlertThresholdAction(newThreshold);
+        showToast(`Umbral de alerta de precio configurado en ±${newThreshold}%`, "success");
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : "Error al actualizar umbral.", "error");
+      }
+    });
+  };
+
   // Quick Price Save
   const handleSaveQuickPrice = () => {
     if (!quickPriceProduct) return;
@@ -711,6 +727,27 @@ export function ProductControlCenter({
             <Download className="h-4 w-4 text-purple-600" />
             <span>Auditoría CSV</span>
           </button>
+
+          {/* Price Alert Threshold Setting */}
+          <div
+            className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-xs"
+            title="Porcentaje de variación de precio que dispara una alerta automática por email a los administradores"
+          >
+            <Bell className="h-4 w-4 text-indigo-600 shrink-0" />
+            <span className="hidden sm:inline text-zinc-500">Alerta precio:</span>
+            <select
+              value={priceAlertThreshold}
+              onChange={(e) => handleUpdateThreshold(Number(e.target.value))}
+              disabled={isPending}
+              className="bg-transparent font-bold text-zinc-900 outline-none cursor-pointer"
+            >
+              <option value="15">±15%</option>
+              <option value="20">±20%</option>
+              <option value="30">±30% (Estándar)</option>
+              <option value="40">±40%</option>
+              <option value="50">±50%</option>
+            </select>
+          </div>
 
           {onOpenCreateProduct && (
             <button

@@ -1,5 +1,39 @@
 # MYA Importaciones — contexto vigente
 
+## Umbral Configurable de Alerta de Precios, Snapshot de Auditoría en Importación CSV y Paginación de Eventos — 22/10/2026
+
+Por requerimiento expreso del dueño ("ok si hace las 3"):
+
+### 1. Configuración de Umbral de Alerta Personalizada (±15%, ±20%, ±30%, ±40%, ±50%):
+- **Motor de Seguridad de Precios (`src/lib/price-alert.ts`):**
+  - Añadida función [`getPriceAlertThreshold(db?)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/price-alert.ts#L8-L32) que consulta de forma persistente la configuración de umbral en `supplier_tracking_settings` (o variable de entorno `PRICE_ALERT_THRESHOLD_PERCENT`), con valor por defecto de 30%.
+  - [`checkAndAlertSuddenPriceChange`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/price-alert.ts#L45-L75) admite parámetro opcional `thresholdPct`, evaluando la variación porcentual contra el umbral configurado e incluyéndolo en el asunto, badge y texto del correo ejecutivo.
+- **Acciones del Servidor (`src/app/admin/actions.ts`):**
+  - Implementadas [`getPriceAlertThresholdAction()`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L1232-L1236) y [`updatePriceAlertThresholdAction(newThreshold)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L1238-L1270).
+  - Valida el rango permitido (entero entre 5 y 100), comprueba autenticación de administrador y persiste `priceAlertThresholdPercent` en la base de datos de forma segura.
+- **Selector en el Panel ([`ProductControlCenter`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-control-center.tsx#L732-L755)):**
+  - Selector interactivo con ícono de campana (`Bell`) en la barra de herramientas superior: opciones `±15%`, `±20%`, `±30% (Estándar)`, `±40%` y `±50%`. Actualiza al instante con confirmación toast.
+
+### 2. Snapshot de Auditoría en Importación Masiva por CSV:
+- **Acción del Servidor (`src/app/admin/actions.ts` - [`bulkImportProductsAction`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L1380-L1510)):**
+  - Al procesar la importación masiva vía CSV, compara cada producto contra su estado preexistente (`retail_price`, `wholesale_price`, `stock`).
+  - Para productos existentes con variaciones de precios o stock, genera automáticamente registros de auditoría en `product_audit_logs` con `action: "csv_import"`, guardando el snapshot de `old_data` y `new_data`.
+  - Si la variación de precio supera el umbral configurado, despacha la alerta de seguridad comercial por correo a los administradores.
+  - Para productos nuevos dados de alta mediante CSV, registra su creación con `old_data: {}` y valores iniciales en `new_data`.
+  - Se agregó la etiqueta `"Importación masiva CSV"` en el exportador CSV de auditoría [`exportProductAuditLogsCsvAction`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L1075-L1085).
+
+### 3. Paginación y Carga Diferida en Modal de Auditoría:
+- **Componente ([`ProductAuditModal`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-audit-modal.tsx)):**
+  - Consulta ampliada a 200 registros históricos en [`getProductAuditLogsAction(productId, limit)`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/app/admin/actions.ts#L918-L928).
+  - Renderizado paginado en bloques de 15 eventos (`visibleCount`).
+  - Botón **"Cargar más eventos (X restantes)"** con ícono `ChevronDown` para navegación fluida sin sobrecargar el DOM.
+  - Conteo dinámico: `Mostrando X de Y eventos (Z en total)`.
+  - Nueva opción de filtro `"📁 Importación CSV"` en el selector de acciones.
+- **Suite de Pruebas:**
+  - Nuevos tests en [`tests/product-lifecycle.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/product-lifecycle.test.ts) (206/206 tests aprobados, 0 fallas).
+
+---
+
 ## Alertas por Correo ante Cambios Bruscos de Precio, Filtros Avanzados de Auditoría y Rollback Masivo por Lote — 22/10/2026
 
 Por requerimiento expreso del dueño ("ok hace los 3 que quede todo perfecto"):
