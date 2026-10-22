@@ -4,7 +4,7 @@ import { isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, PackageCheck, ShoppingCart, Layers, ArrowRight } from "lucide-react";
+import { Heart, PackageCheck, ShoppingCart, Layers, ArrowRight, Check } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { ElectronicsPrice } from "./electronics-price";
 import type { Product, ProductChannel } from "@/lib/types";
@@ -37,6 +37,7 @@ export function ProductCard({
     ? product.optionsConfig?.filter((d) => !/color|tono|acabado/i.test(d.name))
     : [];
   const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState(false);
 
   const cartItem = cart.find(
     (line) => line.product.id === product.id && line.channel === channel
@@ -66,6 +67,16 @@ export function ProductCard({
           {product.brand && (
             <span className="max-w-full truncate rounded-lg bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-800 shadow-2xs border border-zinc-200/50">
               {product.brand}
+            </span>
+          )}
+          {product.tags?.includes("oferta") && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-rose-600 text-white px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-xs">
+              🔥 Oferta
+            </span>
+          )}
+          {product.featured && !product.tags?.includes("oferta") && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 text-zinc-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-xs">
+              ⭐ Destacado
             </span>
           )}
           {product.hasVariants && (
@@ -111,6 +122,21 @@ export function ProductCard({
             <p data-product-price className="whitespace-nowrap text-[clamp(0.95rem,4.1vw,1.125rem)] font-semibold tracking-tight tabular-nums text-zinc-950 sm:text-xl">
               {formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)}
             </p>
+            {channel === "retail" && (product.hasVariants && product.minPrice ? product.minPrice : price) > 0 && (
+              <div className="mt-1 space-y-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs sm:text-sm font-extrabold text-emerald-800 tabular-nums">
+                    {formatCurrency(Math.round((product.hasVariants && product.minPrice ? product.minPrice : price) * 0.97))}
+                  </span>
+                  <span className="rounded bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.2 text-[9px] font-black text-emerald-800 uppercase tracking-tight">
+                    -3% Transferencia
+                  </span>
+                </div>
+                <p className="text-[10px] text-zinc-500 font-medium">
+                  o 3 cuotas de <strong className="text-zinc-700 font-semibold">{formatCurrency(Math.round((product.hasVariants && product.minPrice ? product.minPrice : price) / 3))}</strong>
+                </p>
+              </div>
+            )}
             {channel === "retail" && <ElectronicsPrice product={product} />}
 
 
@@ -238,12 +264,16 @@ export function ProductCard({
         ) : !isVerifiedStock(product) ? <Link href={`/producto/${product.slug}`} className="mt-3 flex min-h-11 items-center justify-center rounded-xl bg-zinc-950 p-2.5 text-center text-xs font-semibold text-white sm:mt-4 sm:p-3 sm:text-sm">Ver disponibilidad</Link> : (
           <Button
             disabled={!isVerifiedStock(product)}
-            className="mt-3 w-full cursor-pointer sm:mt-4"
-            icon={<ShoppingCart className="h-4 w-4" />}
-            onClick={() => addToCart(product, channel, addQuantity)}
+            className="mt-3 w-full cursor-pointer sm:mt-4 transition-all"
+            icon={justAdded ? <Check className="h-4 w-4 text-emerald-300" /> : <ShoppingCart className="h-4 w-4" />}
+            onClick={() => {
+              addToCart(product, channel, addQuantity);
+              setJustAdded(true);
+              setTimeout(() => setJustAdded(false), 1500);
+            }}
             type="button"
           >
-            Agregar
+            {justAdded ? "¡Agregado al carrito!" : "Agregar"}
           </Button>
         )}
       </div>

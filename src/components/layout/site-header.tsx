@@ -41,6 +41,25 @@ const POPULAR_SEARCHES = [
   { label: "Victoria's Secret", query: "Victoria" },
 ];
 
+const ANNOUNCEMENTS = [
+  {
+    text: "Hasta 3% de descuento pagando por Transferencia Bancaria directa",
+    highlight: "-3% OFF",
+  },
+  {
+    text: "Envíos a todo el país por Correo Argentino con seguimiento en vivo",
+    highlight: "Nacional",
+  },
+  {
+    text: "Punto de retiro en Tandil · Coordiná tu entrega directa con nosotros",
+    highlight: "Tandil",
+  },
+  {
+    text: "Garantía oficial MYA 30 días y atención personalizada por WhatsApp",
+    highlight: "Garantía",
+  },
+];
+
 export function SiteHeader({
   initialCategories = [],
   initialProducts = [],
@@ -59,7 +78,15 @@ export function SiteHeader({
   const [apiResults, setApiResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [completedSearch, setCompletedSearch] = useState("");
+  const [currentAnnouncement, setCurrentAnnouncement] = useState(0);
   const { cartCount, favoritesCount, setCartOpen, openWhatsApp } = useCommerce();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentAnnouncement((prev) => (prev + 1) % ANNOUNCEMENTS.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, []);
 
   // Cancel stale searches so a slower previous response cannot replace the current query.
   useEffect(() => {
@@ -226,6 +253,40 @@ export function SiteHeader({
 
   return (
     <header ref={headerRef} className={`${headerClass} ${open ? "z-[46]" : ""}`}>
+      {/* Top Announcement Bar */}
+      <div className="border-b border-zinc-800 bg-zinc-950 text-white text-[11px] sm:text-xs">
+        <div className="mx-auto flex h-8 sm:h-9 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 overflow-hidden flex-1 justify-center sm:justify-start">
+            <span className="flex items-center justify-center size-4 sm:size-5 rounded-full bg-emerald-500/20 text-emerald-400 shrink-0">
+              <Sparkles className="size-2.5 sm:size-3" />
+            </span>
+            <div className="flex items-center gap-2 truncate animate-in fade-in duration-300" key={currentAnnouncement}>
+              <span className="font-semibold text-zinc-200 truncate">
+                {ANNOUNCEMENTS[currentAnnouncement].text}
+              </span>
+              <span className="hidden md:inline-block rounded bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.2 text-[9px] font-extrabold text-emerald-400 uppercase tracking-wider">
+                {ANNOUNCEMENTS[currentAnnouncement].highlight}
+              </span>
+            </div>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-3 shrink-0 text-zinc-400">
+            <button
+              type="button"
+              onClick={() => openWhatsApp("Hola Máximo y Agustina! Quería consultarles sobre los productos de MYA Importaciones.")}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
+            >
+              <MessageCircle className="size-3.5" />
+              <span>Ayuda WhatsApp</span>
+            </button>
+            <span className="text-zinc-700">|</span>
+            <Link href="/seguimiento" className="hover:text-zinc-200 transition text-[11px] font-medium">
+              Seguir envío
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
         <Link className="group flex shrink-0 items-center gap-1.5" href={isWholesale ? "/mayorista" : "/"} aria-label={brandName}>
           <div className="relative h-10 w-14 shrink-0 overflow-hidden transition group-hover:scale-105 sm:h-11 sm:w-20">

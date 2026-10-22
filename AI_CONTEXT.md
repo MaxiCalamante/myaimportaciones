@@ -1,6 +1,46 @@
 # MYA Importaciones — contexto vigente
 
-## Umbral Configurable de Alerta de Precios, Snapshot de Auditoría en Importación CSV y Paginación de Eventos — 22/10/2026
+## Embellecimiento Frontend, Barra Dinámica de Anuncios, Beneficios de Pago y Optimización de Conversión — 22/10/2026
+
+Por requerimiento expreso del dueño ("No basta con las cargas hace otra cosa embellece la página frontend, mejora cosas q hagan falta para la compra de algo o lo que fuera q le falte a la ecommerce ni parte admin ahora"):
+
+### 1. Barra Dinámica de Anuncios y Propuesta de Valor en Cabecera ([`SiteHeader`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/layout/site-header.tsx)):
+- **Barra Superior Rotativa:** Barra en fondo oscuro elegante (`bg-zinc-950`) que rota automáticamente cada 4.5 segundos entre las 4 promesas de valor clave de MYA:
+  1. *Hasta 3% de descuento pagando por Transferencia Bancaria directa* (`-3% OFF`)
+  2. *Envíos a todo el país por Correo Argentino con seguimiento en vivo* (`Nacional`)
+  3. *Punto de retiro en Tandil · Coordiná tu entrega directa con nosotros* (`Tandil`)
+  4. *Garantía oficial MYA 30 días y atención personalizada por WhatsApp* (`Garantía`)
+- **Accesos Rápidos de Confianza:** Botón de contacto directo con Máximo y Agustina por WhatsApp (`Ayuda WhatsApp`) y acceso directo al seguimiento de envíos (`Seguir envío`).
+
+### 2. Cards de Producto con Incentivo de Compra y Feedback Interactivo ([`ProductCard`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/product-card.tsx)):
+- **Incentivo de Pago por Transferencia:**
+  - Cálculo automático y destacado en verde esmeralda del precio abonando por transferencia (`-3%`).
+  - Badge visual distintivo `-3% Transferencia`.
+  - Indicador de financiación de referencia: `o 3 cuotas fijas de $X`.
+- **Badges Visuales en Esquina:**
+  - `🔥 Oferta` (para productos con tag "oferta" o en liquidación).
+  - `⭐ Destacado` (para productos catalogados como destacados).
+- **Micro-interacción de Carrito:**
+  - Al pulsar "Agregar", el botón cambia instantáneamente a estado confirmado: `¡Agregado al carrito!` con ícono `Check` y animación verde antes de abrir el drawer, eliminando la incertidumbre de clic.
+
+### 3. Rediseño del Carrito Lateral con Garantías y Estado Vacío Atractivo ([`CartDrawer`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/cart-drawer.tsx)):
+- **Cinta Superior de Seguridad y Confianza:** Tira con sellos `Compra 100% Segura`, `Correo Argentino` y `Garantía Tandil`.
+- **Estado Vacío Dinámico:** Si el carrito no tiene artículos, en lugar de un texto plano, ahora ofrece 4 accesos directos con íconos para seguir navegando: `Electrónica`, `K-Beauty`, `Perfumería` y `Herramientas`.
+- **Footer de Checkout con Ahorro Transparente:**
+  - Recuadro con degradé esmeralda que calcula el monto exacto ahorrado por transferencia bancaria: `Pagando por transferencia ahorrás $X (3% OFF)`.
+  - Botón principal de compra de alto impacto `Iniciar Compra Segura` con ícono de candado de seguridad (`Lock`).
+  - Botón secundario directo para coordinar o consultar el pedido por WhatsApp con Agustina y Máximo.
+
+### 4. Bloque de Precios y Garantías de Confianza en la Ficha de Producto ([`ProductDetailInteractive`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/product-detail-interactive.tsx) y [`StickyMobileBuyBar`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/sticky-mobile-buy-bar.tsx)):
+- **Card de Precios con Descuento Directo:** Desglose del precio de lista vs. precio por transferencia con badge `3% OFF DIRECTO` y `¡Ahorrás $X!`.
+- **Caja de Garantías del Comprador:**
+  - `Garantía Oficial MYA 30 días`: respaldo directo y cambio inmediato ante fallas.
+  - `Embalaje reforzado sin costo`: protección multicapa antigolpes para envíos.
+  - `Envío asegurado por Correo Argentino`: paquetería oficial Paq.ar con código de seguimiento en tiempo real.
+  - `Atención humana directa`: soporte directo por WhatsApp con Máximo y Agustina.
+- **Barra Móvil Flotante (`StickyMobileBuyBar`):** Visualización del precio reducido por transferencia (`$X transf. (-3%)`) directamente en el botón de compra fija en celulares.
+
+---
 
 Por requerimiento expreso del dueño ("ok si hace las 3"):
 

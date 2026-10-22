@@ -244,10 +244,30 @@ export function ProductDetailInteractive({
           <p className="mt-1 break-words text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-tight tracking-tight tabular-nums text-zinc-950">
             {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{formatCurrency(price)}
           </p>
-          {channel === "retail" && price > 0 && <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-emerald-800">
-            <strong className="font-semibold tabular-nums">{formatCurrency(transferPrice)}</strong><span>por transferencia</span>
-            <span className="text-xs text-zinc-500">Ahorrás {formatCurrency(transferSavings)} · 3%</span>
-          </div>}
+          {channel === "retail" && price > 0 && (
+            <div className="mt-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50/70 border border-emerald-200 p-4 shadow-2xs space-y-1.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-950">
+                  <span className="size-2 rounded-full bg-emerald-600 animate-pulse" />
+                  Abonando por Transferencia:
+                </span>
+                <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
+                  3% OFF DIRECTO
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <strong className="text-2xl sm:text-3xl font-black text-emerald-950 tabular-nums">
+                  {formatCurrency(transferPrice)}
+                </strong>
+                <span className="text-xs font-bold text-emerald-800">
+                  ¡Ahorrás {formatCurrency(transferSavings)}!
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-800/90 font-medium pt-1.5 border-t border-emerald-200/60">
+                o pagalo en hasta <strong>3 cuotas de {formatCurrency(Math.round(price / 3))}</strong> con tarjeta de crédito
+              </p>
+            </div>
+          )}
           {channel === "retail" && <ElectronicsPrice product={{ ...product, retailPrice: price }} detail />}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className={`inline-flex items-center gap-1.5 font-medium ${inStock ? "text-emerald-800" : "text-amber-800"}`}><span className={`size-1.5 shrink-0 rounded-full ${inStock ? "bg-emerald-600" : "bg-amber-500"}`}/>{inStock ? "Disponible" : "Disponibilidad a confirmar"}</span>
@@ -423,6 +443,32 @@ export function ProductDetailInteractive({
           </a>
         </div>
         {copyError && <p role="status" className="mt-2 text-xs leading-5 text-zinc-600">No pudimos copiar el enlace. Podés copiar la dirección del navegador o compartir por WhatsApp.</p>}
+
+        {/* Buyer Trust Guarantees */}
+        <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-3.5 space-y-2 text-xs">
+          <div className="flex items-center gap-2 text-zinc-900 font-bold">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>Comprá seguro en MYA Importaciones:</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-600 pt-1 border-t border-zinc-200/50">
+            <div className="flex items-center gap-1.5">
+              <span className="text-emerald-600 font-bold">✓</span>
+              <span>Garantía de 30 días oficial MYA</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-emerald-600 font-bold">✓</span>
+              <span>Embalaje reforzado de protección</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-emerald-600 font-bold">✓</span>
+              <span>Seguimiento online Correo Argentino</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-emerald-600 font-bold">✓</span>
+              <span>Atención directa de los dueños</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Shipping Cost Simulator */}
