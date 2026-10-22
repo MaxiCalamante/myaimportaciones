@@ -1,5 +1,42 @@
 # MYA Importaciones — contexto vigente
 
+## Trazabilidad de Auditoría en Papelera, Purga Programada y Reordenamiento Visual de Fotos con Portada — 22/10/2026
+
+Por requerimiento expreso del dueño ("hace las 3"):
+
+### 1. Historial y Trazabilidad de Auditoría en la Papelera (`deleted_by` & `deleted_at`):
+- **Base de Datos & Esquema:**
+  - Migración [`supabase/migrations/20261022141500_product_soft_delete_audit_and_cleanup.sql`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/supabase/migrations/20261022141500_product_soft_delete_audit_and_cleanup.sql) con columna `deleted_by text` y permisos `GRANT SELECT (deleted_by) ON public.products TO anon, authenticated`.
+  - En [`src/lib/types.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/types.ts) y [`src/lib/catalog-data.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/lib/catalog-data.ts): `deletedBy` agregado a `Product`, `DbProduct` y `PUBLIC_PRODUCT_COLUMNS`.
+- **Acciones del Servidor (`src/app/admin/actions.ts`):**
+  - `deleteProductAction` y `bulkUpdateProductStatusAction` obtienen el email del usuario administrador autenticado (`supabase.auth.getUser()`) y lo persisten en `deleted_by`.
+  - `restoreProductAction` limpia tanto `deleted_at` como `deleted_by`.
+- **Visualización en el Panel de Control (`src/components/admin/product-control-center.tsx`):**
+  - **Desktop:** Columnas dedicadas "Auditoría de Eliminación" (fecha/hora formato es-AR + email del admin responsable) y "Retención & Vencimiento".
+  - **Mobile:** Tarjeta inteligente con bloque de auditoría detallado y badge de retención (`⚠️ Vencido (+Xd)` o `Retención (Xd restantes)`).
+
+### 2. Auto-Vaciado y Purga de Publicaciones Vencidas en Papelera:
+- **Acción del Servidor (`src/app/admin/actions.ts`):**
+  - `emptyTrashAction(daysThreshold?: number)`: Permite purgar de forma definitiva publicaciones que lleven más de `daysThreshold` días en papelera (por defecto 30 días) o vaciar la papelera por completo (`daysThreshold: 0`), ejecutando la eliminación física y revalidando rutas del catálogo y panel.
+- **UI de Gestión en la Pestaña "Papelera":**
+  - Banner superior informativo en [`src/components/admin/product-control-center.tsx`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/admin/product-control-center.tsx) que detalla el plazo de retención de 30 días y el contador de ítems vencidos listos para purgar.
+  - Botón "Purgar vencidos (+30 días)" (`Clock`): Elimina de una vez los ítems que superaron el periodo de seguridad.
+  - Botón "Vaciar papelera" (`Trash2`): Permite forzar el vaciado total con confirmación explícita para evitar pérdidas involuntarias.
+
+### 3. Reordenamiento Interactivo y Selección de Portada en Fotos de Producto:
+- **Editor de Producto (`src/components/admin/product-editor.tsx`):**
+  - Unificación visual de imágenes en `galleryItems: EditorGalleryItem[]` (soporta fotos existentes de Supabase Storage y nuevas fotos subidas/comprimidas en WebP).
+  - **1 Clic para Portada:** Botón estrella (`Star` / "Hacer portada") que mueve cualquier imagen instantáneamente a la posición 0, destacada con badge azul `★ Portada`.
+  - **Controles de Orden:** Flechas paso a paso izquierda/derecha (`ChevronLeft`, `ChevronRight`) accesibles tanto en móviles touch como en computadoras.
+  - **Drag-and-Drop HTML5:** Arrastrar y soltar fotos directamente en la cuadrícula para reordenarlas a gusto.
+  - **Manifiesto de Orden en Servidor (`src/lib/admin-media.ts`):**
+    - Se envía el campo de formulario `gallery_order` con tokens `keep:<url>` y `upload:<idx>`.
+    - `prepareProductImages` reconstruye el arreglo de URLs en el servidor respetando exactamente la secuencia visual elegida por el administrador antes de guardar en base de datos.
+- **Suite de Tests:**
+  - Actualizada [`tests/product-lifecycle.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/product-lifecycle.test.ts) (196/196 tests aprobados, 0 fallas) validando preservación de `deletedBy`, cálculos de vencimiento de retención y reconstrucción ordenada de imágenes según tokens `gallery_order`.
+
+---
+
 ## Compresión WebP en el Cliente, Duplicador de Ficha y Papelera de Reciclaje (Soft Delete) — 22/10/2026
 
 Por requerimiento expreso del dueño ("hace las 3"):

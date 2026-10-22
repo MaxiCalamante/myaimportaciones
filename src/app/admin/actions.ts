@@ -443,13 +443,16 @@ export async function bulkUpdateProductStatusAction(
       supplier_last_checked_at: null,
     };
   } else if (action === "soft_delete") {
+    const { data: { user } } = await supabase.auth.getUser();
     updatePayload = {
       deleted_at: new Date().toISOString(),
+      deleted_by: user?.email || "Admin",
       is_active: false,
     };
   } else if (action === "restore") {
     updatePayload = {
       deleted_at: null,
+      deleted_by: null,
       is_active: false,
     };
   } else if (action === "permanent_delete") {
@@ -597,11 +600,16 @@ export async function deleteProductAction(productId: string) {
       throw new AdminFormError("El producto ya no existe o fue eliminado previamente.");
     }
 
-    // Soft delete: move to recycle bin by setting deleted_at and is_active=false
+    // Get admin email for audit logging
+    const { data: { user } } = await supabase.auth.getUser();
+    const adminEmail = user?.email || "Admin";
+
+    // Soft delete: move to recycle bin by setting deleted_at, deleted_by and is_active=false
     const { error } = await supabase
       .from("products")
       .update({
         deleted_at: new Date().toISOString(),
+        deleted_by: adminEmail,
         is_active: false,
         updated_at: new Date().toISOString(),
       })
@@ -636,11 +644,12 @@ export async function restoreProductAction(productId: string) {
       throw new AdminFormError("El producto no fue encontrado en la papelera.");
     }
 
-    // Restore: clear deleted_at, restore as paused draft
+    // Restore: clear deleted_at and deleted_by, restore as paused draft
     const { error } = await supabase
       .from("products")
       .update({
         deleted_at: null,
+        deleted_by: null,
         is_active: false,
         updated_at: new Date().toISOString(),
       })
@@ -692,6 +701,35 @@ export async function permanentDeleteProductAction(productId: string) {
     revalidatePath("/catalogo");
 
     return { success: true, id, title: product.title };
+  });
+}
+
+export async function emptyTrashAction(daysThreshold?: number) {
+  return runAdminFormAction(async () => {
+    const supabase = await getAdminClient();
+
+    let query = supabase
+      .from("products")
+      .delete()
+      .not("deleted_at", "is", null);
+
+    if (typeof daysThreshold === "number" && daysThreshold > 0) {
+      const cutoff = new Date(Date.now() - daysThreshold * 86400000).toISOString();
+      query = query.lt("deleted_at", cutoff);
+    }
+
+    const { error, count } = await query;
+    if (error) {
+      console.error("[emptyTrashAction] Error al vaciar papelera:", error);
+      throw new AdminFormError(`No se pudo vaciar la papelera: ${error.message}`);
+    }
+
+    refreshCatalog();
+    revalidatePath("/admin");
+    revalidatePath("/mayorista");
+    revalidatePath("/catalogo");
+
+    return { success: true, count: count ?? 0 };
   });
 }
 export async function updateUserRoleAction(userId: string, newRole: "admin" | "customer") {

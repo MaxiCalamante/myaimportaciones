@@ -30,6 +30,8 @@ import {
   Link as LinkIcon,
   RotateCcw,
   CopyPlus,
+  Clock,
+  ShieldAlert,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Category, Product, StockLog } from "@/lib/types";
@@ -44,6 +46,7 @@ import {
   deleteProductAction,
   restoreProductAction,
   permanentDeleteProductAction,
+  emptyTrashAction,
   quickUpdateSupplierLinkAction,
 } from "@/app/admin/actions";
 
@@ -490,6 +493,35 @@ export function ProductControlCenter({
         }
       });
     }
+  };
+
+  // Empty trash action (either older than 30 days or all)
+  const handleEmptyTrash = (daysThreshold?: number) => {
+    const isAll = !daysThreshold || daysThreshold <= 0;
+    const confirmMsg = isAll
+      ? `⚠️ ¿VACIAR TODA LA PAPELERA?\n\nEsta acción eliminará definitivamente las publicaciones en la papelera sin posibilidad de recuperación.`
+      : `⚠️ ¿Eliminar definitivamente las publicaciones con más de ${daysThreshold} días en la papelera?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    startTransition(async () => {
+      try {
+        const result = await emptyTrashAction(daysThreshold);
+        if (result && !result.success) {
+          showToast(result.error, "error");
+          return;
+        }
+        router.refresh();
+        showToast(
+          isAll
+            ? "Papelera vaciada por completo."
+            : `Se purgaron ${result.data?.count ?? 0} publicaciones vencidas de la papelera.`,
+          "success"
+        );
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : "Error al vaciar papelera.", "error");
+      }
+    });
   };
 
   return (
@@ -999,6 +1031,48 @@ export function ProductControlCenter({
         )}
       </div>
 
+      {/* Trash Management & Policy Banner */}
+      {statusFilter === "trash" && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+              <ShieldAlert className="size-5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-rose-950">
+                Papelera de reciclaje ({stats.deleted} {stats.deleted === 1 ? "publicación" : "publicaciones"})
+              </p>
+              <p className="text-xs text-rose-850 mt-0.5">
+                Las publicaciones se resguardan para auditoría y recuperación. Podés restaurarlas o purgar elementos antiguos de forma segura.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              disabled={isPending || stats.deleted === 0}
+              onClick={() => handleEmptyTrash(30)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-rose-300 bg-white px-3 text-xs font-bold text-rose-800 hover:bg-rose-50 disabled:opacity-40 transition shadow-2xs cursor-pointer"
+              title="Eliminar permanentemente publicaciones con más de 30 días en papelera"
+            >
+              <Clock className="size-3.5 text-rose-600" />
+              <span>Vaciar vencidos (&gt; 30 días)</span>
+            </button>
+            <button
+              type="button"
+              disabled={isPending || stats.deleted === 0}
+              onClick={() => handleEmptyTrash(0)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-rose-600 px-3 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-40 transition shadow-2xs cursor-pointer"
+              title="Vaciar toda la papelera definitivamente"
+            >
+              <Trash2 className="size-3.5" />
+              <span>Vaciar papelera</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Products Table */}
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
         {/* Desktop Multi-column Table (>= lg) */}
@@ -1016,9 +1090,19 @@ export function ProductControlCenter({
                 </th>
                 <th className="px-4 py-3.5">Producto & Identidad</th>
                 <th className="px-4 py-3.5">Categoría</th>
-                <th className="px-4 py-3.5">Precios & Margen</th>
-                <th className="px-4 py-3.5">Abastecimiento & Mayorista</th>
-                <th className="px-4 py-3.5 text-center">Estado Tienda</th>
+                {statusFilter === "trash" ? (
+                  <>
+                    <th className="px-4 py-3.5">Auditoría de Eliminación</th>
+                    <th className="px-4 py-3.5">Retención & Vencimiento</th>
+                    <th className="px-4 py-3.5 text-center">Estado</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-4 py-3.5">Precios & Margen</th>
+                    <th className="px-4 py-3.5">Abastecimiento & Mayorista</th>
+                    <th className="px-4 py-3.5 text-center">Estado Tienda</th>
+                  </>
+                )}
                 <th className="px-4 py-3.5 text-center w-28">Acciones</th>
               </tr>
             </thead>
@@ -1165,188 +1249,255 @@ export function ProductControlCenter({
                         </span>
                       </td>
 
-                      {/* Prices & Quick Edit */}
-                      <td data-label="Precios" className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
-                              <>
-                                <div className="font-black text-zinc-950 text-sm">
-                                  {formatCurrency(product.minPrice)} – {formatCurrency(product.maxPrice)}
-                                </div>
-                                <div className="text-[10px] font-bold text-purple-700">
-                                  Rango variantes
-                                </div>
-                              </>
-                            ) : (
-                              <div className="font-black text-zinc-950 text-sm">
-                                {formatCurrency(product.retailPrice)}
-                              </div>
-                            )}
-                            <div className="text-[11px] text-zinc-400 font-medium">
-                              Mayorista: {formatCurrency(product.wholesalePrice)} (mín {product.wholesaleMinQuantity})
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuickPriceProduct(product);
-                              setQuickRetailPrice(product.retailPrice);
-                              setQuickWholesalePrice(product.wholesalePrice);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
-                            title="Modificar precio rápido"
-                          >
-                            <DollarSign className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Fulfillment & Supplier Link / Availability */}
-                      <td data-label="Abastecimiento" className="px-4 py-3.5">
-                        <div className="space-y-2">
-                          {/* Supplier Direct Link & Actions */}
-                          {product.sourceUrl ? (
+                      {statusFilter === "trash" ? (
+                        <>
+                          {/* Audit: When & Who deleted */}
+                          <td data-label="Auditoría" className="px-4 py-3.5">
                             <div className="space-y-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <a
-                                  href={product.sourceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 rounded-lg bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300 px-2 py-0.5 text-xs font-bold transition-all shadow-2xs"
-                                  title="Abrir página oficial del mayorista en nueva pestaña"
-                                >
-                                  <Globe className="h-3 w-3 text-sky-600" /> Abrir proveedor <ExternalLink className="h-3 w-3" />
-                                </a>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySupplierLink(product.sourceUrl!)}
-                                  className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-900 bg-white shadow-2xs transition-colors cursor-pointer"
-                                  title="Copiar enlace del mayorista"
-                                >
-                                  {copiedSupplierLink === product.sourceUrl ? (
-                                    <Check className="h-3 w-3 text-emerald-600" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setQuickSupplierProduct(product)}
-                                  className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:text-sky-700 bg-white shadow-2xs transition-colors cursor-pointer"
-                                  title="Modificar enlace, costo o disponibilidad"
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </button>
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
+                                <Trash2 className="size-3.5 text-rose-600 shrink-0" />
+                                <span>
+                                  {product.deletedAt
+                                    ? new Date(product.deletedAt).toLocaleString("es-AR", {
+                                        timeZone: "America/Argentina/Buenos_Aires",
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "—"}
+                                </span>
                               </div>
+                              <p className="text-[11px] text-zinc-500 font-medium">
+                                Por: <strong className="text-zinc-750">{product.deletedBy || "Administrador"}</strong>
+                              </p>
+                            </div>
+                          </td>
 
-                              {/* Live Price & Gross Margin */}
-                              {product.supplierLivePrice ? (
-                                <div className="flex items-center gap-1.5 text-[10px]">
-                                  <span className="font-semibold text-zinc-500">
-                                    Costo: {formatCurrency(product.supplierLivePrice)}
-                                  </span>
-                                  {product.retailPrice > product.supplierLivePrice && (
-                                    <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                                      +{Math.round(((product.retailPrice - product.supplierLivePrice) / product.retailPrice) * 100)}% mrg
+                          {/* Retention & Expiry status */}
+                          <td data-label="Retención" className="px-4 py-3.5">
+                            {(() => {
+                              const daysInTrash = product.deletedAt
+                                ? Math.floor((Date.now() - new Date(product.deletedAt).getTime()) / 86400000)
+                                : 0;
+                              const isExpired = daysInTrash >= 30;
+                              return (
+                                <div className="space-y-1">
+                                  {isExpired ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800 border border-rose-200">
+                                      ⚠️ Vencido (+{daysInTrash}d)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
+                                      <Clock className="size-3 text-amber-600" />
+                                      <span>Retención ({30 - daysInTrash}d restantes)</span>
                                     </span>
                                   )}
+                                  <p className="text-[10px] text-zinc-400 font-medium">
+                                    {isExpired
+                                      ? "Listo para purga definitiva"
+                                      : `Lleva ${daysInTrash} ${daysInTrash === 1 ? "día" : "días"} en papelera`}
+                                  </p>
                                 </div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
+                              );
+                            })()}
+                          </td>
+
+                          {/* State badge */}
+                          <td data-label="Estado" className="px-4 py-3.5 text-center">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-200 shadow-2xs">
+                              <Trash2 className="size-3" />
+                              <span>En papelera</span>
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          {/* Prices & Quick Edit */}
+                          <td data-label="Precios" className="px-4 py-3.5">
+                            <div className="flex items-center gap-2">
+                              <div>
+                                {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
+                                  <>
+                                    <div className="font-black text-zinc-950 text-sm">
+                                      {formatCurrency(product.minPrice)} – {formatCurrency(product.maxPrice)}
+                                    </div>
+                                    <div className="text-[10px] font-bold text-purple-700">
+                                      Rango variantes
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="font-black text-zinc-950 text-sm">
+                                    {formatCurrency(product.retailPrice)}
+                                  </div>
+                                )}
+                                <div className="text-[11px] text-zinc-400 font-medium">
+                                  Mayorista: {formatCurrency(product.wholesalePrice)} (mín {product.wholesaleMinQuantity})
+                                </div>
+                              </div>
+
                               <button
                                 type="button"
-                                onClick={() => setQuickSupplierProduct(product)}
-                                className="inline-flex items-center gap-1 rounded-xl border border-dashed border-sky-400 bg-sky-50/70 hover:bg-sky-100 text-sky-800 px-2.5 py-1 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                                title="Vincular el enlace directo de la web del mayorista"
+                                onClick={() => {
+                                  setQuickPriceProduct(product);
+                                  setQuickRetailPrice(product.retailPrice);
+                                  setQuickWholesalePrice(product.wholesalePrice);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+                                title="Modificar precio rápido"
                               >
-                                <Plus className="h-3.5 w-3.5" /> Vincular proveedor
+                                <DollarSign className="h-3.5 w-3.5" />
                               </button>
-                              <span className="text-[10px] text-amber-700 font-semibold block">
-                                ⚠️ Falta enlace de mayorista
-                              </span>
                             </div>
-                          )}
+                          </td>
 
-                          {/* Mode Badge & Availability Switch */}
-                          <div className="flex items-center gap-1.5 pt-0.5">
-                            {product.fulfillmentMode === "supplier" ? (
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleSupplierAvailability(product)}
-                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border transition-all cursor-pointer ${
-                                    product.supplierAvailable
-                                      ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                                      : "bg-red-50 text-red-800 border-red-300 hover:bg-red-100"
-                                  }`}
-                                  title="Click para alternar disponibilidad en el mayorista"
-                                >
-                                  {product.supplierAvailable ? (
-                                    <>
-                                      <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                                      <span>Disponible</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <XCircle className="h-3 w-3 text-red-600" />
-                                      <span>Pausado</span>
-                                    </>
-                                  )}
-                                </button>
+                          {/* Fulfillment & Supplier Link / Availability */}
+                          <td data-label="Abastecimiento" className="px-4 py-3.5">
+                            <div className="space-y-2">
+                              {/* Supplier Direct Link & Actions */}
+                              {product.sourceUrl ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <a
+                                      href={product.sourceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300 px-2 py-0.5 text-xs font-bold transition-all shadow-2xs"
+                                      title="Abrir página oficial del mayorista en nueva pestaña"
+                                    >
+                                      <Globe className="h-3 w-3 text-sky-600" /> Abrir proveedor <ExternalLink className="h-3 w-3" />
+                                    </a>
 
-                                <button
-                                  type="button"
-                                  disabled={isLiveChecking}
-                                  onClick={() => handleVerifySupplierStock(product)}
-                                  className="inline-flex h-5 items-center gap-1 rounded bg-zinc-100 hover:bg-zinc-200 px-1.5 text-[9px] font-bold text-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-                                  title="Verificar stock en vivo en la web del mayorista"
-                                >
-                                  <RefreshCw className={`h-2.5 w-2.5 ${isLiveChecking ? "animate-spin text-sky-600" : ""}`} />
-                                  {isLiveChecking ? "..." : "Sync"}
-                                </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySupplierLink(product.sourceUrl!)}
+                                      className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-900 bg-white shadow-2xs transition-colors cursor-pointer"
+                                      title="Copiar enlace del mayorista"
+                                    >
+                                      {copiedSupplierLink === product.sourceUrl ? (
+                                        <Check className="h-3 w-3 text-emerald-600" />
+                                      ) : (
+                                        <Copy className="h-3 w-3" />
+                                      )}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setQuickSupplierProduct(product)}
+                                      className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:text-sky-700 bg-white shadow-2xs transition-colors cursor-pointer"
+                                      title="Modificar enlace, costo o disponibilidad"
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  {/* Live Price & Gross Margin */}
+                                  {product.supplierLivePrice ? (
+                                    <div className="flex items-center gap-1.5 text-[10px]">
+                                      <span className="font-semibold text-zinc-500">
+                                        Costo: {formatCurrency(product.supplierLivePrice)}
+                                      </span>
+                                      {product.retailPrice > product.supplierLivePrice && (
+                                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                          +{Math.round(((product.retailPrice - product.supplierLivePrice) / product.retailPrice) * 100)}% mrg
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setQuickSupplierProduct(product)}
+                                    className="inline-flex items-center gap-1 rounded-xl border border-dashed border-sky-400 bg-sky-50/70 hover:bg-sky-100 text-sky-800 px-2.5 py-1 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                                    title="Vincular el enlace directo de la web del mayorista"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" /> Vincular proveedor
+                                  </button>
+                                  <span className="text-[10px] text-amber-700 font-semibold block">
+                                    ⚠️ Falta enlace de mayorista
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Mode Badge & Availability Switch */}
+                              <div className="flex items-center gap-1.5 pt-0.5">
+                                {product.fulfillmentMode === "supplier" ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSupplierAvailability(product)}
+                                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border transition-all cursor-pointer ${
+                                        product.supplierAvailable
+                                          ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                          : "bg-red-50 text-red-800 border-red-300 hover:bg-red-100"
+                                      }`}
+                                      title="Click para alternar disponibilidad en el mayorista"
+                                    >
+                                      {product.supplierAvailable ? (
+                                        <>
+                                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                          <span>Disponible</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <XCircle className="h-3 w-3 text-red-600" />
+                                          <span>Pausado</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={isLiveChecking}
+                                      onClick={() => handleVerifySupplierStock(product)}
+                                      className="inline-flex h-5 items-center gap-1 rounded bg-zinc-100 hover:bg-zinc-200 px-1.5 text-[9px] font-bold text-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
+                                      title="Verificar stock en vivo en la web del mayorista"
+                                    >
+                                      <RefreshCw className={`h-2.5 w-2.5 ${isLiveChecking ? "animate-spin text-sky-600" : ""}`} />
+                                      {isLiveChecking ? "..." : "Sync"}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 border border-indigo-200">
+                                    <Boxes className="h-3 w-3 text-indigo-600" />
+                                    {product.hasVariants && product.variants?.length
+                                      ? `Stock Total: ${product.stock} un. (${product.variants.length} var.)`
+                                      : product.stockVerifiedAt
+                                      ? `Stock Propio (${product.stock} un.)`
+                                      : "Stock Propio (Sin verificar)"}
+                                  </span>
+                                )}
                               </div>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 border border-indigo-200">
-                                <Boxes className="h-3 w-3 text-indigo-600" />
-                                {product.hasVariants && product.variants?.length
-                                  ? `Stock Total: ${product.stock} un. (${product.variants.length} var.)`
-                                  : product.stockVerifiedAt
-                                  ? `Stock Propio (${product.stock} un.)`
-                                  : "Stock Propio (Sin verificar)"}
-                              </span>
-                            )}
-                          </div>
 
-                          {feedback && (
-                            <p className={`text-[10px] font-bold ${feedback.ok ? "text-emerald-700" : "text-amber-800"}`}>
-                              {feedback.message}
-                            </p>
-                          )}
-                        </div>
-                      </td>
+                              {feedback && (
+                                <p className={`text-[10px] font-bold ${feedback.ok ? "text-emerald-700" : "text-amber-800"}`}>
+                                  {feedback.message}
+                                </p>
+                              )}
+                            </div>
+                          </td>
 
-                      {/* Status in Retail Shop (Active / Paused switch) */}
-                      <td data-label="Estado en tienda" className="px-4 py-3.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(product)}
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border transition-all cursor-pointer ${
-                            isActive
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                              : "bg-zinc-100 text-zinc-500 border-zinc-300 hover:bg-zinc-200"
-                          }`}
-                          title={isActive ? "Click para pausar publicación en la tienda" : "Click para activar en la tienda"}
-                        >
-                          <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
-                          {isActive ? "Activo" : "Pausado"}
-                        </button>
-                      </td>
+                          {/* Status in Retail Shop (Active / Paused switch) */}
+                          <td data-label="Estado en tienda" className="px-4 py-3.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActive(product)}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border transition-all cursor-pointer ${
+                                isActive
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                  : "bg-zinc-100 text-zinc-500 border-zinc-300 hover:bg-zinc-200"
+                              }`}
+                              title={isActive ? "Click para pausar publicación en la tienda" : "Click para activar en la tienda"}
+                            >
+                              <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+                              {isActive ? "Activo" : "Pausado"}
+                            </button>
+                          </td>
+                        </>
+                      )}
 
                       {/* Row Actions */}
                       <td data-label="Acciones" className="px-4 py-3.5 text-center">
@@ -1609,60 +1760,114 @@ export function ProductControlCenter({
                     </div>
                   </div>
 
-                  {/* Middle row: Price and Status Badges */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-zinc-100">
-                    <div>
-                      {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
-                        <div className="text-base font-black text-zinc-950">
-                          {formatCurrency(product.minPrice)} – {formatCurrency(product.maxPrice)}
-                          <span className="ml-1 text-[10px] font-bold text-purple-700 block">Rango variantes</span>
+                  {/* Middle row: Price and Status Badges OR Trash Audit Information */}
+                  {statusFilter === "trash" ? (
+                    <div className="pt-2 border-t border-zinc-100 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        {(() => {
+                          const daysInTrash = product.deletedAt
+                            ? Math.floor((Date.now() - new Date(product.deletedAt).getTime()) / 86400000)
+                            : 0;
+                          const isExpired = daysInTrash >= 30;
+                          return (
+                            <div className="flex items-center gap-2">
+                              {isExpired ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800 border border-rose-200">
+                                  ⚠️ Vencido (+{daysInTrash}d)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
+                                  <Clock className="size-3 text-amber-600" />
+                                  <span>Retención ({30 - daysInTrash}d restantes)</span>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700 border border-rose-200">
+                          <Trash2 className="size-3" />
+                          En papelera
+                        </span>
+                      </div>
+                      <div className="rounded-xl bg-zinc-50 border border-zinc-200 p-2.5 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-zinc-600">
+                          <Clock className="size-3 text-zinc-400 shrink-0" />
+                          <span>
+                            Eliminado:{" "}
+                            <strong className="text-zinc-800">
+                              {product.deletedAt
+                                ? new Date(product.deletedAt).toLocaleString("es-AR", {
+                                    timeZone: "America/Argentina/Buenos_Aires",
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : "—"}
+                            </strong>
+                          </span>
                         </div>
-                      ) : (
-                        <div className="text-base font-black text-zinc-950">
-                          {formatCurrency(product.retailPrice)}
-                        </div>
-                      )}
-                      <div className="text-[11px] text-zinc-500">
-                        Mayorista: <strong className="text-zinc-800">{formatCurrency(product.wholesalePrice)}</strong> (mín {product.wholesaleMinQuantity})
+                        <p className="text-[11px] text-zinc-500 pl-4.5">
+                          Por: <strong className="text-zinc-700">{product.deletedBy || "Administrador"}</strong>
+                        </p>
                       </div>
                     </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-zinc-100">
+                      <div>
+                        {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? (
+                          <div className="text-base font-black text-zinc-950">
+                            {formatCurrency(product.minPrice)} – {formatCurrency(product.maxPrice)}
+                            <span className="ml-1 text-[10px] font-bold text-purple-700 block">Rango variantes</span>
+                          </div>
+                        ) : (
+                          <div className="text-base font-black text-zinc-950">
+                            {formatCurrency(product.retailPrice)}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-zinc-500">
+                          Mayorista: <strong className="text-zinc-800">{formatCurrency(product.wholesalePrice)}</strong> (mín {product.wholesaleMinQuantity})
+                        </div>
+                      </div>
 
-                    <div className="flex items-center gap-2">
-                      {/* Active Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(product)}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all shadow-2xs ${
-                          isActive
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                            : "bg-zinc-100 text-zinc-600 border border-zinc-200"
-                        }`}
-                      >
-                        <span className={`size-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
-                        {isActive ? "Activo" : "Pausado"}
-                      </button>
-
-                      {/* Stock / Fulfillment Badge */}
-                      {product.fulfillmentMode === "own_stock" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
-                          Stock Tandil ({product.stock})
-                        </span>
-                      ) : (
+                      <div className="flex items-center gap-2">
+                        {/* Active Toggle */}
                         <button
                           type="button"
-                          onClick={() => handleToggleSupplierAvailability(product)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border transition ${
-                            product.supplierAvailable
-                              ? "bg-sky-50 text-sky-800 border-sky-200"
-                              : "bg-amber-50 text-amber-800 border-amber-200"
+                          onClick={() => handleToggleActive(product)}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all shadow-2xs ${
+                            isActive
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-zinc-100 text-zinc-600 border border-zinc-200"
                           }`}
                         >
-                          <Truck className="size-3" />
-                          {product.supplierAvailable ? "Prov. Disponible" : "Prov. Pausado"}
+                          <span className={`size-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+                          {isActive ? "Activo" : "Pausado"}
                         </button>
-                      )}
+
+                        {/* Stock / Fulfillment Badge */}
+                        {product.fulfillmentMode === "own_stock" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
+                            Stock Tandil ({product.stock})
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSupplierAvailability(product)}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border transition ${
+                              product.supplierAvailable
+                                ? "bg-sky-50 text-sky-800 border-sky-200"
+                                : "bg-amber-50 text-amber-800 border-amber-200"
+                            }`}
+                          >
+                            <Truck className="size-3" />
+                            {product.supplierAvailable ? "Prov. Disponible" : "Prov. Pausado"}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Variants toggle if applicable */}
                   {product.hasVariants && (

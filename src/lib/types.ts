@@ -92,6 +92,7 @@ export interface Product {
   minPrice?: number;
   maxPrice?: number;
   deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface StorefrontData {

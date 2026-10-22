@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
-import { Camera, ImagePlus, X, CopyPlus } from "lucide-react";
+import { Camera, ImagePlus, X, CopyPlus, Star, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import type { Category, Product, ProductOptionDimension } from "@/lib/types";
 import { createProductAction, updateProductAction, getProductVariantsAction } from "@/app/admin/actions";
 import { MAX_PRODUCT_IMAGES } from "@/lib/admin-product";
@@ -20,6 +20,12 @@ export interface ProductEditorProps {
   categories: Category[];
   onClose: () => void;
   onSaved: () => void;
+}
+
+interface EditorGalleryItem {
+  id: string;
+  url: string;
+  file?: File | null;
 }
 
 export function ProductEditor({
@@ -47,18 +53,28 @@ export function ProductEditor({
     return firstParent?.id ?? "";
   });
   const [childId, setChildId] = useState(() => (category?.parentId ? category.id : ""));
-  const [kept, setKept] = useState<string[]>([
-    ...new Set(
-      [sourceData?.imageUrl, ...(sourceData?.imageUrls ?? [])].filter(
-        (url): url is string => Boolean(url)
-      )
-    ),
-  ]);
-  const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
-  const photoRef = useRef(photos);
+
+  // Unified gallery items with reordering and cover selection
+  const [galleryItems, setGalleryItems] = useState<EditorGalleryItem[]>(() => {
+    const urls = [
+      ...new Set(
+        [sourceData?.imageUrl, ...(sourceData?.imageUrls ?? [])].filter(
+          (url): url is string => Boolean(url)
+        )
+      ),
+    ];
+    return urls.map((url, i) => ({
+      id: `kept-${i}-${url}`,
+      url,
+      file: null,
+    }));
+  });
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const galleryItemsRef = useRef(galleryItems);
   useEffect(() => {
-    photoRef.current = photos;
-  }, [photos]);
+    galleryItemsRef.current = galleryItems;
+  }, [galleryItems]);
 
   // Product Variants state
   const [hasVariants, setHasVariants] = useState(Boolean(sourceData?.hasVariants));
@@ -101,32 +117,90 @@ export function ProductEditor({
       node?.close();
       document.body.style.overflow = overflow;
       previous?.focus();
-      photoRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
+      galleryItemsRef.current.forEach(item => {
+        if (item.file) URL.revokeObjectURL(item.url);
+      });
     };
   }, [product?.id, isCloning, initialData?.id]);
 
   async function addPhotos(files: FileList | null) {
     if (!files?.length) return;
     setError("");
-    if (kept.length + photos.length + files.length > MAX_PRODUCT_IMAGES) {
+    if (galleryItems.length + files.length > MAX_PRODUCT_IMAGES) {
       setError(`Podés agregar hasta ${MAX_PRODUCT_IMAGES} fotos en total.`);
       return;
     }
     setProcessing(true);
-    const next: { file: File; url: string }[] = [];
+    const next: EditorGalleryItem[] = [];
     try {
       for (const input of Array.from(files)) {
         const file = await optimizeProductPhoto(input);
-        next.push({ file, url: URL.createObjectURL(file) });
+        const url = URL.createObjectURL(file);
+        next.push({
+          id: `new-${crypto.randomUUID()}`,
+          url,
+          file,
+        });
       }
-      setPhotos(current => [...current, ...next]);
+      setGalleryItems(current => [...current, ...next]);
     } catch (err) {
-      next.forEach(photo => URL.revokeObjectURL(photo.url));
+      next.forEach(photo => {
+        if (photo.file) URL.revokeObjectURL(photo.url);
+      });
       setError(err instanceof Error ? err.message : "No se pudo preparar la foto.");
     } finally {
       setProcessing(false);
     }
   }
+
+  const handleRemovePhoto = (id: string) => {
+    setGalleryItems(current => {
+      const item = current.find(p => p.id === id);
+      if (item?.file) {
+        URL.revokeObjectURL(item.url);
+      }
+      return current.filter(p => p.id !== id);
+    });
+  };
+
+  const handleSetCover = (index: number) => {
+    if (index <= 0) return;
+    setGalleryItems(current => {
+      const item = current[index];
+      const rest = current.filter((_, i) => i !== index);
+      return [item, ...rest];
+    });
+  };
+
+  const handleMovePhoto = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= galleryItems.length) return;
+    setGalleryItems(current => {
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+    handleMovePhoto(draggedIndex, targetIndex);
+    setDraggedIndex(null);
+  };
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -139,8 +213,18 @@ export function ProductEditor({
     form.set("category_id", parentId);
     form.set("subcategory_id", childId);
     form.set("gallery_present", "true");
-    kept.forEach(url => form.append("keep_image_url", url));
-    photos.forEach(photo => form.append("images", photo.file));
+
+    let uploadIndex = 0;
+    galleryItems.forEach(item => {
+      if (item.file) {
+        form.append("images", item.file);
+        form.append("gallery_order", `upload:${uploadIndex}`);
+        uploadIndex++;
+      } else {
+        form.append("keep_image_url", item.url);
+        form.append("gallery_order", `keep:${item.url}`);
+      }
+    });
 
     // Variants payload
     form.set("has_variants", hasVariants ? "true" : "false");
@@ -164,7 +248,7 @@ export function ProductEditor({
     });
   }
 
-  const allGalleryUrls = [...kept, ...photos.map(p => p.url)];
+  const allGalleryUrls = galleryItems.map(p => p.url);
 
   return (
     <dialog
@@ -473,12 +557,20 @@ export function ProductEditor({
             </label>
           </fieldset>
 
-          {/* Fotos del producto */}
+          {/* Fotos del producto con Reordenamiento Interactivo */}
           <fieldset disabled={pending || processing} className="space-y-3">
-            <legend className="mb-3 text-base font-bold text-zinc-950">Fotos del producto</legend>
-            <p className="text-sm text-zinc-600">
-              Hasta 4 fotos generales. La primera será la portada. Las variantes pueden asociarse a cualquiera de estas fotos sin duplicar almacenamiento.
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <legend className="text-base font-bold text-zinc-950">Fotos del producto</legend>
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  Hasta 4 fotos generales. La primera foto es la <strong>Portada</strong>. Podés arrastrarlas o usar las flechas para reordenar.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-lg shrink-0">
+                {galleryItems.length} / {MAX_PRODUCT_IMAGES}
+              </span>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <label className="flex-1 min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-bold text-sky-900 hover:bg-sky-100 active:scale-98 transition flex shadow-2xs">
                 <ImagePlus className="size-5 text-sky-700" />
@@ -513,31 +605,94 @@ export function ProductEditor({
                 />
               </label>
             </div>
-            {processing && <p role="status" className="text-sm text-sky-800">Preparando las fotos…</p>}
+            {processing && <p role="status" className="text-sm text-sky-800">Optimizando y preparando las fotos…</p>}
+
+            {/* Interactive Grid with Cover Indicator & Reordering */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[...kept.map(url => ({ url, file: null })), ...photos].map((photo, i) => (
-                <div key={photo.url} className="relative rounded-xl border p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt={`Foto ${i + 1} del producto`} className="aspect-square w-full object-contain" />
-                  <span className="block text-xs text-zinc-600 mt-1 font-medium">{i === 0 ? "Portada" : `Foto ${i + 1}`}</span>
-                  <button
-                    type="button"
-                    aria-label={`Quitar foto ${i + 1}`}
-                    className="absolute right-1 top-1 grid size-9 place-items-center rounded-xl border bg-white shadow-xs hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
-                    onClick={() => {
-                      if (photo.file) {
-                        URL.revokeObjectURL(photo.url);
-                        setPhotos(current => current.filter(p => p.url !== photo.url));
-                      } else {
-                        setKept(current => current.filter(url => url !== photo.url));
-                      }
-                    }}
-                  >
-                    <X className="size-4" />
-                  </button>
+              {galleryItems.map((item, i) => (
+                <div
+                  key={item.id}
+                  draggable
+                  onDragStart={e => handleDragStart(e, i)}
+                  onDragOver={handleDragOver}
+                  onDrop={e => handleDrop(e, i)}
+                  className={`group relative rounded-2xl border-2 p-2 transition-all select-none ${
+                    i === 0
+                      ? "border-sky-500 bg-sky-50/40 shadow-sm ring-2 ring-sky-500/20"
+                      : "border-zinc-200 bg-white hover:border-zinc-300"
+                  } ${draggedIndex === i ? "opacity-35 scale-95 border-dashed border-sky-500" : ""}`}
+                >
+                  {/* Image Preview */}
+                  <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.url}
+                      alt={`Foto ${i + 1} del producto`}
+                      className="size-full object-contain pointer-events-none"
+                    />
+
+                    {/* Drag Handle Indicator */}
+                    <div className="absolute left-1.5 top-1.5 grid size-7 place-items-center rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition sm:block hidden pointer-events-none">
+                      <GripVertical className="size-4" />
+                    </div>
+
+                    {/* Delete button (top right) */}
+                    <button
+                      type="button"
+                      aria-label={`Quitar foto ${i + 1}`}
+                      className="absolute right-1.5 top-1.5 grid size-8 place-items-center rounded-xl border border-zinc-200 bg-white/95 text-zinc-600 shadow-xs hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
+                      onClick={() => handleRemovePhoto(item.id)}
+                      title="Quitar foto"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+
+                  {/* Badges & Reorder Controls */}
+                  <div className="mt-2 flex items-center justify-between gap-1">
+                    {i === 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-xs">
+                        <Star className="size-3 fill-white" />
+                        <span>Portada</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSetCover(i)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-800 transition cursor-pointer"
+                        title="Convertir en la foto principal de portada"
+                      >
+                        <Star className="size-3 text-zinc-400 group-hover:text-sky-600" />
+                        <span>Hacer portada</span>
+                      </button>
+                    )}
+
+                    {/* Move left / right arrows */}
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => handleMovePhoto(i, i - 1)}
+                        className="grid size-7 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                        title="Mover a la izquierda"
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === galleryItems.length - 1}
+                        onClick={() => handleMovePhoto(i, i + 1)}
+                        className="grid size-7 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                        title="Mover a la derecha"
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+
             <label className="block text-sm font-semibold">
               O agregar una URL de imagen
               <input
