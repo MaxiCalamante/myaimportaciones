@@ -1,5 +1,31 @@
 # MYA Importaciones — contexto vigente
 
+## Calculador Interactivo de Costo y Fechas de Entrega por Correo Argentino en PDP — 22/10/2026
+
+Por requerimiento expreso del dueño ("hace el 1"):
+
+### 1. Componente Dedicado de Envío ([`ProductShippingCalculator`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/src/components/commerce/shipping-calculator.tsx)):
+- **Estimación Inteligente de Fechas de Entrega:**
+  - Función de cálculo de días hábiles (`addBusinessDays` y `resolveDeliveryDateLabel`) que computa el rango estimado real a partir de la fecha actual (ej. `Llega entre el lun. 27 y el mié. 29 de oct.`).
+  - Distingue stock verificado inmediato vs. productos de importación directa (sumando días de despacho/arribo necesarios).
+  - Admite opciones locales de Tandil (`Disponible hoy coordinando retiro`) y cadetería (`Llega entre hoy y mañana`).
+- **Formulario Interactivo con Enlace al CPA Oficial:**
+  - Campo numérico con botón "Calcular", borrado rápido en 1 clic y enlace directo al buscador oficial de códigos postales de Correo Argentino (`correoargentino.com.ar/formularios/cpa`).
+  - Píldoras de acceso rápido a destinos frecuentes en 1 clic: Tandil (7000), CABA (1000), Mar del Plata (7600), La Plata (1900), Rosario (2000), Córdoba (5000), Mendoza (5500) y Neuquén (8300).
+- **Tarifario Desglosado y Selección Interactiva:**
+  - Desglose visual en cards elegibles con radio buttons:
+    - *Retiro en Sucursal Correo Argentino*: Tarifa económica, fecha estimada y aclaración de retiro con DNI y 5 días de guarda.
+    - *Envío a Domicilio Correo Argentino*: Tarifa estándar oficial Paq.ar, fecha estimada y entrega directa del cartero.
+    - *Retiro en Sede Central Tandil*: $0 GRATIS, entrega inmediata coordinada por WhatsApp.
+    - *Cadetería Local Tandil*: Entrega en el día por mensajería.
+  - Sincroniza la opción seleccionada y el código postal con el contexto global (`useCommerce()`), de modo que el checkout y el carrito ya quedan preconfigurados sin fricción.
+- **Sellos de Garantía de Despacho:**
+  - Recordatorio de embalaje reforzado multicapa sin costo y notificación de envío de código Paq.ar en vivo por WhatsApp al momento del despacho.
+- **Suite de Pruebas:**
+  - Añadido test específico en [`tests/customer-flow.test.ts`](file:///c:/Users/maxim/OneDrive/Escritorio/MYAimportaciones/Tienda%20WEB/tests/customer-flow.test.ts) (207/207 tests aprobados).
+
+---
+
 ## Embellecimiento Frontend, Barra Dinámica de Anuncios, Beneficios de Pago y Optimización de Conversión — 22/10/2026
 
 Por requerimiento expreso del dueño ("No basta con las cargas hace otra cosa embellece la página frontend, mejora cosas q hagan falta para la compra de algo o lo que fuera q le falte a la ecommerce ni parte admin ahora"):

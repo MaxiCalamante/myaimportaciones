@@ -24,7 +24,6 @@ import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { ElectronicsPrice } from "./electronics-price";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import {
-  calculateShipping,
   isProductImmediateStock,
   getProductShippingTimeInfo,
 } from "@/lib/shipping";
@@ -35,6 +34,7 @@ import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badg
 import { StickyMobileBuyBar } from "./sticky-mobile-buy-bar";
 import { QuantityStepper } from "./quantity-stepper";
 import { getColorSwatch } from "@/lib/variant-swatches";
+import { ProductShippingCalculator } from "./shipping-calculator";
 
 export function ProductDetailInteractive({
   product,
@@ -139,18 +139,6 @@ export function ProductDetailInteractive({
   }, [matchedVariant, product]);
 
   const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(targetItem), [targetItem]);
-
-  const shippingCalculation = useMemo(() => {
-    return calculateShipping(
-      postalCode,
-      price * quantity,
-      isImmediate,
-      targetItem.fulfillmentMode === "supplier",
-      province,
-      city,
-      address
-    );
-  }, [postalCode, price, quantity, isImmediate, targetItem.fulfillmentMode, province, city, address]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -471,158 +459,14 @@ export function ProductDetailInteractive({
         </div>
       </div>
 
-      {/* Shipping Cost Simulator */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3 text-xs shadow-xs">
-        {/* Delivery Time Info Alert */}
-        <div
-          className={`flex items-start gap-2.5 p-3 rounded-xl border ${
-            isImmediate
-              ? "bg-emerald-50/90 border-emerald-200 text-emerald-950"
-              : "bg-sky-50/90 border-sky-200 text-sky-950"
-          }`}
-        >
-          {isImmediate ? (
-            <Zap className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-          ) : (
-            <Clock className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-xs">{shippingTimeInfo.deliveryText}</span>
-              <span
-                className={`text-[10px] px-2 py-0.2 rounded-full font-extrabold uppercase tracking-wide border ${
-                  isImmediate
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                    : "bg-sky-100 text-sky-800 border-sky-300"
-                }`}
-              >
-                {shippingTimeInfo.badgeText}
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] leading-relaxed opacity-90">
-              {shippingTimeInfo.shippingTimeDescription}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <span className="font-bold text-zinc-900 flex items-center gap-1.5">
-            <Truck className="h-4 w-4 text-sky-600" />
-            Calcular costo de envío:
-          </span>
-          <span className="text-[10px] text-zinc-600">Envíos a todo el país</span>
-        </div>
-
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Ingresá tu Código Postal (ej: 7000, 1425 o B1640)"
-            value={postalCode}
-            onChange={(e) => setPostalCode(e.target.value)}
-            aria-label="Código postal para calcular el envío"
-            className="h-11 w-full rounded-xl border border-zinc-300 px-3 pr-8 text-base sm:text-xs bg-white outline-none focus:border-sky-500 text-zinc-950 placeholder:text-zinc-400 font-medium"
-          />
-          {postalCode && (
-            <button
-              type="button"
-              onClick={() => setPostalCode("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-[11px] text-zinc-500 font-medium">Cotización en 1 clic:</span>
-          {[
-            { label: "CABA", cp: "1000" },
-            { label: "Tandil", cp: "7000" },
-            { label: "Córdoba", cp: "5000" },
-            { label: "Rosario", cp: "2000" },
-            { label: "Mar del Plata", cp: "7600" },
-          ].map((c) => (
-            <button
-              key={c.cp}
-              type="button"
-              onClick={() => setPostalCode(c.cp)}
-              className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
-                postalCode === c.cp
-                  ? "border-sky-600 bg-sky-50 text-sky-800 font-bold shadow-2xs"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
-              }`}
-            >
-              {c.label} ({c.cp})
-            </button>
-          ))}
-        </div>
-
-        {shippingCalculation.isValid && (
-          <div className="space-y-2 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-1.5">
-              <span className="text-[11px] font-bold text-zinc-700">
-                📍 {shippingCalculation.locationName}
-              </span>
-              {shippingCalculation.freeShippingQualified && (
-                <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
-                  ¡Envío Gratis! 🎉
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              {shippingCalculation.options.map((opt) => {
-                const isSelected = selectedShippingOptionId === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setSelectedShippingOptionId(opt.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                      isSelected
-                        ? "border-sky-500 bg-sky-50/60 ring-1 ring-sky-500/30"
-                        : "border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/70"
-                    }`}
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-zinc-900 truncate">{opt.name}</span>
-                        {opt.badge && (
-                          <span
-                            className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                              opt.isFree
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {opt.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-zinc-500">{opt.carrier} • {opt.estimatedDays}</p>
-                    </div>
-
-                    <div className="text-right flex-shrink-0">
-                      {opt.isFree ? (
-                        <div className="flex flex-col items-end">
-                          {opt.originalPrice > 0 && (
-                            <span className="text-[10px] line-through text-zinc-400">
-                              {formatCurrency(opt.originalPrice)}
-                            </span>
-                          )}
-                          <span className="font-black text-emerald-700">GRATIS</span>
-                        </div>
-                      ) : (
-                        <span className="font-black text-zinc-900">{opt.requiresQuote ? "A cotizar" : formatCurrency(opt.price)}</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Interactive Correo Argentino Shipping Calculator */}
+      <ProductShippingCalculator
+        product={product}
+        price={price}
+        quantity={quantity}
+        isImmediate={isImmediate}
+        fulfillmentMode={targetItem.fulfillmentMode}
+      />
 
       {/* Payment methods & Invoicing perks */}
       <div className="rounded-2xl border border-zinc-200 p-4 space-y-3 text-xs text-zinc-600 bg-white">

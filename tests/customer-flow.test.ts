@@ -158,3 +158,23 @@ test('Shipping rate dynamically adapts when user changes postal code, address, o
   }
 });
 
+test('pdp shipping calculation presents verified options for branch, home and central pickup in Tandil', () => {
+  // Tandil pickup is free ($0) and offers local delivery
+  const tandil = calculateShipping('7000', 35000, true, false);
+  assert.equal(tandil.isValid, true);
+  assert.equal(tandil.zoneId, 'local_tandil');
+  const pickup = tandil.options.find(o => o.id === 'pickup_tandil');
+  assert.equal(pickup?.price, 0);
+  assert.equal(pickup?.isFree, true);
+
+  // CABA has branch ($5400) and home ($6800) options
+  const caba = calculateShipping('1425', 35000, true, false);
+  assert.equal(caba.isValid, true);
+  const branchOption = caba.options.find(o => o.id === 'correo_sucursal');
+  const homeOption = caba.options.find(o => o.id === 'correo_domicilio');
+  assert.equal(branchOption?.price, 5400);
+  assert.equal(homeOption?.price, 6800);
+  assert.ok((branchOption?.price || 0) < (homeOption?.price || 0), 'Branch delivery is more economical than home delivery');
+});
+
+
