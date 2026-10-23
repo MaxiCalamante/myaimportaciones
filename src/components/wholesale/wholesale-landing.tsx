@@ -3,19 +3,21 @@ import { ArrowRight, Boxes, MapPin, MessageCircle } from "lucide-react";
 import { WHOLESALE_CATEGORIES, wholesaleServiceData, type WholesaleCategory } from "@/lib/wholesale-content";
 import { breadcrumbData, jsonLd } from "@/lib/seo";
 import { WholesaleInquiry } from "./wholesale-inquiry";
+import { WHOLESALE_MINIMUM_LABEL, WHOLESALE_MINIMUM_DETAILS } from "@/lib/wholesale-policy";
 
 export function WholesalePromo() {
   return <section aria-labelledby="wholesale-promo-title" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <div className="grid gap-5 rounded-3xl border border-sky-200 bg-sky-50 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
       <div><p className="text-xs font-bold uppercase tracking-widest text-sky-800">Comercios y revendedores</p><h2 id="wholesale-promo-title" className="mt-2 text-2xl font-bold text-zinc-950">¿Buscás productos importados por mayor?</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-700">Cotizá cosmética coreana, perfumería, cuidado capilar, herramientas y electrónica por cantidad. Te atendemos desde Tandil para coordinar tu propuesta y entrega.</p></div>
-      <Link href="/mayorista" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 py-3 text-sm font-bold text-white hover:bg-sky-800">Conocer la venta mayorista <ArrowRight className="size-4" /></Link>
+      <div><p className="mb-3 max-w-sm text-sm font-semibold leading-6 text-sky-950">Desde {WHOLESALE_MINIMUM_LABEL}. Podés combinar productos.</p><Link href="/mayorista" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 py-3 text-sm font-bold text-white hover:bg-sky-800">Conocer la venta mayorista <ArrowRight className="size-4" /></Link></div>
     </div>
   </section>;
 }
 
 const generalFaq = [
   { question: "¿MYA vende por mayor y por menor?", answer: "Sí. Podés comprar por menor en el catálogo público y consultar propuestas por cantidad para comercios y revendedores en esta sección. La cotización mayorista se confirma con tu selección de productos y destino." },
-  { question: "¿Cuál es la compra mínima mayorista?", answer: "El mínimo y las condiciones dependen de los productos, presentaciones y cantidades de la consulta. Enviá tu selección y te confirmamos la propuesta antes de cualquier compra o pago." },
+  { question: "¿Cuál es la compra mínima mayorista?", answer: WHOLESALE_MINIMUM_DETAILS },
+  { question: "¿Puedo combinar productos para llegar a las 5 unidades?", answer: "Sí. Podés pedir 5 unidades del mismo producto o combinar distintos productos; por ejemplo, 2 unidades de uno y 3 de otro. También podés comprar menos de 5 unidades si el importe de los productos alcanza $100.000. El importe final se confirma en la cotización mayorista." },
   { question: "¿Los precios públicos ya son mayoristas?", answer: "Los precios del catálogo son minoristas. La propuesta por volumen se cotiza aparte; no hay un descuento único garantizado para todos los productos." },
   { question: "¿Puedo consultar desde otra ciudad de Argentina?", answer: "Sí. Indicanos ciudad y código postal para revisar la entrega. El costo y el plazo de envío se confirman junto con la propuesta; consultar no asegura despacho inmediato ni envío gratuito." },
   { question: "¿Cómo elijo el surtido para mi comercio?", answer: "Podés compartir enlaces del catálogo, marcas, modelos y cantidades. Te ayudamos a identificar las presentaciones y verificar opciones; cualquier alternativa se consulta antes de reemplazar un artículo." },
@@ -23,7 +25,7 @@ const generalFaq = [
 
 export function WholesaleLanding({ category }: { category?: WholesaleCategory }) {
   const crumbs = [{ name: "Inicio", path: "/" }, { name: "Venta mayorista", path: "/mayorista" }, ...(category ? [{ name: category.name, path: `/mayorista/${category.slug}` }] : [])];
-  const faq = category ? [...category.faq, ...generalFaq.slice(1, 4)] : generalFaq;
+  const faq = category ? [...category.faq, ...generalFaq.slice(1, 5)] : generalFaq;
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(wholesaleServiceData(category)) }} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbData(crumbs)) }} />
@@ -33,6 +35,7 @@ export function WholesaleLanding({ category }: { category?: WholesaleCategory })
         <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-sky-300"><Boxes className="size-4" /> MYA Importaciones · Mayorista</p>
         <h1 className="mt-5 max-w-4xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl">{category?.title || "Productos importados por mayor para comercios y revendedores"}</h1>
         <p className="mt-5 max-w-3xl text-sm leading-7 text-zinc-200 sm:text-base">{category?.introduction || "Hacé crecer el surtido de tu comercio con una propuesta por cantidad. En MYA Importaciones recibimos consultas mayoristas de cosmética coreana, perfumes, cuidado capilar, herramientas y electrónica. Máximo y Agustina te atienden desde Tandil para definir productos, unidades y destino, con las condiciones de la operación confirmadas antes de comprar."}</p>
+        <div className="mt-6 max-w-3xl rounded-2xl border border-sky-300/30 bg-sky-400/10 p-4"><h2 className="text-base font-bold text-sky-200">Mínimo mayorista: {WHOLESALE_MINIMUM_LABEL}</h2><p className="mt-2 text-sm leading-6 text-zinc-200">{WHOLESALE_MINIMUM_DETAILS}</p><p className="mt-2 text-xs leading-5 text-zinc-300">Ejemplos: 2 unidades de un producto + 3 de otro, o un pedido de menos unidades que alcance $100.000. El precio mayorista se confirma en tu cotización.</p></div>
         <div className="mt-7 flex flex-wrap gap-3"><a href="#cotizar" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-bold text-zinc-950 hover:bg-sky-400"><MessageCircle className="size-4" /> Solicitar cotización mayorista</a><Link href={category ? `/catalogo?category=${category.categorySlug}` : "/catalogo"} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/30 px-5 py-3 text-sm font-semibold hover:bg-white/10">Ver productos y precios minoristas</Link></div>
         <p className="mt-5 inline-flex items-center gap-2 text-xs text-zinc-300"><MapPin className="size-4" /> Desde Tandil · Consultas de toda Argentina</p>
       </header>

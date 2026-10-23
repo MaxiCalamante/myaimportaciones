@@ -1,0 +1,242 @@
+[
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/cosmetica-coreana",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/perfumeria",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/cuidado-capilar",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/electronica",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/condiciones",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/apple-iphone-15",
+    "units": true,
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/cosmetica-coreana",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/perfumeria",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/cuidado-capilar",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/electronica",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/condiciones",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/apple-iphone-15",
+    "units": true,
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/cosmetica-coreana",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/perfumeria",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/cuidado-capilar",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/electronica",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/condiciones",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/apple-iphone-15",
+    "units": true,
+    "width": 1440
+  }
+]

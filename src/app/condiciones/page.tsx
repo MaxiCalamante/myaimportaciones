@@ -1,6 +1,8 @@
 import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 import { isShippingPaidSeparately } from "@/lib/shipping";
+import Link from "next/link";
+import { WHOLESALE_MINIMUM_DETAILS } from "@/lib/wholesale-policy";
 export const metadata = pageMetadata({ title: "Condiciones de compra", description: "Consultá precios, pagos, entrega, arrepentimiento y garantías de tus compras en MYA Importaciones.", path: "/condiciones" });
 export default function Conditions() { return <article className="content-page max-w-3xl space-y-5 px-5 py-10">
   <h1 className="text-3xl font-bold">Condiciones de compra</h1>
@@ -9,6 +11,9 @@ export default function Conditions() { return <article className="content-page m
   <p>Razón social: {process.env.NEXT_PUBLIC_BUSINESS_NAME || "pendiente de publicación"}. CUIT: {siteConfig.bankTransfer.cuit || "pendiente de publicación"}. Domicilio comercial: {process.env.NEXT_PUBLIC_BUSINESS_ADDRESS || "pendiente de publicación"}.</p>
   <h2 className="text-xl font-bold">Precios, disponibilidad y pagos</h2>
   <p>La tienda ofrece venta minorista en pesos argentinos. El resumen final informa productos, descuentos aplicables y entrega antes de confirmar. Las promociones no se acumulan. Los productos sin disponibilidad verificada requieren consulta previa. Crear un pedido no acredita un pago: la confirmación depende del cobro verificado.</p>
+  <h2 className="text-xl font-bold" id="mayoristas">Compras mayoristas</h2>
+  <p>{WHOLESALE_MINIMUM_DETAILS} El precio de los productos mayoristas se confirma en una cotización; los precios del catálogo público son minoristas. La propuesta detalla productos, cantidades, disponibilidad, pago y entrega antes de confirmar la operación.</p>
+  <p><Link className="underline" href="/mayorista">Conocé los rubros y prepará tu consulta mayorista</Link>. Podés consultar el surtido antes de comprar; una consulta no reserva stock ni registra un pedido.</p>
   <h2 className="text-xl font-bold">Entrega</h2>
   <p>{isShippingPaidSeparately() ? "Enviamos a domicilio a todo el país. El pago online corresponde a los productos; el costo del envío no está incluido y se cotiza y abona por separado. MYA se contactará con el cliente para coordinar transporte, costo y plazo antes del despacho." : "El retiro en Tandil se coordina previamente. Para envíos, se debe confirmar destino, peso, volumen, costo y plazo antes de pagar."} No se garantiza entrega inmediata ni envío gratuito general.</p>
   <h2 className="text-xl font-bold">Arrepentimiento y reclamos</h2>

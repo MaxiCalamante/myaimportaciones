@@ -1,4 +1,5 @@
 import { pageMetadata, publicUrl } from "./seo";
+import { WHOLESALE_MINIMUM_LABEL } from "./wholesale-policy";
 
 export interface WholesaleCategory {
   slug: string;
@@ -107,7 +108,7 @@ export const findWholesaleCategory = (slug: string) => WHOLESALE_CATEGORIES.find
 export function wholesaleMetadata(category?: WholesaleCategory) {
   return pageMetadata({
     title: category?.title || "Venta mayorista de importados para comercios y revendedores",
-    description: category?.description || "MYA Importaciones mayorista en Argentina. Cotizá cosmética coreana, perfumes, cuidado capilar, herramientas y electrónica por cantidad, con atención desde Tandil.",
+    description: category ? `${category.description} Mínimo: ${WHOLESALE_MINIMUM_LABEL}.` : "MYA Importaciones mayorista en Argentina. Desde $100.000 o 5 unidades combinadas. Cotizá cosmética, perfumes, capilares, herramientas y electrónica desde Tandil.",
     path: category ? `/mayorista/${category.slug}` : "/mayorista",
   });
 }

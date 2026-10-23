@@ -1,0 +1,22 @@
+[
+  {
+    "width": 320,
+    "flow": "product_variant",
+    "correct": true
+  },
+  {
+    "width": 390,
+    "flow": "product_variant",
+    "correct": true
+  },
+  {
+    "width": 1440,
+    "flow": "product_variant",
+    "correct": true
+  },
+  {
+    "width": 1440,
+    "flow": "mixed_products",
+    "correct": true
+  }
+]

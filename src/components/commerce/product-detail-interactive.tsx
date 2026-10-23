@@ -2,6 +2,8 @@
 import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
+import { WHOLESALE_MINIMUM_LABEL, wholesaleProductInquiry } from "@/lib/wholesale-policy";
 import {
   Heart,
   MessageCircle,
@@ -388,6 +390,13 @@ export function ProductDetailInteractive({
             <MessageCircle className="size-4 shrink-0"/><span>Consultar por WhatsApp</span>
           </button>
         </div>
+
+        {channel === "retail" && <section aria-label="Consulta mayorista del producto" className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <h2 className="text-sm font-bold text-sky-950">¿Comprás para tu comercio o para revender?</h2>
+          <p className="mt-2 text-xs leading-6 text-sky-950">Mínimo: {WHOLESALE_MINIMUM_LABEL}. Podés combinar distintos productos; el precio mayorista se cotiza aparte.</p>
+          <button type="button" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-sky-800 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-900" onClick={() => openWhatsApp(wholesaleProductInquiry(product, quantity, matchedVariant?.title), { type: "wholesale", source: "product_detail", category: product.categoryName })}>Cotizar este producto por mayor</button>
+          <Link href="/mayorista" className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-sky-900 underline underline-offset-2">Ver condiciones y rubros mayoristas</Link>
+        </section>}
 
         {/* Share & Copy Link */}
         <div className="grid grid-cols-2 gap-2 border-t border-zinc-100 pt-3">
