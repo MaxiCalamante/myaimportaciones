@@ -107,7 +107,7 @@ test("product-lifecycle: prepareProductImages respects gallery_order tokens for 
   form.append("gallery_order", `keep:${url1}`);
   form.append("gallery_order", `keep:${url2}`);
 
-  const mockDb = {} as any;
+  const mockDb = {} as Parameters<typeof prepareProductImages>[0];
   const result = await prepareProductImages(mockDb, form, [url1, url2, url3]);
 
   assert.deepEqual(result.urls, [url3, url1, url2], "Urls should be ordered according to gallery_order manifest");
@@ -198,7 +198,7 @@ test("product-lifecycle: cleanupOrphanProductImages protects images shared with 
         };
       },
     },
-  } as any;
+  } as unknown as Parameters<typeof cleanupOrphanProductImages>[0];
 
   const count = await cleanupOrphanProductImages(
     mockDb,
@@ -471,7 +471,7 @@ test("product-lifecycle: CSV import builds accurate snapshot audit logs for upda
   ];
 
   const adminEmail = "admin@myaimportaciones.com.ar";
-  const auditInserts: any[] = [];
+  const auditInserts: { product_id: string; changed_by: string; action: string; old_data: Record<string, number>; new_data: Record<string, number>; notes: string }[] = [];
 
   for (const row of upsertedRows) {
     const existing = existingBySlug.get(row.slug);

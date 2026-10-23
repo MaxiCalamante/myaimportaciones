@@ -95,6 +95,7 @@ export default async function ProductPage({ params }: Props) {
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-inset ring-sky-600/20 uppercase tracking-wider">
                     <PackageCheck className="h-3.5 w-3.5" /> {product.categoryName}
                   </span>
+                  {summary.totalReviews > 0 && (
                   <a
                     href="#opiniones"
                     className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 border border-amber-200/80 transition hover:bg-amber-100/80 cursor-pointer"
@@ -106,6 +107,7 @@ export default async function ProductPage({ params }: Props) {
                       {summary.totalReviews} opiniones
                     </span>
                   </a>
+                  )}
                 </div>
                 <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-semibold text-zinc-950 tracking-tight leading-tight">
                   {product.title}

@@ -2,55 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getProductReviews } from "../src/lib/product-reviews";
 
-test("product-reviews: returns appropriate reviews for perfume products", () => {
-  const result = getProductReviews({
-    title: "Lattafa Khamrah Eau de Parfum 100 ml",
-    categoryName: "Perfumería",
-    brand: "Lattafa",
+for (const product of [
+  { title: "Lattafa Khamrah", categoryName: "Perfumería", brand: "Lattafa" },
+  { title: "Anua Toner", categoryName: "Cosmética facial", brand: "Anua" },
+  { title: "Total Taladro", categoryName: "Herramientas", brand: "Total" },
+  { title: "Apple iPhone", categoryName: "Electrónica", brand: "Apple" },
+  { title: "Producto sin categoría" },
+]) {
+  test(`reviews never fabricate verified purchases or ratings for ${product.title}`, () => {
+    const result = getProductReviews(product);
+    assert.deepEqual(result.reviews, []);
+    assert.equal(result.summary.totalReviews, 0);
+    assert.equal(result.summary.averageRating, 0);
+    assert.equal(result.summary.recommendationPercentage, 0);
+    assert.equal(Object.values(result.summary.ratingDistribution).reduce((sum, count) => sum + count, 0), 0);
   });
-
-  assert.ok(result.reviews.length >= 3);
-  assert.equal(result.summary.averageRating, 4.9);
-  assert.ok(result.summary.totalReviews >= 18);
-  assert.ok(result.summary.recommendationPercentage >= 95);
-  // Check perfume specific context
-  const texts = result.reviews.map(r => r.comment + " " + r.title).join(" ");
-  assert.match(texts, /aroma|perfume|estela|holograma/i);
-});
-
-test("product-reviews: returns appropriate reviews for K-Beauty cosmetics", () => {
-  const result = getProductReviews({
-    title: "Anua Heartleaf 77% Soothing Toner 250 ml",
-    categoryName: "Cosmética facial y corporal",
-    brand: "Anua",
-  });
-
-  assert.ok(result.reviews.length >= 3);
-  assert.equal(result.summary.averageRating, 4.9);
-  const texts = result.reviews.map(r => r.comment + " " + r.title).join(" ");
-  assert.match(texts, /piel|rojeces|corea|glow|sensible/i);
-});
-
-test("product-reviews: returns appropriate reviews for tools", () => {
-  const result = getProductReviews({
-    title: "Total Rotomartillo Inalámbrico SDS Plus 20V",
-    categoryName: "Herramientas y equipamiento",
-    brand: "Total",
-  });
-
-  assert.ok(result.reviews.length >= 3);
-  const texts = result.reviews.map(r => r.comment + " " + r.title).join(" ");
-  assert.match(texts, /bater[ií]as|brushless|potencia|p20s|obra/i);
-});
-
-test("product-reviews: returns appropriate reviews for electronics", () => {
-  const result = getProductReviews({
-    title: "Apple iPhone 16 128 GB",
-    categoryName: "Electrónica",
-    brand: "Apple",
-  });
-
-  assert.ok(result.reviews.length >= 3);
-  const texts = result.reviews.map(r => r.comment + " " + r.title).join(" ");
-  assert.match(texts, /sellado|garant[ií]a|apple|serie/i);
-});
+}

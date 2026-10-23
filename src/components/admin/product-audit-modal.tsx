@@ -40,14 +40,19 @@ export interface ProductAuditModalProps {
   onPriceRolledBack?: (newRetail: number, newWholesale?: number) => void;
 }
 
-export function ProductAuditModal({
+export function ProductAuditModal(props: ProductAuditModalProps) {
+  return props.isOpen && props.product ? <ProductAuditContent key={props.product.id} {...props} /> : null;
+}
+
+function ProductAuditContent({
   isOpen,
   product,
   onClose,
   onPriceRolledBack,
 }: ProductAuditModalProps) {
   const [logs, setLogs] = useState<ProductAuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [filterNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -64,13 +69,6 @@ export function ProductAuditModal({
   const [currentRetail, setCurrentRetail] = useState<number>(product?.retailPrice ?? 0);
   const [currentWholesale, setCurrentWholesale] = useState<number>(product?.wholesalePrice ?? 0);
 
-  useEffect(() => {
-    if (product) {
-      setCurrentRetail(product.retailPrice);
-      setCurrentWholesale(product.wholesalePrice);
-    }
-  }, [product]);
-
   const loadLogs = (productId: string) => {
     setLoading(true);
     setError(null);
@@ -86,18 +84,17 @@ export function ProductAuditModal({
       });
   };
 
+  const productId = product?.id;
   useEffect(() => {
-    if (!isOpen || !product) {
-      setLogs([]);
-      setError(null);
-      setSuccessMsg(null);
-      setDateFilter("all");
-      setActionFilter("all");
-      setVisibleCount(15);
-      return;
-    }
-    loadLogs(product.id);
-  }, [isOpen, product]);
+    if (!productId) return;
+    let active = true;
+    getProductAuditLogsAction(productId, 200).then(data => {
+      if (active) { setLogs(data); setLoading(false); }
+    }).catch(err => {
+      if (active) { setError(err instanceof Error ? err.message : "Error al cargar el historial de cambios."); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, [productId]);
 
   const handleRollback = (targetRetail: number, targetWholesale?: number, sourceDate?: string) => {
     if (!product) return;
@@ -129,7 +126,7 @@ export function ProductAuditModal({
     // 1. Date filter
     if (dateFilter !== "all") {
       const logTime = new Date(log.createdAt).getTime();
-      const now = Date.now();
+      const now = filterNow;
       const hoursDiff = (now - logTime) / 3600000;
       if (dateFilter === "24h" && hoursDiff > 24) return false;
       if (dateFilter === "7d" && hoursDiff > 24 * 7) return false;
@@ -287,7 +284,7 @@ export function ProductAuditModal({
               </div>
               <select
                 value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value as any)}
+                onChange={(e) => setActionFilter(e.target.value as typeof actionFilter)}
                 className="bg-white border border-zinc-200 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-700 outline-none cursor-pointer"
               >
                 <option value="all">Todas las acciones</option>

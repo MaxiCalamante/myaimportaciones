@@ -111,8 +111,6 @@ export function ProductEditor({
         })
         .catch(() => {})
         .finally(() => setLoadingVariants(false));
-    } else {
-      setLoadingVariants(false);
     }
 
     return () => {

@@ -368,13 +368,12 @@ export function calculateShipping(
       };
     }
 
-    if (process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON !== undefined) {
-      return {
-        isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
-        freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: false,
-        options: [{ id: "supplier_delivery", name: "Envío a domicilio", carrier: "Transporte a coordinar", type: "domicilio", price: 0, originalPrice: 0, isFree: false, requiresQuote: true, estimatedDays: "Plazo según destino, a confirmar antes del pago" }],
-      };
-    }
+    // Missing configuration is also unconfirmed; never fall through to own-stock pickup or rates.
+    return {
+      isValid: true, postalCode: rawPostalCode, zoneId: zone.id, zoneName: zone.name, locationName: zone.location,
+      freeShippingQualified: false, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, remainingForFreeShipping: 0, hasImmediateStockOnly: false,
+      options: [{ id: "supplier_delivery", name: "Envío a domicilio", carrier: "Transporte a coordinar", type: "domicilio", price: 0, originalPrice: 0, isFree: false, requiresQuote: true, estimatedDays: "Plazo según destino, a confirmar antes del pago" }],
+    };
   }
 
   // Opciones de Correo Argentino y entregas locales

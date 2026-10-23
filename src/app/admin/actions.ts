@@ -1178,7 +1178,7 @@ export async function bulkRollbackPricesAction(productIds: string[]) {
   const adminEmail = user?.email || "Administrador";
 
   let restoredCount = 0;
-  const auditInserts: any[] = [];
+  const auditInserts: Record<string, unknown>[] = [];
 
   for (const [productId, target] of rollbackCandidates.entries()) {
     const { data: current } = await supabase
@@ -1443,7 +1443,7 @@ export async function bulkImportProductsAction(items: BulkProductItem[]) {
   const { data: { user } } = await supabase.auth.getUser();
   const adminEmail = user?.email || "Administrador CSV";
   const alertThreshold = await getPriceAlertThreshold(supabase);
-  const auditInserts: any[] = [];
+  const auditInserts: Record<string, unknown>[] = [];
 
   for (const row of affectedProducts) {
     const existing = existingBySlug.get(row.slug);

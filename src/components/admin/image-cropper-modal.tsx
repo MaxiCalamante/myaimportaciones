@@ -14,7 +14,11 @@ export interface ImageCropperModalProps {
   onCropComplete: (croppedFile: File, previewUrl: string) => void;
 }
 
-export function ImageCropperModal({
+export function ImageCropperModal(props: ImageCropperModalProps) {
+  return props.isOpen ? <ImageCropperContent key={props.imageUrl} {...props} /> : null;
+}
+
+function ImageCropperContent({
   isOpen,
   imageUrl,
   fileName = "foto-producto.webp",
@@ -33,16 +37,6 @@ export function ImageCropperModal({
 
   const imgRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Reset state when opening a new image
-  useEffect(() => {
-    if (isOpen) {
-      setZoom(1);
-      setRotation(0);
-      setOffset({ x: 0, y: 0 });
-      setIsProcessing(false);
-    }
-  }, [isOpen, imageUrl]);
 
   // Load image dimensions
   useEffect(() => {

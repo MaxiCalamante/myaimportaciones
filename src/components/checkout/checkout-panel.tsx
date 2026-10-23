@@ -537,7 +537,7 @@ export function CheckoutPanel({
                       Transferencia bancaria
                     </span>
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-800 border border-emerald-200">
-                      3% OFF
+                      Beneficio a confirmar
                     </span>
                   </div>
                   <p className="mt-2 text-xs text-zinc-600 leading-relaxed">
@@ -587,7 +587,7 @@ export function CheckoutPanel({
 
               {paymentMethod === "transferencia" && (
                 <p className="mt-3 text-xs text-slate-600 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3">
-                  💡 <strong className="text-emerald-950">Ahorrá un 3% extra:</strong> Al confirmar el pedido te mostramos el alias y CBU de MYA Importaciones para transferir directamente. Verificamos la acreditación antes de preparar tu paquete.
+                  💡 <strong className="text-emerald-950">Beneficio por transferencia:</strong> El resumen confirma el descuento disponible. Al registrar el pedido te mostramos el alias y CBU de MYA Importaciones para transferir directamente. Verificamos la acreditación antes de preparar tu paquete.
                 </p>
               )}
               {paymentMethod === "mercado_pago" && (
@@ -654,7 +654,7 @@ export function CheckoutPanel({
                     <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
                     Beneficio transferencia:
                   </span>
-                  <span className="font-bold">3% OFF al confirmar</span>
+                  <span className="font-bold">A confirmar en el total</span>
                 </div>
               )}
               {validQuote && quote.couponMessage && (

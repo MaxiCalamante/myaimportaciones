@@ -123,19 +123,7 @@ export function ProductCard({
               {formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)}
             </p>
             {channel === "retail" && (product.hasVariants && product.minPrice ? product.minPrice : price) > 0 && (
-              <div className="mt-1 space-y-0.5">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs sm:text-sm font-extrabold text-emerald-800 tabular-nums">
-                    {formatCurrency(Math.round((product.hasVariants && product.minPrice ? product.minPrice : price) * 0.97))}
-                  </span>
-                  <span className="rounded bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.2 text-[9px] font-black text-emerald-800 uppercase tracking-tight">
-                    -3% Transferencia
-                  </span>
-                </div>
-                <p className="text-[10px] text-zinc-500 font-medium">
-                  o 3 cuotas de <strong className="text-zinc-700 font-semibold">{formatCurrency(Math.round((product.hasVariants && product.minPrice ? product.minPrice : price) / 3))}</strong>
-                </p>
-              </div>
+              <p className="mt-1 text-[11px] font-medium text-emerald-800">Transferencia bancaria · beneficio sujeto a confirmación en el resumen.</p>
             )}
             {channel === "retail" && <ElectronicsPrice product={product} />}
 

@@ -25,8 +25,9 @@ test('supplier availability is independent of physical units and immediate dispa
 test('unconfigured supplier delivery is a quote, never free or local pickup', () => {
   const previous=process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON;
   try {
-    for(const config of ['{}','null','bad','{"local_tandil":-1}','{"local_tandil":"1000"}']) {
-      process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON=config;
+    for(const config of [undefined,'{}','null','bad','{"local_tandil":-1}','{"local_tandil":"1000"}']) {
+      if (config === undefined) delete process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON;
+      else process.env.NEXT_PUBLIC_SUPPLIER_SHIPPING_RATES_JSON=config;
       const quote=calculateShipping('7000',54900,false,true);
       assert.equal(quote.options.length,1);
       assert.equal(quote.options[0].type,'domicilio');

@@ -128,9 +128,6 @@ export function ProductDetailInteractive({
     return () => observer.disconnect();
   }, []);
 
-  const transferPrice = channel === "retail" && price > 0 ? Math.round(price * 0.97) : price;
-  const transferSavings = price - transferPrice;
-
   const isImmediate = useMemo(() => {
     if (matchedVariant) {
       return matchedVariant.fulfillmentMode === "own_stock" && Boolean(matchedVariant.stockVerifiedAt) && matchedVariant.stock > 0;
@@ -233,27 +230,10 @@ export function ProductDetailInteractive({
             {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{formatCurrency(price)}
           </p>
           {channel === "retail" && price > 0 && (
-            <div className="mt-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50/70 border border-emerald-200 p-4 shadow-2xs space-y-1.5">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-950">
-                  <span className="size-2 rounded-full bg-emerald-600 animate-pulse" />
-                  Abonando por Transferencia:
-                </span>
-                <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
-                  3% OFF DIRECTO
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <strong className="text-2xl sm:text-3xl font-black text-emerald-950 tabular-nums">
-                  {formatCurrency(transferPrice)}
-                </strong>
-                <span className="text-xs font-bold text-emerald-800">
-                  ¡Ahorrás {formatCurrency(transferSavings)}!
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-800/90 font-medium pt-1.5 border-t border-emerald-200/60">
-                o pagalo en hasta <strong>3 cuotas de {formatCurrency(Math.round(price / 3))}</strong> con tarjeta de crédito
-              </p>
+            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+              <p className="font-bold">Pagá por transferencia bancaria</p>
+              <p className="mt-1 text-xs leading-5">El descuento disponible y el total se confirman en el resumen antes de registrar el pedido.</p>
+              <p className="mt-2 text-xs leading-5">Con Mercado Pago, las cuotas y los cargos se informan al elegir el medio de pago.</p>
             </div>
           )}
           {channel === "retail" && <ElectronicsPrice product={{ ...product, retailPrice: price }} detail />}
@@ -461,7 +441,7 @@ export function ProductDetailInteractive({
 
       {/* Interactive Correo Argentino Shipping Calculator */}
       <ProductShippingCalculator
-        product={product}
+        product={{ ...product, stock: targetItem.stock, stockVerifiedAt: targetItem.stockVerifiedAt, supplierAvailable: targetItem.supplierAvailable }}
         price={price}
         quantity={quantity}
         isImmediate={isImmediate}
@@ -631,11 +611,11 @@ export function ProductDetailInteractive({
 
           <details className="group py-2.5">
             <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
-              <span>¿Cómo aprovecho el 3% de descuento por transferencia?</span>
+              <span>¿Cómo consulto el beneficio por transferencia?</span>
               <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
             </summary>
             <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
-              Al finalizar tu compra en el checkout o al coordinar por WhatsApp, elegí la opción de Transferencia Bancaria y el descuento se aplica automáticamente sobre tu total.
+              Elegí transferencia bancaria al finalizar la compra. El resumen muestra el descuento disponible y el importe final antes de confirmar; si coordinás por WhatsApp, te confirmamos las condiciones allí.
             </p>
           </details>
         </div>

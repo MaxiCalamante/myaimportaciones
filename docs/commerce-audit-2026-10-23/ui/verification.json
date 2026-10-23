@@ -1,0 +1,309 @@
+{
+  "checks": [
+    {
+      "width": 320,
+      "path": "/catalogo",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/catalogo?q=Anua",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "interaction": "add, quantity, cart to filled checkout",
+      "ok": true
+    },
+    {
+      "width": 320,
+      "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/favoritos",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/login",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/register",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/seguimiento",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/condiciones",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/privacidad",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/arrepentimiento",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/cuenta",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/admin",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/admin/ventas",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/admin/costos",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "path": "/pedido/ORD-SYNTHETIC-AUDIT",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/catalogo",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/catalogo?q=Anua",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "interaction": "add, quantity, cart to filled checkout",
+      "ok": true
+    },
+    {
+      "width": 390,
+      "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/favoritos",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/login",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/register",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/seguimiento",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/condiciones",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/privacidad",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/arrepentimiento",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/cuenta",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/admin",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/admin/ventas",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/admin/costos",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "path": "/pedido/ORD-SYNTHETIC-AUDIT",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/catalogo",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/catalogo?q=Anua",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "interaction": "add, quantity, cart to filled checkout",
+      "ok": true
+    },
+    {
+      "width": 1440,
+      "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/favoritos",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/login",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/register",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/seguimiento",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/condiciones",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/privacidad",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/arrepentimiento",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/cuenta",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/admin",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/admin/ventas",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/admin/costos",
+      "status": 200,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "path": "/pedido/ORD-SYNTHETIC-AUDIT",
+      "status": 200,
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "noOrdersOrPaymentsSubmitted": true
+}

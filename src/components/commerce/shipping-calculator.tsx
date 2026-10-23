@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useSyncExternalStore } from "react";
 import {
   Truck,
   Building2,
@@ -26,6 +26,10 @@ import {
   type ShippingOption,
 } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
+
+const subscribeToHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 interface ProductShippingCalculatorProps {
   product: Product;
@@ -118,19 +122,10 @@ export function ProductShippingCalculator({
     setSelectedShippingOptionId,
   } = useCommerce();
 
-  const [inputCp, setInputCp] = useState(postalCode || "");
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Keep input in sync if context changes
-  useEffect(() => {
-    if (postalCode) {
-      setInputCp(postalCode);
-    }
-  }, [postalCode]);
+  const [cpDraft, setCpDraft] = useState({ value: postalCode || "", source: postalCode });
+  const inputCp = cpDraft.source === postalCode ? cpDraft.value : postalCode;
+  const setInputCp = (value: string) => setCpDraft({ value, source: postalCode });
+  const isClient = useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot);
 
   const targetItem = useMemo(
     () => ({
@@ -333,18 +328,19 @@ export function ProductShippingCalculator({
               const isPickup = opt.type === "pickup";
               const isBranch = opt.type === "sucursal";
               const isHome = opt.type === "domicilio";
-              const dateLabel = resolveDeliveryDateLabel(opt.estimatedDays, isImmediate, isPickup);
+              const dateLabel = opt.requiresQuote ? "Costo y plazo a confirmar" : resolveDeliveryDateLabel(opt.estimatedDays, isImmediate, isPickup);
 
               return (
                 <div
                   key={opt.id}
-                  onClick={() => setSelectedShippingOptionId(opt.id)}
+                  onClick={() => { handleApplyCp(inputCp); setSelectedShippingOptionId(opt.id); }}
                   role="radio"
                   aria-checked={isSelected}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === " " || e.key === "Enter") {
                       e.preventDefault();
+                      handleApplyCp(inputCp);
                       setSelectedShippingOptionId(opt.id);
                     }
                   }}
@@ -408,7 +404,9 @@ export function ProductShippingCalculator({
                   {/* Price & Selection Indicator */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-200/60">
                     <div className="text-left sm:text-right">
-                      {opt.isFree || opt.price === 0 ? (
+                      {opt.requiresQuote ? (
+                        <span className="text-xs font-bold text-sky-800">Tarifa a cotizar</span>
+                      ) : opt.isFree ? (
                         <div className="flex flex-col sm:items-end">
                           {opt.originalPrice > 0 && (
                             <span className="text-[10px] line-through text-zinc-400">
@@ -419,16 +417,12 @@ export function ProductShippingCalculator({
                             ¡GRATIS!
                           </span>
                         </div>
-                      ) : opt.requiresQuote ? (
-                        <span className="text-xs font-bold text-sky-800">
-                          Tarifa a cotizar
-                        </span>
                       ) : (
                         <div className="flex flex-col sm:items-end">
                           <span className="text-sm sm:text-base font-black text-zinc-950 tracking-tight">
                             {formatCurrency(opt.price)}
                           </span>
-                          <span className="text-[10px] text-zinc-600">tarifa oficial</span>
+                          <span className="text-[10px] text-zinc-600">importe de referencia</span>
                         </div>
                       )}
                     </div>

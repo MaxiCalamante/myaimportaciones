@@ -1,5 +1,18 @@
 # MYA Importaciones — contexto vigente
 
+## Auditoría de privacidad, compra y administración — 23/10/2026
+
+Correcciones **locales, sin publicar**. El informe mantenido es `docs/commerce-audit-2026-10-23/README.md`.
+
+- `/pedido/[id]` ya no consulta ni muestra datos con solo código/UUID: exige email mediante Server Action, coincidencia exacta y límite persistente de seguimiento. No devuelve notas internas. Se conservan enlaces de emails y checkout, que ahora abren la verificación.
+- Se retiraron las reseñas generadas, estadísticas y votos simulados; las fichas informan que todavía no hay opiniones verificadas publicadas. Esto reemplaza el estado anterior de este documento que describía testimonios deterministas como prueba social.
+- Los precios reducidos fijos por transferencia y tres cuotas estimadas se sustituyeron por confirmación del beneficio y total en el resumen del servidor. Se mantienen reservas, cálculo de márgenes, pagos y conciliación existentes.
+- Envío a cotizar con precio interno cero nunca se presenta gratis ni con fecha calculada. Sin configuración de tarifa del proveedor se conserva cotización pendiente; no se ofrecen tarifas/retiro propios como fallback. Elegir entrega desde ficha aplica también el CP; el calculador recibe disponibilidad de la variante.
+- Modales de auditoría/recorte reinician estado al montarse, evitando efectos de reinicio y respuestas antiguas. Tipado de registros de auditoría; ESLint ignora `.next-storefront-qa`.
+- Verificación: 211 tests aprobados, type-check aprobado, lint 0 errores/142 advertencias, build webpack aprobado (43 páginas), 48 visitas y 3 recorridos de carrito a 320/390/1440 px sin errores JS ni overflow. Evidencia pública en la carpeta del informe. Turbopack no completó el primer intento y se usó webpack para validar.
+- Supabase de producción se inspeccionó solo por lectura de políticas/definiciones. Creación/conciliación y RPC antiguo de seguimiento no ejecutables por anon/authenticated; cambios administrativos de estado exigen rol. No hubo sesión admin real en navegador ni pago real con webhook; tampoco commit, push, despliegue ni migración remota.
+
+
 ## Calculador Interactivo de Costo y Fechas de Entrega por Correo Argentino en PDP — 22/10/2026
 
 Por requerimiento expreso del dueño ("hace el 1"):
