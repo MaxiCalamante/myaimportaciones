@@ -1,3 +1,4 @@
+import { WHOLESALE_PATHS } from "@/lib/wholesale-content";
 import type { MetadataRoute } from "next";
 import { getStorefrontData } from "@/lib/storefront";
 import { deriveCatalogFacets } from "@/lib/catalog-facets";
@@ -12,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const facets = deriveCatalogFacets(categories, products.map(p => ({ category_id: p.categoryId, brand: p.brand || null })));
   // Omit lastmod without a reliable date of a meaningful public-content change.
   return [
-    ...["/", "/catalogo", "/condiciones", "/privacidad"].map(path => ({ url: publicUrl(path) })),
+    ...["/", "/catalogo", "/condiciones", "/privacidad", ...WHOLESALE_PATHS].map(path => ({ url: publicUrl(path) })),
     ...facets.categories.map(category => ({ url: publicUrl('/catalogo?category=' + encodeURIComponent(category.slug)) })),
     ...facets.brands.map(({ brand }) => ({ url: publicUrl('/catalogo?brand=' + encodeURIComponent(brand)) })),
     ...products.filter(p => canonicalProductSlug(p, bySlug.get(PRODUCT_CANONICAL_ALIASES[p.slug])) === p.slug).map(product => ({ url: publicUrl('/producto/' + product.slug), images: product.imageUrl ? [publicUrl(product.imageUrl)] : undefined })),

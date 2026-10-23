@@ -52,7 +52,7 @@ export function SiteFooter() {
           </div>
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
-              ? "Tu distribuidor directo de confianza. Abastecemos a comercios, ferreterías y revendedores con Cosmética Coreana (K-Beauty original), tratamientos capilares Karseell y herramientas industriales Total y Wadfow con precios diferenciales por bulto cerrado."
+              ? "Cotizamos productos importados por cantidad para comercios, ferreterías, peluquerías y revendedores. Revisamos modelos, presentaciones y destino antes de confirmar condiciones de compra y entrega desde Tandil."
               : "Tu tienda de confianza en importaciones. Electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas. Atención de Máximo y Agustina desde Tandil con envíos a toda la Argentina."}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -120,6 +120,7 @@ export function SiteFooter() {
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/#ofertas">
                   Más para descubrir
                 </Link>
+                <Link className="text-sky-300 hover:text-white" href="/mayorista">Venta mayorista para comercios</Link>
                 <button
                   type="button"
                   onClick={() => openWhatsApp("Hola MYA Importaciones! Quisiera consultar por un producto.")}

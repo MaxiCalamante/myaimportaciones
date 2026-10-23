@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { WholesaleLanding } from "@/components/wholesale/wholesale-landing";
+import { WHOLESALE_CATEGORIES, wholesaleMetadata } from "@/lib/wholesale-content";
 import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import Link from "next/link";
 import { Boxes, LockKeyhole, Truck, FileSpreadsheet, MessageCircle, Sparkles } from "lucide-react";
@@ -10,18 +12,19 @@ import { getCurrentProfile } from "@/lib/auth";
 import { ResellerStarterKits } from "@/components/commerce/reseller-starter-kits";
 import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 
-export const metadata = {
-  title: "Catálogo Mayorista | MYA Importaciones",
-  description:
-    "Precios directos por bulto cerrado y volumen en Cosmética Coreana (K-Beauty), herramientas Total & Wadfow y tecnología para revendedores y comercios.",
-};
+export const metadata = wholesaleMetadata();
 
 export default async function WholesalePage({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string }>;
 }) {
-  if (!WHOLESALE_ENABLED) redirect("/catalogo");
+  if (!WHOLESALE_ENABLED) {
+    const { category } = await searchParams;
+    const matching = WHOLESALE_CATEGORIES.find(item => item.categorySlug === category);
+    if (matching) redirect(`/mayorista/${matching.slug}`);
+    return <WholesaleLanding />;
+  }
   const params = await searchParams;
   const selectedCategorySlug = params.category;
 

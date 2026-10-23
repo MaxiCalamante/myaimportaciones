@@ -80,9 +80,9 @@ export function CheckoutPanel({
   useEffect(() => {
     if (!initiated.current && cart.length) {
       initiated.current = true;
-      trackAdsEvent("InitiateCheckout", { value: cartTotal, num_items: cart.length });
+      trackAdsEvent("InitiateCheckout", { value: cartTotal, num_items: cart.reduce((total, line) => total + line.quantity, 0), items: cart.map(line => ({ id: line.variantId ? `${line.product.id}:${line.variantId}` : line.product.id, title: line.variantTitle ? `${line.product.title} (${line.variantTitle})` : line.product.title, price: line.variantPrice ?? line.product.retailPrice, quantity: line.quantity })) });
     }
-  }, [cart.length, cartTotal]);
+  }, [cart, cartTotal]);
 
   // Recotización reactiva automática en segundo plano cuando cambia cualquier dato
   useEffect(() => {

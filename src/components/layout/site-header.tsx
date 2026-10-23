@@ -43,8 +43,8 @@ const POPULAR_SEARCHES = [
 
 const ANNOUNCEMENTS = [
   {
-    text: "Hasta 3% de descuento pagando por Transferencia Bancaria directa",
-    highlight: "-3% OFF",
+    text: "Pagá por transferencia · Confirmá el beneficio vigente en el resumen",
+    highlight: "Transferencia",
   },
   {
     text: "Envíos a todo el país por Correo Argentino con seguimiento en vivo",
@@ -115,7 +115,7 @@ export function SiteHeader({
         const matchesText =
           p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.description?.toLowerCase().includes(searchQuery.toLowerCase());
-        return isWholesale ? matchesText && (p.wholesalePrice > 0 || p.wholesaleOnly) : matchesText && !p.wholesaleOnly;
+        return isWholesale && WHOLESALE_ENABLED ? matchesText && (p.wholesalePrice > 0 || p.wholesaleOnly) : matchesText && !p.wholesaleOnly;
       }).slice(0, 8);
 
   // Filter categories based on channel
@@ -206,7 +206,7 @@ export function SiteHeader({
   };
 
   const brandName = isWholesale ? "MyA Mayorista" : "MyA importaciones";
-  const catalogPath = isWholesale ? "/mayorista" : "/catalogo";
+  const catalogPath = isWholesale && WHOLESALE_ENABLED ? "/mayorista" : "/catalogo";
   const showSearchResults = () => {
     if (!searchQuery.trim()) return;
     router.push(`${catalogPath}?q=${encodeURIComponent(searchQuery.trim())}`);
@@ -493,6 +493,8 @@ export function SiteHeader({
               </div>
             </div>
           </div>
+
+          <Link className={linkClass} href="/mayorista">Mayoristas</Link>
 
           <Link className={linkClass} href="/#ofertas">
             Descubrí más
@@ -811,6 +813,7 @@ export function SiteHeader({
             )}
           </div>
           <nav className="grid gap-1">
+            <Link href="/mayorista" onClick={() => setOpen(false)} className={`min-h-11 rounded-lg px-3 py-3 text-sm font-semibold ${isWholesale ? "text-sky-300 hover:bg-zinc-800" : "text-sky-800 hover:bg-sky-50"}`}>Venta mayorista para comercios</Link>
             <Link
               className={`rounded-lg px-3 py-2 text-sm font-medium ${
                 isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"

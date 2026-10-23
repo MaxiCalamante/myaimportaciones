@@ -113,6 +113,7 @@ export function ProductDetailInteractive({
       content_name: matchedVariant ? `${product.title} (${matchedVariant.title})` : product.title,
       content_ids: [matchedVariant ? `${product.id}:${matchedVariant.id}` : product.id],
       value: price,
+      items: [{ id: matchedVariant ? `${product.id}:${matchedVariant.id}` : product.id, title: matchedVariant ? `${product.title} (${matchedVariant.title})` : product.title, quantity: 1, price }],
     });
   }, [product.id, product.title, matchedVariant, price]);
 

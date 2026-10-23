@@ -56,12 +56,19 @@ export type AdsEventType =
   | "PageView"
   | "ViewContent"
   | "AddToCart"
+  | "ViewCart"
   | "InitiateCheckout"
   | "Purchase"
   | "Search"
   | "Contact";
 
 export interface AdsEventPayload {
+  contact_type?: "retail" | "wholesale";
+  contact_source?: string;
+  contact_channel?: "whatsapp";
+  advisor?: string;
+  category?: string;
+  test_event?: boolean;
   content_name?: string;
   content_ids?: string[];
   content_type?: string;
@@ -80,13 +87,57 @@ export interface AdsEventPayload {
   [key: string]: unknown;
 }
 
+export const ADS_EVENT_NAMES: Record<AdsEventType, string> = {
+  PageView: "page_view", ViewContent: "view_item", AddToCart: "add_to_cart", ViewCart: "view_cart",
+  InitiateCheckout: "begin_checkout", Purchase: "purchase", Search: "search", Contact: "contact",
+};
+
+export function ga4EventPayload(payload: AdsEventPayload) {
+  return {
+    ...payload,
+    ...(payload.search_string ? { search_term: payload.search_string } : {}),
+    ...(payload.items ? { items: payload.items.map(item => ({ item_id: item.id, item_name: item.title, quantity: item.quantity, price: item.price })) } : {}),
+  };
+}
+
+export function analyticsPageLocation(input: string) {
+  const url = new URL(input);
+  const path = url.pathname.replace(/^\/pedido\/[^/]+.*$/, "/pedido");
+  const safe = new URL(path, url.origin);
+  for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
+    const value = url.searchParams.get(key);
+    if (value && value.length <= 120 && !/[@\r\n]/.test(value)) safe.searchParams.set(key, value);
+  }
+  return safe.href;
+}
+
+type AdsEventDetail = { eventType: AdsEventType; payload: AdsEventPayload; timestamp: string };
+let listening = false;
+const pendingEvents: AdsEventDetail[] = [];
+
+function hasConsent() {
+  try { return localStorage.getItem("mya_analytics_consent") === "granted"; } catch { return false; }
+}
+
+export function clearPendingAdsEvents() { pendingEvents.length = 0; }
+
+// Initial product/checkout effects may run before the scripts' listener mounts.
+export function subscribeAdsEvents(receive: (event: Event) => void) {
+  window.addEventListener("mya_ads_event", receive);
+  listening = true;
+  for (const detail of pendingEvents.splice(0)) {
+    if (hasConsent()) window.dispatchEvent(new CustomEvent("mya_ads_event", { detail }));
+  }
+  return () => { window.removeEventListener("mya_ads_event", receive); listening = false; };
+}
+
 /**
  * Dispatch an analytics / conversion event across all active marketing channels
  * (Meta Pixel, Google Ads / GA4, TikTok Pixel).
  */
-export function trackAdsEvent(eventType: AdsEventType, payload: AdsEventPayload = {}): void {
-  if (typeof window === "undefined") return;
-  try { if (localStorage.getItem("mya_analytics_consent") !== "granted") return; } catch { return; }
+export function trackAdsEvent(eventType: AdsEventType, payload: AdsEventPayload = {}): boolean {
+  if (typeof window === "undefined") return false;
+  const config = getMarketingConfig();
 
   const eventDetail = {
     eventType,
@@ -97,5 +148,14 @@ export function trackAdsEvent(eventType: AdsEventType, payload: AdsEventPayload 
     timestamp: new Date().toISOString(),
   };
 
-  window.dispatchEvent(new CustomEvent("mya_ads_event", { detail: eventDetail }));
+  if (payload.test_event === true || config.testMode) {
+    window.dispatchEvent(new CustomEvent("mya_ads_test_event", { detail: eventDetail }));
+    return false;
+  }
+  if (!config.enabled || !hasConsent()) return false;
+  if (!listening) {
+    if (pendingEvents.length >= 20) pendingEvents.shift();
+    pendingEvents.push(eventDetail);
+  } else window.dispatchEvent(new CustomEvent("mya_ads_event", { detail: eventDetail }));
+  return true;
 }

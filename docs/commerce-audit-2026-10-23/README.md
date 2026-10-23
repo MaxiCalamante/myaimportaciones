@@ -1,6 +1,6 @@
 # Auditoría de tienda y administración — 23/10/2026
 
-Trabajo local sobre MYA Importaciones. No se hicieron commit, push, despliegue, migraciones remotas, compras, cobros ni envíos de correo. La inspección de Supabase en producción fue de solo lectura y consultó permisos y definiciones, sin descargar pedidos de clientes.
+Correcciones publicadas el 23/10/2026 por autorización del dueño: commit `a1bbeb222ea7fb2c9c2f1d9d81b32a2fad7699e1`, despliegue Vercel `dpl_7FFs2fszMGhaKDhbfu5nn3JoJE2x`, READY y alias del dominio verificados. El control público está en `production-smoke.json`. No hubo migraciones remotas, compras, cobros ni envíos de correo. La inspección de Supabase fue de solo lectura y consultó permisos y definiciones, sin descargar pedidos de clientes.
 
 ## Hallazgos corregidos
 
@@ -32,6 +32,6 @@ El primer intento con Turbopack quedó sin completar y se interrumpió; la valid
 
 ## Prioridades siguientes
 
-1. Publicar las correcciones y repetir los controles de comprobante, catálogo, carrito y administración en el dominio público.
+1. Publicación y controles públicos realizados; continuar con la medición y las páginas mayoristas documentadas en `../wholesale-growth-2026-10-23/README.md`.
 2. Verificar medición del recorrido visita → producto → carrito → checkout → pago acreditado con consentimiento; usarla para elegir dónde recuperar ventas, sin contar un pedido pendiente como venta.
 3. Recopilar reseñas reales con consentimiento y vinculación a compras entregadas antes de volver a mostrar estadísticas de satisfacción.

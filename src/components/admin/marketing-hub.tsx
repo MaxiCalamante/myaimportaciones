@@ -59,6 +59,7 @@ export function MarketingHub() {
 
   const handleTestEvent = (eventName: "ViewContent" | "AddToCart" | "InitiateCheckout" | "Purchase") => {
     trackAdsEvent(eventName, {
+      test_event: true,
       content_name: "Producto de Prueba MYA",
       content_ids: ["test-prod-123"],
       value: 150000,
@@ -68,7 +69,7 @@ export function MarketingHub() {
       items: [{ id: "test-prod-123", title: "Producto de Prueba MYA", price: 150000, quantity: 1 }],
     });
 
-    setTestEventFeedback(`¡Evento "${eventName}" disparado a los píxeles activos! Revisá la consola (F12) para ver los detalles.`);
+    setTestEventFeedback(`Evento "${eventName}" preparado como prueba local. No se envió a Analytics ni a píxeles publicitarios.`);
     setTimeout(() => setTestEventFeedback(null), 5000);
   };
 
@@ -96,7 +97,7 @@ export function MarketingHub() {
       {savedSuccess && (
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-          ¡Configuración de marketing guardada exitosamente! Los píxeles configurados ya están activos en toda la tienda.
+          Configuración guardada en este navegador. Para aplicarla a todos los visitantes hay que configurar los IDs públicos en Vercel y publicar el sitio.
         </div>
       )}
 
@@ -117,7 +118,7 @@ export function MarketingHub() {
                 <Radio className="h-5 w-5 text-blue-600" />
                 Píxeles y Cuentas de Anuncios
               </h3>
-              <span className="text-xs text-zinc-500 font-medium">Guarda al instante</span>
+              <span className="text-xs text-zinc-500 font-medium">Configuración de este navegador</span>
             </div>
 
             {/* Meta Pixel */}
@@ -367,7 +368,7 @@ export function MarketingHub() {
               Probador en Vivo de Conversiones
             </h3>
             <p className="text-xs text-zinc-600">
-              Probá que tus píxeles instalados reciban los eventos simulando una acción de usuario:
+              Revisá un evento de prueba local. Estas pruebas no generan conversiones ni envían compras simuladas a tus cuentas:
             </p>
 
             <div className="grid grid-cols-2 gap-2">

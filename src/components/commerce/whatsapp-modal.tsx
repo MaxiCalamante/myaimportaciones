@@ -1,5 +1,7 @@
 "use client";
 
+import { trackAdsEvent } from "@/lib/analytics";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { X, MessageCircle, ArrowUpRight } from "lucide-react";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -7,7 +9,8 @@ import { useModalFocus } from "@/components/ui/use-modal-focus";
 import { whatsappContacts, getWhatsAppUrl } from "@/lib/site";
 
 export function WhatsAppContactModal() {
-  const { whatsappModalOpen, whatsappModalMessage, closeWhatsApp } = useCommerce();
+  const pathname = usePathname();
+  const { whatsappModalOpen, whatsappModalMessage, whatsappInquiry, closeWhatsApp } = useCommerce();
   const panel = useRef<HTMLDivElement>(null);
   useModalFocus(panel, whatsappModalOpen);
   useEffect(() => {
@@ -26,7 +29,10 @@ export function WhatsAppContactModal() {
       <p className="mt-3 text-sm leading-6 text-zinc-600">Elegí con quién hablar. Tu consulta se abrirá directamente en WhatsApp.</p>
       {whatsappModalMessage && <div className="mt-4 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600"><p className="mb-1 font-medium text-zinc-900">Tu consulta</p><p className="line-clamp-3 break-words">{whatsappModalMessage}</p></div>}
       <div className="mt-5 space-y-3">
-        {whatsappContacts.map(contact => <a key={contact.id} href={getWhatsAppUrl(whatsappModalMessage, contact.whatsappNumber)} target="_blank" rel="noopener noreferrer" onClick={closeWhatsApp} className="group grid grid-cols-[2.75rem_minmax(0,1fr)_1.25rem] items-center gap-3 rounded-2xl border border-zinc-200 p-3.5 transition-colors hover:border-emerald-300 hover:bg-emerald-50/40">
+        {whatsappContacts.map(contact => <a key={contact.id} href={getWhatsAppUrl(whatsappModalMessage, contact.whatsappNumber)} target="_blank" rel="noopener noreferrer" onClick={() => {
+          trackAdsEvent("Contact", { contact_type: whatsappInquiry?.type || (pathname.startsWith("/mayorista") ? "wholesale" : "retail"), contact_source: whatsappInquiry?.source || "whatsapp_selector", contact_channel: "whatsapp", advisor: contact.id, category: whatsappInquiry?.category });
+          closeWhatsApp();
+        }} className="group grid grid-cols-[2.75rem_minmax(0,1fr)_1.25rem] items-center gap-3 rounded-2xl border border-zinc-200 p-3.5 transition-colors hover:border-emerald-300 hover:bg-emerald-50/40">
           <span className="grid size-11 place-items-center rounded-full bg-sky-50 text-sm font-semibold text-sky-800">{contact.avatarText}</span>
           <div className="min-w-0"><p className="font-semibold text-zinc-950">{contact.name}</p><p className="mt-0.5 text-xs leading-5 text-zinc-500">{contact.specialty}</p><p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-emerald-800"><MessageCircle className="size-3.5 shrink-0"/>{contact.phone}</p></div>
           <ArrowUpRight className="size-5 text-zinc-400 transition-colors group-hover:text-emerald-700"/>

@@ -25,6 +25,8 @@ import { accountCartStorageKey, mergeGuestCart } from "@/lib/account-cart";
 
 export type { CartLine } from "@/lib/types";
 
+export interface WhatsAppInquiryContext { type: "retail" | "wholesale"; source: string; category?: string }
+
 interface CommerceContextValue {
   cart: CartLine[];
   cartReady: boolean;
@@ -62,7 +64,8 @@ interface CommerceContextValue {
   retailUnitsCount: number;
   whatsappModalOpen: boolean;
   whatsappModalMessage: string;
-  openWhatsApp: (message?: string) => void;
+  whatsappInquiry: WhatsAppInquiryContext | null;
+  openWhatsApp: (message?: string, context?: WhatsAppInquiryContext) => void;
   closeWhatsApp: () => void;
 }
 
@@ -93,9 +96,11 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
   const [selectedShippingOptionId, setSelectedShippingOptionIdState] = useState("correo_domicilio");
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [whatsappModalMessage, setWhatsappModalMessage] = useState("");
+  const [whatsappInquiry, setWhatsappInquiry] = useState<WhatsAppInquiryContext | null>(null);
   const hydrated = useRef(false);
 
-  const openWhatsApp = useCallback((msg?: string) => {
+  const openWhatsApp = useCallback((msg?: string, context?: WhatsAppInquiryContext) => {
+    setWhatsappInquiry(context ?? null);
     setWhatsappModalMessage(
       msg || "Hola MYA Importaciones! Estuve viendo su tienda online y quería hacer una consulta."
     );
@@ -321,6 +326,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
         content_ids: [variantId ? `${product.id}:${variantId}` : product.id],
         value: effectivePrice * quantity,
         quantity,
+        items: [{ id: variantId ? `${product.id}:${variantId}` : product.id, title: variantTitle ? `${product.title} (${variantTitle})` : product.title, price: effectivePrice, quantity }],
       });
     },
     [],
@@ -472,6 +478,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
       retailUnitsCount,
       whatsappModalOpen,
       whatsappModalMessage,
+      whatsappInquiry,
       openWhatsApp,
       closeWhatsApp,
     }),
@@ -509,6 +516,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
       retailUnitsCount,
       whatsappModalOpen,
       whatsappModalMessage,
+      whatsappInquiry,
       openWhatsApp,
       closeWhatsApp,
     ],

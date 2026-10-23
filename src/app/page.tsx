@@ -1,3 +1,4 @@
+import { WholesalePromo } from "@/components/wholesale/wholesale-landing";
 import type { Metadata } from "next";
 import { getPublicCarousel } from "@/lib/carousel-data";
 import { EmptyCatalog } from "@/components/commerce/empty-catalog";
@@ -49,6 +50,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     {(error || !retailProducts.length) && <EmptyCatalog error={error} />}
     {retailProducts.length > 0 && <ProductSection eyebrow="Selección especial" id="catalogo" products={featuredProducts} title="Productos destacados" />}
     {retailProducts.length > 0 && <ProductSection eyebrow="Explorá la tienda" id="ofertas" products={discoveryProducts} title="Más para descubrir" />}
+    <WholesalePromo />
     <SocialProofSection />
     <TrustGuaranteeBadges />
     <StoreSeoFaq />

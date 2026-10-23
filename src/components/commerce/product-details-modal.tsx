@@ -40,6 +40,7 @@ function ProductDetailsModalContent() {
         content_name: selectedProduct.title,
         content_ids: [selectedProduct.id],
         value: selectedProduct.retailPrice,
+        items: [{ id: selectedProduct.id, title: selectedProduct.title, quantity: 1, price: selectedProduct.retailPrice }],
       });
     }
   }, [selectedProduct]);

@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-10-23T15:30:29.296Z",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "location": null,
+      "title": "MYA Importaciones | Cosmética, Tecnología y Herramientas"
+    },
+    {
+      "path": "/catalogo",
+      "status": 200,
+      "location": null,
+      "title": "Catálogo de productos en Argentina | MYA Importaciones"
+    },
+    {
+      "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+      "status": 200,
+      "location": null,
+      "title": "Anua Heartleaf Pore Control Cleansing Oil 200 ml | MYA Importaciones"
+    },
+    {
+      "path": "/pedido/ORD-QA-PRIVACY",
+      "status": 200,
+      "location": null,
+      "title": "Comprobante de pedido | MYA Importaciones | MYA Importaciones",
+      "protectedReceipt": true
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "location": "/login?next=/admin",
+      "title": "Panel de Control | MYA Importaciones | MYA Importaciones"
+    },
+    {
+      "path": "/api/catalog/google-feed",
+      "status": 200,
+      "location": null,
+      "title": "MYA Importaciones — Catálogo"
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/mayorista",
+      "status": 307,
+      "location": "/catalogo",
+      "title": "Catálogo Mayorista | MYA Importaciones | MYA Importaciones"
+    }
+  ]
+}

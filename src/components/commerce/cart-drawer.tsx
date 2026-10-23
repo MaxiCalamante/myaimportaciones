@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { ArrowRight, ShoppingBag, Trash2, X, ShieldCheck, Truck, Check, Smartphone, Sparkles, Gem, Wrench } from "lucide-react";
 import { purchasableQuantity } from "@/lib/commerce-policy";
+import { trackAdsEvent } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
 import { QuantityStepper } from "./quantity-stepper";
 import { useCommerce } from "./commerce-provider";
@@ -20,6 +21,10 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = overflow; previous?.focus(); };
   }, [cartOpen]);
+  useEffect(() => {
+    if (!cartOpen || !cartReady || !cart.length) return;
+    trackAdsEvent("ViewCart", { value: cartTotal, items: cart.map(line => ({ id: line.variantId ? `${line.product.id}:${line.variantId}` : line.product.id, title: line.variantTitle ? `${line.product.title} (${line.variantTitle})` : line.product.title, price: line.variantPrice ?? line.product.retailPrice, quantity: line.quantity })) });
+  }, [cartOpen, cartReady, cart, cartTotal]);
   if (!cartOpen) return null;
 
   const whatsappMessage = `Hola MYA, quisiera confirmar disponibilidad y entrega de: ${cart.map(line => `${line.quantity} × ${line.product.title}${line.variantTitle ? ` (${line.variantTitle})` : ""}`).join("; ")}. Subtotal de referencia ${formatCurrency(cartTotal)}; entrega a cotizar.`;
