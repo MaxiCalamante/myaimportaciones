@@ -19,7 +19,13 @@ Se amplía la segmentación del evento `contact` con las dimensiones `contact_so
 - Consulta desde variante Verde / 256 GB con cantidad 2 correcta en ambos enlaces de asesores a los tres tamaños; consulta combinada 2 + 3 correcta. No se enviaron mensajes, pedidos ni pagos.
 - Se conservan 392 direcciones del sitemap, canonical y títulos minoristas. Sin habilitar compras mayoristas, modificar precios ni inventario.
 
-La evidencia comercial y de Google se conserva fuera del repositorio público. Tras el push se verifica el SHA del despliegue, alias, respuestas del dominio y presentación pública antes del apagado solicitado.
+La evidencia comercial y de Google se conserva fuera del repositorio público.
+
+## Publicación comprobada
+
+Código `d75c32e2aebd2bb72de31fe0afec757ab98f5619`, despliegue `dpl_GEm6hmaDFVSVkGh3a6uYgNwktk68`, producción READY, Next.js, build de 38 segundos. Alias del dominio y SHA confirmados. El control HTTP conserva las 392 URL, las seis páginas mayoristas responden 200, un rubro desconocido 404 y los enlaces heredados redirigen correctamente. Se preservan títulos minoristas y el comprobante protegido.
+
+En el dominio se comprobaron 12 vistas de mayorista, herramientas, condiciones y ficha con variantes a 320/390/1440 px, sin overflow ni errores de consola. La consulta pública conservó Verde / 256 GB, cantidad 2 y el mínimo alternativo en ambos enlaces de asesores. No se enviaron mensajes. El escaneo de errores/fatales de ejecución de 30 minutos no devolvió registros; monitoreo externo continuo no confirmado. Evidencia responsive: `ui/terms-responsive-production.json`.
 
 ## Próximas prioridades
 

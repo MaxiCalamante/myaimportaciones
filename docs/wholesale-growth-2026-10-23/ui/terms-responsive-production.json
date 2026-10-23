@@ -1,0 +1,86 @@
+[
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista",
+    "units": true,
+    "width": 320
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "units": true,
+    "width": 320
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/condiciones",
+    "units": true,
+    "width": 320
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/apple-iphone-15",
+    "units": true,
+    "width": 320
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista",
+    "units": true,
+    "width": 390
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "units": true,
+    "width": 390
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/condiciones",
+    "units": true,
+    "width": 390
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/apple-iphone-15",
+    "units": true,
+    "width": 390
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/condiciones",
+    "units": true,
+    "width": 1440
+  },
+  {
+    "minimum": true,
+    "overflow": false,
+    "path": "/producto/apple-iphone-15",
+    "units": true,
+    "width": 1440
+  }
+]
