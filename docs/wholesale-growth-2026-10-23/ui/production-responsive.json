@@ -1,0 +1,56 @@
+[
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/mayorista",
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/catalogo",
+    "width": 320
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/mayorista",
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/catalogo",
+    "width": 390
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/mayorista",
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/mayorista/herramientas",
+    "width": 1440
+  },
+  {
+    "h1": 1,
+    "overflow": false,
+    "path": "/catalogo",
+    "width": 1440
+  }
+]

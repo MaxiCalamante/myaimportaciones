@@ -1,0 +1,95 @@
+{
+  "checkedAt": "2026-10-23T16:02:51.985Z",
+  "base": "https://myaimportaciones.com",
+  "wholesale": [
+    {
+      "path": "/mayorista",
+      "status": 200,
+      "title": "Venta mayorista de importados para comercios y revendedores | MYA Importaciones",
+      "canonical": "https://myaimportaciones.com/mayorista",
+      "service": true
+    },
+    {
+      "path": "/mayorista/cosmetica-coreana",
+      "status": 200,
+      "title": "Cosmética coreana por mayor para revendedores en Argentina | MYA Importaciones",
+      "canonical": "https://myaimportaciones.com/mayorista/cosmetica-coreana",
+      "service": true
+    },
+    {
+      "path": "/mayorista/perfumeria",
+      "status": 200,
+      "title": "Perfumes árabes y fragancias por mayor en Argentina | MYA Importaciones",
+      "canonical": "https://myaimportaciones.com/mayorista/perfumeria",
+      "service": true
+    },
+    {
+      "path": "/mayorista/cuidado-capilar",
+      "status": 200,
+      "title": "Productos capilares por mayor para comercios y peluquerías | MYA Importaciones",
+      "canonical": "https://myaimportaciones.com/mayorista/cuidado-capilar",
+      "service": true
+    },
+    {
+      "path": "/mayorista/herramientas",
+      "status": 200,
+      "title": "Herramientas Total y Wadfow por mayor para ferreterías | MYA Importaciones",
+      "canonical": "https://myaimportaciones.com/mayorista/herramientas",
+      "service": true
+    },
+    {
+      "path": "/mayorista/electronica",
+      "status": 200,
+      "title": "Electrónica por mayor: cotizaciones para comercios en Argentina | MYA Importaciones",
+      "canonical": "https://myaimportaciones.com/mayorista/electronica",
+      "service": true
+    }
+  ],
+  "sitemap": {
+    "before": 386,
+    "after": 392,
+    "missing": [],
+    "added": [
+      "https://myaimportaciones.com/mayorista",
+      "https://myaimportaciones.com/mayorista/cosmetica-coreana",
+      "https://myaimportaciones.com/mayorista/perfumeria",
+      "https://myaimportaciones.com/mayorista/cuidado-capilar",
+      "https://myaimportaciones.com/mayorista/herramientas",
+      "https://myaimportaciones.com/mayorista/electronica"
+    ]
+  },
+  "retail": [
+    {
+      "path": "/",
+      "status": 200,
+      "title": "MYA Importaciones | Cosmética, Tecnología y Herramientas",
+      "location": null
+    },
+    {
+      "path": "/catalogo",
+      "status": 200,
+      "title": "Catálogo de productos en Argentina | MYA Importaciones",
+      "location": null
+    },
+    {
+      "path": "/producto/anua-heartleaf-pore-control-cleansing-oil-200-ml",
+      "status": 200,
+      "title": "Anua Heartleaf Pore Control Cleansing Oil 200 ml | MYA Importaciones",
+      "location": null
+    },
+    {
+      "path": "/pedido/ORD-QA-PRIVACY",
+      "status": 200,
+      "title": "Comprobante de pedido | MYA Importaciones | MYA Importaciones",
+      "location": null
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "title": "Panel de Control | MYA Importaciones | MYA Importaciones",
+      "location": "/login?next=/admin"
+    }
+  ],
+  "unknown": 404,
+  "legacyRedirect": "/mayorista/herramientas"
+}

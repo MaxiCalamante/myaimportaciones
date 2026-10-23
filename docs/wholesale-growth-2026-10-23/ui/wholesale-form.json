@@ -1,0 +1,47 @@
+[
+  {
+    "dialog": true,
+    "links": [
+      {
+        "target": "_blank",
+        "correct": true
+      },
+      {
+        "target": "_blank",
+        "correct": true
+      }
+    ],
+    "overflow": false,
+    "width": 320
+  },
+  {
+    "dialog": true,
+    "links": [
+      {
+        "target": "_blank",
+        "correct": true
+      },
+      {
+        "target": "_blank",
+        "correct": true
+      }
+    ],
+    "overflow": false,
+    "width": 390
+  },
+  {
+    "dialog": true,
+    "links": [
+      {
+        "target": "_blank",
+        "correct": true
+      },
+      {
+        "target": "_blank",
+        "correct": true
+      }
+    ],
+    "overflow": false,
+    "width": 1440
+  }
+]
