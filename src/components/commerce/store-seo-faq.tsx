@@ -3,6 +3,7 @@ import { ArrowRight, HelpCircle, ShieldCheck, Truck, Sparkles, MapPin, CreditCar
 import { siteConfig } from "@/lib/site";
 
 const faqs = [
+  { question: "¿MYA vende por mayor y por menor con envíos a toda Argentina?", answer: "Sí. Comprá por menor desde una unidad en el catálogo, con precios en pesos. Para comprar por mayor, el mínimo es 5 productos en total o $100.000 en productos; podés combinar marcas y rubros. Los precios mayoristas se consultan con Máximo o Agustina por WhatsApp. Hacemos envíos a toda Argentina; el envío se cotiza por separado." },
   { question: "¿Cómo comprar y recibir un pedido en Argentina?", answer: "Explorá el catálogo, revisá la disponibilidad y agregá productos al carrito. El resumen informa las condiciones de pago y entrega. Para confirmar costo y plazo de envío, podés consultar a MYA por WhatsApp antes de comprar." },
   { question: "¿Dónde consultar el modelo y la presentación?", answer: "Cada ficha informa la marca, el modelo, las fotos y las especificaciones disponibles. Si necesitás confirmar una presentación, compatibilidad o condición particular, consultanos antes de elegir. La garantía comercial adicional se informa en la ficha cuando corresponde." },
   { question: "¿Qué medios de pago están disponibles?", answer: "El resumen de compra muestra los medios habilitados y las promociones aplicables. La acreditación de un pago se confirma después de verificarlo; crear un pedido no significa que ya esté pagado." },

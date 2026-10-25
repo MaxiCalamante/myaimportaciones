@@ -213,7 +213,8 @@ export async function GET(request: Request) {
               background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)",
               border: "1px solid rgba(255,255,255,0.12)",
               borderRadius: 28,
-              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)",
+              // Keep depth through contrast/borders: blurred SVG shadows are
+              // expensive to rasterize for every uncached product card.
               position: "relative",
               padding: 20,
             }}
@@ -272,7 +273,7 @@ export async function GET(request: Request) {
                 alignItems: "center",
                 justifyContent: "center",
                 padding: 16,
-                boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+                border: "1px solid #e2e8f0",
               }}
             >
               {productImgBase64 ? (

@@ -26,6 +26,22 @@ test("brand, category and pagination have distinct self canonicals; search and c
   assert.equal(catalogSeo({ brand: "Marca", page: "2" }, [category], ["Marca"]).path, "/catalogo?brand=Marca&page=2");
   for (const params of [{ q: "serum" }, { category: "cuidado", brand: "Marca" }, { sort: "price_asc" }, { min: "200" }, { family: "Familia" }, { brand: "Inventada" }, { category: "vacía" }]) assert.equal(catalogSeo(params, [category], ["Marca"]).index, false);
 });
+
+test("retail editorial improves existing category and Medicube URLs without indexing facet combinations", () => {
+  const skincare = { ...category, slug: "cosmetica-coreana", name: "Cosmética coreana" };
+  const medicube = catalogSeo({ brand: "Medicube" }, [skincare], ["Medicube"]);
+  assert.equal(medicube.path, "/catalogo?brand=Medicube");
+  assert.match(medicube.title, /Medicube.*Argentina/);
+  assert.equal(medicube.editorial?.wholesalePath, "/mayorista/medicube");
+  assert.match(medicube.description, /precios en pesos/);
+  const cosmetics = catalogSeo({ category: skincare.slug }, [skincare], ["Medicube"]);
+  assert.equal(cosmetics.editorial?.wholesalePath, "/mayorista/cosmetica-coreana");
+  for (const params of [{ brand: "Medicube", category: skincare.slug }, { brand: "Medicube", q: "crema" }, { brand: "Medicube", sort: "price_asc" }]) {
+    const seo = catalogSeo(params, [skincare], ["Medicube"]);
+    assert.equal(seo.index, false);
+    assert.equal(seo.editorial, undefined);
+  }
+});
 test("product schema shares real price and supplier availability and never invents shipping, returns, MPN or expiry", () => {
   const schema = productStructuredData(product);
   assert.equal(schema.offers?.price, 12300); assert.equal(schema.offers?.availability, "https://schema.org/InStock");

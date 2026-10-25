@@ -47,7 +47,7 @@ export function SiteFooter() {
             </div>
             <div className="leading-tight">
               <span className="block text-base font-bold text-white">importaciones</span>
-              {isWholesale && <span className="mt-1 block text-[10px] font-semibold text-amber-300">Mayorista</span>}
+              <span className="mt-1 block text-[10px] font-medium text-zinc-400">Mayorista y minorista</span>
             </div>
           </div>
           <p className="text-sm leading-6 text-zinc-400">
@@ -80,22 +80,22 @@ export function SiteFooter() {
         <div>
           <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Catálogos & Rubros</h2>
           <div className="mt-4 grid text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cosmetica-coreana" : "/catalogo?category=cosmetica-coreana"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista/cosmetica-coreana" : "/catalogo?category=cosmetica-coreana"}>
               Cosmética Coreana (K-Beauty)
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=perfumeria" : "/catalogo?category=perfumeria"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista/perfumeria" : "/catalogo?category=perfumeria"}>
               Perfumería & Fragancias Árabes
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=herramientas-equipamiento" : "/catalogo?category=herramientas-equipamiento"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista/herramientas" : "/catalogo?category=herramientas-equipamiento"}>
               Herramientas Total Tools & Wadfow
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista?category=cuidado-capilar" : "/catalogo?category=cuidado-capilar"}>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista/cuidado-capilar" : "/catalogo?category=cuidado-capilar"}>
               Tratamientos Capilares & Karseell
             </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/catalogo"}>
               Explorar productos
             </Link>
-            {!isWholesale && <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=electronica">Electrónica Apple & Samsung</Link>}
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista/electronica" : "/catalogo?category=electronica"}>Electrónica Apple & Samsung</Link>
           </div>
         </div>
 

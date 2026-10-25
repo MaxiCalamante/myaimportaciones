@@ -71,7 +71,9 @@ export function SiteHeader({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isWholesale = pathname?.startsWith("/mayorista");
+  const isWholesalePage = Boolean(pathname?.startsWith("/mayorista"));
+  // The public wholesale section belongs to the same store; B2B account styling stays gated.
+  const isWholesale = isWholesalePage && WHOLESALE_ENABLED;
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -220,8 +222,8 @@ export function SiteHeader({
     : "sticky top-0 z-40 border-b border-zinc-200 bg-white/95 text-zinc-950 backdrop-blur";
 
   const linkClass = isWholesale
-    ? "rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
-    : "rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors";
+    ? "shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+    : "shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors";
 
   const isWholesaleAllowed = WHOLESALE_ENABLED && Boolean(
     profile?.isApprovedWholesale ||
@@ -231,10 +233,10 @@ export function SiteHeader({
 
   const toggleChannelLink = isWholesale ? (
     <Link
-      className="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700 transition-colors"
+      className={linkClass}
       href="/"
     >
-      Ir a Minorista
+      Tienda
     </Link>
   ) : isWholesaleAllowed ? (
     <Link
@@ -494,10 +496,10 @@ export function SiteHeader({
             </div>
           </div>
 
-          <Link className={linkClass} href="/mayorista">Mayoristas</Link>
+          <Link aria-current={isWholesalePage ? "page" : undefined} className={`${linkClass} ${isWholesalePage && !isWholesale ? "bg-sky-50 text-sky-800" : ""}`} href="/mayorista">Mayoristas</Link>
 
           <Link className={linkClass} href="/#ofertas">
-            Descubrí más
+            Novedades
           </Link>
 
           {profile ? <Link className={`${linkClass} whitespace-nowrap`} href="/cuenta">Mis pedidos</Link> : <Link className={linkClass} href="/seguimiento">Seguimiento</Link>}
@@ -505,7 +507,7 @@ export function SiteHeader({
         </nav>
 
         {/* Búsqueda */}
-        <div className="relative ml-auto hidden w-full max-w-xs md:block">
+        <div className="relative ml-auto hidden min-w-40 w-full max-w-xs md:block">
           <div className={`flex h-11 items-center gap-2 rounded-xl border pl-3 pr-0 focus-within:ring-2 focus-within:ring-sky-500/30 ${
             isWholesale
               ? "border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500"
@@ -605,7 +607,7 @@ export function SiteHeader({
               </div>
               <div className="pt-2 border-t border-zinc-100/50 text-center">
                 <Link
-                  href={`${isWholesale ? "/mayorista" : "/catalogo"}?q=${encodeURIComponent(searchQuery)}`}
+                  href={`${catalogPath}?q=${encodeURIComponent(searchQuery)}`}
                   onClick={() => setSearchQuery("")}
                   className="text-[11px] font-bold text-sky-600 hover:text-sky-700 block py-1"
                 >
@@ -813,7 +815,7 @@ export function SiteHeader({
             )}
           </div>
           <nav className="grid gap-1">
-            <Link href="/mayorista" onClick={() => setOpen(false)} className={`min-h-11 rounded-lg px-3 py-3 text-sm font-semibold ${isWholesale ? "text-sky-300 hover:bg-zinc-800" : "text-sky-800 hover:bg-sky-50"}`}>Venta mayorista para comercios</Link>
+            <Link href="/mayorista" aria-current={isWholesalePage ? "page" : undefined} onClick={() => setOpen(false)} className={`min-h-11 rounded-lg px-3 py-3 text-sm font-semibold ${isWholesale ? "text-sky-300 hover:bg-zinc-800" : "text-sky-800 hover:bg-sky-50"}`}>Venta mayorista para comercios</Link>
             <Link
               className={`rounded-lg px-3 py-2 text-sm font-medium ${
                 isWholesale ? "text-zinc-300 hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-100"
@@ -1012,7 +1014,7 @@ export function SiteHeader({
                   href="/"
                   onClick={() => setOpen(false)}
                 >
-                  Ir a Tienda Minorista
+                  Ver tienda
                 </Link>
               </div>
             ) : isWholesaleAllowed ? (

@@ -22,6 +22,7 @@ export const getPublicFacetProducts = cache(async (): Promise<CatalogFacetProduc
 
 export const getStorefrontData = cache(async function getStorefrontData(options?: {
   categoryId?: string;
+  brand?: string;
   admin?: boolean;
   limit?: number;
   all?: boolean;
@@ -60,6 +61,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
     if (!options?.admin) query = query.eq("is_active", true).is("deleted_at", null);
 
     if (!WHOLESALE_ENABLED && !options?.admin) query = query.eq("is_wholesale_only", false);
+    if (options?.brand) query = query.eq("brand", options.brand);
     if (options?.categoryId) {
       const childIds = ((categoriesData ?? []) as unknown as DbCategory[])
         .filter((c) => c.parent_id === options.categoryId)

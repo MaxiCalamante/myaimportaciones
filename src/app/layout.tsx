@@ -42,15 +42,17 @@ const orgJsonLd = {
   name: siteConfig.brandName,
   url: siteConfig.appUrl,
   logo: `${siteConfig.appUrl}/logo.png`,
+  description: "Venta minorista y mayorista de cosmética coreana, perfumería, cuidado capilar, electrónica y herramientas. Envíos desde Tandil a toda Argentina.",
+  areaServed: { "@type": "Country", name: "Argentina" },
   sameAs: [siteConfig.instagram],
-  contactPoint: {
+  contactPoint: [siteConfig.phone, siteConfig.phoneAgustina].map(telephone => ({
     "@type": "ContactPoint",
-    telephone: siteConfig.phone,
+    telephone,
     email: siteConfig.email,
     contactType: "sales",
     areaServed: "AR",
     availableLanguage: "es",
-  },
+  })),
 };
 
 const websiteJsonLd = {

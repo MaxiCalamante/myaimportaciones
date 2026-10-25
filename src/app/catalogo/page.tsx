@@ -5,6 +5,7 @@ import { permanentRedirect, notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { CatalogSearchControls } from "@/components/commerce/catalog-search-controls";
 import { ProductCard } from "@/components/commerce/product-card";
+import { CatalogBuyingGuide } from "@/components/commerce/catalog-buying-guide";
 import { getPublicNavigation, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
 import { deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "@/lib/catalog-facets";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -207,14 +208,14 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             {root && root.id !== category?.id ? root.name : brand ? `Marca · ${brand}` : "Catálogo oficial"}
           </p>
           <h1 className="break-words text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
-            {q ? `Búsqueda: "${q}"` : brand ? `${brand} en Argentina` : category?.name ?? "Todos los productos"}
+            {q ? `Búsqueda: "${q}"` : seo.editorial?.title || (brand ? `${brand} en Argentina` : category?.name ?? "Todos los productos")}
           </h1>
-          <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-zinc-500 sm:block">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
             {q
               ? `Resultados disponibles para "${q}" con disponibilidad informada y envíos a todo el país.`
-              : brand
+              : seo.editorial?.introduction || (brand
                 ? `Productos ${brand} en Argentina. Consultá presentaciones y disponibilidad, con precios en pesos y envíos a todo el país.`
-                : category?.description || "Explorá productos importados con precios en pesos, envíos a Argentina y atención personalizada."}
+                : category?.description || "Explorá productos importados con precios en pesos, envíos a toda Argentina y atención personalizada.")}
           </p>
         </div>
         <div className="mt-1 hidden items-center sm:mt-0 sm:flex">
@@ -362,6 +363,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
+      {seo.editorial && page === 1 && count > 0 && <CatalogBuyingGuide content={seo.editorial} />}
       {/* Pagination */}
       {pages > 1 && (
         <nav

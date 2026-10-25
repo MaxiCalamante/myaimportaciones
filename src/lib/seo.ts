@@ -3,6 +3,7 @@ import type { Category, Product } from "./types";
 import { OFFICIAL_ORIGIN } from "./site-origin";
 import { isVerifiedStock } from "./commerce-policy";
 import { verifiedGtin } from "./product-identifiers";
+import { retailContent } from "./retail-content";
 
 export function publicUrl(path = "/") { return new URL(path, OFFICIAL_ORIGIN).href; }
 export function jsonLd(value: unknown) { return JSON.stringify(value).replace(/</g, "\\u003c"); }
@@ -212,9 +213,10 @@ export function catalogSeo(params: CatalogParams, categories: Category[], brands
   const filtered = Boolean(params.q || params.family || params.min || params.max || params.sort || (params.category && params.brand));
   const valid = (!params.category || Boolean(category)) && (!params.brand || Boolean(brand));
   const label = category?.name || (brand ? `Productos ${brand}` : "Catálogo de productos");
-  const title = `${params.q ? `Búsqueda: ${concise(params.q, 65)}` : label + " en Argentina"}${page > 1 ? ` · Página ${page}` : ""}`;
-  const description = concise(category?.description ? `${category.name}: ${category.description} Precios en pesos y envíos a Argentina.` : brand ? `Explorá ${brand} en MYA Importaciones. Consultá las presentaciones, modelos y disponibilidad del catálogo, con precios en pesos y envíos a toda Argentina.` : "Explorá cosmética, cuidado capilar, tecnología y herramientas. Consultá precios en pesos, disponibilidad y envíos a toda Argentina.");
+  const editorial = !filtered && valid ? retailContent(category?.slug, brand) : undefined;
+  const title = `${params.q ? `Búsqueda: ${concise(params.q, 65)}` : editorial?.title || label + " en Argentina"}${page > 1 ? ` · Página ${page}` : ""}`;
+  const description = editorial?.description || concise(category?.description ? `${category.name}: ${category.description} Precios en pesos y envíos a toda Argentina.` : brand ? `Explorá ${brand} en MYA Importaciones. Consultá las presentaciones, modelos y disponibilidad del catálogo, con precios en pesos y envíos a toda Argentina.` : "Explorá cosmética, cuidado capilar, tecnología y herramientas. Consultá precios en pesos, disponibilidad y envíos a toda Argentina.");
   const image = buildCatalogShareImageUrl({ category, brand, title, description });
-  return { path, index: valid && !filtered, title, description, category, brand, page, image };
+  return { path, index: valid && !filtered, title, description, category, brand, page, image, editorial };
 }
 export function breadcrumbData(items: { name: string; path: string }[]) { return { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map((item, i) => ({ "@type": "ListItem", position: i + 1, name: item.name, item: publicUrl(item.path) })) }; }

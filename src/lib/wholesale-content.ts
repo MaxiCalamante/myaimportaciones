@@ -4,6 +4,7 @@ import { WHOLESALE_MINIMUM_LABEL } from "./wholesale-policy";
 export interface WholesaleCategory {
   slug: string;
   categorySlug: string;
+  brand?: string;
   name: string;
   title: string;
   description: string;
@@ -19,7 +20,7 @@ export const WHOLESALE_CATEGORIES: WholesaleCategory[] = [
   {
     slug: "cosmetica-coreana", categorySlug: "cosmetica-coreana", name: "Cosmética coreana",
     title: "Cosmética coreana por mayor para revendedores en Argentina",
-    description: "Cotizá cosmética coreana por mayor con MYA Importaciones: SKIN1004, Medicube, Anua y más. Consultas para comercios y revendedores desde Tandil a Argentina.",
+    description: "Skincare y cosmética coreana por mayor: Medicube, SKIN1004, Anua y más. Desde 5 productos o $100.000. Precios por WhatsApp y envíos a toda Argentina.",
     introduction: "Si vendés skincare, una compra mayorista empieza por elegir fórmulas y presentaciones que tu público pueda reconocer. En MYA recibimos consultas por cantidad de cosmética coreana para tiendas, emprendimientos y revendedores. Revisamos los productos solicitados y te confirmamos disponibilidad, condiciones comerciales y entrega antes de que decidas comprar.",
     audience: "Tiendas de cosmética, perfumerías, emprendimientos de skincare y comercios online.",
     brands: ["SKIN1004", "Medicube", "Anua", "Dr. Althea", "Celimax"],
@@ -36,7 +37,7 @@ export const WHOLESALE_CATEGORIES: WholesaleCategory[] = [
   {
     slug: "perfumeria", categorySlug: "perfumeria", name: "Perfumería y fragancias",
     title: "Perfumes árabes y fragancias por mayor en Argentina",
-    description: "Consultá perfumes árabes Lattafa, fragancias y body mists por mayor. Cotizaciones para perfumerías, comercios y revendedores con MYA Importaciones.",
+    description: "Perfumes árabes, fragancias y body mists por mayor para revender. Desde 5 productos o $100.000. Precios por WhatsApp y envíos a toda Argentina.",
     introduction: "Para una perfumería o un emprendimiento de fragancias, el nombre de la familia no alcanza para definir una compra. Cotizamos consultas mayoristas de perfumes y body mists del catálogo con la versión, concentración y volumen que necesita tu negocio. Desde Tandil, Máximo y Agustina te ayudan a ordenar la selección y coordinar el destino.",
     audience: "Perfumerías, tiendas de regalos, comercios de belleza y revendedores de fragancias.",
     brands: ["Lattafa", "Victoria's Secret"],
@@ -53,7 +54,7 @@ export const WHOLESALE_CATEGORIES: WholesaleCategory[] = [
   {
     slug: "cuidado-capilar", categorySlug: "cuidado-capilar", name: "Cuidado capilar",
     title: "Productos capilares por mayor para comercios y peluquerías",
-    description: "Cotizá cuidado capilar por mayor: Kérastase, Shiseido, Fino, Tsubaki y Karseell del catálogo MYA. Atención para peluquerías, comercios y revendedores.",
+    description: "Cuidado capilar por mayor para peluquerías y revendedores: Kérastase, Shiseido y más. Desde 5 productos o $100.000. Envíos a toda Argentina.",
     introduction: "Las consultas mayoristas de cuidado capilar requieren distinguir línea, función y tamaño. Te ayudamos a cotizar shampoos, acondicionadores, mascarillas, aceites y kits del catálogo según las necesidades de tu peluquería, tienda o emprendimiento. La propuesta se arma con los productos y cantidades que indiques, sin dar por equivalentes fórmulas distintas.",
     audience: "Peluquerías, tiendas de cuidado personal, perfumerías y emprendimientos capilares.",
     brands: ["Kérastase", "Shiseido", "Fino", "Tsubaki", "Karseell"],
@@ -70,7 +71,7 @@ export const WHOLESALE_CATEGORIES: WholesaleCategory[] = [
   {
     slug: "herramientas", categorySlug: "herramientas-equipamiento", name: "Herramientas y equipamiento",
     title: "Herramientas Total y Wadfow por mayor para ferreterías",
-    description: "Consultá herramientas Total y Wadfow por mayor con MYA Importaciones. Cotizaciones por modelo y cantidad para ferreterías, comercios y revendedores.",
+    description: "Herramientas Total y Wadfow por mayor para ferreterías y revendedores. Desde 5 productos o $100.000. Precios por WhatsApp y envíos a toda Argentina.",
     introduction: "Una cotización para ferretería necesita identificar el modelo exacto de cada herramienta. Recibimos consultas por cantidad de herramientas manuales, equipos eléctricos, herramientas a batería y accesorios del catálogo. Detallamos la selección para que puedas evaluar reposición o surtido sin confundir un equipo suelto con un kit completo.",
     audience: "Ferreterías, comercios de herramientas, talleres y revendedores de equipamiento.",
     brands: ["Total", "Wadfow"],
@@ -87,7 +88,7 @@ export const WHOLESALE_CATEGORIES: WholesaleCategory[] = [
   {
     slug: "electronica", categorySlug: "electronica", name: "Electrónica y tecnología",
     title: "Electrónica por mayor: cotizaciones para comercios en Argentina",
-    description: "Consultá electrónica Apple, Samsung y accesorios del catálogo por cantidad. Cotizaciones mayoristas con modelo, capacidad y condición confirmados en MYA.",
+    description: "Electrónica Apple, Samsung y accesorios por mayor para revendedores. Desde 5 productos o $100.000. Cotizá por WhatsApp. Envíos a toda Argentina.",
     introduction: "Si tu comercio necesita cotizar tecnología por cantidad, empezamos por la configuración exacta. Recibimos consultas de equipos y accesorios del catálogo con modelo, capacidad, color y condición definidos. La disponibilidad y las condiciones de la propuesta se confirman antes de cualquier pago; una consulta mayorista no implica stock físico inmediato.",
     audience: "Comercios de tecnología, tiendas online y revendedores de equipos y accesorios.",
     brands: ["Apple", "Samsung", "JBL"],
@@ -101,15 +102,38 @@ export const WHOLESALE_CATEGORIES: WholesaleCategory[] = [
       { question: "¿La consulta reserva unidades o fija el precio?", answer: "No. La consulta permite preparar una propuesta. Precio, disponibilidad, forma de pago y plazo se confirman antes de registrar una operación." },
     ],
   },
+  {
+    slug: "medicube", categorySlug: "cosmetica-coreana", brand: "Medicube", name: "Medicube",
+    title: "Medicube por mayor en Argentina para revendedores",
+    description: "Medicube por mayor para tu emprendimiento de skincare. Desde 5 productos o $100.000, combinables con otras marcas. Precios por WhatsApp. Envíos a toda Argentina.",
+    introduction: "¿Querés empezar a vender Medicube o reponer tu tienda de skincare coreano? Elegí los productos del catálogo y contanos cuántas unidades necesitás. Máximo o Agustina te pasan los precios mayoristas por WhatsApp y coordinan el envío a cualquier provincia de Argentina. Podés combinar Medicube con otras marcas y rubros para alcanzar el mínimo.",
+    audience: "Emprendimientos de skincare, tiendas de cosmética, perfumerías y revendedores de K-Beauty.",
+    brands: ["Medicube", "SKIN1004", "Anua", "Dr. Althea", "Celimax"],
+    buyingGuide: [
+      { title: "Tu primer pedido para revender skincare", text: "Podés empezar con 5 productos en total, iguales o combinados, o con $100.000 en productos. Si todavía no definiste el surtido, contanos por WhatsApp qué tipo de tienda tenés y qué productos buscás. Te ayudamos a preparar una selección con sus precios y disponibilidad, sin exigir que completes un pedido para consultar." },
+      { title: "Elegí la versión exacta de Medicube", text: "Para cotizar cremas, sérums, pads o sets, enviá el enlace o nombre completo de la ficha y la cantidad. Revisá volumen, fórmula y contenido del pack: las presentaciones de una misma línea pueden ser distintas. Si buscás un producto que viste en redes, mandanos la referencia para identificarlo antes de armar la propuesta." },
+    ],
+    checklist: ["Nombre o enlace de cada producto Medicube", "Fórmula, volumen o contenido del pack", "Cantidad por producto, con otras marcas si querés", "Ciudad y código postal para el envío"],
+    faq: [
+      { question: "¿Cómo consigo los precios mayoristas de Medicube?", answer: "Escribile a Máximo o Agustina por WhatsApp con los productos y cantidades que te interesan. Los precios mayoristas se envían de forma personalizada; los precios del catálogo público son minoristas." },
+      { question: "¿Puedo empezar a revender Medicube con 5 productos distintos?", answer: "Sí. El mínimo es 5 unidades en total o $100.000 en productos. Podés combinar distintos productos de Medicube, otras marcas de cosmética y otros rubros. Basta con cumplir una de las dos condiciones; el envío se cotiza aparte." },
+      { question: "¿Venden solo Medicube por mayor?", answer: "También cotizamos por mayor el resto del catálogo: cosmética coreana, perfumería, cuidado capilar, electrónica, herramientas y equipamiento. Podés reunir tu selección en una misma consulta." },
+    ],
+  },
 ];
 
 export const WHOLESALE_PATHS = ["/mayorista", ...WHOLESALE_CATEGORIES.map(category => `/mayorista/${category.slug}`)];
 export const findWholesaleCategory = (slug: string) => WHOLESALE_CATEGORIES.find(category => category.slug === slug);
 export function wholesaleMetadata(category?: WholesaleCategory) {
   return pageMetadata({
-    title: category?.title || "Venta mayorista de importados para comercios y revendedores",
-    description: category ? `${category.description} Mínimo: ${WHOLESALE_MINIMUM_LABEL}.` : "MYA Importaciones mayorista en Argentina. Desde $100.000 o 5 unidades combinadas. Cotizá cosmética, perfumes, capilares, herramientas y electrónica desde Tandil.",
+    title: category?.title || "Venta mayorista en Argentina: cosmética, perfumes y electrónica",
+    description: category?.description || "Todo el catálogo por mayor: cosmética, perfumes, capilares, electrónica y herramientas. Desde 5 productos o $100.000. WhatsApp y envíos a toda Argentina.",
     path: category ? `/mayorista/${category.slug}` : "/mayorista",
+    image: `/compartir?${new URLSearchParams({
+      tipo: "categoria",
+      cat: category ? `${category.name} por mayor` : "Venta mayorista en Argentina",
+      desc: "Desde 5 productos o $100.000, combinando marcas y rubros. Precios con Máximo o Agustina por WhatsApp. Envíos a toda Argentina.",
+    })}`,
   });
 }
 
@@ -118,7 +142,7 @@ export function wholesaleServiceData(category?: WholesaleCategory) {
     "@context": "https://schema.org", "@type": "Service",
     name: category?.title || "Cotizaciones mayoristas de MYA Importaciones",
     serviceType: "Venta mayorista por cotización",
-    description: category?.description || "Consultas por cantidad para comercios y revendedores de productos importados.",
+    description: category?.description || `Todo el catálogo por mayor para comercios y revendedores. Mínimo: ${WHOLESALE_MINIMUM_LABEL}. Precios por WhatsApp. Envíos a toda Argentina.`,
     url: publicUrl(category ? `/mayorista/${category.slug}` : "/mayorista"),
     provider: { "@id": publicUrl("/#organization") },
     areaServed: { "@type": "Country", name: "Argentina" },
