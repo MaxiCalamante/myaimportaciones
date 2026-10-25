@@ -12,6 +12,7 @@ import { ProductReviewsSection } from "@/components/commerce/product-reviews-sec
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ variant?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -27,12 +28,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return productMetadata(product, canonicalProductSlug(product, target || undefined));
 }
 
-export default async function ProductPage({ params }: Props) {
+export default async function ProductPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) {
     notFound();
   }
+
+  const requestedVariant = (await searchParams).variant;
+  const initialVariantId = typeof requestedVariant === "string" ? product.variants?.find(variant => variant.isActive && variant.id === requestedVariant)?.id : undefined;
 
   const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
   const category = categories.find((c) => c.id === product.categoryId);
@@ -87,7 +91,9 @@ export default async function ProductPage({ params }: Props) {
 
         {/* Product Showcase (Gallery + Interactive Info) */}
         <ProductShowcase
+          key={`${product.id}:${initialVariantId || "default"}`}
           product={product}
+          initialVariantId={initialVariantId}
           beforeInteractive={
             <>
               <div>

@@ -41,9 +41,11 @@ import { ProductShippingCalculator } from "./shipping-calculator";
 export function ProductDetailInteractive({
   product,
   onVariantChange,
+  initialVariantId,
 }: {
   product: Product;
   onVariantChange?: (variant: ProductVariant | null) => void;
+  initialVariantId?: string;
 }) {
   const {
     addToCart,
@@ -78,7 +80,7 @@ export function ProductDetailInteractive({
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
     if (activeVariants.length > 0) {
-      const firstAvailable = activeVariants.find((v) => isVerifiedStock(v)) || activeVariants[0];
+      const firstAvailable = activeVariants.find(v => v.id === initialVariantId) || activeVariants.find((v) => isVerifiedStock(v)) || activeVariants[0];
       return { ...firstAvailable.options };
     }
     return {};
@@ -266,7 +268,7 @@ export function ProductDetailInteractive({
                         {dim.name}
                       </span>
                       {currentVal ? (
-                        <span className="text-xs sm:text-sm font-bold text-zinc-900 flex items-center gap-1.5">
+                        <span className="flex min-w-0 max-w-full items-center gap-1.5 break-words text-xs font-bold text-zinc-900 sm:text-sm">
                           {currentVal}
                           <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                         </span>

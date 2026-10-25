@@ -9,12 +9,14 @@ export function ProductShowcase({
   product,
   beforeInteractive,
   afterInteractive,
+  initialVariantId,
 }: {
   product: Product;
   beforeInteractive: React.ReactNode;
   afterInteractive?: React.ReactNode;
+  initialVariantId?: string;
 }) {
-  const [activeVariant, setActiveVariant] = useState<ProductVariant | null>(null);
+  const [activeVariant, setActiveVariant] = useState<ProductVariant | null>(() => product.variants?.find(variant => variant.isActive && variant.id === initialVariantId) || null);
 
   const displayImage = activeVariant?.imageUrl || product.imageUrl;
 
@@ -25,16 +27,16 @@ export function ProductShowcase({
     if (product.imageUrls) list.push(...product.imageUrls);
     if (product.variants) {
       for (const v of product.variants) {
-        if (v.imageUrl) list.push(v.imageUrl);
+        if (v.isActive && v.imageUrl) list.push(v.imageUrl);
       }
     }
     return [...new Set(list.filter(Boolean))];
   }, [product]);
 
   return (
-    <div className="grid min-w-0 gap-6 sm:gap-10 lg:grid-cols-2 lg:items-start">
+    <div className="grid min-w-0 grid-cols-1 gap-6 sm:gap-10 lg:grid-cols-2 lg:items-start">
       {/* Left Column: Image Gallery (Sticky on desktop) */}
-      <div className="lg:sticky lg:top-24 lg:self-start">
+      <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
         <ProductGallery
           title={product.title}
           image={displayImage}
@@ -48,6 +50,7 @@ export function ProductShowcase({
 
         <ProductDetailInteractive
           product={product}
+          initialVariantId={initialVariantId}
           onVariantChange={setActiveVariant}
         />
         {afterInteractive}

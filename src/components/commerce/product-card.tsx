@@ -11,7 +11,7 @@ import type { Product, ProductChannel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { getProductShippingTimeInfo } from "@/lib/shipping";
-import { getColorSwatch } from "@/lib/variant-swatches";
+import { ProductVariantPreview } from "./product-variant-preview";
 
 export function ProductCard({
   product,
@@ -30,13 +30,6 @@ export function ProductCard({
   const initialImage = product.imageUrl || "/placeholder-product.svg";
   const [imageSrc, setImageSrc] = useState(initialImage);
 
-  const colorDim = product.hasVariants
-    ? product.optionsConfig?.find((d) => /color|tono|acabado/i.test(d.name))
-    : undefined;
-  const otherDims = product.hasVariants
-    ? product.optionsConfig?.filter((d) => !/color|tono|acabado/i.test(d.name))
-    : [];
-  const [activeColor, setActiveColor] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState(false);
 
   const cartItem = cart.find(
@@ -133,70 +126,7 @@ export function ProductCard({
                 Minimo {product.wholesaleMinQuantity} unidades
               </p>
             ) : null}
-            {product.hasVariants && (
-              <div className="mt-2 space-y-1.5">
-                {colorDim && colorDim.values.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1" aria-label="Colores disponibles">
-                    {colorDim.values.slice(0, 6).map((col) => {
-                      const swatch = getColorSwatch(col);
-                      const isSelected = activeColor === col;
-                      const variantWithImg = product.variants?.find(
-                        (v) => v.options[colorDim.name] === col && v.imageUrl
-                      );
-                      return (
-                        <button
-                          key={col}
-                          type="button"
-                          aria-label={`Ver en color ${col}`}
-                          title={col}
-                          onMouseEnter={() => {
-                            if (variantWithImg?.imageUrl) {
-                              setImageSrc(variantWithImg.imageUrl);
-                              setActiveColor(col);
-                            }
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (variantWithImg?.imageUrl) {
-                              setImageSrc(variantWithImg.imageUrl);
-                              setActiveColor(col);
-                            }
-                          }}
-                          aria-pressed={isSelected}
-                          className={`size-6 rounded-full border-[5px] border-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)] transition-transform duration-150 hover:scale-110 cursor-pointer ${
-                            isSelected
-                              ? "ring-2 ring-sky-600 ring-offset-1 scale-110"
-                              : "hover:ring-1 hover:ring-zinc-400"
-                          }`}
-                          style={{
-                            backgroundColor: swatch?.bg || "#cbd5e1",
-                            borderColor: swatch?.border || "rgba(0,0,0,0.15)",
-                          }}
-                        />
-                      );
-                    })}
-                    {colorDim.values.length > 6 && (
-                      <span className="text-[10px] font-bold text-zinc-400">
-                        +{colorDim.values.length - 6}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {otherDims && otherDims.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1">
-                    {otherDims.map((opt) => (
-                      <span
-                        key={opt.name}
-                        className="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 border border-sky-200/70"
-                      >
-                        {opt.values.length} {opt.name.toLowerCase()}s
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {product.hasVariants && <ProductVariantPreview slug={product.slug} variants={product.variants} />}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span

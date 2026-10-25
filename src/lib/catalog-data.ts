@@ -1,5 +1,6 @@
 import { WHOLESALE_ENABLED, cleanProductTitle } from "./commerce-policy";
 import type { Category, PaymentMethod, Product } from "./types";
+import { resolveVariantDimensions } from "./variant-preview";
 // Public reads explicitly omit costs and supplier sources, including for signed-in admins.
 export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, tags, payment_methods, specifications, warranty_terms, has_variants, options_config, deleted_at, deleted_by";
 
@@ -163,8 +164,8 @@ export function mapProduct(product: DbProduct, admin = false): Product {
     featured: Boolean(product.is_featured),
     wholesaleOnly: Boolean(product.is_wholesale_only),
     hasVariants,
-    optionsConfig: Array.isArray(product.options_config) ? product.options_config : [],
-    variants,
+    optionsConfig: hasVariants ? (admin && Array.isArray(product.options_config) ? product.options_config : resolveVariantDimensions(product.options_config, variants, admin)) : [],
+    variants: activeVariants,
     minPrice,
     maxPrice,
     deletedAt: product.deleted_at ?? null,

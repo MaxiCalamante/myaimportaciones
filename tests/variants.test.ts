@@ -163,6 +163,18 @@ test("catalog-data: mapProduct computes variant prices and aggregated stock accu
   assert.equal(product.stock, 10);
   assert.ok(product.stockVerifiedAt);
   assert.equal(product.variants?.length, 2);
+
+  // A held edition stays editable in admin but never becomes a public option, image or price.
+  const held = { ...dbProduct, product_variants: [...dbProduct.product_variants, {
+    ...dbProduct.product_variants[0], id: "held", title: "Pendiente", is_active: false,
+    options: { Aroma: "Pendiente" }, retail_price: 1, stock: 99,
+  }] };
+  const published = mapProduct(held as unknown as Parameters<typeof mapProduct>[0]);
+  assert.equal(published.variants?.length, 2);
+  assert.equal(published.stock, 10);
+  assert.equal(published.minPrice, 42000);
+  assert.deepEqual(published.optionsConfig, [{ name: "Aroma", values: ["Bare Vanilla", "Coconut Passion"] }]);
+  assert.equal(mapProduct(held as unknown as Parameters<typeof mapProduct>[0], true).variants?.length, 3);
 });
 
 test("cart-reconcile: manages separate lines per variant and updates current price/stock", () => {

@@ -4,6 +4,7 @@ import { getWholesaleSelection } from "@/lib/wholesale-catalog";
 import { isVerifiedStock } from "@/lib/commerce-policy";
 import type { WholesaleCategory } from "@/lib/wholesale-content";
 import { WholesaleProductInquiry } from "./wholesale-contact";
+import { ProductVariantPreview } from "@/components/commerce/product-variant-preview";
 
 export async function WholesaleProducts({ category }: { category: WholesaleCategory }) {
   const products = await getWholesaleSelection(category.categorySlug, category.brand);
@@ -18,6 +19,7 @@ export async function WholesaleProducts({ category }: { category: WholesaleCateg
           <h3 className="mt-4 text-sm font-semibold leading-6 text-zinc-950 group-hover:text-sky-800">{product.title}</h3>
         </Link>
         <p className="mt-2 text-xs text-zinc-500">{isVerifiedStock(product) ? "Consultar cantidad disponible" : "Consultar disponibilidad"}</p>
+        {product.hasVariants && <ProductVariantPreview slug={product.slug} variants={product.variants} />}
         <div className="mt-auto"><WholesaleProductInquiry title={product.title} slug={product.slug} category={category.name} /></div>
       </article>)}
     </div>
