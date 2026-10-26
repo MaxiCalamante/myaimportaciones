@@ -102,16 +102,20 @@ export async function checkSupplierProductAvailability(
   }
 }
 
-export async function checkAndUpdateProductSupplierStock(productId: string): Promise<SupplierCheckResult> {
-  const supabase = await getAdminClient();
+export async function checkAndUpdateProductSupplierStock(productId: string, client?: SupabaseClient): Promise<SupplierCheckResult> {
+  const supabase = client ?? await getAdminClient();
   const [productRes, offersRes, settingsRes, suppliersRes] = await Promise.all([
-    readAdminProducts(supabase, { ids: [productId], size: 1 }),
+    supabase
+      .from("products")
+      .select("id, title, source_url, sku, brand, supplier_available, is_active, fulfillment_mode")
+      .eq("id", productId)
+      .maybeSingle(),
     supabase.from("supplier_offers").select("*").eq("product_id", productId).eq("verification", "verified"),
     supabase.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
     supabase.from("suppliers").select("id, name, official_key")
   ]);
 
-  const product = productRes.data?.[0] as {
+  const product = productRes.data as {
     id: string;
     title: string;
     source_url: string;
@@ -120,7 +124,7 @@ export async function checkAndUpdateProductSupplierStock(productId: string): Pro
     supplier_available: boolean;
     is_active: boolean;
     fulfillment_mode: string;
-  } | undefined;
+  } | null | undefined;
 
   if (productRes.error || !product) {
     return {
@@ -467,7 +471,7 @@ export async function runCatalogSyncChunk(options?: {
 
   for (const p of chunkProducts) {
     try {
-      const checkResult = await checkAndUpdateProductSupplierStock(p.id);
+      const checkResult = await checkAndUpdateProductSupplierStock(p.id, supabase);
       const isNowActive = checkResult.isActive ?? p.is_active;
 
       if (checkResult.available) {

@@ -426,8 +426,8 @@ export async function toggleProductSupplierAvailabilityAction(productId: string,
 }
 
 export async function checkSingleProductSupplierStockAction(productId: string): Promise<SupplierCheckResult> {
-  await getAdminClient();
-  const result = await checkAndUpdateProductSupplierStock(productId);
+  const supabase = await getAdminClient();
+  const result = await checkAndUpdateProductSupplierStock(productId, supabase);
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/catalogo");
@@ -435,8 +435,8 @@ export async function checkSingleProductSupplierStockAction(productId: string): 
 }
 
 export async function triggerBatchSupplierSyncAction(limit: number = 30) {
-  await getAdminClient();
-  const report = await runBatchSupplierStockSync({ limit });
+  const supabase = await getAdminClient();
+  const report = await runBatchSupplierStockSync({ limit, client: supabase });
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/catalogo");
@@ -444,15 +444,15 @@ export async function triggerBatchSupplierSyncAction(limit: number = 30) {
 }
 
 export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
-  await getAdminClient();
-  const progress = await runCatalogSyncChunk({ offset, limit });
+  const supabase = await getAdminClient();
+  const progress = await runCatalogSyncChunk({ offset, limit, client: supabase });
   invalidateAdminStorefrontCache();
   return progress;
 }
 
 export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promise<AutoHuntResult> {
-  await getAdminClient();
-  const result = await huntSuppliersForUnlinkedProducts({ limit });
+  const supabase = await getAdminClient();
+  const result = await huntSuppliersForUnlinkedProducts({ limit, client: supabase });
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/catalogo");

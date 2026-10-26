@@ -714,7 +714,7 @@ export function ProductControlCenter({
       )}
 
       {/* Top KPI Cards Bar */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between text-zinc-500 mb-1">
             <span className="text-xs font-semibold">Total Catálogo</span>
@@ -724,7 +724,7 @@ export function ProductControlCenter({
           <span className="text-[11px] text-zinc-400 font-medium">Publicaciones cargadas</span>
         </div>
 
-        <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-4 shadow-xs">
+        <div className="min-w-0 rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-3.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between text-emerald-800 mb-1">
             <span className="text-xs font-semibold">En Línea (Activos)</span>
             <Eye className="h-4 w-4 text-emerald-600" />
@@ -733,7 +733,7 @@ export function ProductControlCenter({
           <span className="text-[11px] text-emerald-700 font-semibold">{stats.activeRate}% del catálogo</span>
         </div>
 
-        <div className="rounded-2xl border border-amber-200/60 bg-amber-50/40 p-4 shadow-xs">
+        <div className="min-w-0 rounded-2xl border border-amber-200/60 bg-amber-50/40 p-3.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between text-amber-800 mb-1">
             <span className="text-xs font-semibold">Pausados / Ocultos</span>
             <EyeOff className="h-4 w-4 text-amber-600" />
@@ -742,7 +742,7 @@ export function ProductControlCenter({
           <span className="text-[11px] text-amber-700 font-medium">Fuera de la tienda</span>
         </div>
 
-        <div className="rounded-2xl border border-sky-200/60 bg-sky-50/40 p-4 shadow-xs">
+        <div className="min-w-0 rounded-2xl border border-sky-200/60 bg-sky-50/40 p-3.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between text-sky-800 mb-1">
             <span className="text-xs font-semibold">Modo Proveedor</span>
             <Truck className="h-4 w-4 text-sky-600" />
@@ -751,7 +751,7 @@ export function ProductControlCenter({
           <span className="text-[11px] text-sky-700 font-medium">Despacho Misiones</span>
         </div>
 
-        <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50/40 p-4 shadow-xs">
+        <div className="min-w-0 rounded-2xl border border-indigo-200/60 bg-indigo-50/40 p-3.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between text-indigo-800 mb-1">
             <span className="text-xs font-semibold">En Stock Mayorista</span>
             <CheckCircle2 className="h-4 w-4 text-indigo-600" />
@@ -760,7 +760,7 @@ export function ProductControlCenter({
           <span className="text-[11px] text-indigo-700 font-semibold">Listos para vender</span>
         </div>
 
-        <div className="rounded-2xl border border-red-200/60 bg-red-50/40 p-4 shadow-xs">
+        <div className="min-w-0 rounded-2xl border border-red-200/60 bg-red-50/40 p-3.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between text-red-800 mb-1">
             <span className="text-xs font-semibold">Pausados Mayorista</span>
             <XCircle className="h-4 w-4 text-red-600" />
@@ -770,143 +770,194 @@ export function ProductControlCenter({
         </div>
       </div>
 
-      {/* Supplier Batch Sync Banner / Automation Controls */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 shadow-xs">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-xs">
-              <RefreshCw className={`h-5 w-5 ${isFullSyncRunning || isBatchSyncRunning ? "animate-spin" : ""}`} />
+      {/* Supplier Command Center */}
+      <div className="rounded-2xl border border-sky-200/80 bg-gradient-to-b from-sky-50/50 via-white to-zinc-50/30 p-4 sm:p-5 shadow-xs space-y-4">
+        {/* Top Header Row: System Info on the left, Secondary Utilities on the right */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-sky-100/80 pb-3.5">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-sky-700 text-white shadow-xs">
+              <RefreshCw className={`h-4.5 w-4.5 ${isFullSyncRunning || isBatchSyncRunning ? "animate-spin" : ""}`} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-zinc-900">Sincronización Total & Abastecimiento Mayorista</h3>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                  Nube 24/7 + Control en Vivo
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-black text-zinc-950 tracking-tight">
+                  Sincronización Total & Abastecimiento Mayorista
+                </h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Nube 24/7 Activa
                 </span>
               </div>
-              <p className="text-xs text-zinc-600 mt-0.5">
-                Evalúa todas las ofertas mayoristas vinculadas, elige la más barata con stock y pausa automáticamente publicaciones agotadas.
+              <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
+                Evalúa ofertas en los 7 mayoristas, elige el menor costo puesto en mano ($1.600 + 20% pasero) y pausa publicaciones sin stock.
               </p>
-              {batchSyncReport && (
-                <p className="text-xs text-sky-800 font-semibold mt-1">
-                  Último reporte ({batchSyncReport.timestamp}): {batchSyncReport.checked} revisados · {batchSyncReport.inStock} con
-                  stock · {batchSyncReport.outOfStock} sin stock pausados · {batchSyncReport.errors} sin respuesta.
-                </p>
-              )}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {/* Auto-Hunter for Unlinked Products */}
+          {/* Secondary Utilities: Stock Audit, CSV, and Price Alert */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 lg:pt-0 shrink-0">
             <button
               type="button"
-              disabled={isAutoHunting || isFullSyncRunning || isPending}
-              onClick={handleAutoHuntUnlinked}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-              title="Busca en los 7 mayoristas para productos sin proveedor. Si no hay stock, los mantiene en pausa."
+              onClick={() => setShowStockAudit(!showStockAudit)}
+              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${
+                showStockAudit
+                  ? "bg-zinc-200 border-zinc-300 text-zinc-900"
+                  : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+              }`}
             >
-              <Sparkles className={`h-4 w-4 ${isAutoHunting ? "animate-spin" : ""}`} />
-              {isAutoHunting ? "Rastreando en los 7 mayoristas..." : `Cazador de Proveedores (${stats.withoutSupplierLink})`}
+              <TrendingUp className="h-3.5 w-3.5 text-zinc-500" />
+              <span>{showStockAudit ? "Ocultar Auditoría" : "Auditoría Stock"}</span>
             </button>
 
-            {/* Continuous Full Catalog Sync */}
+            <button
+              type="button"
+              disabled={isExportingGlobalAudit}
+              onClick={handleExportGlobalAuditCsv}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-3 text-xs font-semibold text-zinc-700 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+              title="Descargar reporte completo de precios y stock en CSV"
+            >
+              <Download className="h-3.5 w-3.5 text-purple-600" />
+              <span>CSV</span>
+            </button>
+
+            <div
+              className="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 shadow-2xs"
+              title="Variación de precio que dispara alerta"
+            >
+              <Bell className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+              <span className="text-[11px] text-zinc-400">Alerta:</span>
+              <select
+                value={priceAlertThreshold}
+                onChange={(e) => handleUpdateThreshold(Number(e.target.value))}
+                disabled={isPending}
+                className="bg-transparent text-xs font-bold text-zinc-800 outline-none cursor-pointer pr-1"
+              >
+                <option value="15">±15%</option>
+                <option value="20">±20%</option>
+                <option value="30">±30%</option>
+                <option value="40">±40%</option>
+                <option value="50">±50%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Hero Actions: 2 balanced, responsive command cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Card 1: Sincronizar Catálogo Completo */}
+          <div className="flex flex-col justify-between rounded-xl border border-sky-200/80 bg-white p-3.5 shadow-2xs hover:border-sky-300 transition-all">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 block">
+                  Revisión Global Multi-Proveedor
+                </span>
+                <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
+                  Sincronización Total de Stock
+                </h4>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Evalúa todas las fuentes vinculadas, toma el precio más bajo con stock y pausa los agotados.
+                </p>
+              </div>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                <RefreshCw className={`h-4 w-4 ${isFullSyncRunning ? "animate-spin" : ""}`} />
+              </div>
+            </div>
+
             <button
               type="button"
               disabled={isFullSyncRunning || isAutoHunting || isPending}
               onClick={handleFullCatalogSync}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-sky-700 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+              className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`h-4 w-4 ${isFullSyncRunning ? "animate-spin" : ""}`} />
-              {isFullSyncRunning ? "Sincronizando Catálogo..." : "Sincronizar Catálogo Completo"}
+              <RefreshCw className={`h-3.5 w-3.5 ${isFullSyncRunning ? "animate-spin" : ""}`} />
+              <span>{isFullSyncRunning ? "Sincronizando Catálogo en Vivo..." : "Sincronizar Catálogo Completo"}</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setShowStockAudit(!showStockAudit)}
-              className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold border transition-all cursor-pointer shadow-xs ${
-                showStockAudit ? "bg-zinc-200 border-zinc-300 text-zinc-900" : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-              }`}
-            >
-              <TrendingUp className="h-4 w-4 text-zinc-500" />
-              {showStockAudit ? "Ocultar Auditoría" : "Auditoría de Stock"}
-            </button>
-
-          <button
-            type="button"
-            disabled={isExportingGlobalAudit}
-            onClick={handleExportGlobalAuditCsv}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-4 text-xs font-semibold text-zinc-800 shadow-xs transition-all cursor-pointer disabled:opacity-50"
-            title="Descargar reporte completo de auditoría de precios y stock en CSV / Excel"
-          >
-            <Download className="h-4 w-4 text-purple-600" />
-            <span>Auditoría CSV</span>
-          </button>
-
-          {/* Price Alert Threshold Setting */}
-          <div
-            className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-xs"
-            title="Porcentaje de variación de precio que dispara una alerta automática por email a los administradores"
-          >
-            <Bell className="h-4 w-4 text-indigo-600 shrink-0" />
-            <span className="hidden sm:inline text-zinc-500">Alerta precio:</span>
-            <select
-              value={priceAlertThreshold}
-              onChange={(e) => handleUpdateThreshold(Number(e.target.value))}
-              disabled={isPending}
-              className="bg-transparent font-bold text-zinc-900 outline-none cursor-pointer"
-            >
-              <option value="15">±15%</option>
-              <option value="20">±20%</option>
-              <option value="30">±30% (Estándar)</option>
-              <option value="40">±40%</option>
-              <option value="50">±50%</option>
-            </select>
           </div>
 
-          {onOpenCreateProduct && (
+          {/* Card 2: Cazador de Proveedores (Auto-Hunter) */}
+          <div className="flex flex-col justify-between rounded-xl border border-emerald-200/80 bg-white p-3.5 shadow-2xs hover:border-emerald-300 transition-all">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
+                    Auto-Hunter de Huérfanos
+                  </span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.2 text-[10px] font-bold text-amber-800">
+                    {stats.withoutSupplierLink} sin enlace
+                  </span>
+                </div>
+                <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
+                  Cazador de Proveedores
+                </h4>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Rastrea coincidencias en los 7 mayoristas. Si hay stock vincula el más económico; si no, pausa.
+                </p>
+              </div>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                <Sparkles className={`h-4 w-4 ${isAutoHunting ? "animate-spin" : ""}`} />
+              </div>
+            </div>
+
             <button
               type="button"
-              onClick={onOpenCreateProduct}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition-all cursor-pointer"
+              disabled={isAutoHunting || isFullSyncRunning || isPending}
+              onClick={handleAutoHuntUnlinked}
+              className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
-              + Nuevo Producto
+              <Sparkles className={`h-3.5 w-3.5 ${isAutoHunting ? "animate-spin" : ""}`} />
+              <span>
+                {isAutoHunting ? "Rastreando en los 7 mayoristas..." : `Cazador de Proveedores (${stats.withoutSupplierLink})`}
+              </span>
             </button>
-          )}
+          </div>
         </div>
+
+        {/* Full Sync Progress Bar and Live Stats */}
+        {fullSyncProgress && (
+          <div className="rounded-xl border border-sky-200 bg-white p-3.5 shadow-xs space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-bold">
+              <span className="text-sky-900">
+                Sincronización en curso: {fullSyncProgress.processed} de {fullSyncProgress.total} productos ({Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100)}%)
+              </span>
+              <span className="text-zinc-500 font-semibold">
+                {fullSyncProgress.inStock} disponibles · {fullSyncProgress.pausedCount} pausados · {fullSyncProgress.reactivatedCount} reactivados
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div
+                className="h-full bg-sky-600 transition-all duration-300"
+                style={{ width: `${Math.min(100, Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100))}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Auto Hunt Report */}
+        {autoHuntReport && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-emerald-950 font-semibold">
+            <span>
+              🎯 Auto-Hunter: {autoHuntReport.matchedAndActivated} productos emparejados con mayorista y activados en tienda.
+            </span>
+            <span className="text-zinc-600 font-medium">
+              {autoHuntReport.keptInPause} quedaron en pausa por falta de stock.
+            </span>
+          </div>
+        )}
+
+        {/* Last Batch Sync Report note */}
+        {batchSyncReport && !fullSyncProgress && (
+          <div className="text-[11px] text-zinc-500 pt-1 border-t border-sky-100/50 flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Último reporte ({batchSyncReport.timestamp}): <strong>{batchSyncReport.checked}</strong> revisados ·{" "}
+              <strong className="text-emerald-700">{batchSyncReport.inStock}</strong> en stock ·{" "}
+              <strong className="text-amber-700">{batchSyncReport.outOfStock}</strong> sin stock
+            </span>
+            {batchSyncReport.errors > 0 && (
+              <span className="text-red-600 font-semibold">{batchSyncReport.errors} sin respuesta</span>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Full Sync Progress Bar and Live Stats */}
-      {fullSyncProgress && (
-        <div className="rounded-xl border border-sky-200 bg-white p-3.5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-sky-900">
-              Sincronización en curso: {fullSyncProgress.processed} de {fullSyncProgress.total} productos ({Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100)}%)
-            </span>
-            <span className="text-zinc-500 font-semibold">
-              {fullSyncProgress.inStock} disponibles · {fullSyncProgress.pausedCount} pausados · {fullSyncProgress.reactivatedCount} reactivados
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
-            <div
-              className="h-full bg-sky-600 transition-all duration-300"
-              style={{ width: `${Math.min(100, Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100))}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Auto Hunt Report */}
-      {autoHuntReport && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs flex items-center justify-between text-emerald-950 font-semibold">
-          <span>
-            🎯 Auto-Hunter: {autoHuntReport.matchedAndActivated} productos emparejados con mayorista y activados en tienda.
-          </span>
-          <span className="text-zinc-600 font-medium">
-            {autoHuntReport.keptInPause} quedaron en pausa por falta de stock.
-          </span>
-        </div>
-      )}
-    </div>
 
       {/* Stock Audit Table (Expandable) */}
       {showStockAudit && (
@@ -1008,7 +1059,7 @@ export function ProductControlCenter({
           {/* Quick Filters */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             {/* Status in Shop Filter */}
-            <div className="flex items-center rounded-xl border border-zinc-200 p-1 bg-zinc-50/70">
+            <div className="flex items-center rounded-xl border border-zinc-200 p-1 bg-zinc-50/70 overflow-x-auto max-w-full scrollbar-none shrink-0">
               <button
                 type="button"
                 onClick={() => {
