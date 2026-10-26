@@ -7,6 +7,7 @@ import { ProductEditor } from "./product-editor";
 import {
   Search,
   Package,
+
   Edit,
   Trash2,
   ExternalLink,
@@ -38,6 +39,7 @@ import {
   Download,
   Bell,
   Zap,
+
 } from "lucide-react";
 import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 import { ProductAuditModal } from "./product-audit-modal";
@@ -62,6 +64,7 @@ import {
   syncCatalogChunkAction,
   autoHuntUnlinkedProductsAction,
   toggleAutoPauseWhenOutOfStockAction,
+  syncCatalogWholesalePricesAction,
 } from "@/app/admin/actions";
 import {
   calculateLandedCostArs,
@@ -138,6 +141,7 @@ export function ProductControlCenter({
     errors: number;
   } | null>(null);
   const [isAutoHunting, setIsAutoHunting] = useState(false);
+  const [isSyncingWholesale, setIsSyncingWholesale] = useState(false);
   const [autoHuntReport, setAutoHuntReport] = useState<{
     totalUnlinked: number;
     checked: number;
@@ -487,6 +491,24 @@ export function ProductControlCenter({
     });
   };
 
+  const handleSyncWholesalePrices = () => {
+    setIsSyncingWholesale(true);
+    startTransition(async () => {
+      try {
+        const report = await syncCatalogWholesalePricesAction(false);
+        router.refresh();
+        showToast(
+          `¡Precios mayoristas calculados y guardados! ${report.eligibleCount} productos aptos actualizados (margen MYA: ${report.avgMyaWholesaleMarginPercent}%, revendedor: ${report.avgResellerMarginPercent}%).`,
+          "success"
+        );
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : "Error al sincronizar precios mayoristas.", "error");
+      } finally {
+        setIsSyncingWholesale(false);
+      }
+    });
+  };
+
   // Bulk Status Actions
   const handleBulkAction = (action: "activate" | "pause" | "supplier_available" | "supplier_pause" | "soft_delete" | "restore" | "permanent_delete") => {
     if (selectedIds.length === 0) return;
@@ -831,6 +853,18 @@ export function ProductControlCenter({
               <Zap className="h-3.5 w-3.5 text-amber-600 fill-amber-600" />
               <span>Precios vs ML</span>
             </Link>
+
+            <button
+              type="button"
+              disabled={isSyncingWholesale || isPending}
+              onClick={handleSyncWholesalePrices}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-sky-300 bg-sky-50 hover:bg-sky-100/90 px-3 text-xs font-bold text-sky-900 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+              title="Calcular y fijar internamente los precios mayoristas para cosmética, capilar, perfumería y herramientas"
+            >
+              <Package className={`h-3.5 w-3.5 text-sky-700 ${isSyncingWholesale ? "animate-spin" : ""}`} />
+              <span>{isSyncingWholesale ? "Calculando..." : "Fijar Precios Mayoristas"}</span>
+            </button>
+            
 
             <div
               className="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 shadow-2xs"

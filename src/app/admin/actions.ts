@@ -31,6 +31,10 @@ import {
   type OpportunitySearchParams,
   type ImportOpportunityInput,
 } from "@/lib/supplier-opportunities";
+import {
+  calculateAndSyncCatalogWholesalePrices,
+  type CatalogWholesaleSyncSummary,
+} from "@/lib/wholesale-pricing-engine";
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -1863,4 +1867,14 @@ export async function bulkApplyRecommendedRaisesAction(productIds?: string[]) {
   const res = await bulkApplyRecommendedRaises(productIds);
   invalidateAdminStorefrontCache();
   return res;
+}
+
+export async function syncCatalogWholesalePricesAction(dryRun: boolean = false): Promise<CatalogWholesaleSyncSummary> {
+  await getAdminClient();
+  const summary = await calculateAndSyncCatalogWholesalePrices({ dryRun });
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/admin/costos");
+  revalidatePath("/admin/precios");
+  return summary;
 }
