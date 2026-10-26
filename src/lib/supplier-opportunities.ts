@@ -8,6 +8,7 @@ import {
   calculateCommercialMargin,
   getCategoryMarginBenchmark,
 } from "./supplier-commercial";
+import { calculateProductWholesalePricing } from "./wholesale-pricing-engine";
 import { revalidatePath } from "next/cache";
 
 export interface SupplierOpportunity {
@@ -510,15 +511,32 @@ export async function importSupplierOpportunity(
   const pasero = 20;
   const { totalLandedArs } = calculateLandedCostArs(offer.origin_cost || 0, fx, pasero);
 
-  // Precio mayorista por defecto (descuento del 12% sobre el minorista para compras por volumen)
-  const wholesalePrice = input.wholesalePrice && input.wholesalePrice > 0
-    ? input.wholesalePrice
-    : Math.round((input.retailPrice * 0.88) / 100) * 100;
+  // 5. Precio mayorista según teoría financiera comercial si el producto es apto
+  const wholesaleEval = calculateProductWholesalePricing({
+    productId: "new",
+    title: input.title,
+    categorySlug: category.slug,
+    categoryName: category.name,
+    brand: offer.brand,
+    retailPrice: input.retailPrice,
+    landedCostArs: totalLandedArs,
+  });
+
+  const finalWholesalePrice =
+    input.wholesalePrice !== undefined
+      ? input.wholesalePrice > 0
+        ? input.wholesalePrice
+        : null
+      : wholesaleEval.isEligible
+      ? wholesaleEval.suggestedWholesalePrice
+      : null;
+
+  const finalWholesaleMinQty = wholesaleEval.isEligible ? wholesaleEval.minQuantity : 1;
 
   const defaultImageUrl = category.image_url || null;
   const defaultImageUrls = defaultImageUrl ? [defaultImageUrl] : [];
 
-  // 5. Insertar el nuevo producto en products
+  // 6. Insertar el nuevo producto en products
   const { data: newProduct, error: insertError } = await db
     .from("products")
     .insert({
@@ -527,8 +545,8 @@ export async function importSupplierOpportunity(
       description: `Producto importado con abastecimiento mayorista directo. Garantía oficial y entrega coordinada.`,
       category_id: category.id,
       retail_price: input.retailPrice,
-      wholesale_price: wholesalePrice,
-      wholesale_min_qty: 3,
+      wholesale_price: finalWholesalePrice,
+      wholesale_min_qty: finalWholesaleMinQty,
       stock: 0,
       payment_methods: ["transferencia", "tarjeta", "mercado_pago", "efectivo"],
       tags: [category.slug, offer.brand || ""].filter(Boolean),

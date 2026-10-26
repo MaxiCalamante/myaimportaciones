@@ -571,6 +571,11 @@ export function MercadoLibrePricingManager({
                         <div className="font-extrabold text-zinc-900">
                           ${item.currentPrice.toLocaleString("es-AR")}
                         </div>
+                        {item.wholesalePrice && item.wholesalePrice > 0 ? (
+                          <div className="text-[10px] font-bold text-sky-700 mt-0.5">
+                            Mayorista: ${item.wholesalePrice.toLocaleString("es-AR")}
+                          </div>
+                        ) : null}
                         {item.currentMarginPercent > 0 && (
                           <span className="text-[10px] font-semibold text-zinc-400">
                             Margen: {item.currentMarginPercent}%

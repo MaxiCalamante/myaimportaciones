@@ -27,6 +27,8 @@ export interface ProductMarketComparison {
   brand: string | null;
   model: string | null;
   currentPrice: number;
+  wholesalePrice: number | null;
+  wholesaleMinQty: number | null;
   landedCostArs: number;
   mlPrice: number | null;
   mlUrl: string | null;
@@ -186,6 +188,8 @@ export async function getProductMarketComparisons(
       image_url: string | null;
       category_id: string;
       retail_price: number;
+      wholesale_price: number | null;
+      wholesale_min_qty: number | null;
       supplier_live_price: number | null;
       brand: string | null;
       model: string | null;
@@ -194,7 +198,7 @@ export async function getProductMarketComparisons(
     }>((from, to) =>
       db
         .from("products")
-        .select("id, slug, title, image_url, category_id, retail_price, supplier_live_price, brand, model, is_active, supplier_available")
+        .select("id, slug, title, image_url, category_id, retail_price, wholesale_price, wholesale_min_qty, supplier_live_price, brand, model, is_active, supplier_available")
         .is("deleted_at", null)
         .order("title")
         .range(from, to)
@@ -267,6 +271,8 @@ export async function getProductMarketComparisons(
       brand: prod.brand,
       model: prod.model,
       currentPrice,
+      wholesalePrice: prod.wholesale_price ? Number(prod.wholesale_price) : null,
+      wholesaleMinQty: prod.wholesale_min_qty ? Number(prod.wholesale_min_qty) : null,
       landedCostArs: landedCost,
       mlPrice,
       mlUrl,

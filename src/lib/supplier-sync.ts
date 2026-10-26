@@ -16,6 +16,7 @@ import { parseTotalAvailability } from "@/lib/total-availability";
 import { calculateLandedCostArs, calculateSuggestedRetailPrice } from "./supplier-commercial";
 import type { TrackingConfig } from "./supplier-automation";
 import { matchSupplierProduct, type MatchTarget, type MatchSource } from "./supplier-matching";
+import { calculateProductWholesalePricing } from "./wholesale-pricing-engine";
 
 export interface SupplierCheckResult {
   productId?: string;
@@ -707,7 +708,17 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
         ? product.retail_price
         : priceSuggestion.suggestedPrice;
 
-      // Update product: link winner, set cost, activate!
+      // Update product: link winner, set cost, evaluate wholesale, activate!
+      const wholesaleEval = calculateProductWholesalePricing({
+        productId: product.id,
+        title: product.title,
+        categorySlug: "",
+        categoryName: "",
+        brand: product.brand,
+        retailPrice: newRetailPrice,
+        landedCostArs: winner.landedCostArs,
+      });
+
       await supabase.from("products").update({
         source_url: winner.offer.source_url,
         supplier_live_price: winner.landedCostArs,
@@ -715,6 +726,8 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
         supplier_stock_status: "in_stock",
         supplier_last_checked_at: new Date().toISOString(),
         retail_price: newRetailPrice,
+        wholesale_price: wholesaleEval.isEligible ? wholesaleEval.suggestedWholesalePrice : null,
+        wholesale_min_qty: wholesaleEval.isEligible ? wholesaleEval.minQuantity : 1,
         is_active: true,
         updated_at: new Date().toISOString(),
       }).eq("id", product.id);

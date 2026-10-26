@@ -116,7 +116,21 @@ export function SupplierOpportunitiesRadar({
     setEditTitle(opp.cleanTitle);
     setEditCategoryId(opp.categoryId);
     setEditRetailPrice(opp.suggestedRetailPrice);
-    setEditWholesalePrice(Math.round((opp.suggestedRetailPrice * 0.88) / 100) * 100);
+
+    // Calcular sugerido mayorista según elegibilidad
+    const isExcluded =
+      /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(opp.cleanTitle) ||
+      opp.categorySlug.includes("smartphone") ||
+      opp.categorySlug.includes("notebook");
+
+    if (!isExcluded) {
+      const discount = opp.categorySlug.includes("herramienta") ? 0.20 : 0.28;
+      const suggestedWholesale = Math.round((opp.suggestedRetailPrice * (1 - discount)) / 100) * 100;
+      setEditWholesalePrice(suggestedWholesale);
+    } else {
+      setEditWholesalePrice(0);
+    }
+
     setEditIsActive(true);
     setImportSuccess(null);
     setImportError(null);
