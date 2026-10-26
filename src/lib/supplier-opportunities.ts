@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAdminClient } from "./admin-auth";
 import { readAllPages } from "./read-all-pages";
 import { slugifyProduct } from "./admin-product";
@@ -116,9 +117,10 @@ export function cleanWholesaleTitle(title: string): string {
  */
 export function detectStoreCategory(
   title: string,
-  categories: CategoryInfo[]
+  categories: CategoryInfo[],
+  brand?: string | null
 ): { categoryId: string; categorySlug: string; categoryName: string } {
-  const t = title.toLowerCase();
+  const t = `${title} ${brand || ""}`.toLowerCase();
 
   // Helper para buscar categoría por slug
   const findCat = (slug: string) => categories.find((c) => c.slug === slug);
@@ -215,7 +217,7 @@ export function detectStoreCategory(
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
 
-  // 5. Electrónica & Smartphones & Informática
+  // 5. Electrónica & Smartphones & Informática & Smartwatches & Audio
   if (/iphone|galaxy|spark|armor|smartphone|xiaomi|swap|redmi|poco|motorola/i.test(t)) {
     const c = findCat("electronica-smartphones") || findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
@@ -228,7 +230,21 @@ export function detectStoreCategory(
     const c = findCat("electronica-tablets") || findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
-  if (/ssd|ram|kingston|sandisk|pendrive|auricular|headphone|gamer|silla|monitor|teclado|mouse|jbl|alexa|echo/i.test(t)) {
+  if (/watch|smartwatch|apple watch|garmin|amazfit|reloj/i.test(t)) {
+    const c = findCat("electronica-smartphones") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/apple|airpods|airpod|earpods|charger|cargador|magsafe/i.test(t)) {
+    const c = findCat("electronica-smartphones") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/ssd|ram|kingston|sandisk|pendrive|auricular|headphone|gamer|silla|monitor|teclado|mouse|jbl|alexa|echo|soundbar|parlante/i.test(t)) {
+    const c = findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+
+  // 6. Si la marca es claramente tecnológica (ej: Apple, Samsung, Xiaomi)
+  if (/apple|samsung|xiaomi|asus|lenovo|hp|sony|dell|acer|logitech|corsair/i.test(brand || "")) {
     const c = findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
@@ -246,9 +262,10 @@ export function detectStoreCategory(
  * aplicando filtros de rentabilidad, stock y ordenamiento.
  */
 export async function searchSupplierOpportunities(
-  params: OpportunitySearchParams = {}
+  params: OpportunitySearchParams = {},
+  options?: { client?: SupabaseClient }
 ): Promise<OpportunitySearchResult> {
-  const db = await getAdminClient();
+  const db = options?.client ?? (await getAdminClient());
 
   // 1. Cargar proveedores y categorías en paralelo
   const [suppliersRes, categoriesRes] = await Promise.all([
@@ -293,7 +310,7 @@ export async function searchSupplierOpportunities(
   const allOpportunities: SupplierOpportunity[] = unassignedOffers.map((offer) => {
     const sup = supplierMap.get(offer.supplier_id);
     const cleanTitle = cleanWholesaleTitle(offer.title);
-    const cat = detectStoreCategory(offer.title, categories);
+    const cat = detectStoreCategory(offer.title, categories, offer.brand);
 
     // Tipo de cambio oficial configurado: 1.600 ARS/USD + 20% pasero
     const fx = 1600;
@@ -438,9 +455,10 @@ export async function searchSupplierOpportunities(
  * Crea el producto con fulfillment 'supplier', asigna precios oficiales y vincula la oferta.
  */
 export async function importSupplierOpportunity(
-  input: ImportOpportunityInput
+  input: ImportOpportunityInput,
+  options?: { client?: SupabaseClient }
 ): Promise<{ success: boolean; productId: string; slug: string; title: string }> {
-  const db = await getAdminClient();
+  const db = options?.client ?? (await getAdminClient());
 
   if (!input.offerId) {
     throw new Error("Identificador de oferta requerido.");
@@ -550,9 +568,11 @@ export async function importSupplierOpportunity(
   }
 
   // 7. Invalidar cachés
-  revalidatePath("/admin");
-  revalidatePath("/catalogo");
-  revalidatePath("/admin/oportunidades");
+  try {
+    revalidatePath("/admin");
+    revalidatePath("/catalogo");
+    revalidatePath("/admin/oportunidades");
+  } catch {}
 
   return {
     success: true,

@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAdminClient } from "./admin-auth";
 import { readAllPages } from "./read-all-pages";
 import {
@@ -164,7 +165,8 @@ export function calculateCompetitivePricing(
  * Carga todos los productos con sus comparativas de Mercado Libre y estadísticas de oportunidad.
  */
 export async function getProductMarketComparisons(
-  filters: MarketComparisonFilterParams = {}
+  filters: MarketComparisonFilterParams = {},
+  options?: { client?: SupabaseClient }
 ): Promise<{
   items: ProductMarketComparison[];
   total: number;
@@ -173,7 +175,7 @@ export async function getProductMarketComparisons(
   pageSize: number;
   totalPages: number;
 }> {
-  const db = await getAdminClient();
+  const db = options?.client ?? (await getAdminClient());
 
   // 1. Cargar productos activos, categorías, referencias ML y costos en paralelo
   const [productsRes, categoriesRes, marketRefsRes, productCostsRes] = await Promise.all([
@@ -380,9 +382,10 @@ export async function getProductMarketComparisons(
  */
 export async function applyCompetitivePrice(
   productId: string,
-  newPrice: number
+  newPrice: number,
+  options?: { client?: SupabaseClient }
 ): Promise<{ success: boolean; productId: string; newPrice: number }> {
-  const db = await getAdminClient();
+  const db = options?.client ?? (await getAdminClient());
 
   if (!productId) throw new Error("ID de producto inválido.");
   if (!newPrice || newPrice <= 0) throw new Error("El precio de venta debe ser mayor a 0.");
@@ -399,9 +402,11 @@ export async function applyCompetitivePrice(
     throw new Error(`No se pudo actualizar el precio del producto: ${error.message}`);
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/precios");
-  revalidatePath("/catalogo");
+  try {
+    revalidatePath("/admin");
+    revalidatePath("/admin/precios");
+    revalidatePath("/catalogo");
+  } catch {}
 
   return { success: true, productId, newPrice };
 }
@@ -412,9 +417,10 @@ export async function applyCompetitivePrice(
 export async function linkMercadoLibreReference(
   productId: string,
   sourceUrl: string,
-  priceArs: number
+  priceArs: number,
+  options?: { client?: SupabaseClient }
 ): Promise<{ success: boolean }> {
-  const db = await getAdminClient();
+  const db = options?.client ?? (await getAdminClient());
 
   if (!productId) throw new Error("ID de producto inválido.");
   if (!priceArs || priceArs <= 0) throw new Error("El precio de Mercado Libre debe ser mayor a 0.");
@@ -463,8 +469,10 @@ export async function linkMercadoLibreReference(
     })
     .eq("product_id", productId);
 
-  revalidatePath("/admin/precios");
-  revalidatePath("/admin/costos");
+  try {
+    revalidatePath("/admin/precios");
+    revalidatePath("/admin/costos");
+  } catch {}
 
   return { success: true };
 }
@@ -473,10 +481,11 @@ export async function linkMercadoLibreReference(
  * Aplica en lote los aumentos de precio recomendados para maximizar ganancias.
  */
 export async function bulkApplyRecommendedRaises(
-  productIds?: string[]
+  productIds?: string[],
+  options?: { client?: SupabaseClient }
 ): Promise<{ updatedCount: number; extraProfitArs: number }> {
-  const db = await getAdminClient();
-  const { items } = await getProductMarketComparisons({ action: "raise_price", pageSize: 500 });
+  const db = options?.client ?? (await getAdminClient());
+  const { items } = await getProductMarketComparisons({ action: "raise_price", pageSize: 500 }, { client: db });
 
   const candidates = productIds && productIds.length > 0
     ? items.filter((i) => productIds.includes(i.productId))
@@ -502,9 +511,11 @@ export async function bulkApplyRecommendedRaises(
     }
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/precios");
-  revalidatePath("/catalogo");
+  try {
+    revalidatePath("/admin");
+    revalidatePath("/admin/precios");
+    revalidatePath("/catalogo");
+  } catch {}
 
   return { updatedCount, extraProfitArs };
 }
