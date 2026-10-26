@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+import { getCurrentProfile } from "@/lib/auth";
 import { getAdminClient } from "@/lib/admin-auth";
+import { hasCommerceService, createCommerceService } from "@/lib/supabase/service";
 import { searchSupplierOpportunities } from "@/lib/supplier-opportunities";
 import { SupplierOpportunitiesRadar } from "@/components/admin/supplier-opportunities-radar";
 
@@ -8,14 +11,25 @@ export const metadata = {
 };
 
 export default async function AdminOpportunitiesPage() {
-  const db = await getAdminClient();
+  const { profile } = await getCurrentProfile();
+  if (!profile) {
+    redirect("/login?next=/admin/oportunidades");
+  }
+  if (profile.role !== "admin") {
+    redirect("/cuenta");
+  }
+
+  const db = hasCommerceService() ? createCommerceService() : await getAdminClient();
 
   const [initialData, categoriesRes, suppliersRes] = await Promise.all([
-    searchSupplierOpportunities({
-      page: 1,
-      pageSize: 24,
-      sortBy: "profit_desc",
-    }),
+    searchSupplierOpportunities(
+      {
+        page: 1,
+        pageSize: 24,
+        sortBy: "profit_desc",
+      },
+      { client: db }
+    ),
     db.from("categories").select("id, name, slug, parent_id").order("name"),
     db.from("suppliers").select("id, name, official_key").eq("is_active", true).order("name"),
   ]);

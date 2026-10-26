@@ -1,5 +1,35 @@
 # MYA Importaciones — contexto vigente
 
+## Corrección de Precios & ML y Renovación del Radar de Oportunidades — 26/10/2026
+
+El dueño reportó el error "No pudimos cargar esta sección. Revisá tu conexión y acceso de administrador. Los datos no se muestran como vacíos si hubo un error de lectura." al ingresar a Precios & ML (/admin/precios), solicitando resolverlo y mejorar Oportunidades de Proveedores (/admin/oportunidades).
+
+### 1. Diagnóstico y Causa Raíz:
+- Causa A (Seguridad a Nivel de Columna en Postgres): En src/lib/mercadolibre-pricing.ts, la consulta getProductMarketComparisons seleccionaba la columna supplier_live_price de la tabla products. En la migración de seguridad 20260930200323_admin_suppliers_and_catalog_security.sql, el SELECT sobre dicha columna fue expresamente revocado del rol authenticated para resguardar los costos mayoristas privados. Al consultar con token de sesión de usuario administrador (rol authenticated), Postgres devolvía ERROR 42501: permission denied for column supplier_live_price of relation products, provocando que readAllPages abortara con excepción no capturada y activara src/app/admin/error.tsx.
+- Causa B (Excepciones no redirigidas en Server Components): Las páginas raíz src/app/admin/precios/page.tsx y src/app/admin/oportunidades/page.tsx invocaban directamente await getAdminClient(). Ante sesiones vencidas o sin cookies, arrojaba AdminFormError("Iniciá sesión para administrar la tienda."), derivando al error de página en vez de redirigir limpiamente a /login.
+
+### 2. Solución y Blindaje de Datos:
+- src/lib/mercadolibre-pricing.ts:
+  - Se eliminó supplier_live_price de la selección de products (solo columnas permitidas: id, slug, title, image_url, category_id, retail_price, wholesale_price, wholesale_min_qty, brand, model, is_active, supplier_available).
+  - Los costos de reposición / landed cost se obtienen directamente de product_costs.landed_cost (tabla con permisos plenos de lectura para administradores).
+  - Se permite inyección de cliente { client: db } en getProductMarketComparisons, applyCompetitivePrice, linkMercadoLibreReference y bulkApplyRecommendedRaises.
+- src/app/admin/precios/page.tsx y src/app/admin/oportunidades/page.tsx:
+  - Verificación limpia con getCurrentProfile(): redirección automática a /login?next=... para usuarios no autenticados y a /cuenta para usuarios sin rol administrador.
+  - Paso de cliente autenticado/servicio { client: db } para evitar duplicación de conexiones.
+- src/app/admin/actions.ts:
+  - getProductMarketComparisonsAction, applyCompetitivePriceAction, linkMercadoLibreReferenceAction, bulkApplyRecommendedRaisesAction, searchSupplierOpportunitiesAction e importSupplierOpportunityAction ahora pasan { client: db } obtenido de await getAdminClient().
+
+### 3. Mejoras en Radar de Oportunidades (src/components/admin/supplier-opportunities-radar.tsx):
+- 8 Píldoras de Filtro Rápido en 1 Clic: Todas, 🔥 Top Ganancia (+30% min), 📦 En Stock Mayorista, 🇰🇷 K-Beauty, 🌸 Perfumes Árabes, 🛠️ Herramientas, 📱 Electrónica, 💎 Margen >40%.
+- ⚡ Publicar Rápido en 1 Clic: Botón directo en cada tarjeta que importa y publica el producto al catálogo activo con precios sugeridos minorista y mayorista sin requerir abrir el modal.
+- Búsqueda Directa en Mercado Libre: Botón "Ver en ML" en cada oportunidad que abre la comparativa en vivo de Mercado Libre en una pestaña nueva.
+- Botón de Limpiar Búsqueda × y enlace de confirmación para ver el producto en la tienda una vez publicado.
+
+### 4. Mejoras en Precios & ML (src/components/admin/mercadolibre-pricing-manager.tsx):
+- Filtro Instantáneo en Tarjetas KPI y Desplegables: Los botones de resumen (Podés Subir Precio, Conviene Bajar Precio, Precios Óptimos, Sin Referencia ML) y los menús desplegables (Acción, Categoría, Orden) pasan los argumentos directamente a applyFilters(1, { ... }), eliminando race conditions y retardos por cierres de estado de React.
+- Botón × de Borrado Rápido: Limpieza instantánea del campo de búsqueda con actualización automática del listado.
+
+
 ## Versiones visibles y perfumería — 25/10/2026
 
 El dueño pidió miniaturas y nombres de versiones en tarjetas para todos los rubros y ampliar perfumería; conserva la autorización de commit, push y deploy. `product-variant-preview.tsx` muestra dos filas reales activas y `+N`, con enlaces a `?variant=id`. La ficha valida la pertenencia y actividad del ID, preselecciona opciones/imagen/precio y mantiene canonical sin parámetros. `variant-preview.ts` recupera dimensiones públicas desde filas reales, incluso configuraciones antiguas; no publica filas inactivas. Se corrige el ancho mínimo de galería observado en Yara a 320 px. Catálogo: nueva Ana Abiyedh 60 ml Rouge/Leather; Fakhar Black/Rose completados; Khamrah Qahwa completado. Clásico quedó inactivo por imagen contradictoria en la fuente, con incidencia privada. Cinco variantes nuevas activas y una pendiente, todas con stock físico cero y disponibilidad separada. Se preservan precios existentes, costos históricos e inventario; cotización de compra y pasador ARS1600 confirmada expresamente para esta tanda, sin renovar configuración global. Evidencia comercial privada en `scratch/suppliers-private/variants-2026-10-25/`; informe público `docs/product-variant-preview-2026-10-25.md`. Verificar SHA/aliases y controles públicos para acreditar el despliegue final.

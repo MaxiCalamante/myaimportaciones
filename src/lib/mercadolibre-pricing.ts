@@ -190,7 +190,6 @@ export async function getProductMarketComparisons(
       retail_price: number;
       wholesale_price: number | null;
       wholesale_min_qty: number | null;
-      supplier_live_price: number | null;
       brand: string | null;
       model: string | null;
       is_active: boolean;
@@ -198,7 +197,7 @@ export async function getProductMarketComparisons(
     }>((from, to) =>
       db
         .from("products")
-        .select("id, slug, title, image_url, category_id, retail_price, wholesale_price, wholesale_min_qty, supplier_live_price, brand, model, is_active, supplier_available")
+        .select("id, slug, title, image_url, category_id, retail_price, wholesale_price, wholesale_min_qty, brand, model, is_active, supplier_available")
         .is("deleted_at", null)
         .order("title")
         .range(from, to)
@@ -211,11 +210,15 @@ export async function getProductMarketComparisons(
   const categories = categoriesRes.data ?? [];
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-  // Indexar referencias de Mercado Libre por product_id (tomando la más económica o reciente)
+  // Indexar referencias de costos y de Mercado Libre por product_id
   const mlMap = new Map<string, { priceArs: number; url: string | null; checkedAt: string | null }>();
+  const costMap = new Map<string, number>();
 
   // 1ro: product_costs
   for (const pc of productCostsRes.data ?? []) {
+    if (pc.landed_cost && Number(pc.landed_cost) > 0) {
+      costMap.set(pc.product_id, Number(pc.landed_cost));
+    }
     if (pc.ml_price && pc.ml_price > 0) {
       mlMap.set(pc.product_id, {
         priceArs: Number(pc.ml_price),
@@ -249,7 +252,7 @@ export async function getProductMarketComparisons(
     const mlCheckedAt = ref ? ref.checkedAt : null;
     const mlSearchUrl = buildMercadoLibreSearchUrl(prod.title, prod.brand || undefined, prod.model || undefined);
 
-    const landedCost = Number(prod.supplier_live_price || 0);
+    const landedCost = costMap.get(prod.id) ?? (prod.retail_price ? Math.round(Number(prod.retail_price) * 0.5) : 0);
     const currentPrice = Number(prod.retail_price || 0);
 
     const pricing = calculateCompetitivePricing(

@@ -82,15 +82,20 @@ export function MercadoLibrePricingManager({
   const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
 
   // Search / Filter execution
-  const applyFilters = (newPage: number = 1) => {
+  const applyFilters = (newPage: number = 1, overrides: Partial<MarketComparisonFilterParams> = {}) => {
     setPage(newPage);
     startTransition(async () => {
       try {
+        const qVal = overrides.query !== undefined ? overrides.query : (query.trim() || undefined);
+        const actVal = overrides.action !== undefined ? overrides.action : actionFilter;
+        const catVal = overrides.categorySlug !== undefined ? overrides.categorySlug : categoryFilter;
+        const sortVal = overrides.sortBy !== undefined ? overrides.sortBy : sortBy;
+
         const res = await getProductMarketComparisonsAction({
-          query: query.trim() || undefined,
-          action: actionFilter,
-          categorySlug: categoryFilter,
-          sortBy,
+          query: qVal,
+          action: actVal,
+          categorySlug: catVal,
+          sortBy: sortVal,
           page: newPage,
           pageSize: 25,
         });
@@ -240,7 +245,7 @@ export function MercadoLibrePricingManager({
             type="button"
             onClick={() => {
               setActionFilter("raise_price");
-              applyFilters(1);
+              applyFilters(1, { action: "raise_price" });
             }}
             className="text-left rounded-2xl border border-emerald-200 bg-white/95 backdrop-blur-xs p-4 shadow-2xs hover:border-emerald-400 transition-all cursor-pointer group"
           >
@@ -263,7 +268,7 @@ export function MercadoLibrePricingManager({
             type="button"
             onClick={() => {
               setActionFilter("lower_price");
-              applyFilters(1);
+              applyFilters(1, { action: "lower_price" });
             }}
             className="text-left rounded-2xl border border-amber-200 bg-white/95 backdrop-blur-xs p-4 shadow-2xs hover:border-amber-400 transition-all cursor-pointer group"
           >
@@ -286,7 +291,7 @@ export function MercadoLibrePricingManager({
             type="button"
             onClick={() => {
               setActionFilter("optimal");
-              applyFilters(1);
+              applyFilters(1, { action: "optimal" });
             }}
             className="text-left rounded-2xl border border-sky-200 bg-white/95 backdrop-blur-xs p-4 shadow-2xs hover:border-sky-400 transition-all cursor-pointer group"
           >
@@ -309,7 +314,7 @@ export function MercadoLibrePricingManager({
             type="button"
             onClick={() => {
               setActionFilter("missing_benchmark");
-              applyFilters(1);
+              applyFilters(1, { action: "missing_benchmark" });
             }}
             className="text-left rounded-2xl border border-zinc-200 bg-white/95 backdrop-blur-xs p-4 shadow-2xs hover:border-zinc-400 transition-all cursor-pointer group"
           >
@@ -398,8 +403,21 @@ export function MercadoLibrePricingManager({
                 if (e.key === "Enter") applyFilters(1);
               }}
               placeholder="Buscá por producto, marca o modelo para ver comparativa de Mercado Libre..."
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-sky-500 focus:bg-white focus:outline-none"
+              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-9 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-sky-500 focus:bg-white focus:outline-none"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  applyFilters(1, { query: "" });
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-0.5 rounded-full"
+                title="Limpiar búsqueda"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           <button
@@ -423,7 +441,9 @@ export function MercadoLibrePricingManager({
             <select
               value={actionFilter}
               onChange={(e) => {
-                setActionFilter(e.target.value as PriceStrategyAction | "all");
+                const val = e.target.value as PriceStrategyAction | "all";
+                setActionFilter(val);
+                applyFilters(1, { action: val });
               }}
               className="h-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 outline-none cursor-pointer focus:border-sky-500"
             >
@@ -443,7 +463,9 @@ export function MercadoLibrePricingManager({
             <select
               value={categoryFilter}
               onChange={(e) => {
-                setCategoryFilter(e.target.value);
+                const val = e.target.value;
+                setCategoryFilter(val);
+                applyFilters(1, { categorySlug: val });
               }}
               className="h-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 outline-none cursor-pointer focus:border-sky-500"
             >
@@ -464,7 +486,9 @@ export function MercadoLibrePricingManager({
             <select
               value={sortBy}
               onChange={(e) => {
-                setSortBy(e.target.value as MarketComparisonFilterParams["sortBy"]);
+                const val = e.target.value as MarketComparisonFilterParams["sortBy"];
+                setSortBy(val);
+                applyFilters(1, { sortBy: val });
               }}
               className="h-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 outline-none cursor-pointer focus:border-sky-500"
             >

@@ -88,19 +88,28 @@ export function SupplierOpportunitiesRadar({
 
   // Set of imported offer IDs in the current session
   const [importedOfferIds, setImportedOfferIds] = useState<Set<string>>(new Set());
+  const [quickImportingOfferId, setQuickImportingOfferId] = useState<string | null>(null);
+  const [quickImportSuccessMap, setQuickImportSuccessMap] = useState<Map<string, { slug: string; title: string }>>(new Map());
 
-  // Trigger search with current filters
-  const applySearch = (newPage: number = 1) => {
+  // Trigger search with current filters or overrides
+  const applySearch = (newPage: number = 1, overrides: Partial<OpportunitySearchParams> = {}) => {
     setPage(newPage);
     startTransition(async () => {
       try {
+        const qVal = overrides.query !== undefined ? overrides.query : (query.trim() || undefined);
+        const supVal = overrides.supplierId !== undefined ? overrides.supplierId : (selectedSupplier || undefined);
+        const catVal = overrides.categorySlug !== undefined ? overrides.categorySlug : (selectedCategory || undefined);
+        const stockVal = overrides.onlyInStock !== undefined ? overrides.onlyInStock : (onlyInStock || undefined);
+        const marginVal = overrides.minMargin !== undefined ? overrides.minMargin : (minMargin || undefined);
+        const sortVal = overrides.sortBy !== undefined ? overrides.sortBy : sortBy;
+
         const res = await searchSupplierOpportunitiesAction({
-          query: query.trim() || undefined,
-          supplierId: selectedSupplier || undefined,
-          categorySlug: selectedCategory || undefined,
-          onlyInStock: onlyInStock || undefined,
-          minMargin: minMargin || undefined,
-          sortBy,
+          query: qVal,
+          supplierId: supVal,
+          categorySlug: catVal,
+          onlyInStock: stockVal,
+          minMargin: marginVal,
+          sortBy: sortVal,
           page: newPage,
           pageSize: 24,
         });
@@ -109,6 +118,42 @@ export function SupplierOpportunitiesRadar({
         console.error("Error buscando oportunidades:", err);
       }
     });
+  };
+
+  const handleQuickImport = async (opp: SupplierOpportunity) => {
+    setQuickImportingOfferId(opp.offerId);
+    try {
+      const isExcluded =
+        /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(opp.cleanTitle) ||
+        opp.categorySlug.includes("smartphone") ||
+        opp.categorySlug.includes("notebook");
+      const discount = opp.categorySlug.includes("herramienta") ? 0.20 : 0.28;
+      const suggestedWholesale = !isExcluded
+        ? Math.round((opp.suggestedRetailPrice * (1 - discount)) / 100) * 100
+        : 0;
+
+      const res = await importSupplierOpportunityAction({
+        offerId: opp.offerId,
+        title: opp.cleanTitle,
+        categoryId: opp.categoryId,
+        retailPrice: opp.suggestedRetailPrice,
+        wholesalePrice: suggestedWholesale,
+        isActive: true,
+      });
+
+      if (res.success) {
+        setImportedOfferIds((prev) => new Set(prev).add(opp.offerId));
+        setQuickImportSuccessMap((prev) => {
+          const next = new Map(prev);
+          next.set(opp.offerId, { slug: res.slug, title: res.title });
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Error en publicación rápida:", err);
+    } finally {
+      setQuickImportingOfferId(null);
+    }
   };
 
   const handleOpenImport = (opp: SupplierOpportunity) => {
@@ -291,6 +336,104 @@ export function SupplierOpportunitiesRadar({
 
       {/* Filter and Control Bar */}
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs space-y-3">
+        {/* Quick Filter Presets */}
+        <div className="flex flex-wrap items-center gap-1.5 pb-1">
+          <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mr-1">
+            Filtros rápidos:
+          </span>
+          {[
+            {
+              label: "Todas",
+              active: !selectedCategory && !selectedSupplier && !onlyInStock && minMargin === undefined,
+              onClick: () => {
+                setSelectedCategory("");
+                setSelectedSupplier("");
+                setOnlyInStock(false);
+                setMinMargin(undefined);
+                setSortBy("profit_desc");
+                applySearch(1, { categorySlug: undefined, supplierId: undefined, onlyInStock: undefined, minMargin: undefined, sortBy: "profit_desc" });
+              },
+            },
+            {
+              label: "🔥 Top Ganancia",
+              active: sortBy === "profit_desc" && minMargin === 30,
+              onClick: () => {
+                setSortBy("profit_desc");
+                setMinMargin(30);
+                applySearch(1, { sortBy: "profit_desc", minMargin: 30 });
+              },
+            },
+            {
+              label: "📦 En Stock Mayorista",
+              active: onlyInStock,
+              onClick: () => {
+                const next = !onlyInStock;
+                setOnlyInStock(next);
+                applySearch(1, { onlyInStock: next });
+              },
+            },
+            {
+              label: "🇰🇷 K-Beauty",
+              active: selectedCategory === "cosmetica-coreana",
+              onClick: () => {
+                const next = selectedCategory === "cosmetica-coreana" ? "" : "cosmetica-coreana";
+                setSelectedCategory(next);
+                applySearch(1, { categorySlug: next || undefined });
+              },
+            },
+            {
+              label: "🌸 Perfumes Árabes",
+              active: selectedCategory === "perfumeria",
+              onClick: () => {
+                const next = selectedCategory === "perfumeria" ? "" : "perfumeria";
+                setSelectedCategory(next);
+                applySearch(1, { categorySlug: next || undefined });
+              },
+            },
+            {
+              label: "🛠️ Herramientas",
+              active: selectedCategory === "herramientas-equipamiento",
+              onClick: () => {
+                const next = selectedCategory === "herramientas-equipamiento" ? "" : "herramientas-equipamiento";
+                setSelectedCategory(next);
+                applySearch(1, { categorySlug: next || undefined });
+              },
+            },
+            {
+              label: "📱 Electrónica",
+              active: selectedCategory === "electronica",
+              onClick: () => {
+                const next = selectedCategory === "electronica" ? "" : "electronica";
+                setSelectedCategory(next);
+                applySearch(1, { categorySlug: next || undefined });
+              },
+            },
+            {
+              label: "💎 Margen >40%",
+              active: minMargin === 40,
+              onClick: () => {
+                const next = minMargin === 40 ? undefined : 40;
+                setMinMargin(next);
+                applySearch(1, { minMargin: next });
+              },
+            },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={preset.onClick}
+              disabled={isPending}
+              className={`rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                preset.active
+                  ? "border-sky-600 bg-sky-50 text-sky-800 shadow-2xs ring-1 ring-sky-600"
+                  : "border-zinc-200 bg-zinc-50/70 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -302,8 +445,21 @@ export function SupplierOpportunitiesRadar({
                 if (e.key === "Enter") applySearch(1);
               }}
               placeholder="Buscá por nombre, marca o modelo (ej. Chloe, Medicube, iPhone, Wadfow)..."
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-sky-500 focus:bg-white focus:outline-none"
+              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-8 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-sky-500 focus:bg-white focus:outline-none"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  applySearch(1, { query: undefined });
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 text-sm cursor-pointer"
+                title="Limpiar búsqueda"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           <button
@@ -577,7 +733,7 @@ export function SupplierOpportunitiesRadar({
                 </div>
 
                 {/* Card Actions */}
-                <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center gap-2">
+                <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center gap-1.5">
                   <a
                     href={opp.sourceUrl}
                     target="_blank"
@@ -588,20 +744,58 @@ export function SupplierOpportunitiesRadar({
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
 
+                  <a
+                    href={`https://listado.mercadolibre.com.ar/${encodeURIComponent(opp.cleanTitle)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 text-amber-800 hover:bg-amber-100 transition-colors"
+                    title="Comparar precio en Mercado Libre"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-amber-600 fill-amber-600" />
+                  </a>
+
                   {isImported ? (
-                    <div className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-bold">
-                      <Check className="h-3.5 w-3.5 text-emerald-700" />
-                      ¡Sumado a la Tienda!
+                    <div className="flex-1 inline-flex h-9 items-center justify-between gap-1 rounded-xl bg-emerald-100 px-2.5 text-emerald-950 text-xs font-bold">
+                      <span className="flex items-center gap-1">
+                        <Check className="h-3.5 w-3.5 text-emerald-700" />
+                        ¡En Tienda!
+                      </span>
+                      {quickImportSuccessMap.get(opp.offerId) && (
+                        <Link
+                          href={`/producto/${quickImportSuccessMap.get(opp.offerId)!.slug}`}
+                          target="_blank"
+                          className="text-[10px] underline text-emerald-800 hover:text-emerald-950"
+                        >
+                          Ver ↗
+                        </Link>
+                      )}
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenImport(opp)}
-                      className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-xs font-bold text-white shadow-2xs transition-all cursor-pointer"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      <span>Agregar a la Tienda</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={quickImportingOfferId === opp.offerId}
+                        onClick={() => handleQuickImport(opp)}
+                        className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-xs font-bold text-white shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                        title="Publicar directo en 1 clic con precio sugerido"
+                      >
+                        {quickImportingOfferId === opp.offerId ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Zap className="h-3.5 w-3.5" />
+                        )}
+                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : "Publicar Rápido"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenImport(opp)}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer"
+                        title="Personalizar título o precios antes de agregar"
+                      >
+                        <SlidersHorizontal className="h-3.5 w-3.5" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

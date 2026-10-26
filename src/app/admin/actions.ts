@@ -1832,39 +1832,39 @@ export async function quickUpdateSupplierLinkAction(
 
 
 export async function searchSupplierOpportunitiesAction(params: OpportunitySearchParams = {}) {
-  await getAdminClient();
-  return searchSupplierOpportunities(params);
+  const db = await getAdminClient();
+  return searchSupplierOpportunities(params, { client: db });
 }
 
 export async function importSupplierOpportunityAction(input: ImportOpportunityInput) {
-  await getAdminClient();
-  const res = await importSupplierOpportunity(input);
+  const db = await getAdminClient();
+  const res = await importSupplierOpportunity(input, { client: db });
   invalidateAdminStorefrontCache();
   return res;
 }
 
 export async function getProductMarketComparisonsAction(params: MarketComparisonFilterParams = {}) {
-  await getAdminClient();
-  return getProductMarketComparisons(params);
+  const db = await getAdminClient();
+  return getProductMarketComparisons(params, { client: db });
 }
 
 export async function applyCompetitivePriceAction(productId: string, newPrice: number) {
-  await getAdminClient();
-  const res = await applyCompetitivePrice(productId, newPrice);
+  const db = await getAdminClient();
+  const res = await applyCompetitivePrice(productId, newPrice, { client: db });
   invalidateAdminStorefrontCache();
   return res;
 }
 
 export async function linkMercadoLibreReferenceAction(productId: string, url: string, price: number) {
-  await getAdminClient();
-  const res = await linkMercadoLibreReference(productId, url, price);
+  const db = await getAdminClient();
+  const res = await linkMercadoLibreReference(productId, url, price, { client: db });
   invalidateAdminStorefrontCache();
   return res;
 }
 
 export async function bulkApplyRecommendedRaisesAction(productIds?: string[]) {
-  await getAdminClient();
-  const res = await bulkApplyRecommendedRaises(productIds);
+  const db = await getAdminClient();
+  const res = await bulkApplyRecommendedRaises(productIds, { client: db });
   invalidateAdminStorefrontCache();
   return res;
 }
