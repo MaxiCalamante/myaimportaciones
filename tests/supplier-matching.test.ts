@@ -25,6 +25,17 @@ test('hardware exige capacidad y color completos y excluye unidades usadas',()=>
  const targets=matchTargets([{id:'s',title:'Samsung Galaxy A16 4 GB 128 GB Verde SM-A165M',brand:'Samsung',model:'Galaxy A16',specifications:{'Modelo / referencia':'SM-A165M'}}],[]);
  assert.equal(matchSupplierProduct({title:'Samsung Galaxy A16 4GB 128GB Green SM-A165M'},targets).status,'exact');
  for(const title of['Samsung A16 8GB 256GB Green SM-A165M','Samsung A16 4GB 128GB SM-A165M','Samsung Galaxy A16 4GB 128GB Green SM-A165M usado'])assert.notEqual(matchSupplierProduct({title},targets).status,'exact');
+
+ // Soporta normalización de RAM/almacenamiento taquigráfico mayorista y prefijos Samsung
+ const a17Target = matchTargets([{id:'a17',title:'Samsung Galaxy A17 · 4 GB / 128 GB · Negro · SM-A175F',brand:'Samsung',model:'Galaxy A17',specifications:{'Modelo / referencia':'SM-A175F'}}],[]);
+ assert.equal(matchSupplierProduct({title:'CEL SAMSUNG A17 SM-A175F DS/128GB/4 6.7" NEGRO SLIM GLOBAL'},a17Target).status,'exact');
+
+ // Soporta códigos regionales Apple pegados y chips Pro sin confundir versión Pro de dispositivo
+ const iphone16Target = matchTargets([{id:'ip16',title:'Apple iPhone 16 · 128 GB · Blanco · SIM física + eSIM · A3287 HN/A',brand:'Apple',model:'iPhone 16'}],[]);
+ assert.equal(matchSupplierProduct({title:'Apple IPhone 16 HN/A3287 6.1" 128GB - White'},iphone16Target).status,'exact');
+
+ const macbookNeoTarget = matchTargets([{id:'mbneo',title:'Apple MacBook Neo 13″ · 8 GB / 512 GB · Cítrico · MHFE4LL/A',brand:'Apple',model:'MacBook Neo'}],[]);
+ assert.equal(matchSupplierProduct({title:'APPLE MACBOOK NEO DE 13" MHFE4LL/A A18 PRO 8GB RAM/512GB - CITRUS'},macbookNeoTarget).status,'exact');
 });
 test('variantes y condición sellada no se adivinan',()=>{
  const targets=matchTargets([{id:'p',title:'Anua Cream 50 ml',brand:'Anua',has_variants:true}],[]);assert.deepEqual(targets,[]);

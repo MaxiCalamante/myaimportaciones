@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ProductEditor } from "./product-editor";
 import {
   Search,
@@ -36,7 +37,9 @@ import {
   Sparkles,
   Download,
   Bell,
+  Zap,
 } from "lucide-react";
+import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Category, Product, StockLog } from "@/lib/types";
@@ -820,6 +823,15 @@ export function ProductControlCenter({
               <span>CSV</span>
             </button>
 
+            <Link
+              href="/admin/precios"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100/90 px-3 text-xs font-bold text-amber-900 shadow-2xs transition-all cursor-pointer"
+              title="Comparar precios contra Mercado Libre y maximizar ganancias"
+            >
+              <Zap className="h-3.5 w-3.5 text-amber-600 fill-amber-600" />
+              <span>Precios vs ML</span>
+            </Link>
+
             <div
               className="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 shadow-2xs"
               title="Variación de precio que dispara alerta"
@@ -843,7 +855,7 @@ export function ProductControlCenter({
         </div>
 
         {/* Main Hero Actions: 2 balanced, responsive command cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Card 1: Sincronizar Catálogo Completo */}
           <div className="flex flex-col justify-between rounded-xl border border-sky-200/80 bg-white p-3.5 shadow-2xs hover:border-sky-300 transition-all">
             <div className="flex items-start justify-between gap-3 mb-3">
@@ -909,6 +921,39 @@ export function ProductControlCenter({
                 {isAutoHunting ? "Rastreando en los 7 mayoristas..." : `Cazador de Proveedores (${stats.withoutSupplierLink})`}
               </span>
             </button>
+          </div>
+
+          {/* Card 3: Radar de Oportunidades Mayoristas */}
+          <div className="flex flex-col justify-between rounded-xl border border-indigo-200/80 bg-white p-3.5 shadow-2xs hover:border-indigo-300 transition-all">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
+                    Expansión de Catálogo
+                  </span>
+                  <span className="rounded-full bg-indigo-100 px-2 py-0.2 text-[10px] font-bold text-indigo-800">
+                    +1.500 ofertas
+                  </span>
+                </div>
+                <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
+                  Radar de Oportunidades
+                </h4>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Explorá productos mayoristas rentables con cálculo automático de costo y reventa.
+                </p>
+              </div>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+            </div>
+
+            <Link
+              href="/admin/oportunidades"
+              className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Explorar Oportunidades</span>
+            </Link>
           </div>
         </div>
 
@@ -2387,6 +2432,26 @@ export function ProductControlCenter({
             </p>
 
             <div className="space-y-3">
+              <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-2.5 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-extrabold text-amber-950 block">
+                    Comparar con Mercado Libre
+                  </span>
+                  <span className="text-[11px] text-amber-800">
+                    Ver a cuánto lo venden los competidores
+                  </span>
+                </div>
+                <a
+                  href={buildMercadoLibreSearchUrl(quickPriceProduct.title, quickPriceProduct.brand, quickPriceProduct.model)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg bg-amber-600 hover:bg-amber-700 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xs"
+                >
+                  Buscar en ML
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+
               <label className="block text-xs font-bold text-zinc-700">
                 Precio Minorista (ARS) *
                 <input

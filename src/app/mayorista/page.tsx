@@ -22,7 +22,7 @@ export default async function WholesalePage({
   if (!WHOLESALE_ENABLED) {
     const { category } = await searchParams;
     const matching = WHOLESALE_CATEGORIES.find(item => item.categorySlug === category);
-    if (matching) redirect(`/mayorista/${matching.slug}`);
+    if (matching) redirect(`/catalogo?category=${matching.categorySlug}`);
     return <WholesaleLanding />;
   }
   const params = await searchParams;

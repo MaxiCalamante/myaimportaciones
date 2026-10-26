@@ -1,4 +1,13 @@
-import { getAdminClient } from "@/lib/admin-auth";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+function getSupplierServiceClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY no configurado");
+  }
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
 import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { readAllPages } from "@/lib/read-all-pages";
 import { fetchSupplierPage, readSupplierHtml, supplierUrl } from "./supplier-url";
@@ -7,7 +16,6 @@ import { parseTotalAvailability } from "@/lib/total-availability";
 import { calculateLandedCostArs, calculateSuggestedRetailPrice } from "./supplier-commercial";
 import type { TrackingConfig } from "./supplier-automation";
 import { matchSupplierProduct, type MatchTarget, type MatchSource } from "./supplier-matching";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface SupplierCheckResult {
   productId?: string;
@@ -103,7 +111,7 @@ export async function checkSupplierProductAvailability(
 }
 
 export async function checkAndUpdateProductSupplierStock(productId: string, client?: SupabaseClient): Promise<SupplierCheckResult> {
-  const supabase = client ?? await getAdminClient();
+  const supabase = client ?? getSupplierServiceClient();
   const [productRes, offersRes, settingsRes, suppliersRes] = await Promise.all([
     supabase
       .from("products")
@@ -307,7 +315,7 @@ export async function runBatchSupplierStockSync(options?: {
 }> {
   const limit = options?.limit ?? 25;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("El límite de verificación debe estar entre 1 y 100.");
-  const supabase = options?.client ?? await getAdminClient();
+  const supabase = options?.client ?? getSupplierServiceClient();
   const timeBudgetMs = options?.timeBudgetMs ?? 43_000;
   if (!Number.isFinite(timeBudgetMs) || timeBudgetMs < 0 || timeBudgetMs > 43_000) throw new Error("Presupuesto de verificación inválido.");
   const startedAt = Date.now();
@@ -438,7 +446,7 @@ export async function runCatalogSyncChunk(options?: {
 }): Promise<CatalogSyncProgress> {
   const offset = options?.offset ?? 0;
   const limit = options?.limit ?? 15;
-  const supabase = options?.client ?? await getAdminClient();
+  const supabase = options?.client ?? getSupplierServiceClient();
 
   // Count total supplier products (excluding deleted)
   const countResult = await supabase
@@ -555,7 +563,7 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
   client?: SupabaseClient;
 }): Promise<AutoHuntResult> {
   const limit = options?.limit ?? 30;
-  const supabase = options?.client ?? await getAdminClient();
+  const supabase = options?.client ?? getSupplierServiceClient();
 
   const [unlinkedRes, settingsRes, suppliersRes] = await Promise.all([
     supabase
@@ -577,15 +585,29 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
   const unlinkedProducts = unlinkedRes.data ?? [];
   const config = (settingsRes.data?.config ?? {}) as TrackingConfig;
   const fx = config.acquisitionArsPerUsd || 1600;
-  const suppliers = suppliersRes.data ?? [];
+  const suppliers = (suppliersRes.data ?? []) as Array<{ id: string; name: string; official_key: string }>;
 
-  // Read available candidate offers that have public supplier cards or existing unassigned supplier_offers
-  const { data: candidates } = await supabase
-    .from("supplier_offers")
-    .select("id, supplier_id, external_id, title, brand, model, gtin, source_url, origin_cost, currency, availability")
-    .not("source_url", "is", null);
-
-  const candidateOffers = candidates ?? [];
+  // Read all candidate offers across all mayoristas using pagination
+  const candidateOffers = await readAllPages<{
+    id: string;
+    supplier_id: string;
+    external_id: string | null;
+    title: string;
+    brand: string | null;
+    model: string | null;
+    gtin: string | null;
+    source_url: string;
+    origin_cost: number | null;
+    currency: string | null;
+    availability: string | null;
+  }>((from, to) =>
+    supabase
+      .from("supplier_offers")
+      .select("id, supplier_id, external_id, title, brand, model, gtin, source_url, origin_cost, currency, availability")
+      .not("source_url", "is", null)
+      .order("id")
+      .range(from, to)
+  );
 
   let matchedAndActivated = 0;
   let keptInPause = 0;
@@ -603,7 +625,7 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
       sourceUrl: null,
     };
 
-    // 1. Try matching with existing candidate offers
+    // 1. Try matching with candidate offers from the 7 mayoristas
     const matchingOffers: Array<{
       offer: typeof candidateOffers[number];
       supplierName: string;
@@ -617,7 +639,7 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
         brand: cand.brand,
         model: cand.model,
         gtin: cand.gtin,
-        external_id: cand.external_id,
+        external_id: cand.external_id ?? undefined,
         source_url: cand.source_url,
         supplierKey: sup?.official_key,
       };
@@ -639,8 +661,34 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
       }
     }
 
-    // 2. Filter offers that are in stock
+    // 2. Filter offers that are in stock; if none are in_stock yet, test candidates live
     const inStockMatches = matchingOffers.filter(m => m.offer.availability === "in_stock");
+
+    if (inStockMatches.length === 0 && matchingOffers.length > 0) {
+      for (const m of matchingOffers) {
+        if (m.offer.availability === "unknown" && m.offer.source_url) {
+          try {
+            const check = await checkSupplierProductAvailability(m.offer.source_url);
+            if (check.available && check.status === "in_stock") {
+              m.offer.availability = "in_stock";
+              await supabase.from("supplier_offers").update({
+                availability: "in_stock",
+                updated_at: new Date().toISOString()
+              }).eq("id", m.offer.id);
+              inStockMatches.push(m);
+            } else if (check.status === "out_of_stock" || check.status === "not_found") {
+              m.offer.availability = "out_of_stock";
+              await supabase.from("supplier_offers").update({
+                availability: "out_of_stock",
+                updated_at: new Date().toISOString()
+              }).eq("id", m.offer.id);
+            }
+          } catch {
+            // Continue if live check timed out
+          }
+        }
+      }
+    }
 
     if (inStockMatches.length > 0) {
       // Pick the cheapest one!

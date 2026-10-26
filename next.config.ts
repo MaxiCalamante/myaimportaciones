@@ -4,7 +4,27 @@ const nextConfig: NextConfig = {
   // Resolve metadata and missing-page decisions before sending headers (avoid streamed soft 404s).
   htmlLimitedBots: /.*/,
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  allowedDevOrigins: [
+    "192.168.1.5",
+    "192.168.1.5:3000",
+    "localhost",
+    "localhost:3000",
+    "127.0.0.1",
+    "127.0.0.1:3000",
+  ],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4mb",
+      allowedOrigins: [
+        "192.168.1.5:3000",
+        "192.168.1.5",
+        "localhost:3000",
+        "127.0.0.1:3000",
+        "myaimportaciones.com",
+        "www.myaimportaciones.com",
+      ],
+    },
+  },
   async headers() {
     return [{
       source: "/:path*",

@@ -25,11 +25,11 @@ export async function WholesaleLanding({ category }: { category?: WholesaleCateg
   const faq = category ? [...category.faq, ...generalFaq.slice(2)] : generalFaq;
   const catalogPath = category?.brand ? `/catalogo?brand=${encodeURIComponent(category.brand)}` : category ? `/catalogo?category=${category.categorySlug}` : "/catalogo";
   const [selections, medicube] = await Promise.all([
-    category ? getWholesaleSelection(category.categorySlug, category.brand).then(products => products.slice(0, 5).map(product => ({ label: product.brand || category.name, title: product.title, image: product.imageUrl, href: `/producto/${product.slug}` })))
+    category ? getWholesaleSelection(category.categorySlug, category.brand).then(products => products.slice(0, 5).map(product => ({ label: product.brand || category.name, title: product.title, image: product.imageUrl, href: catalogPath })))
       : Promise.all(departments.map(async department => {
         const products = await getWholesaleSelection(department.categorySlug);
         const product = products.find(item => Boolean(item.imageUrl));
-        return { label: department.name, title: product?.title || department.name, image: product?.imageUrl, href: `/mayorista/${department.slug}` };
+        return { label: department.name, title: product?.title || department.name, image: product?.imageUrl, href: `/catalogo?category=${department.categorySlug}` };
       })),
     !category || category.slug === "cosmetica-coreana" ? getWholesaleSelection("cosmetica-coreana", "Medicube") : Promise.resolve([]),
   ]);
@@ -74,15 +74,45 @@ export async function WholesaleLanding({ category }: { category?: WholesaleCateg
           </div>
           <nav aria-label="Marcas del catálogo" className={styles.brands}>{category.brands.map(brand => <Link key={brand} href={`/catalogo?brand=${encodeURIComponent(brand)}`}>{brand}<ArrowUpRight size={13} className="ml-3" /></Link>)}</nav>
         </> : <>
-          <div className={styles.sectionHead}><div><p className={styles.eyebrow}>Todo MYA, también por mayor</p><h2 className="mt-3">Elegí el rubro para tu negocio</h2></div><p>Para empezar, reponer o ampliar tu surtido. Todos los rubros del catálogo se pueden reunir en una misma consulta.</p></div>
-          <div className={styles.directory}>{departments.map((item, index) => <Link key={item.slug} href={`/mayorista/${item.slug}`} className={styles.category}><span className={styles.categoryNumber}>0{index + 1}</span><div><h3>{item.name}</h3><p>{item.brands.join(" · ")}</p></div><span className={styles.categoryArrow}><ArrowUpRight size={17} /></span></Link>)}</div>
+          <div className={styles.sectionHead}>
+            <div>
+              <p className={styles.eyebrow}>Todo MYA, también por mayor</p>
+              <h2 className="mt-3">Elegí la categoría en la tienda</h2>
+            </div>
+            <p>Todo el catálogo de la tienda está disponible para compras y cotizaciones mayoristas. Mínimo de 5 unidades o $100.000 combinables entre cualquier rubro.</p>
+          </div>
+          <div className={styles.directory}>
+            {departments.map((item, index) => {
+              const targetUrl = item.brand ? `/catalogo?brand=${encodeURIComponent(item.brand)}` : `/catalogo?category=${item.categorySlug}`;
+              return (
+                <Link key={item.slug} href={targetUrl} className={styles.category} title={`Ver ${item.name} en la tienda`}>
+                  <span className={styles.categoryNumber}>0{index + 1}</span>
+                  <div>
+                    <h3>{item.name}</h3>
+                    <p>{item.brands.join(" · ")}</p>
+                    <span className="mt-2 inline-flex items-center text-xs font-semibold text-sky-700">
+                      Ver catálogo completo en la tienda &rarr;
+                    </span>
+                  </div>
+                  <span className={styles.categoryArrow}><ArrowUpRight size={17} /></span>
+                </Link>
+              );
+            })}
+          </div>
         </>}
       </section>
 
       {category && <div className={styles.section}><WholesaleProducts category={category} /></div>}
 
       {(!category || category.slug === "cosmetica-coreana") && <section className={styles.feature}>
-        <div><p className={styles.eyebrow}>Skincare para revendedores</p><h2>Medicube, también por mayor.</h2><p>Prepará tu primer pedido o reponé tu tienda de skincare coreano. Podés combinar Medicube con otras marcas y productos de cualquier rubro para alcanzar el mínimo.</p><Link href="/mayorista/medicube" className={styles.featureLink}>Explorar Medicube por mayor <ArrowRight size={16} /></Link></div>
+        <div>
+          <p className={styles.eyebrow}>Skincare para revendedores</p>
+          <h2>Medicube, también por mayor.</h2>
+          <p>Prepará tu primer pedido o reponé tu tienda de skincare coreano. Todo el catálogo de Medicube está disponible para combinar con cualquier otro rubro.</p>
+          <Link href="/catalogo?brand=Medicube" className={styles.featureLink}>
+            Ver todos los productos Medicube en la tienda <ArrowRight size={16} />
+          </Link>
+        </div>
         {medicubeImage && <div className={styles.featureImage}><Image src={medicubeImage.imageUrl} alt={medicubeImage.title} fill sizes="(max-width: 767px) 80vw, 25vw" /></div>}
       </section>}
 
@@ -102,7 +132,7 @@ export async function WholesaleLanding({ category }: { category?: WholesaleCateg
         <div className={styles.questions}>{faq.map(item => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}</div>
       </section>
 
-      {category && <section className={styles.section}><h2 className={styles.heading}>Más para tu negocio.</h2><nav aria-label="Más opciones mayoristas" className={styles.brands}>{WHOLESALE_CATEGORIES.filter(item => item.slug !== category.slug).map(item => <Link key={item.slug} href={`/mayorista/${item.slug}`}>{item.name}<ArrowUpRight size={13} className="ml-3" /></Link>)}</nav></section>}
+      {category && <section className={styles.section}><h2 className={styles.heading}>Más categorías de la tienda para revender.</h2><nav aria-label="Más opciones mayoristas" className={styles.brands}>{WHOLESALE_CATEGORIES.filter(item => item.slug !== category.slug).map(item => <Link key={item.slug} href={item.brand ? `/catalogo?brand=${encodeURIComponent(item.brand)}` : `/catalogo?category=${item.categorySlug}`}>{item.name}<ArrowUpRight size={13} className="ml-3" /></Link>)}</nav></section>}
       <p className={styles.footnote}>¿Buscás una compra individual? <Link href={catalogPath}>Explorá el catálogo de la tienda</Link>, con precios minoristas. También podés revisar las <Link href="/condiciones">condiciones de compra y entrega</Link>.</p>
     </div>
   </div>;

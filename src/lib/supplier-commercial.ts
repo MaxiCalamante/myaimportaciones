@@ -228,3 +228,56 @@ export function calculateSuggestedRetailPrice(
     estimatedProfitArs: profitArs,
   };
 }
+
+/**
+ * Evalúa un precio de venta considerando simultáneamente el costo del mayorista
+ * y la referencia de mercado de Mercado Libre (si está disponible).
+ */
+export function evaluateWithMarketBenchmark(
+  landedCostArs: number,
+  currentPrice: number,
+  mlPrice: number | null,
+  categorySlugOrName?: string,
+  title?: string
+): {
+  suggestedPrice: number;
+  strategy: "market_competitive" | "cost_plus" | "margin_protected";
+  mlPrice: number | null;
+  notes: string;
+} {
+  const benchmark = getCategoryMarginBenchmark(categorySlugOrName, title);
+  const costBased = calculateSuggestedRetailPrice(landedCostArs, categorySlugOrName, title, { psychologicalEnding: true });
+
+  if (!mlPrice || mlPrice <= 0) {
+    return {
+      suggestedPrice: costBased.suggestedPrice,
+      strategy: "cost_plus",
+      mlPrice: null,
+      notes: "Sugerido según costo landed y benchmark de categoría.",
+    };
+  }
+
+  // Objetivo: ~8% por debajo de Mercado Libre
+  let mlSuggested = Math.round((mlPrice * 0.92) / 100) * 100;
+  if (mlSuggested > 1000 && mlSuggested % 1000 === 0) {
+    mlSuggested -= 100;
+  }
+
+  const floorPrice = landedCostArs > 0 ? landedCostArs / (1 - benchmark.minMargin / 100) : 0;
+
+  if (mlSuggested >= floorPrice) {
+    return {
+      suggestedPrice: mlSuggested,
+      strategy: "market_competitive",
+      mlPrice,
+      notes: `8% por debajo de Mercado Libre ($${mlPrice.toLocaleString("es-AR")}) manteniendo margen sano.`,
+    };
+  }
+
+  return {
+    suggestedPrice: costBased.suggestedPrice,
+    strategy: "margin_protected",
+    mlPrice,
+    notes: `Precio protegido por margen mínimo; el precio de ML es inferior al costo seguro.`,
+  };
+}

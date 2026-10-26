@@ -1,10 +1,18 @@
 "use server";
+import {
+  getProductMarketComparisons,
+  applyCompetitivePrice,
+  linkMercadoLibreReference,
+  bulkApplyRecommendedRaises,
+  type MarketComparisonFilterParams,
+} from "@/lib/mercadolibre-pricing";
 import { AdminFormError, runAdminFormAction } from "@/lib/admin-action-result";
 import { scheduleTransactionalEmails } from "@/lib/email-worker";
 import { revalidatePath } from "next/cache";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { readAdminProducts } from "@/lib/admin-catalog-read";
 import { getAdminClient } from "@/lib/admin-auth";
+import { createCommerceService } from "@/lib/supabase/service";
 import { parseProductForm, productImageUrl, httpsUrl, validId, validateImageContent } from "@/lib/admin-product";
 import { prepareProductImages, cleanupOrphanProductImages } from "@/lib/admin-media";
 import { checkAndAlertSuddenPriceChange, getPriceAlertThreshold } from "@/lib/price-alert";
@@ -17,6 +25,12 @@ import {
   type CatalogSyncProgress,
   type AutoHuntResult,
 } from "@/lib/supplier-sync";
+import {
+  searchSupplierOpportunities,
+  importSupplierOpportunity,
+  type OpportunitySearchParams,
+  type ImportOpportunityInput,
+} from "@/lib/supplier-opportunities";
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -426,8 +440,9 @@ export async function toggleProductSupplierAvailabilityAction(productId: string,
 }
 
 export async function checkSingleProductSupplierStockAction(productId: string): Promise<SupplierCheckResult> {
-  const supabase = await getAdminClient();
-  const result = await checkAndUpdateProductSupplierStock(productId, supabase);
+  await getAdminClient();
+  const db = createCommerceService();
+  const result = await checkAndUpdateProductSupplierStock(productId, db);
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/catalogo");
@@ -435,8 +450,9 @@ export async function checkSingleProductSupplierStockAction(productId: string): 
 }
 
 export async function triggerBatchSupplierSyncAction(limit: number = 30) {
-  const supabase = await getAdminClient();
-  const report = await runBatchSupplierStockSync({ limit, client: supabase });
+  await getAdminClient();
+  const db = createCommerceService();
+  const report = await runBatchSupplierStockSync({ limit, client: db });
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/catalogo");
@@ -444,15 +460,17 @@ export async function triggerBatchSupplierSyncAction(limit: number = 30) {
 }
 
 export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
-  const supabase = await getAdminClient();
-  const progress = await runCatalogSyncChunk({ offset, limit, client: supabase });
+  await getAdminClient();
+  const db = createCommerceService();
+  const progress = await runCatalogSyncChunk({ offset, limit, client: db });
   invalidateAdminStorefrontCache();
   return progress;
 }
 
 export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promise<AutoHuntResult> {
-  const supabase = await getAdminClient();
-  const result = await huntSuppliersForUnlinkedProducts({ limit, client: supabase });
+  await getAdminClient();
+  const db = createCommerceService();
+  const result = await huntSuppliersForUnlinkedProducts({ limit, client: db });
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   revalidatePath("/catalogo");
@@ -460,11 +478,12 @@ export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promis
 }
 
 export async function toggleAutoPauseWhenOutOfStockAction(enabled: boolean) {
-  const supabase = await getAdminClient();
-  const { data: current } = await supabase.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle();
+  await getAdminClient();
+  const db = createCommerceService();
+  const { data: current } = await db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle();
   const cfg = (current?.config ?? {}) as Record<string, unknown>;
   const updatedConfig = { ...cfg, autoPauseWhenOutOfStock: enabled };
-  const { error } = await supabase.from("supplier_tracking_settings").update({
+  const { error } = await db.from("supplier_tracking_settings").update({
     config: updatedConfig,
     updated_at: new Date().toISOString(),
   }).eq("id", true);
@@ -475,6 +494,7 @@ export async function toggleAutoPauseWhenOutOfStockAction(enabled: boolean) {
 
 export async function quickUpdateProductPriceAction(productId: string, retailPrice: number, wholesalePrice?: number) {
   const supabase = await getAdminClient();
+  const db = createCommerceService();
   if (!Number.isFinite(retailPrice) || retailPrice <= 0) throw new Error("El precio minorista debe ser mayor a cero.");
   if (wholesalePrice !== undefined && (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) throw new Error("El precio mayorista no es válido.");
 
@@ -491,7 +511,7 @@ export async function quickUpdateProductPriceAction(productId: string, retailPri
   if (wholesalePrice !== undefined && wholesalePrice >= 0) {
     updateData.wholesale_price = wholesalePrice;
   }
-  const { error } = await supabase
+  const { error } = await db
     .from("products")
     .update(updateData)
     .eq("id", productId);
@@ -1772,11 +1792,12 @@ export async function quickUpdateSupplierLinkAction(
   fulfillmentMode: "own_stock" | "supplier" = "supplier",
   supplierAvailable: boolean = true
 ) {
-  const supabase = await getAdminClient();
+  await getAdminClient();
+  const db = createCommerceService();
   const cleanUrl = httpsUrl(sourceUrl.trim(), "Proveedor");
   validId(productId);
   if (livePrice !== undefined && livePrice !== null && (!Number.isFinite(livePrice) || livePrice < 0)) throw new Error("Costo de proveedor inválido.");
-  const { error: modeError } = await supabase.rpc("set_product_fulfillment_v1", { product_id_input: productId, mode_input: fulfillmentMode, available_input: supplierAvailable });
+  const { error: modeError } = await db.rpc("set_product_fulfillment_v1", { product_id_input: productId, mode_input: fulfillmentMode, available_input: supplierAvailable });
   if (modeError) throw new Error("No se pudo cambiar la modalidad. Revisá las reservas pendientes.");
   const updateData: Record<string, unknown> = {
     source_url: cleanUrl || null,
@@ -1791,7 +1812,7 @@ export async function quickUpdateSupplierLinkAction(
   updateData.supplier_last_checked_at = null;
   updateData.supplier_stock_status = "unknown";
 
-  const { error } = await supabase
+  const { error } = await db
     .from("products")
     .update(updateData)
     .eq("id", productId);
@@ -1803,4 +1824,43 @@ export async function quickUpdateSupplierLinkAction(
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
   return { success: true };
+}
+
+
+export async function searchSupplierOpportunitiesAction(params: OpportunitySearchParams = {}) {
+  await getAdminClient();
+  return searchSupplierOpportunities(params);
+}
+
+export async function importSupplierOpportunityAction(input: ImportOpportunityInput) {
+  await getAdminClient();
+  const res = await importSupplierOpportunity(input);
+  invalidateAdminStorefrontCache();
+  return res;
+}
+
+export async function getProductMarketComparisonsAction(params: MarketComparisonFilterParams = {}) {
+  await getAdminClient();
+  return getProductMarketComparisons(params);
+}
+
+export async function applyCompetitivePriceAction(productId: string, newPrice: number) {
+  await getAdminClient();
+  const res = await applyCompetitivePrice(productId, newPrice);
+  invalidateAdminStorefrontCache();
+  return res;
+}
+
+export async function linkMercadoLibreReferenceAction(productId: string, url: string, price: number) {
+  await getAdminClient();
+  const res = await linkMercadoLibreReference(productId, url, price);
+  invalidateAdminStorefrontCache();
+  return res;
+}
+
+export async function bulkApplyRecommendedRaisesAction(productIds?: string[]) {
+  await getAdminClient();
+  const res = await bulkApplyRecommendedRaises(productIds);
+  invalidateAdminStorefrontCache();
+  return res;
 }
