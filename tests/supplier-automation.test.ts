@@ -29,4 +29,9 @@ test('comparable exige identidad y sitio argentino, sin SSRF',()=>{
  for(const u of ['javascript:alert(1)','http://tienda.com.ar/x','https://localhost/x','https://127.0.0.1/x','https://tienda.internal/x'])assert.throws(()=>manualMarketUrl(u));
  assert.equal(manualMarketUrl('https://tienda.com.ar/producto'),'https://tienda.com.ar/producto');
 });
-test('parámetros de automatización rechazan valores peligrosos',()=>{const c={enabled:true,autoStock:true,autoPrices:true,acquisitionArsPerUsd:1600,fxConfirmedOn:'2026-10-20',shippingPaidByMya:false,shippingArs:0,targetMarginPercent:20,marketDiscountPercent:10,roundArs:100,maxPriceChangePercent:20,freshnessHours:24,marketFreshnessHours:48,fxValidityHours:72,notes:''}satisfies TrackingConfig;assert.equal(validateTrackingConfig(c),c);for(const p of[{acquisitionArsPerUsd:0},{targetMarginPercent:100},{marketDiscountPercent:100},{roundArs:0},{maxPriceChangePercent:101}])assert.throws(()=>validateTrackingConfig({...c,...p}));});
+test('parámetros de automatización rechazan valores peligrosos y soportan autoPauseWhenOutOfStock',()=>{
+ const c={enabled:true,autoStock:true,autoPrices:true,autoPauseWhenOutOfStock:true,acquisitionArsPerUsd:1600,fxConfirmedOn:'2026-10-20',shippingPaidByMya:false,shippingArs:0,targetMarginPercent:20,marketDiscountPercent:10,roundArs:100,maxPriceChangePercent:20,freshnessHours:24,marketFreshnessHours:48,fxValidityHours:72,notes:''}satisfies TrackingConfig;
+ assert.equal(validateTrackingConfig(c),c);
+ assert.equal(validateTrackingConfig({...c, autoPauseWhenOutOfStock: false}).autoPauseWhenOutOfStock, false);
+ for(const p of[{acquisitionArsPerUsd:0},{targetMarginPercent:100},{marketDiscountPercent:100},{roundArs:0},{maxPriceChangePercent:101}])assert.throws(()=>validateTrackingConfig({...c,...p}));
+});

@@ -5,6 +5,8 @@ import {
   getCategoryMarginBenchmark,
   calculateCommercialMargin,
   evaluateCommercialMargin,
+  calculateLandedCostArs,
+  calculateSuggestedRetailPrice,
 } from "../src/lib/supplier-commercial";
 
 test("supplier-commercial: getCategoryMarginBenchmark resolves correct benchmarks by category or keywords", () => {
@@ -67,4 +69,45 @@ test("supplier-commercial: evaluateCommercialMargin correctly classifies health 
   const iphone = evaluateCommercialMargin(1450000, 1200000, "electronica");
   assert.equal(iphone.status, "adecuado");
   assert.equal(iphone.isHealthy, true);
+});
+
+test("supplier-commercial: calculateLandedCostArs calculates base ARS, pasero fee and landed total", () => {
+  // USD 15.50 at fx 1600 with 20% pasero:
+  // Base ARS = 15.50 * 1600 = 24.800
+  // Pasero Fee = 24.800 * 0.20 = 4.960
+  // Total Landed = 24.800 + 4.960 = 29.760
+  const landed = calculateLandedCostArs(15.50, 1600, 20);
+  assert.equal(landed.costUsd, 15.50);
+  assert.equal(landed.exchangeRate, 1600);
+  assert.equal(landed.baseArs, 24800);
+  assert.equal(landed.paseroFeeArs, 4960);
+  assert.equal(landed.totalLandedArs, 29760);
+
+  // Default parameters: fx 1600, pasero 20%
+  const defaultCalc = calculateLandedCostArs(10);
+  assert.equal(defaultCalc.baseArs, 16000);
+  assert.equal(defaultCalc.paseroFeeArs, 3200);
+  assert.equal(defaultCalc.totalLandedArs, 19200);
+
+  // Edge cases (zero or negative)
+  assert.equal(calculateLandedCostArs(0).totalLandedArs, 0);
+  assert.equal(calculateLandedCostArs(-5).totalLandedArs, 0);
+});
+
+test("supplier-commercial: calculateSuggestedRetailPrice calculates competitive selling price with psychological endings", () => {
+  // Perfumería: benchmark 50% margin. Cost landed = 29.760
+  // Formula: retail = cost / (1 - margin) = 29.760 / 0.50 = 59.520
+  // Rounded to psychological ending -> 59.900 (attractive price)
+  const perfPrice = calculateSuggestedRetailPrice(29760, "perfumeria", "Lattafa Yara", { psychologicalEnding: true });
+  assert.ok(perfPrice.suggestedPrice > 29760);
+  assert.equal(perfPrice.benchmark.benchmarkMargin, 50);
+  assert.equal(perfPrice.suggestedPrice % 100, 0); // Rounded cleanly
+  // Margen resultante >= 49%
+  assert.ok(perfPrice.estimatedMarginPercent >= 49);
+
+  // Herramientas: benchmark 30% margin. Cost landed = 70.000
+  // Retail raw = 70.000 / 0.70 = 100.000
+  const toolPrice = calculateSuggestedRetailPrice(70000, "herramientas-equipamiento", "Taladro Total", { psychologicalEnding: true });
+  assert.ok(toolPrice.suggestedPrice >= 99000);
+  assert.ok(toolPrice.estimatedMarginPercent >= 28);
 });

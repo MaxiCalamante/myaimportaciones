@@ -33,6 +33,7 @@ import {
   Clock,
   ShieldAlert,
   History,
+  Sparkles,
   Download,
   Bell,
 } from "lucide-react";
@@ -55,7 +56,16 @@ import {
   quickUpdateSupplierLinkAction,
   exportProductAuditLogsCsvAction,
   updatePriceAlertThresholdAction,
+  syncCatalogChunkAction,
+  autoHuntUnlinkedProductsAction,
+  toggleAutoPauseWhenOutOfStockAction,
 } from "@/app/admin/actions";
+import {
+  calculateLandedCostArs,
+  calculateSuggestedRetailPrice,
+  getCategoryMarginBenchmark,
+  evaluateCommercialMargin,
+} from "@/lib/supplier-commercial";
 
 interface ProductControlCenterProps {
   products: Product[];
@@ -114,6 +124,23 @@ export function ProductControlCenter({
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verificationFeedback, setVerificationFeedback] = useState<Record<string, { message: string; ok: boolean }>>({});
   const [isBatchSyncRunning, setIsBatchSyncRunning] = useState(false);
+  const [isFullSyncRunning, setIsFullSyncRunning] = useState(false);
+  const [fullSyncProgress, setFullSyncProgress] = useState<{
+    processed: number;
+    total: number;
+    inStock: number;
+    outOfStock: number;
+    pausedCount: number;
+    reactivatedCount: number;
+    errors: number;
+  } | null>(null);
+  const [isAutoHunting, setIsAutoHunting] = useState(false);
+  const [autoHuntReport, setAutoHuntReport] = useState<{
+    totalUnlinked: number;
+    checked: number;
+    matchedAndActivated: number;
+    keptInPause: number;
+  } | null>(null);
   const [batchSyncReport, setBatchSyncReport] = useState<{
     total: number;
     checked: number;
@@ -379,6 +406,80 @@ export function ProductControlCenter({
         showToast(err instanceof Error ? err.message : "Error en sincronización por lote.", "error");
       } finally {
         setIsBatchSyncRunning(false);
+      }
+    });
+  };
+
+  const handleFullCatalogSync = async () => {
+    setIsFullSyncRunning(true);
+    let offset = 0;
+    const limit = 15;
+    let total = 0;
+    let inStock = 0;
+    let outOfStock = 0;
+    let pausedCount = 0;
+    let reactivatedCount = 0;
+    let errors = 0;
+
+    try {
+      while (true) {
+        const progress = await syncCatalogChunkAction(offset, limit);
+        total = progress.total;
+        inStock += progress.inStock;
+        outOfStock += progress.outOfStock;
+        pausedCount += progress.pausedCount;
+        reactivatedCount += progress.reactivatedCount;
+        errors += progress.errors;
+
+        setFullSyncProgress({
+          processed: progress.processed,
+          total: progress.total,
+          inStock,
+          outOfStock,
+          pausedCount,
+          reactivatedCount,
+          errors,
+        });
+
+        if (progress.done || !progress.nextOffset) {
+          break;
+        }
+        offset = progress.nextOffset;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      router.refresh();
+      showToast(
+        `Sincronización completa finalizada: ${inStock} disponibles, ${pausedCount} pausados sin stock, ${reactivatedCount} reactivados.`,
+        "success"
+      );
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Error durante la sincronización continua.", "error");
+    } finally {
+      setIsFullSyncRunning(false);
+    }
+  };
+
+  const handleAutoHuntUnlinked = () => {
+    setIsAutoHunting(true);
+    startTransition(async () => {
+      try {
+        const report = await autoHuntUnlinkedProductsAction(30);
+        setAutoHuntReport({
+          totalUnlinked: report.totalUnlinked,
+          checked: report.checked,
+          matchedAndActivated: report.matchedAndActivated,
+          keptInPause: report.keptInPause,
+        });
+        router.refresh();
+        showToast(
+          `Cazador de proveedores: ${report.matchedAndActivated} emparejados al menor costo y activados; ${report.keptInPause} quedaron en pausa.`,
+          "success"
+        );
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : "Error al rastrear proveedores.", "error");
+      } finally {
+        setIsAutoHunting(false);
       }
     });
   };
@@ -670,52 +771,65 @@ export function ProductControlCenter({
       </div>
 
       {/* Supplier Batch Sync Banner / Automation Controls */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 shadow-xs">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-xs">
-            <RefreshCw className={`h-5 w-5 ${isBatchSyncRunning ? "animate-spin" : ""}`} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-zinc-900">Control & Sincronización Automática con Mayorista</h3>
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                Programado diariamente, 06:00 UTC
-              </span>
+      <div className="flex flex-col gap-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 shadow-xs">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-xs">
+              <RefreshCw className={`h-5 w-5 ${isFullSyncRunning || isBatchSyncRunning ? "animate-spin" : ""}`} />
             </div>
-            <p className="text-xs text-zinc-600 mt-0.5">
-              La sincronización consulta la web del proveedor (Total Tools / Wadfow / Atacado USA). Cuando confirma que un
-              producto se agotó, pausa su disponibilidad para prevenir ventas sin stock.
-            </p>
-            {batchSyncReport && (
-              <p className="text-xs text-sky-800 font-semibold mt-1">
-                Último reporte ({batchSyncReport.timestamp}): {batchSyncReport.checked} revisados · {batchSyncReport.inStock} con
-                stock · {batchSyncReport.outOfStock} sin stock pausados · {batchSyncReport.errors} sin respuesta.
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-zinc-900">Sincronización Total & Abastecimiento Mayorista</h3>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                  Nube 24/7 + Control en Vivo
+                </span>
+              </div>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                Evalúa todas las ofertas mayoristas vinculadas, elige la más barata con stock y pausa automáticamente publicaciones agotadas.
               </p>
-            )}
+              {batchSyncReport && (
+                <p className="text-xs text-sky-800 font-semibold mt-1">
+                  Último reporte ({batchSyncReport.timestamp}): {batchSyncReport.checked} revisados · {batchSyncReport.inStock} con
+                  stock · {batchSyncReport.outOfStock} sin stock pausados · {batchSyncReport.errors} sin respuesta.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            disabled={isBatchSyncRunning || isPending}
-            onClick={handleTriggerBatchSync}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-sky-700 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-          >
-            <RefreshCw className={`h-4 w-4 ${isBatchSyncRunning ? "animate-spin" : ""}`} />
-            {isBatchSyncRunning ? "Verificando en vivo..." : "Sincronizar Lote Ahora"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Auto-Hunter for Unlinked Products */}
+            <button
+              type="button"
+              disabled={isAutoHunting || isFullSyncRunning || isPending}
+              onClick={handleAutoHuntUnlinked}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+              title="Busca en los 7 mayoristas para productos sin proveedor. Si no hay stock, los mantiene en pausa."
+            >
+              <Sparkles className={`h-4 w-4 ${isAutoHunting ? "animate-spin" : ""}`} />
+              {isAutoHunting ? "Rastreando en los 7 mayoristas..." : `Cazador de Proveedores (${stats.withoutSupplierLink})`}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setShowStockAudit(!showStockAudit)}
-            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold border transition-all cursor-pointer shadow-xs ${
-              showStockAudit ? "bg-zinc-200 border-zinc-300 text-zinc-900" : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-            }`}
-          >
-            <TrendingUp className="h-4 w-4 text-zinc-500" />
-            {showStockAudit ? "Ocultar Auditoría" : "Auditoría de Stock"}
-          </button>
+            {/* Continuous Full Catalog Sync */}
+            <button
+              type="button"
+              disabled={isFullSyncRunning || isAutoHunting || isPending}
+              onClick={handleFullCatalogSync}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-sky-700 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFullSyncRunning ? "animate-spin" : ""}`} />
+              {isFullSyncRunning ? "Sincronizando Catálogo..." : "Sincronizar Catálogo Completo"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowStockAudit(!showStockAudit)}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold border transition-all cursor-pointer shadow-xs ${
+                showStockAudit ? "bg-zinc-200 border-zinc-300 text-zinc-900" : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              <TrendingUp className="h-4 w-4 text-zinc-500" />
+              {showStockAudit ? "Ocultar Auditoría" : "Auditoría de Stock"}
+            </button>
 
           <button
             type="button"
@@ -760,6 +874,39 @@ export function ProductControlCenter({
           )}
         </div>
       </div>
+
+      {/* Full Sync Progress Bar and Live Stats */}
+      {fullSyncProgress && (
+        <div className="rounded-xl border border-sky-200 bg-white p-3.5 shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-sky-900">
+              Sincronización en curso: {fullSyncProgress.processed} de {fullSyncProgress.total} productos ({Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100)}%)
+            </span>
+            <span className="text-zinc-500 font-semibold">
+              {fullSyncProgress.inStock} disponibles · {fullSyncProgress.pausedCount} pausados · {fullSyncProgress.reactivatedCount} reactivados
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+            <div
+              className="h-full bg-sky-600 transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100))}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Auto Hunt Report */}
+      {autoHuntReport && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs flex items-center justify-between text-emerald-950 font-semibold">
+          <span>
+            🎯 Auto-Hunter: {autoHuntReport.matchedAndActivated} productos emparejados con mayorista y activados en tienda.
+          </span>
+          <span className="text-zinc-600 font-medium">
+            {autoHuntReport.keptInPause} quedaron en pausa por falta de stock.
+          </span>
+        </div>
+      )}
+    </div>
 
       {/* Stock Audit Table (Expandable) */}
       {showStockAudit && (
@@ -2355,6 +2502,7 @@ export function ProductControlCenter({
       {quickSupplierProduct && (
         <QuickSupplierModal
           product={quickSupplierProduct}
+          categories={categories}
           onClose={() => setQuickSupplierProduct(null)}
           onSaved={() => {
             setQuickSupplierProduct(null);
@@ -2383,10 +2531,12 @@ export function ProductControlCenter({
 // -------------------------------------------------------------
 function QuickSupplierModal({
   product,
+  categories = [],
   onClose,
   onSaved,
 }: {
   product: Product;
+  categories?: Category[];
   onClose: () => void;
   onSaved: (
     sourceUrl: string,
@@ -2398,6 +2548,13 @@ function QuickSupplierModal({
   ) => void;
 }) {
   const [sourceUrl, setSourceUrl] = useState(product.sourceUrl || "");
+  const [currencyMode, setCurrencyMode] = useState<"USD" | "ARS">("USD");
+  const [costUsd, setCostUsd] = useState<number | "">(
+    product.supplierLivePrice ? Math.round((Number(product.supplierLivePrice) / 1920) * 100) / 100 : ""
+  );
+  const [exchangeRate, setExchangeRate] = useState<number>(1600);
+  const [paseroFeePercent, setPaseroFeePercent] = useState<number>(20);
+
   const [livePrice, setLivePrice] = useState<number | "">(
     product.supplierLivePrice !== null && product.supplierLivePrice !== undefined
       ? Number(product.supplierLivePrice)
@@ -2414,16 +2571,61 @@ function QuickSupplierModal({
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
 
+  const category = categories.find((c) => c.id === product.categoryId);
+
+  // Compute landed cost breakdown when entering USD
+  const landedBreakdown = useMemo(() => {
+    if (costUsd === "" || Number(costUsd) <= 0) return null;
+    return calculateLandedCostArs(Number(costUsd), exchangeRate, paseroFeePercent);
+  }, [costUsd, exchangeRate, paseroFeePercent]);
+
+  const handleCostUsdChange = (val: number | "") => {
+    setCostUsd(val);
+    if (val !== "" && Number(val) > 0) {
+      const calc = calculateLandedCostArs(Number(val), exchangeRate, paseroFeePercent);
+      setLivePrice(calc.totalLandedArs);
+    } else {
+      setLivePrice("");
+    }
+  };
+
+  const handleExchangeRateChange = (rate: number) => {
+    setExchangeRate(rate);
+    if (costUsd !== "" && Number(costUsd) > 0) {
+      const calc = calculateLandedCostArs(Number(costUsd), rate, paseroFeePercent);
+      setLivePrice(calc.totalLandedArs);
+    }
+  };
+
+  const handlePaseroChange = (pct: number) => {
+    setPaseroFeePercent(pct);
+    if (costUsd !== "" && Number(costUsd) > 0) {
+      const calc = calculateLandedCostArs(Number(costUsd), exchangeRate, pct);
+      setLivePrice(calc.totalLandedArs);
+    }
+  };
+
+  // Benchmark for this category
+  const benchmark = useMemo(() => {
+    return getCategoryMarginBenchmark(category?.slug, product.title);
+  }, [category, product.title]);
+
+  // Suggested selling price
+  const priceSuggestion = useMemo(() => {
+    const cost = Number(livePrice) || 0;
+    if (cost <= 0) return null;
+    return calculateSuggestedRetailPrice(cost, category?.slug, product.title, { psychologicalEnding: true });
+  }, [livePrice, category, product.title]);
+
+  // Live Commercial Margin evaluation
   const marginStats = useMemo(() => {
     const cost = Number(livePrice) || 0;
     const retail = Number(retailPrice) || 0;
     if (cost > 0 && retail > 0) {
-      const profit = retail - cost;
-      const margin = Math.round((profit / retail) * 100);
-      return { cost, retail, profit, margin };
+      return evaluateCommercialMargin(retail, cost, category?.slug, product.title);
     }
     return null;
-  }, [livePrice, retailPrice]);
+  }, [livePrice, retailPrice, category, product.title]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2520,51 +2722,192 @@ function QuickSupplierModal({
             </p>
           </div>
 
-          {/* Supplier Cost & Selling Price */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="space-y-1">
+          {/* Supplier Cost Calculation */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-zinc-700">
-                Costo en Proveedor ($ ARS)
+                Costo en Proveedor & Pasero
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={livePrice}
-                  onChange={(e) => setLivePrice(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="Ej. 35000"
-                  className="w-full h-10 rounded-xl border border-zinc-300 bg-white pl-7 pr-3 text-xs font-bold text-zinc-900 focus:border-sky-600 outline-none"
-                />
+              <div className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrencyMode("USD");
+                    if (costUsd !== "" && Number(costUsd) > 0) {
+                      setLivePrice(calculateLandedCostArs(Number(costUsd), exchangeRate, paseroFeePercent).totalLandedArs);
+                    }
+                  }}
+                  className={`rounded-md px-2 py-0.5 transition-colors cursor-pointer ${
+                    currencyMode === "USD" ? "bg-white text-sky-800 shadow-2xs" : "text-zinc-500 hover:text-zinc-800"
+                  }`}
+                >
+                  USD (Dólar × 1600 + 20%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrencyMode("ARS")}
+                  className={`rounded-md px-2 py-0.5 transition-colors cursor-pointer ${
+                    currencyMode === "ARS" ? "bg-white text-sky-800 shadow-2xs" : "text-zinc-500 hover:text-zinc-800"
+                  }`}
+                >
+                  Pesos (ARS directo)
+                </button>
               </div>
             </div>
 
-            <div className="space-y-1">
+            {currencyMode === "USD" ? (
+              <div className="space-y-2 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-sky-900">
+                      Costo USD
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">US$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={costUsd}
+                        onChange={(e) => handleCostUsdChange(e.target.value === "" ? "" : Number(e.target.value))}
+                        placeholder="15.50"
+                        className="w-full h-9 rounded-lg border border-sky-200 bg-white pl-8 pr-2 text-xs font-bold text-zinc-900 focus:border-sky-600 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                      Dólar ($ ARS)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={exchangeRate}
+                      onChange={(e) => handleExchangeRateChange(Number(e.target.value))}
+                      className="w-full h-9 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-800 focus:border-sky-600 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                      Pasero (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={paseroFeePercent}
+                      onChange={(e) => handlePaseroChange(Number(e.target.value))}
+                      className="w-full h-9 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-800 focus:border-sky-600 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {landedBreakdown && (
+                  <div className="rounded-lg bg-white border border-sky-200/80 p-2.5 text-xs space-y-1 shadow-2xs">
+                    <div className="flex justify-between text-zinc-600 text-[11px]">
+                      <span>Mercadería (USD × {exchangeRate}):</span>
+                      <span className="font-semibold">{formatCurrency(landedBreakdown.baseArs)}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-600 text-[11px]">
+                      <span>Pasero ({paseroFeePercent}% del valor):</span>
+                      <span className="font-semibold text-amber-700">+{formatCurrency(landedBreakdown.paseroArs)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-zinc-950 pt-1 border-t border-zinc-100 text-xs">
+                      <span>Costo Landed Puesto en Mano:</span>
+                      <span className="text-sky-950 font-extrabold">{formatCurrency(landedBreakdown.totalLandedArs)} ARS</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={livePrice}
+                    onChange={(e) => setLivePrice(e.target.value === "" ? "" : Number(e.target.value))}
+                    placeholder="Ej. 35000"
+                    className="w-full h-10 rounded-xl border border-zinc-300 bg-white pl-7 pr-3 text-xs font-bold text-zinc-900 focus:border-sky-600 outline-none"
+                  />
+                </div>
+                {livePrice && Number(livePrice) > 0 && (
+                  <p className="text-[10px] text-zinc-400">
+                    Equivalente a US$ {(Number(livePrice) / (exchangeRate * (1 + paseroFeePercent / 100))).toFixed(2)} USD (con pasero y dólar a ${exchangeRate}).
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Pricing & Category Benchmark Suggestion */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-zinc-700">
                 Precio Minorista Venta ($ ARS)
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">$</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={retailPrice}
-                  onChange={(e) => setRetailPrice(Number(e.target.value))}
-                  className="w-full h-10 rounded-xl border border-zinc-300 bg-white pl-7 pr-3 text-xs font-bold text-zinc-950 focus:border-emerald-600 outline-none"
-                />
+              {priceSuggestion && (
+                <button
+                  type="button"
+                  onClick={() => setRetailPrice(priceSuggestion.suggestedPrice)}
+                  className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-900 hover:bg-emerald-200 transition-colors cursor-pointer"
+                  title="Fijar precio recomendado para obtener el margen ideal del rubro"
+                >
+                  <Sparkles className="h-3 w-3 text-emerald-700" />
+                  Aplicar sugerido ({formatCurrency(priceSuggestion.suggestedPrice)})
+                </button>
+              )}
+            </div>
+
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">$</span>
+              <input
+                type="number"
+                min="1"
+                value={retailPrice}
+                onChange={(e) => setRetailPrice(Number(e.target.value))}
+                className="w-full h-10 rounded-xl border border-zinc-300 bg-white pl-7 pr-3 text-xs font-bold text-zinc-950 focus:border-emerald-600 outline-none"
+              />
+            </div>
+
+            {/* Rubro & Benchmark Info */}
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block">Rubro detectado</span>
+                <span className="font-semibold text-zinc-800">{benchmark.name} ({benchmark.benchmarkMargin}% margen sugerido)</span>
               </div>
+              {priceSuggestion && (
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block">Precio óptimo</span>
+                  <strong className="text-emerald-800 text-xs font-extrabold">{formatCurrency(priceSuggestion.suggestedPrice)}</strong>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Live Margin Calculation */}
+          {/* Live Commercial Margin Evaluation */}
           {marginStats && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 flex items-center justify-between text-xs">
+            <div className={`rounded-xl border p-3 flex items-center justify-between text-xs ${
+              marginStats.status === "excelente"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                : marginStats.status === "adecuado"
+                ? "bg-sky-50 border-sky-200 text-sky-950"
+                : "bg-amber-50 border-amber-200 text-amber-950"
+            }`}>
               <div>
-                <span className="text-[11px] text-zinc-500 font-semibold block">Diferencia antes de envío y cargos:</span>
-                <strong className="text-sm font-extrabold text-emerald-950">
-                  {marginStats.margin}% ({formatCurrency(marginStats.profit)})
+                <span className="text-[10px] font-bold uppercase tracking-wider block opacity-70">
+                  Rentabilidad estimada ({marginStats.status.toUpperCase()}):
+                </span>
+                <strong className="text-sm font-black">
+                  {marginStats.marginPercent}% de margen · {formatCurrency((Number(retailPrice) || 0) - (Number(livePrice) || 0))} ganancia
                 </strong>
               </div>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-extrabold shadow-2xs">
+                Mínimo: {marginStats.minMargin}%
+              </span>
             </div>
           )}
 

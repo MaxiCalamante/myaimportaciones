@@ -5,7 +5,7 @@ import { observationFromPublic, titleIdentity } from "./supplier-public-data";
 import {parseObservation,type IntelligenceSupplier,type SupplierOffer} from "./supplier-intelligence";
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
 
-export interface TrackingConfig {enabled:boolean;autoStock:boolean;autoPrices:boolean;acquisitionArsPerUsd:number;fxConfirmedOn:string;shippingPaidByMya:boolean;shippingArs:number;targetMarginPercent:number;marketDiscountPercent:number;productDiscountPercent?:Record<string,number>;roundArs:number;maxPriceChangePercent:number;freshnessHours:number;marketFreshnessHours:number;fxValidityHours:number;notes:string}
+export interface TrackingConfig {enabled:boolean;autoStock:boolean;autoPrices:boolean;autoPauseWhenOutOfStock?:boolean;acquisitionArsPerUsd:number;fxConfirmedOn:string;shippingPaidByMya:boolean;shippingArs:number;targetMarginPercent:number;marketDiscountPercent:number;productDiscountPercent?:Record<string,number>;roundArs:number;maxPriceChangePercent:number;freshnessHours:number;marketFreshnessHours:number;fxValidityHours:number;notes:string}
 export interface SyncJob {id:string;supplier_id:string;product_id:string|null;variant_id:string|null;offer_id:string|null;source_url:string;attempts:number}
 const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const robotCache=new Map<string,Promise<{disallow:string[];delay:number}>>();
@@ -30,6 +30,7 @@ export async function publicReadRules(url:string){
 }
 export function validateTrackingConfig(c:TrackingConfig){
   if(!c||[c.enabled,c.autoStock,c.autoPrices,c.shippingPaidByMya].some(v=>typeof v!=='boolean'))throw new Error('Configuración de seguimiento inválida.');
+  if(c.autoPauseWhenOutOfStock!==undefined&&typeof c.autoPauseWhenOutOfStock!=='boolean')throw new Error('Configuración de pausa automática inválida.');
   for(const key of ['acquisitionArsPerUsd','shippingArs','targetMarginPercent','marketDiscountPercent','roundArs','maxPriceChangePercent','freshnessHours','marketFreshnessHours','fxValidityHours']as const)if(!Number.isFinite(c[key])||c[key]<0)throw new Error(`Revisá ${key}.`);
   if(c.acquisitionArsPerUsd<=0||c.roundArs<=0||c.marketDiscountPercent>=100||c.targetMarginPercent>=100||c.maxPriceChangePercent>100||!/^\d{4}-\d{2}-\d{2}$/.test(c.fxConfirmedOn)||c.freshnessHours<1||c.fxValidityHours<1||c.notes.length>5000)throw new Error('Revisá cotización, margen, descuento y vigencia.');
   if(c.productDiscountPercent&&Object.entries(c.productDiscountPercent).some(([id,v])=>!/^[-\da-f]{36}$/i.test(id)||!Number.isFinite(v)||v<0||v>=100))throw new Error('Descuento particular inválido.');
@@ -63,7 +64,14 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
     const offerId=String(result.data);
     const saved=await db.from('supplier_sync_queue').update({offer_id:offerId,state:'ready',attempts:0,last_error:null,last_success_at:stamp,leased_until:null,next_run_at:new Date(Date.now()+6*3600000).toISOString(),updated_at:stamp}).eq('id',job.id);
     if(saved.error)throw new Error('La evidencia se guardó pero no se actualizó la cola.');
-    if(config.autoStock&&job.product_id){const stock=await db.rpc('refresh_supplier_availability_v1',{product_input:job.product_id});if(stock.error)throw new Error(stock.error.message);}
+    if(config.autoStock&&job.product_id){
+      const stock=await db.rpc('refresh_supplier_availability_v1',{product_input:job.product_id});
+      if(stock.error)throw new Error(stock.error.message);
+      if(config.autoPauseWhenOutOfStock!==false){
+        const hasStock=Boolean(stock.data);
+        await db.from('products').update({is_active:hasStock,updated_at:stamp}).eq('id',job.product_id).eq('fulfillment_mode','supplier');
+      }
+    }
     await db.from('supplier_source_health').upsert({supplier_id:supplier.id,last_attempt_at:stamp,last_success_at:stamp,status:'connected',message:'Consulta real del producto principal',updated_at:stamp});
     return {ok:true,offerId};
   }catch(error){

@@ -11,7 +11,11 @@ import { checkAndAlertSuddenPriceChange, getPriceAlertThreshold } from "@/lib/pr
 import {
   checkAndUpdateProductSupplierStock,
   runBatchSupplierStockSync,
+  runCatalogSyncChunk,
+  huntSuppliersForUnlinkedProducts,
   type SupplierCheckResult,
+  type CatalogSyncProgress,
+  type AutoHuntResult,
 } from "@/lib/supplier-sync";
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -437,6 +441,36 @@ export async function triggerBatchSupplierSyncAction(limit: number = 30) {
   revalidatePath("/admin");
   revalidatePath("/catalogo");
   return report;
+}
+
+export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
+  await getAdminClient();
+  const progress = await runCatalogSyncChunk({ offset, limit });
+  invalidateAdminStorefrontCache();
+  return progress;
+}
+
+export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promise<AutoHuntResult> {
+  await getAdminClient();
+  const result = await huntSuppliersForUnlinkedProducts({ limit });
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  revalidatePath("/catalogo");
+  return result;
+}
+
+export async function toggleAutoPauseWhenOutOfStockAction(enabled: boolean) {
+  const supabase = await getAdminClient();
+  const { data: current } = await supabase.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle();
+  const cfg = (current?.config ?? {}) as Record<string, unknown>;
+  const updatedConfig = { ...cfg, autoPauseWhenOutOfStock: enabled };
+  const { error } = await supabase.from("supplier_tracking_settings").update({
+    config: updatedConfig,
+    updated_at: new Date().toISOString(),
+  }).eq("id", true);
+  if (error) throw new Error(`No se pudo guardar la configuración: ${error.message}`);
+  revalidatePath("/admin");
+  return { success: true, autoPauseWhenOutOfStock: enabled };
 }
 
 export async function quickUpdateProductPriceAction(productId: string, retailPrice: number, wholesalePrice?: number) {

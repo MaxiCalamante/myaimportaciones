@@ -138,3 +138,93 @@ export function evaluateCommercialMargin(
     suggestedSalePrice,
   };
 }
+
+/**
+ * Calcula el costo real puesto en mano (landed cost) en ARS a partir del valor en USD del proveedor,
+ * considerando la cotización de adquisición y la comisión del pasero (por defecto 20%).
+ * Fórmula oficial MYA: (Costo USD * FX) + (Costo USD * FX * % Pasero) = Costo USD * FX * (1 + % Pasero)
+ */
+export function calculateLandedCostArs(
+  costUsd: number,
+  fx = 1600,
+  paseroPercent = 20
+): {
+  costUsd: number;
+  exchangeRate: number;
+  paseroPercent: number;
+  baseArs: number;
+  paseroFeeArs: number;
+  paseroArs: number;
+  totalLandedArs: number;
+} {
+  if (!Number.isFinite(costUsd) || costUsd <= 0) {
+    return {
+      costUsd: 0,
+      exchangeRate: fx,
+      paseroPercent,
+      baseArs: 0,
+      paseroFeeArs: 0,
+      paseroArs: 0,
+      totalLandedArs: 0,
+    };
+  }
+  const baseArs = Math.round(costUsd * fx * 100) / 100;
+  const paseroFeeArs = Math.round(baseArs * (paseroPercent / 100) * 100) / 100;
+  const totalLandedArs = Math.round((baseArs + paseroFeeArs) * 100) / 100;
+  return {
+    costUsd,
+    exchangeRate: fx,
+    paseroPercent,
+    baseArs,
+    paseroFeeArs,
+    paseroArs: paseroFeeArs,
+    totalLandedArs,
+  };
+}
+
+/**
+ * Sugiere el precio de venta minorista en base al costo landed y el benchmark de la categoría,
+ * redondeando a centena o terminación psicológica ($.900 o $.000).
+ */
+export function calculateSuggestedRetailPrice(
+  landedCostArs: number,
+  categorySlugOrName?: string,
+  title?: string,
+  options?: { psychologicalEnding?: boolean }
+): {
+  suggestedPrice: number;
+  benchmark: CategoryBenchmark;
+  estimatedMarginPercent: number;
+  estimatedProfitArs: number;
+} {
+  const benchmark = getCategoryMarginBenchmark(categorySlugOrName, title);
+  if (!Number.isFinite(landedCostArs) || landedCostArs <= 0) {
+    return {
+      suggestedPrice: 0,
+      benchmark,
+      estimatedMarginPercent: benchmark.benchmarkMargin,
+      estimatedProfitArs: 0,
+    };
+  }
+
+  // Precio base según benchmark: Costo / (1 - Margen)
+  const exactPrice = landedCostArs / (1 - benchmark.benchmarkMargin / 100);
+  let suggestedPrice = Math.round(exactPrice / 100) * 100;
+
+  if (options?.psychologicalEnding && suggestedPrice > 1000) {
+    // Si la centena termina en 00, aplicar terminación .900 para atractivo comercial
+    const remainder = suggestedPrice % 1000;
+    if (remainder === 0) {
+      suggestedPrice -= 100; // e.g. 30000 -> 29900
+    }
+  }
+
+  const { marginPercent, profitArs } = calculateCommercialMargin(suggestedPrice, landedCostArs);
+
+  return {
+    suggestedPrice,
+    benchmark,
+    estimatedMarginPercent: marginPercent,
+    estimatedProfitArs: profitArs,
+  };
+}
