@@ -696,9 +696,16 @@ export function SupplierOpportunitiesRadar({
                     </div>
 
                     <div className="border-t border-zinc-200/60 pt-2 flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-800">
-                        Precio Sugerido:
-                      </span>
+                      <div>
+                        <span className="text-xs font-bold text-zinc-800 block">
+                          Precio Sugerido:
+                        </span>
+                        {opp.mlPrice ? (
+                          <span className="text-[10px] text-amber-800 font-medium block">
+                            Ref. ML: ${opp.mlPrice.toLocaleString("es-AR")}
+                          </span>
+                        ) : null}
+                      </div>
                       <span className="text-sm font-black text-sky-700">
                         {opp.landedCostArs > 0 ? `$${opp.suggestedRetailPrice.toLocaleString("es-AR")}` : "A confirmar"}
                       </span>

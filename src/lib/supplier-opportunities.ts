@@ -7,6 +7,7 @@ import {
   calculateSuggestedRetailPrice,
   calculateCommercialMargin,
   getCategoryMarginBenchmark,
+  evaluateWithMarketBenchmark,
 } from "./supplier-commercial";
 import { calculateProductWholesalePricing } from "./wholesale-pricing-engine";
 import { revalidatePath } from "next/cache";
@@ -51,6 +52,9 @@ export interface SupplierOpportunity {
   availability: "in_stock" | "out_of_stock" | "unknown";
   pricingNeedsReview: boolean;
   lastCheckedAt: string | null;
+  mlPrice?: number | null;
+  mlUrl?: string | null;
+  mlCheckedAt?: string | null;
 }
 
 export interface OpportunitySearchParams {
@@ -101,6 +105,8 @@ export interface CategoryInfo {
 export function cleanWholesaleTitle(title: string): string {
   if (!title) return "";
   let clean = title.trim();
+  clean = clean.replace(/\b(?:SKU|COD|REF|ID):\s*[A-Z0-9-]+\b/gi, "");
+  clean = clean.replace(/\bMARCA:\s*[A-Z0-9-]+\b/gi, "");
 
   // Eliminar prefijos de perfumería
   clean = clean.replace(/^PERF\s+(TESTER\s+)?(?:FEM|MASC|UNI)\s+/i, (_match, tester) => tester ? "Perfume Tester " : "Perfume ");
@@ -282,9 +288,11 @@ export async function searchSupplierOpportunities(
   const db = options?.client ?? (await getAdminClient());
 
   // 1. Cargar proveedores y categorías en paralelo
-  const [suppliersRes, categoriesRes, settingsRes, policyRes] = await Promise.all([
+  const [suppliersRes, categoriesRes, marketRefsRes, productsWithModelRes, settingsRes, policyRes] = await Promise.all([
     db.from("suppliers").select("id, name, official_key, is_active, freshness_hours").eq("is_active", true),
     db.from("categories").select("id, name, slug, parent_id, image_url").order("name"),
+    db.from("supplier_market_references").select("product_id, price_ars, source_url, checked_at").eq("identity_verified", true).not("price_ars", "is", null),
+    db.from("products").select("id, model").not("model", "is", null).neq("model", ""),
     db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
     db.from("import_cost_policies").select("config").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
@@ -304,6 +312,23 @@ export async function searchSupplierOpportunities(
     imageUrl: c.image_url,
   }));
   const supplierMap = new Map(suppliers.map((s) => [s.id, s]));
+  const marketRefMap = new Map<string, { priceArs: number; url: string; checkedAt: string | null }>();
+  if (marketRefsRes?.data && productsWithModelRes?.data) {
+    const prodToModel = new Map<string, string>();
+    for (const p of productsWithModelRes.data as Array<{ id: string; model: string | null }>) {
+      if (p.model) prodToModel.set(p.id, p.model.toUpperCase().trim());
+    }
+    for (const ref of marketRefsRes.data as Array<{ product_id: string; price_ars: number; source_url: string; checked_at: string | null }>) {
+      const modelKey = prodToModel.get(ref.product_id);
+      if (modelKey && ref.price_ars) {
+        marketRefMap.set(modelKey, {
+          priceArs: Number(ref.price_ars),
+          url: ref.source_url,
+          checkedAt: ref.checked_at,
+        });
+      }
+    }
+  }
 
   // 2. Cargar todas las ofertas sin producto asignado con costo de origen mayor a 0
   const unassignedOffers = await readAllPages<{
@@ -342,10 +367,19 @@ export async function searchSupplierOpportunities(
     const totalLandedArs = estimatedCost ?? 0;
     const benchmark = getCategoryMarginBenchmark(cat.categorySlug, offer.title);
 
-    // Sugerir precio minorista con terminación psicológica .900
-    const { suggestedPrice } = calculateSuggestedRetailPrice(totalLandedArs, cat.categorySlug, offer.title, {
-      psychologicalEnding: true,
-    });
+    const model = opportunityModel(offer.title, offer.model);
+    const mlRef = model ? marketRefMap.get(model.toUpperCase()) : undefined;
+
+    let suggestedPrice: number;
+    if (mlRef && mlRef.priceArs > 0) {
+      const mlEval = evaluateWithMarketBenchmark(totalLandedArs, 0, mlRef.priceArs, cat.categorySlug, offer.title);
+      suggestedPrice = mlEval.suggestedPrice;
+    } else {
+      const { suggestedPrice: baseSuggested } = calculateSuggestedRetailPrice(totalLandedArs, cat.categorySlug, offer.title, {
+        psychologicalEnding: true,
+      });
+      suggestedPrice = baseSuggested;
+    }
 
     const { marginPercent, markupPercent, profitArs } = calculateCommercialMargin(suggestedPrice, totalLandedArs);
 
@@ -391,6 +425,9 @@ export async function searchSupplierOpportunities(
       availability: avail,
       pricingNeedsReview: estimatedCost === null || !importPolicy.confirmed || importPolicy.carrierFxDate !== new Date().toISOString().slice(0, 10) || !offer.cost_checked_at || !Number.isFinite(Date.parse(offer.cost_checked_at)) || Date.now() - Date.parse(offer.cost_checked_at) > Number(sup?.freshness_hours || 24) * 3600000 || !trackingConfig.fxConfirmedOn || Date.now() - new Date(trackingConfig.fxConfirmedOn + "T00:00:00Z").getTime() > Number(trackingConfig.fxValidityHours || 72) * 3600000 || /\b(iphone|tv|televisor)\b/i.test(offer.title),
       lastCheckedAt: offer.last_success_at,
+      mlPrice: mlRef ? mlRef.priceArs : null,
+      mlUrl: mlRef ? mlRef.url : null,
+      mlCheckedAt: mlRef ? mlRef.checkedAt : null,
     };
   });
 
@@ -526,6 +563,96 @@ async function opportunityProductImage(db: SupabaseClient, offer: { supplier_id:
  * Importa y publica una oportunidad mayorista en el catálogo de MYA Importaciones.
  * Crea el producto con fulfillment 'supplier', asigna precios oficiales y vincula la oferta.
  */
+/**
+ * Genera una descripción comercial rica, técnica y de alta conversión para MYA Importaciones.
+ */
+export function buildRichProductDescription(params: {
+  title: string;
+  brand: string;
+  model: string;
+  categorySlug: string;
+  categoryName: string;
+}): string {
+  const { title, brand, model, categorySlug } = params;
+
+  // 1. Extraer especificaciones técnicas destacadas
+  const specs: string[] = [];
+
+  // Potencia
+  const powerMatch = title.match(/\b(\d{2,4})\s*(?:W|watts|watt)\b/i);
+  if (powerMatch) specs.push(`Potencia: ${powerMatch[1]} W`);
+
+  // Capacidad / Depósito / Volumen
+  const capMatch = title.match(/\b(\d{1,4})\s*(?:ml|l|litros?)\b/i);
+  if (capMatch) specs.push(`Capacidad / Depósito: ${capMatch[0]}`);
+
+  // Boquilla / Diámetro / Longitud
+  const nozzleMatch = title.match(/\b(\d+(?:\.\d+)?)\s*(?:mm|m)\b/i);
+  if (nozzleMatch && (categorySlug.includes("pistola") || categorySlug.includes("herramienta"))) {
+    specs.push(`Medida / Boquilla: ${nozzleMatch[0]}`);
+  }
+
+  // Presión
+  const pressureMatch = title.match(/\b(\d{1,3})\s*(?:bar|psi)\b/i);
+  if (pressureMatch) specs.push(`Presión máxima: ${pressureMatch[0]}`);
+
+  // Caudal
+  const flowMatch = title.match(/\b(\d{1,4})\s*(?:ml\/min|l\/min|l\/h)\b/i);
+  if (flowMatch) specs.push(`Caudal: ${flowMatch[0]}`);
+
+  // Alimentación
+  const voltMatch = title.match(/\b(220(?:-240)?\s*v|110\s*v|18\s*v|20\s*v)\b/i);
+  if (voltMatch) {
+    specs.push(`Alimentación: ${voltMatch[0]}`);
+  } else if (categorySlug.includes("herramienta") && !/bateria|inalambric|manual|carrito/i.test(title)) {
+    specs.push(`Alimentación: 220–240 V ~ 50/60 Hz`);
+  }
+
+  // Perfumería
+  if (/edp|eau de parfum/i.test(title)) specs.push("Concentración: Eau de Parfum (EDP)");
+  else if (/edt|eau de toilette/i.test(title)) specs.push("Concentración: Eau de Toilette (EDT)");
+  else if (/body mist|body splash/i.test(title)) specs.push("Presentación: Body Mist / Bruma perfumada");
+
+  // Cosmética / K-Beauty
+  if (/serum|ampoule|ampolla/i.test(title)) specs.push("Tipo de producto: Sérum facial concentrado de alta absorción");
+  else if (/pad|toner|tónico/i.test(title)) specs.push("Tipo de producto: Tónico facial / Discos hidratantes y exfoliantes");
+  else if (/sun|sunscreen|solar/i.test(title)) specs.push("Protección: Protector solar facial diario de amplio espectro");
+
+  // 2. Introducción comercial
+  const brandLead = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ` : "";
+  const modelText = model && !title.includes(model) ? `, modelo ${model}` : "";
+  let intro = `${brandLead}${title}${modelText}.`;
+
+  if (categorySlug.includes("pistola")) {
+    intro = `${title}${modelText}. Pistola de pulverización para pintura con sistema HVLP (High Volume Low Pressure), ideal para aplicaciones uniformes con excelente transferencia y mínimo desperdicio de material. Apta para lacas, barnices, esmaltes y pinturas látex tanto en trabajos de taller como en hogar y obra.`;
+  } else if (categorySlug.includes("herramienta")) {
+    intro = `${title}${modelText}. Herramienta robusta diseñada para brindar máximo rendimiento y durabilidad en proyectos profesionales de taller, obra y mantenimiento.`;
+  } else if (categorySlug.includes("cosmetica")) {
+    intro = `${title}. Tratamiento cosmético original coreano (K-Beauty), formulado con ingredientes activos de vanguardia para revitalizar la textura de la piel y restaurar su luminosidad natural.`;
+  } else if (categorySlug.includes("perfum")) {
+    intro = `${title}. Fragancia original importada de estela envolvente y fijación prolongada, seleccionada por su calidad olfativa y versatilidad para el día a día o momentos especiales.`;
+  }
+
+  // 3. Bloque de especificaciones técnicas
+  let specsBlock = "";
+  if (specs.length > 0) {
+    specsBlock = `\n\nEspecificaciones y detalles técnicos:\n` + specs.map((s) => `• ${s}`).join("\n");
+  }
+
+  // 4. Bloque de confianza, envíos y compra segura MYA
+  const trustBlock = `\n\nBeneficios y garantías oficiales MYA Importaciones:
+• Garantía oficial de 30 días con atención personalizada directa.
+• Envíos asegurados a todo el país por Correo Argentino con código de seguimiento Paq.ar en tiempo real.
+• Embalaje multicapa reforzado sin costo adicional para proteger el equipo durante el traslado.
+• Retiro directo disponible en nuestra sede de Tandil coordinando previamente por WhatsApp.
+• 3% de descuento directo pagando por Transferencia Bancaria (también aceptamos tarjetas y Mercado Pago).
+
+Consultá disponibilidad y condiciones de entrega antes de comprar.`;
+
+  return `${intro}${specsBlock}${trustBlock}`.trim();
+}
+
+
 export async function importSupplierOpportunity(
   input: ImportOpportunityInput,
   options?: { client?: SupabaseClient }
@@ -630,8 +757,47 @@ export async function importSupplierOpportunity(
       : null;
 
   const finalWholesaleMinQty = wholesaleEval.isEligible ? wholesaleEval.minQuantity : 1;
+  const productModel = opportunityModel(offer.title, offer.model);
 
+  // Buscar comparable de Mercado Libre para este modelo
+  let matchedMlPrice: number | null = null;
+  let matchedMlUrl: string | null = null;
+  let matchedMlCheckedAt: string | null = null;
 
+  if (productModel) {
+    const { data: siblingProduct } = await db
+      .from("products")
+      .select("id")
+      .ilike("model", productModel)
+      .limit(1)
+      .maybeSingle();
+
+    if (siblingProduct?.id) {
+      const { data: ref } = await db
+        .from("supplier_market_references")
+        .select("price_ars, source_url, checked_at")
+        .eq("product_id", siblingProduct.id)
+        .eq("identity_verified", true)
+        .not("price_ars", "is", null)
+        .order("checked_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (ref?.price_ars) {
+        matchedMlPrice = Number(ref.price_ars);
+        matchedMlUrl = ref.source_url;
+        matchedMlCheckedAt = ref.checked_at;
+      }
+    }
+  }
+
+  const richDescription = buildRichProductDescription({
+    title: input.title.trim(),
+    brand: offer.brand || "",
+    model: productModel,
+    categorySlug: category.slug,
+    categoryName: category.name,
+  });
 
   // 6. Insertar el nuevo producto en products
   const { data: newProduct, error: insertError } = await db
@@ -639,7 +805,7 @@ export async function importSupplierOpportunity(
     .insert({
       title: input.title.trim(),
       slug: finalSlug,
-      description: `${input.title.trim()}. Consultá disponibilidad y condiciones de entrega antes de comprar.`,
+      description: richDescription,
       category_id: category.id,
       retail_price: input.retailPrice,
       wholesale_price: finalWholesalePrice,
@@ -660,7 +826,7 @@ export async function importSupplierOpportunity(
       supplier_stock_status: offer.availability || "unknown",
       supplier_last_checked_at: offer.availability_checked_at,
       brand: offer.brand || "",
-      model: opportunityModel(offer.title, offer.model),
+      model: productModel,
     })
     .select("id, slug, title")
     .single();
@@ -669,7 +835,7 @@ export async function importSupplierOpportunity(
     throw new AdminFormError("No se pudo crear el producto. Revisá el catálogo antes de reintentar.");
   }
 
-  // 6. Vincular la oferta de proveedor al nuevo producto
+  // 7. Vincular la oferta de proveedor al nuevo producto
   const { error: linkError } = await db
     .from("supplier_offers")
     .update({
@@ -683,6 +849,33 @@ export async function importSupplierOpportunity(
 
   if (linkError) {
     throw new AdminFormError("Se creó un borrador, pero no se pudo vincular la oferta. Revisalo en Productos antes de reintentar.");
+  }
+
+  // 8. Registrar costos en product_costs con landed cost oficial
+  const { error: costError } = await db
+    .from("product_costs")
+    .upsert({
+      product_id: newProduct.id,
+      origin_cost: offer.origin_cost,
+      currency: offer.currency,
+      exchange_rate: fx,
+      freight_per_unit: 0,
+      other_landed_cost: Math.max(0, totalLandedArs - (Number(offer.origin_cost) * fx)),
+      payment_fee_percent: 0,
+      variable_cost: 0,
+      minimum_contribution: 0,
+      supplier_url: offer.source_url,
+      verified_at: offer.cost_checked_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ml_price: matchedMlPrice,
+      ml_url: matchedMlUrl,
+      ml_checked_at: matchedMlCheckedAt,
+      expenses_confirmed: false,
+      source_document: `Oportunidad mayorista: USD ${offer.origin_cost} @ FX ${fx} + pasero ${pasero}%. Landed cost: ARS ${totalLandedArs}.`,
+    });
+
+  if (costError) {
+    throw new AdminFormError("Se creó la ficha pero falló el registro en la tabla de costos. Revisá el catálogo.");
   }
 
   if (input.isActive !== false) {

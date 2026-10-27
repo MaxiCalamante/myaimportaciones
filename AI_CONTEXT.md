@@ -1,5 +1,31 @@
 # MYA Importaciones — contexto vigente
 
+## Publicación Rápida Perfeccionada, Registro de Costos Landed y Descripciones Ricas — 27/10/2026
+
+El dueño solicitó que al hacer clic en "Publicar rápido" desde Oportunidades de Proveedores, el producto se publique de inmediato en la tienda activa con todos sus datos calculados perfectamente: costo landed registrado en `product_costs`, precio minorista competitivo con benchmark y terminación psicológica, precio mayorista sugerido, foto de ficha verificada, título optimizado y descripción técnica y comercial completa con garantías y logística de MYA.
+
+### 1. Mejoras implementadas:
+- **Cálculo y Persistencia Oficial en `product_costs`**:
+  - Al importar una oportunidad mediante publicación rápida o modal, ahora se registra de forma persistente la fila en `public.product_costs`.
+  - Guarda `origin_cost` en USD, `exchange_rate` según cotización oficial (1.600 ARS/USD), `other_landed_cost` (comisión de pasero 20% y gastos), dejando que Postgres genere el `landed_cost` exacto sin violar la restricción de columnas generadas.
+  - Guarda también `ml_price`, `ml_url`, `ml_checked_at` si existe un comparable en la base de datos, y `supplier_url` privado.
+- **Integración de Comparables y Precios en Oportunidades**:
+  - `searchSupplierOpportunities` cruza modelos de catálogo con `supplier_market_references` y `product_costs`.
+  - Si existe referencia verificada de Mercado Libre, aplica `evaluateWithMarketBenchmark` para sugerir un precio competitivo (~8% debajo de ML, terminación psicológica y margen protegido sobre el piso de seguridad).
+  - La tarjeta de oportunidad muestra la pastilla informativa de `Ref. ML: $X` cuando hay comparable.
+- **Generador de Ficha Descriptiva Rica (`buildRichProductDescription`)**:
+  - Extrae de forma automática y precisa atributos técnicos: potencia (W), capacidad / volumen (ml/L), boquilla (mm), presión (bar), caudal (ml/min, L/min), alimentación (220–240 V), notas de perfumería (EDP/EDT/Mist) y tipos cosméticos K-Beauty.
+  - Redacta una introducción comercial persuasiva adaptada al rubro.
+  - Incluye lista con viñetas de especificaciones técnicas.
+  - Incorpora el bloque de confianza MYA: garantía oficial de 30 días, envíos asegurados por Correo Argentino con código Paq.ar en vivo, embalaje multicapa reforzado sin costo, retiro en Tandil, 3% OFF por transferencia y recordatorio de consulta de disponibilidad.
+- **Activación Inmediata y Verificada en la Tienda**:
+  - Con `isActive: true`, el producto se activa de inmediato tras validar foto, slug, oferta vinculada y costos.
+  - La pistola de pintura Total TT5006-2 (`e14573e1-b38c-41e6-b421-016b2f6f30cd`) en producción fue activada (`is_active: true`), con ficha técnica rica, precio competitivo de $90.700 (vs referencia ML $98.599), precio mayorista $72.500 y sus costos landed de $67.200 registrados en `product_costs`.
+- **Validación**:
+  - Suite completa de 249 pruebas unitarias y de integración pasando sin errores (`npm test`).
+  - Verificación estricta de tipos de TypeScript aprobada (`tsc --noEmit`).
+  - Compilación Turbopack de producción completada con éxito en 5.2s (52 páginas estáticas generadas).
+
 ## Corrección de Precios & ML y Renovación del Radar de Oportunidades — 26/10/2026
 
 El dueño reportó el error "No pudimos cargar esta sección. Revisá tu conexión y acceso de administrador. Los datos no se muestran como vacíos si hubo un error de lectura." al ingresar a Precios & ML (/admin/precios), solicitando resolverlo y mejorar Oportunidades de Proveedores (/admin/oportunidades).
