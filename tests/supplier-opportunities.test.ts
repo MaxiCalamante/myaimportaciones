@@ -26,6 +26,7 @@ const mockCategories: CategoryInfo[] = [
   { id: "cat-11", name: "Notebooks", slug: "electronica-notebooks", parentId: "cat-9", imageUrl: "/laptops.jpg" },
   { id: "cat-12", name: "Herramientas y equipamiento", slug: "herramientas-equipamiento", parentId: null, imageUrl: "/tools.jpg" },
   { id: "cat-13", name: "Taladros y rotomartillos", slug: "taladros-rotomartillos", parentId: "cat-12", imageUrl: "/taladro.jpg" },
+  { id: "cat-14", name: "Pistolas de pintura y calor", slug: "pistolas-pintura-calor", parentId: "cat-12", imageUrl: null },
 ];
 
 test("cleanWholesaleTitle elimina prefijos técnicos de mayorista y normaliza texto", () => {
@@ -74,6 +75,8 @@ test("detectStoreCategory clasifica correctamente fragancias árabes, k-beauty, 
   // Herramienta
   const tool = detectStoreCategory("Total Taladro Rotomartillo 800W TH308266", mockCategories);
   assert.equal(tool.categorySlug, "taladros-rotomartillos");
+  assert.equal(detectStoreCategory("TOTAL PISTOLA DE PINTURA 500W TT5006-2", mockCategories).categorySlug, "pistolas-pintura-calor");
+  assert.match(cleanWholesaleTitle("TOTAL PISTOLA DE PINTURA 500W TT5006-2"), /TT5006-2/);
   assert.equal(detectStoreCategory("Wadfow Elevador Manual Paletera 1000KG", mockCategories, "Total").categorySlug, "herramientas-equipamiento");
   assert.equal(detectStoreCategory("Apple Mac Mini M5 Pro", mockCategories).categorySlug, "electronica");
 });

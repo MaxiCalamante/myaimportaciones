@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAdminClient } from "./admin-auth";
+import { AdminFormError } from "./admin-action-result";
 import { readAllPages } from "./read-all-pages";
 import { slugifyProduct } from "./admin-product";
 import {
@@ -115,6 +116,8 @@ export function cleanWholesaleTitle(title: string): string {
         // Mantener siglas técnicas
         if (/^(EDP|EDT|RAM|SSD|USB|BT|GB|TB|LED|RGB|W|V|SIM|SWAP)$/i.test(w)) return w.toUpperCase();
         if (/^(X|\d+ML|\d+G|\d+KG|\d+W)$/i.test(w)) return w;
+        // El código del fabricante no es una palabra: conservarlo tal como figura.
+        if (/^[A-Z][A-Z0-9/-]*\d[A-Z0-9/-]*$/i.test(w) && w.length >= 5) return w.toUpperCase();
         if (w.toLowerCase() === "perfume" || w.toLowerCase() === "body" || w.toLowerCase() === "mist") return w;
         if (idx === 0) return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
         if (["de", "del", "la", "el", "en", "para", "con", "y"].includes(w.toLowerCase())) return w.toLowerCase();
@@ -200,6 +203,10 @@ export function detectStoreCategory(
 
   // 4. Herramientas & Equipamiento
   if (/total|wadfow|rotomartillo|amoladora|taladro|caladora|sierra circular|soldadora|hidrolavadora/i.test(t)) {
+    if (/pistola.*(?:pintura|pintar)|(?:paint|spray)\s+gun/i.test(t)) {
+      const c = findCat("pistolas-pintura-calor") || findCat("herramientas-equipamiento");
+      if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+    }
     if (/rotomartillo|taladro/i.test(t)) {
       const c = findCat("taladros-rotomartillos") || findCat("herramientas-equipamiento");
       if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
@@ -490,6 +497,15 @@ export function imageFromOpportunityPage(html: string, offer: { external_id: str
   try { return productImageUrl(new URL(url, offer.source_url).href) || null; } catch { return null; }
 }
 
+/** Infer a model only when the supplier title contains exactly one unambiguous code. */
+export function opportunityModel(title: string, explicitModel: string | null): string {
+  if (explicitModel?.trim()) return explicitModel.trim();
+  const candidates = (title.toUpperCase().match(/\b[A-Z][A-Z0-9/-]*\d[A-Z0-9/-]*\b/g) ?? [])
+    .filter(value => value.length >= 5 && !/^(IPHONE|WIFI|USB|SSD|RAM|LED|IOS)/.test(value));
+  const unique = [...new Set(candidates)];
+  return unique.length === 1 ? unique[0] : "";
+}
+
 async function opportunityProductImage(db: SupabaseClient, offer: { supplier_id: string; external_id: string | null; variant_key: string | null; source_url: string }): Promise<string | null> {
   try {
     const { data: supplier, error } = await db.from("suppliers").select("*").eq("id", offer.supplier_id).eq("is_active", true).single();
@@ -517,17 +533,17 @@ export async function importSupplierOpportunity(
   const db = options?.client ?? (await getAdminClient());
 
   if (!input.offerId) {
-    throw new Error("Identificador de oferta requerido.");
+    throw new AdminFormError("Identificador de oferta requerido.");
   }
   if (!input.title || input.title.trim().length < 2) {
-    throw new Error("El título del producto debe tener al menos 2 caracteres.");
+    throw new AdminFormError("El título del producto debe tener al menos 2 caracteres.");
   }
   if (!Number.isFinite(input.retailPrice) || input.retailPrice <= 0) {
-    throw new Error("El precio de venta minorista debe ser mayor a 0.");
+    throw new AdminFormError("El precio de venta minorista debe ser mayor a 0.");
   }
 
   // 1. Verificar la oferta mayorista
-  if (!input.categoryId) throw new Error("Elegí una categoría para el producto.");
+  if (!input.categoryId) throw new AdminFormError("Elegí una categoría para el producto.");
 
   const { data: offer, error: offerError } = await db
     .from("supplier_offers")
@@ -536,16 +552,27 @@ export async function importSupplierOpportunity(
     .single();
 
   if (offerError || !offer) {
-    throw new Error("No se encontró la oferta mayorista especificada.");
+    throw new AdminFormError("No se encontró la oferta mayorista especificada.");
   }
   if (offer.product_id) {
-    throw new Error("Esta oferta ya está vinculada a un producto existente del catálogo.");
+    throw new AdminFormError("Esta oferta ya está vinculada a un producto existente del catálogo.");
+  }
+
+  // A source listing can have both an imported listing row and a refreshed base row.
+  // Avoid creating a second product from the same supplier's exact listing.
+  if (offer.external_id && ["base", `listing:${offer.external_id}`].includes(offer.variant_key ?? "")) {
+    const duplicate = await db.from("supplier_offers").select("id")
+      .eq("supplier_id", offer.supplier_id).eq("external_id", offer.external_id)
+      .in("variant_key", ["base", `listing:${offer.external_id}`])
+      .not("product_id", "is", null).limit(1).maybeSingle();
+    if (duplicate.error) throw new AdminFormError("No se pudo comprobar si esta oferta ya está vinculada.");
+    if (duplicate.data) throw new AdminFormError("Esta ficha del proveedor ya está vinculada a otro producto. Revisá el catálogo antes de crear un duplicado.");
   }
 
   // Leer la ficha principal. Una foto de categoría o de productos relacionados no es evidencia.
   const imageUrl = await opportunityProductImage(db, offer);
   if (input.isActive !== false && !imageUrl) {
-    throw new Error("No pudimos verificar la foto de esta variante en la ficha del proveedor. Guardala como borrador y revisala en el editor de productos.");
+    throw new AdminFormError("No pudimos verificar la foto de esta variante en la ficha del proveedor. Guardala como borrador y revisala en el editor de productos.");
   }
 
   // 2. Validar categoría
@@ -556,7 +583,7 @@ export async function importSupplierOpportunity(
     .single();
 
   if (!category) {
-    throw new Error("La categoría seleccionada no existe.");
+    throw new AdminFormError("La categoría seleccionada no existe.");
   }
 
   // 3. Generar slug único
@@ -567,9 +594,9 @@ export async function importSupplierOpportunity(
     .eq("slug", baseSlug)
     .maybeSingle();
 
-  if (slugError) throw new Error("No se pudo comprobar si el producto ya existe.");
-  if (!baseSlug) throw new Error("El título no permite generar una dirección válida.");
-  if (existingSlug) throw new Error("Ya existe un producto con este título. Revisá el catálogo antes de crear otro.");
+  if (slugError) throw new AdminFormError("No se pudo comprobar si el producto ya existe.");
+  if (!baseSlug) throw new AdminFormError("El título no permite generar una dirección válida.");
+  if (existingSlug) throw new AdminFormError("Ya existe un producto con este título. Revisá el catálogo antes de crear otro.");
   const finalSlug = baseSlug;
 
   // 4. Costo landed calculado con pasero oficial
@@ -579,7 +606,7 @@ export async function importSupplierOpportunity(
   ]);
   const fx = Number(settings.data?.config?.acquisitionArsPerUsd);
   const pasero = Number(policy.data?.config?.generalPercent);
-  if (settings.error || policy.error || !(fx > 0) || !(pasero >= 0) || offer.currency !== "USD") throw new Error("Revisá moneda y configuración de costos antes de agregar el producto.");
+  if (settings.error || policy.error || !(fx > 0) || !(pasero >= 0) || offer.currency !== "USD") throw new AdminFormError("Revisá moneda y configuración de costos antes de agregar el producto.");
   const totalLandedArs = estimateOpportunityCost(offer, settings.data!.config, policy.data!.config) ?? 0;
 
   // 5. Precio mayorista según teoría financiera comercial si el producto es apto
@@ -633,13 +660,13 @@ export async function importSupplierOpportunity(
       supplier_stock_status: offer.availability || "unknown",
       supplier_last_checked_at: offer.availability_checked_at,
       brand: offer.brand || "",
-      model: offer.model || "",
+      model: opportunityModel(offer.title, offer.model),
     })
     .select("id, slug, title")
     .single();
 
   if (insertError || !newProduct) {
-    throw new Error(`Error al crear el producto en la tienda: ${insertError?.message || "Desconocido"}`);
+    throw new AdminFormError("No se pudo crear el producto. Revisá el catálogo antes de reintentar.");
   }
 
   // 6. Vincular la oferta de proveedor al nuevo producto
@@ -655,12 +682,12 @@ export async function importSupplierOpportunity(
     .single();
 
   if (linkError) {
-    throw new Error(`Se creó un borrador, pero no se pudo vincular la oferta. Revisalo en Productos antes de reintentar: ${linkError.message}`);
+    throw new AdminFormError("Se creó un borrador, pero no se pudo vincular la oferta. Revisalo en Productos antes de reintentar.");
   }
 
   if (input.isActive !== false) {
     const { error: activationError } = await db.from("products").update({ is_active: true }).eq("id", newProduct.id).select("id").single();
-    if (activationError) throw new Error(`El producto quedó como borrador vinculado; no se pudo publicarlo: ${activationError.message}`);
+    if (activationError) throw new AdminFormError("El producto quedó como borrador vinculado; no se pudo publicarlo. Revisalo en Productos antes de reintentar.");
   }
 
   // 7. Invalidar cachés

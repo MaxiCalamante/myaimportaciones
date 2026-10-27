@@ -1817,10 +1817,12 @@ export async function searchSupplierOpportunitiesAction(params: OpportunitySearc
 export async function importSupplierOpportunityAction(input: ImportOpportunityInput) {
   // Supplier offers are private and production only grants administrators read access.
   // Check the caller first, then use the service client for the complete import.
-  await getAdminClient();
-  const res = await importSupplierOpportunity(input, { client: createCommerceService() });
-  invalidateAdminStorefrontCache();
-  return res;
+  return runAdminFormAction(async () => {
+    await getAdminClient();
+    const res = await importSupplierOpportunity(input, { client: createCommerceService() });
+    invalidateAdminStorefrontCache();
+    return res;
+  });
 }
 
 export async function getProductMarketComparisonsAction(params: MarketComparisonFilterParams = {}) {

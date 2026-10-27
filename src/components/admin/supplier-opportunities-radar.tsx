@@ -144,12 +144,15 @@ export function SupplierOpportunitiesRadar({
       });
 
       if (res.success) {
+        const product = res.data;
         setImportedOfferIds((prev) => new Set(prev).add(opp.offerId));
         setQuickImportSuccessMap((prev) => {
           const next = new Map(prev);
-          next.set(opp.offerId, { slug: res.slug, title: res.title });
+          next.set(opp.offerId, { slug: product.slug, title: product.title });
           return next;
         });
+      } else {
+        setImportError(res.error);
       }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "No se pudo agregar el producto.");
@@ -206,12 +209,14 @@ export function SupplierOpportunitiesRadar({
 
       if (res.success) {
         setImportSuccess({
-          productId: res.productId,
-          slug: res.slug,
-          title: res.title,
+          productId: res.data.productId,
+          slug: res.data.slug,
+          title: res.data.title,
           isActive: editIsActive,
         });
         setImportedOfferIds((prev) => new Set(prev).add(activeOpportunity.offerId));
+      } else {
+        setImportError(res.error);
       }
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : "Error al importar oportunidad.");
