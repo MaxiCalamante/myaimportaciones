@@ -89,6 +89,8 @@ export interface ImportOpportunityInput {
   retailPrice: number;
   wholesalePrice?: number;
   isActive?: boolean;
+  mlUrl?: string;
+  mlPrice?: number;
 }
 
 export interface CategoryInfo {
@@ -543,20 +545,94 @@ export function opportunityModel(title: string, explicitModel: string | null): s
   return unique.length === 1 ? unique[0] : "";
 }
 
-async function opportunityProductImage(db: SupabaseClient, offer: { supplier_id: string; external_id: string | null; variant_key: string | null; source_url: string }): Promise<string | null> {
+/** Extrae tanto la portada principal como las imágenes secundarias del carrusel o galería del proveedor. */
+export function opportunityImagesFromPage(
+  html: string,
+  offer: { external_id: string | null; variant_key: string | null; source_url: string }
+): { mainImage: string | null; galleryImages: string[] } {
+  const baseMain = imageFromOpportunityPage(html, offer);
+  if (!baseMain) return { mainImage: null, galleryImages: [] };
+
+  // Elevar a versión de alta resolución en tiendas Tray (1500px en vez de 400px o qm)
+  const cleanUrl = (u: string) => u.replace(/\/produtos\/(?:400|qm)\//, "/produtos/1500/");
+  const mainImage = cleanUrl(baseMain);
+
+  const gallerySet = new Set<string>();
+  gallerySet.add(mainImage);
+
+  // 1. Extraer imágenes secundarias de JSON-LD
+  for (const match of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const item = JSON.parse(match[1]);
+      if (
+        item &&
+        !Array.isArray(item) &&
+        (item["@type"] === "Product" || (Array.isArray(item["@type"]) && item["@type"].includes("Product"))) &&
+        String(item.productID ?? item.sku ?? "") === offer.external_id
+      ) {
+        const raw = item.image;
+        const list = Array.isArray(raw) ? raw : [raw];
+        for (const entry of list) {
+          const u = typeof entry === "string" ? entry : entry && typeof entry === "object" ? (entry as Record<string, unknown>).url : null;
+          if (typeof u === "string") {
+            try {
+              const full = productImageUrl(new URL(cleanUrl(u), offer.source_url).href);
+              if (full) gallerySet.add(full);
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Extraer imágenes secundarias del HTML vinculadas a este producto específico
+  const trayIdMatch = offer.source_url.match(/-(\d+)\.html/);
+  const trayId = trayIdMatch ? trayIdMatch[1] : null;
+
+  const imgRegex = /(?:src|data-zoom-image|data-image|data-large|data-image-large-src)=["']([^"']+)["']/gi;
+  for (const m of html.matchAll(imgRegex)) {
+    const rawUrl = m[1];
+    // En Tray (Total Herramientas), filtrar estrictamente por el ID de producto para no incluir productos relacionados
+    if (trayId && !rawUrl.includes(`/img/${trayId}/produtos/`)) continue;
+    if (!trayId && !/produtos|product|gallery|foto|large/i.test(rawUrl)) continue;
+
+    try {
+      const full = productImageUrl(new URL(cleanUrl(rawUrl), offer.source_url).href);
+      if (full) gallerySet.add(full);
+    } catch {}
+  }
+
+  const galleryImages = [mainImage, ...[...gallerySet].filter((u) => u !== mainImage)].slice(0, 8);
+  return { mainImage, galleryImages };
+}
+
+export async function opportunityProductImages(
+  db: SupabaseClient,
+  offer: { supplier_id: string; external_id: string | null; variant_key: string | null; source_url: string }
+): Promise<{ mainImage: string | null; galleryImages: string[] }> {
   try {
     const { data: supplier, error } = await db.from("suppliers").select("*").eq("id", offer.supplier_id).eq("is_active", true).single();
-    if (error || !supplier || !supplier.automation_authorized || !["total", "star-company", "atacado-usa", "atacado-connect"].includes(supplier.official_key)) return null;
+    if (error || !supplier || !supplier.automation_authorized || !["total", "star-company", "atacado-usa", "atacado-connect"].includes(supplier.official_key)) {
+      return { mainImage: null, galleryImages: [] };
+    }
     const url = supplierSourceUrl(offer.source_url, supplier);
     const rules = await publicReadRules(url);
     const slot = await db.rpc("reserve_supplier_source_slot_v1", { supplier_input: offer.supplier_id, delay_input: rules.delay });
-    if (slot.error) return null;
+    if (slot.error) return { mainImage: null, galleryImages: [] };
     if (slot.data) await new Promise(resolve => setTimeout(resolve, Number(slot.data)));
     const response = await fetchSupplierPage(url, "MYA-SupplierCheck/1.0");
-    if (!response.ok) return null;
+    if (!response.ok) return { mainImage: null, galleryImages: [] };
     supplierSourceUrl(response.url, supplier);
-    return imageFromOpportunityPage(await readSupplierHtml(response), offer);
-  } catch { return null; }
+    const html = await readSupplierHtml(response);
+    return opportunityImagesFromPage(html, offer);
+  } catch {
+    return { mainImage: null, galleryImages: [] };
+  }
+}
+
+async function opportunityProductImage(db: SupabaseClient, offer: { supplier_id: string; external_id: string | null; variant_key: string | null; source_url: string }): Promise<string | null> {
+  const images = await opportunityProductImages(db, offer);
+  return images.mainImage;
 }
 
 /**
@@ -696,8 +772,11 @@ export async function importSupplierOpportunity(
     if (duplicate.data) throw new AdminFormError("Esta ficha del proveedor ya está vinculada a otro producto. Revisá el catálogo antes de crear un duplicado.");
   }
 
-  // Leer la ficha principal. Una foto de categoría o de productos relacionados no es evidencia.
-  const imageUrl = await opportunityProductImage(db, offer);
+  // Leer la ficha y galería completa de fotos del producto
+  const images = await opportunityProductImages(db, offer);
+  const imageUrl = images.mainImage;
+  const imageGallery = images.galleryImages.length > 0 ? images.galleryImages : (imageUrl ? [imageUrl] : []);
+
   if (input.isActive !== false && !imageUrl) {
     throw new AdminFormError("No pudimos verificar la foto de esta variante en la ficha del proveedor. Guardala como borrador y revisala en el editor de productos.");
   }
@@ -759,12 +838,12 @@ export async function importSupplierOpportunity(
   const finalWholesaleMinQty = wholesaleEval.isEligible ? wholesaleEval.minQuantity : 1;
   const productModel = opportunityModel(offer.title, offer.model);
 
-  // Buscar comparable de Mercado Libre para este modelo
-  let matchedMlPrice: number | null = null;
-  let matchedMlUrl: string | null = null;
-  let matchedMlCheckedAt: string | null = null;
+  // Buscar o adoptar referencia de Mercado Libre provista o cruzada
+  let matchedMlPrice: number | null = input.mlPrice && input.mlPrice > 0 ? input.mlPrice : null;
+  let matchedMlUrl: string | null = input.mlUrl && /^https:\/\//i.test(input.mlUrl.trim()) ? input.mlUrl.trim() : null;
+  let matchedMlCheckedAt: string | null = (matchedMlPrice || matchedMlUrl) ? new Date().toISOString() : null;
 
-  if (productModel) {
+  if (!matchedMlPrice && productModel) {
     const { data: siblingProduct } = await db
       .from("products")
       .select("id")
@@ -818,7 +897,7 @@ export async function importSupplierOpportunity(
       // Keep a draft until the supplier link has succeeded.
       is_active: false,
       image_url: imageUrl,
-      image_urls: imageUrl ? [imageUrl] : [],
+      image_urls: imageGallery,
       source_url: offer.source_url,
       fulfillment_mode: "supplier",
       supplier_available: offer.availability === "in_stock" && !!offer.availability_checked_at && Number.isFinite(Date.parse(offer.availability_checked_at)) && Date.parse(offer.availability_checked_at) <= Date.now() + 300000 && Date.now() - Date.parse(offer.availability_checked_at) < 24 * 60 * 60 * 1000,
@@ -876,6 +955,23 @@ export async function importSupplierOpportunity(
 
   if (costError) {
     throw new AdminFormError("Se creó la ficha pero falló el registro en la tabla de costos. Revisá el catálogo.");
+  }
+
+  // 9. Si se vinculó una referencia de Mercado Libre, registrarla oficialmente en supplier_market_references
+  if (matchedMlUrl && matchedMlPrice && matchedMlPrice > 0 && /^https:\/\//i.test(matchedMlUrl)) {
+    try {
+      await db.from("supplier_market_references").upsert(
+        {
+          product_id: newProduct.id,
+          source_url: matchedMlUrl,
+          price_ars: matchedMlPrice,
+          identity_verified: true,
+          checked_at: new Date().toISOString(),
+          refresh_mode: "automatic",
+        },
+        { onConflict: "product_id,source_url" }
+      );
+    } catch {}
   }
 
   if (input.isActive !== false) {

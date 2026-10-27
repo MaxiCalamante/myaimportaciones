@@ -29,7 +29,7 @@ import {
   searchSupplierOpportunitiesAction,
   importSupplierOpportunityAction,
 } from "@/app/admin/actions";
-import { calculateCommercialMargin } from "@/lib/supplier-commercial";
+import { calculateCommercialMargin, evaluateWithMarketBenchmark } from "@/lib/supplier-commercial";
 import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 
 interface CategoryOption {
@@ -74,6 +74,9 @@ export function SupplierOpportunitiesRadar({
   const [editRetailPrice, setEditRetailPrice] = useState<number>(0);
   const [editWholesalePrice, setEditWholesalePrice] = useState<number>(0);
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editMlUrl, setEditMlUrl] = useState("");
+  const [editMlPrice, setEditMlPrice] = useState<number>(0);
+  const [mlAppliedMessage, setMlAppliedMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{
     productId: string;
@@ -141,6 +144,8 @@ export function SupplierOpportunitiesRadar({
         retailPrice: opp.suggestedRetailPrice,
         wholesalePrice: suggestedWholesale,
         isActive: true,
+        mlUrl: opp.mlUrl || undefined,
+        mlPrice: opp.mlPrice && opp.mlPrice > 0 ? opp.mlPrice : undefined,
       });
 
       if (res.success) {
@@ -166,6 +171,9 @@ export function SupplierOpportunitiesRadar({
     setEditTitle(opp.cleanTitle);
     setEditCategoryId(opp.categoryId);
     setEditRetailPrice(opp.suggestedRetailPrice);
+    setEditMlUrl(opp.mlUrl || "");
+    setEditMlPrice(opp.mlPrice || 0);
+    setMlAppliedMessage(null);
 
     // Calcular sugerido mayorista según elegibilidad
     const isExcluded =
@@ -190,6 +198,34 @@ export function SupplierOpportunitiesRadar({
     setActiveOpportunity(null);
     setImportSuccess(null);
     setImportError(null);
+    setMlAppliedMessage(null);
+  };
+
+  const handleApplyMlPrice = (customPrice?: number) => {
+    const price = customPrice !== undefined ? customPrice : editMlPrice;
+    if (!price || price <= 0 || !activeOpportunity) return;
+    const evalRes = evaluateWithMarketBenchmark(
+      activeOpportunity.landedCostArs,
+      editRetailPrice,
+      price,
+      activeOpportunity.categorySlug,
+      editTitle
+    );
+    setEditRetailPrice(evalRes.suggestedPrice);
+
+    // Recalcular mayorista con el nuevo precio minorista
+    const isExcluded =
+      /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(editTitle) ||
+      activeOpportunity.categorySlug.includes("smartphone") ||
+      activeOpportunity.categorySlug.includes("notebook");
+
+    if (!isExcluded) {
+      const discount = activeOpportunity.categorySlug.includes("herramienta") ? 0.20 : 0.28;
+      const suggestedWholesale = Math.round((evalRes.suggestedPrice * (1 - discount)) / 100) * 100;
+      setEditWholesalePrice(suggestedWholesale);
+    }
+
+    setMlAppliedMessage(evalRes.notes);
   };
 
   const handleConfirmImport = async () => {
@@ -205,6 +241,8 @@ export function SupplierOpportunitiesRadar({
         retailPrice: Number(editRetailPrice),
         wholesalePrice: Number(editWholesalePrice),
         isActive: editIsActive,
+        mlUrl: editMlUrl.trim() || undefined,
+        mlPrice: editMlPrice > 0 ? Number(editMlPrice) : undefined,
       });
 
       if (res.success) {
@@ -701,9 +739,22 @@ export function SupplierOpportunitiesRadar({
                           Precio Sugerido:
                         </span>
                         {opp.mlPrice ? (
-                          <span className="text-[10px] text-amber-800 font-medium block">
-                            Ref. ML: ${opp.mlPrice.toLocaleString("es-AR")}
-                          </span>
+                          opp.mlUrl ? (
+                            <a
+                              href={opp.mlUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-amber-800 font-semibold hover:underline inline-flex items-center gap-0.5"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span>Ref. ML: ${opp.mlPrice.toLocaleString("es-AR")}</span>
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-amber-800 font-medium block">
+                              Ref. ML: ${opp.mlPrice.toLocaleString("es-AR")}
+                            </span>
+                          )
                         ) : null}
                       </div>
                       <span className="text-sm font-black text-sky-700">
@@ -968,25 +1019,71 @@ export function SupplierOpportunitiesRadar({
                   </div>
                 </div>
 
-                {/* Mercado Libre Benchmark Verification Link */}
-                <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-2.5 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-extrabold text-amber-950 block">
-                      ¿A cuánto se vende en el mercado?
-                    </span>
-                    <span className="text-[11px] text-amber-800">
-                      Compará precios con Mercado Libre Argentina
-                    </span>
+                {/* Mercado Libre Benchmark Verification & Linking */}
+                <div className="rounded-2xl border border-amber-200/90 bg-amber-50/60 p-3 text-xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-extrabold text-amber-950 block">
+                        Referencia de Mercado Libre
+                      </span>
+                      <span className="text-[11px] text-amber-800">
+                        Vigila el comparable y aplica el precio competitivo (-8%)
+                      </span>
+                    </div>
+                    <a
+                      href={buildMercadoLibreSearchUrl(editTitle, activeOpportunity.brand || undefined, activeOpportunity.model || undefined)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg bg-amber-600 hover:bg-amber-700 px-2.5 py-1 text-xs font-bold text-white shadow-2xs"
+                    >
+                      <span>Buscar en ML</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
-                  <a
-                    href={buildMercadoLibreSearchUrl(editTitle, activeOpportunity.brand || undefined, activeOpportunity.model || undefined)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-amber-600 hover:bg-amber-700 px-2.5 py-1 text-xs font-bold text-white shadow-2xs"
-                  >
-                    <span>Ver en ML</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-bold text-zinc-700 block mb-0.5">
+                        Link de publicación ML
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://articulo.mercadolibre.com.ar/MLA-..."
+                        value={editMlUrl}
+                        onChange={(e) => setEditMlUrl(e.target.value)}
+                        className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-medium text-zinc-900 focus:border-amber-500 focus:outline-none placeholder:text-zinc-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-700 block mb-0.5">
+                        Precio ML (ARS)
+                      </label>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          placeholder="98500"
+                          value={editMlPrice || ""}
+                          onChange={(e) => setEditMlPrice(Number(e.target.value))}
+                          className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2 text-xs font-bold text-zinc-900 focus:border-amber-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleApplyMlPrice()}
+                          disabled={!editMlPrice || editMlPrice <= 0}
+                          title="Calcular precio competitivo (-8%)"
+                          className="shrink-0 h-8 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-black transition-colors"
+                        >
+                          Aplicar -8%
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {mlAppliedMessage && (
+                    <div className="text-[11px] text-amber-900 bg-amber-100/70 rounded-lg p-1.5 font-medium">
+                      ✓ {mlAppliedMessage}
+                    </div>
+                  )}
                 </div>
 
                 {/* Retail Price and Live Margin */}

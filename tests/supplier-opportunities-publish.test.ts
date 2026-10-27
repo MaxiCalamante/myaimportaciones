@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { importSupplierOpportunity, opportunityModel, buildRichProductDescription } from "../src/lib/supplier-opportunities";
+import { importSupplierOpportunity, opportunityModel, buildRichProductDescription, opportunityImagesFromPage } from "../src/lib/supplier-opportunities";
 
 const migration = readFileSync("supabase/migrations/20261020120000_supplier_intelligence.sql", "utf8");
 const policy = JSON.parse(migration.match(/insert into public.import_cost_policies\(config\) values \('([\s\S]*?)'\);/)![1]);
@@ -72,4 +72,70 @@ test("buildRichProductDescription genera especificaciones técnicas, garantías 
   assert.match(desc, /Garantía oficial de 30 días/);
   assert.match(desc, /Correo Argentino/);
   assert.match(desc, /Transferencia Bancaria/);
+});
+
+test("opportunityImagesFromPage extrae galería de alta resolución 1500px y JSON-LD", () => {
+  const html = `
+    <html>
+      <head>
+        <script type="application/ld+json">
+        {
+          "@type": "Product",
+          "productID": "12345",
+          "image": [
+            "https://www.totalherramientasoficial.com.py/img/12345/produtos/400/foto1.jpg",
+            "https://www.totalherramientasoficial.com.py/img/12345/produtos/400/foto2.jpg"
+          ]
+        }
+        </script>
+      </head>
+      <body>
+        <img src="https://www.totalherramientasoficial.com.py/img/12345/produtos/qm/foto1.jpg" data-zoom-image="https://www.totalherramientasoficial.com.py/img/12345/produtos/1500/foto1.jpg" />
+        <img src="https://www.totalherramientasoficial.com.py/img/12345/produtos/400/foto2.jpg" />
+        <img src="https://www.totalherramientasoficial.com.py/img/99999/produtos/400/related.jpg" />
+      </body>
+    </html>
+  `;
+
+  const res = opportunityImagesFromPage(html, {
+    external_id: "12345",
+    variant_key: "base",
+    source_url: "https://www.totalherramientasoficial.com.py/produto/item-12345.html",
+  });
+
+  assert.equal(res.mainImage, "https://www.totalherramientasoficial.com.py/img/12345/produtos/1500/foto1.jpg");
+  assert.equal(res.galleryImages.length, 2);
+  assert.equal(res.galleryImages[0], "https://www.totalherramientasoficial.com.py/img/12345/produtos/1500/foto1.jpg");
+  assert.equal(res.galleryImages[1], "https://www.totalherramientasoficial.com.py/img/12345/produtos/1500/foto2.jpg");
+  // Asegura que no incluya productos relacionados de otros trayIds (99999)
+  assert.equal(res.galleryImages.some(img => img.includes("99999")), false);
+});
+
+test("importSupplierOpportunity registra mercado_libre en supplier_market_references cuando se proporciona", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) => response(String(url).endsWith("/robots.txt") ? "User-agent: *\nDisallow:" : `<script type="application/ld+json">${JSON.stringify({"@type":"Product",productID:"381352",image})}</script>`,String(url));
+  try {
+    const { db, events } = fakeDb();
+    await importSupplierOpportunity(
+      {
+        offerId: "offer",
+        title: "Total TGT11226 2000W",
+        categoryId: "cat",
+        retailPrice: 90700,
+        wholesalePrice: 72500,
+        isActive: true,
+        mlUrl: "https://www.mercadolibre.com.ar/test-ml",
+        mlPrice: 98599,
+      },
+      { client: db }
+    );
+
+    const mlEvent = events.find(e => e.table === "supplier_market_references" && e.op === "upsert");
+    assert.ok(mlEvent, "Debe registrar referencia de mercado");
+    assert.equal(mlEvent.value.source_url, "https://www.mercadolibre.com.ar/test-ml");
+    assert.equal(mlEvent.value.price_ars, 98599);
+    assert.equal(mlEvent.value.identity_verified, true);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
