@@ -150,7 +150,7 @@ export function detectStoreCategory(
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
   if (/perfum|edp|edt|cologne|eau de/i.test(t)) {
-    const c = findCat("perfumes-arabes") || findCat("perfumeria");
+    const c = findCat("perfumeria");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
 
@@ -245,7 +245,7 @@ export function detectStoreCategory(
     const c = findCat("electronica-smartphones") || findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
-  if (/ssd|ram|kingston|sandisk|pendrive|auricular|headphone|gamer|silla|monitor|teclado|mouse|jbl|alexa|echo|soundbar|parlante/i.test(t)) {
+  if (/\b(tv|televisor|televis[aã]o|smart\s*tv|placa de video|placa de v[ií]deo|geforce|radeon|playstation|xbox)\b|ssd|ram|kingston|sandisk|pendrive|auricular|headphone|gamer|silla|monitor|teclado|mouse|jbl|alexa|echo|soundbar|parlante/i.test(t)) {
     const c = findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }

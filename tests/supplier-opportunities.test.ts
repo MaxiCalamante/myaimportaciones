@@ -47,6 +47,9 @@ test("detectStoreCategory clasifica correctamente fragancias árabes, k-beauty, 
   // Perfumes árabes
   const perfume = detectStoreCategory("Lattafa Yara Eau de Parfum 100ml", mockCategories);
   assert.equal(perfume.categorySlug, "perfumes-arabes");
+  assert.equal(detectStoreCategory("Perfume Creed Aventus EDP 100ml", mockCategories).categorySlug, "perfumeria");
+  assert.equal(detectStoreCategory("Placa de Video NVIDIA GeForce RTX-5090 32GB", mockCategories).categorySlug, "electronica");
+  assert.equal(detectStoreCategory('Smart TV Samsung 85 pulgadas', mockCategories).categorySlug, "electronica");
 
   // K-Beauty Toner Pad
   const kbeauty = detectStoreCategory("Medicube PDRN Pink Collagen Toner Pad 70 pads", mockCategories);
