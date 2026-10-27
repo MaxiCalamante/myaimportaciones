@@ -79,6 +79,7 @@ export function SupplierOpportunitiesRadar({
     productId: string;
     slug: string;
     title: string;
+    isActive: boolean;
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -208,6 +209,7 @@ export function SupplierOpportunitiesRadar({
           productId: res.productId,
           slug: res.slug,
           title: res.title,
+          isActive: editIsActive,
         });
         setImportedOfferIds((prev) => new Set(prev).add(activeOpportunity.offerId));
       }
@@ -872,20 +874,21 @@ export function SupplierOpportunitiesRadar({
                 </div>
                 <div>
                   <h4 className="text-base font-extrabold text-zinc-900">
-                    ¡Producto agregado exitosamente!
+                    {importSuccess.isActive ? "¡Producto publicado!" : "Borrador guardado"}
                   </h4>
                   <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
-                    &ldquo;{importSuccess.title}&rdquo; fue agregado. Revisá su estado en Productos.
+                    {importSuccess.isActive
+                      ? <> &ldquo;{importSuccess.title}&rdquo; está publicado en la tienda.</>
+                      : <> &ldquo;{importSuccess.title}&rdquo; está guardado como borrador. Todavía no tiene una página pública.</>}
                   </p>
                 </div>
                 <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
                   <Link
-                    href={`/producto/${importSuccess.slug}`}
-                    target="_blank"
+                    href={importSuccess.isActive ? `/producto/${importSuccess.slug}` : "/admin"}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-xs font-bold text-white hover:bg-black"
                   >
                     <ShoppingBag className="h-4 w-4" />
-                    Ver en Tienda
+                    {importSuccess.isActive ? "Ver en tienda" : "Ir al panel de productos"}
                   </Link>
                   <button
                     type="button"
