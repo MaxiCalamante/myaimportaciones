@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ShoppingBag, ArrowRight, Building2, CreditCard } from "lucide-react";
+import { ShoppingBag, ArrowRight, Building2, CreditCard, AlertCircle } from "lucide-react";
+import { validateWholesaleOrder } from "@/lib/wholesale-policy";
 import type { Profile } from "@/lib/auth";
 import type { OrderQuote } from "@/lib/order-pricing";
 import { createOrderAction, quoteOrderAction, type CheckoutInput } from "@/app/checkout/actions";
@@ -54,6 +55,14 @@ export function CheckoutPanel({
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const wholesaleValidation = validateWholesaleOrder(
+    cart.map((l) => ({
+      channel: l.channel,
+      price: l.variantPrice != null ? l.variantPrice : (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice),
+      quantity: l.quantity,
+    }))
+  );
   const requestId = useRef("");
   const initiated = useRef(false);
 
@@ -679,12 +688,36 @@ export function CheckoutPanel({
               Al confirmar aceptás las <Link href="/condiciones" className="underline">condiciones de compra</Link> y <Link href="/privacidad" className="underline">privacidad</Link>.
             </p>
 
+            {wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs sm:text-sm text-amber-950">
+                <div className="flex items-center gap-2 font-bold text-amber-900">
+                  <AlertCircle className="size-4 shrink-0 text-amber-600" />
+                  <span>Mínimo Mayorista Combinable no alcanzado</span>
+                </div>
+                <p className="mt-1 leading-relaxed">
+                  {wholesaleValidation.errorMessage}
+                </p>
+                <div className="mt-2.5">
+                  <Link
+                    href="/mayorista#lista"
+                    className="inline-flex items-center gap-1 font-bold text-amber-800 underline underline-offset-4 hover:text-amber-950"
+                  >
+                    Sumar productos en el catálogo mayorista &rarr;
+                  </Link>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={pending || !checkoutEnabled || !validQuote}
+              disabled={pending || !checkoutEnabled || !validQuote || (wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum)}
               className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base cursor-pointer"
             >
-              {pending ? "Procesando pedido…" : "Confirmar pedido"}
+              {pending
+                ? "Procesando pedido…"
+                : wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum
+                ? "Mínimo mayorista no alcanzado"
+                : "Confirmar pedido"}
             </button>
           </aside>
         </form>

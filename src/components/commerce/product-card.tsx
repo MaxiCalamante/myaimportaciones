@@ -109,23 +109,46 @@ export function ProductCard({
         </Link>
         <div className="mt-auto pt-3">
           <div>
-            <p className="text-[11px] text-zinc-500 sm:text-xs">
-              {channel === "wholesale" ? "Precio mayorista" : product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? "Desde · precio en pesos" : "Precio en pesos"}
-            </p>
-            <p data-product-price className="whitespace-nowrap text-[clamp(0.95rem,4.1vw,1.125rem)] font-semibold tracking-tight tabular-nums text-zinc-950 sm:text-xl">
-              {formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)}
-            </p>
-            {channel === "retail" && (product.hasVariants && product.minPrice ? product.minPrice : price) > 0 && (
-              <p className="mt-1 text-[11px] font-medium text-emerald-800">Transferencia bancaria · beneficio sujeto a confirmación en el resumen.</p>
+            {channel === "wholesale" || product.wholesalePrice > 0 ? (
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  {product.retailPrice > 0 && (
+                    <span className="text-xs text-zinc-400 line-through tabular-nums" title="Precio minorista de referencia">
+                      Minorista: {formatCurrency(product.retailPrice)}
+                    </span>
+                  )}
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Mayorista:</span>
+                    <p data-product-price className="whitespace-nowrap text-xl sm:text-2xl font-black tracking-tight tabular-nums text-emerald-600">
+                      {formatCurrency(product.wholesalePrice > 0 ? product.wholesalePrice : price)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {product.retailPrice > product.wholesalePrice && product.wholesalePrice > 0 && (
+                    <span className="inline-flex items-center rounded-md bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                      Ahorro -{Math.round(((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100)}%
+                    </span>
+                  )}
+                  <p className="text-[11px] font-semibold text-zinc-500">
+                    · Mínimo {product.wholesaleMinQuantity || 1} {product.wholesaleMinQuantity === 1 ? "unidad" : "unidades"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-[11px] text-zinc-500 sm:text-xs">
+                  {product.hasVariants && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice ? "Desde · precio en pesos" : "Precio en pesos"}
+                </p>
+                <p data-product-price className="whitespace-nowrap text-[clamp(0.95rem,4.1vw,1.125rem)] font-semibold tracking-tight tabular-nums text-zinc-950 sm:text-xl">
+                  {formatCurrency(product.hasVariants && product.minPrice ? product.minPrice : price)}
+                </p>
+                {(product.hasVariants && product.minPrice ? product.minPrice : price) > 0 && (
+                  <p className="mt-1 text-[11px] font-medium text-emerald-800">Transferencia bancaria · beneficio sujeto a confirmación en el resumen.</p>
+                )}
+                <ElectronicsPrice product={product} />
+              </div>
             )}
-            {channel === "retail" && <ElectronicsPrice product={product} />}
-
-
-            {channel === "wholesale" ? (
-              <p className="mt-1 text-xs text-zinc-500">
-                Minimo {product.wholesaleMinQuantity} unidades
-              </p>
-            ) : null}
             {product.hasVariants && <ProductVariantPreview slug={product.slug} variants={product.variants} />}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">

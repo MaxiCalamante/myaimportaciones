@@ -8,22 +8,29 @@ export interface Profile {
   id: string;
   fullName: string;
   email: string;
+  phone?: string;
   role: AccountRole;
   customerTier: CustomerTier;
   businessName?: string;
   cuit?: string;
   isApprovedWholesale?: boolean;
+  isWholesalePending?: boolean;
+  wholesaleRequestedAt?: string;
+  wholesaleNotes?: string;
 }
 
 interface DbProfile {
   id: string;
   full_name: string | null;
   email: string | null;
+  phone: string | null;
   role: AccountRole | null;
   customer_tier: CustomerTier | null;
   business_name: string | null;
   cuit: string | null;
   is_approved_wholesale: boolean | null;
+  wholesale_requested_at: string | null;
+  wholesale_notes: string | null;
 }
 
 export const getCurrentProfile = cache(async function getCurrentProfile(): Promise<{
@@ -46,7 +53,7 @@ export const getCurrentProfile = cache(async function getCurrentProfile(): Promi
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, email, role, customer_tier, business_name, cuit, is_approved_wholesale")
+    .select("id, full_name, email, phone, role, customer_tier, business_name, cuit, is_approved_wholesale, wholesale_requested_at, wholesale_notes")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -59,6 +66,7 @@ export const getCurrentProfile = cache(async function getCurrentProfile(): Promi
       profile?.customer_tier === "wholesale" ||
       profile?.role === "admin"
   );
+  const isWholesalePending = Boolean(!isApprovedWholesale && profile?.wholesale_requested_at);
 
   return {
     user,
@@ -70,11 +78,15 @@ export const getCurrentProfile = cache(async function getCurrentProfile(): Promi
         user.user_metadata?.full_name ??
         (user.email ?? "Cliente"),
       email: profile?.email ?? user.email ?? "",
+      phone: profile?.phone ?? undefined,
       role,
       customerTier,
       businessName: profile?.business_name ?? undefined,
       cuit: profile?.cuit ?? undefined,
       isApprovedWholesale,
+      isWholesalePending,
+      wholesaleRequestedAt: profile?.wholesale_requested_at ?? undefined,
+      wholesaleNotes: profile?.wholesale_notes ?? undefined,
     },
   };
 });

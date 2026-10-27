@@ -4,6 +4,50 @@ export const WHOLESALE_MIN_UNITS = 5;
 export const WHOLESALE_MINIMUM_LABEL = "$100.000 en productos o 5 unidades en total";
 export const WHOLESALE_MINIMUM_DETAILS = "Alcanzá $100.000 en productos o sumá al menos 5 unidades, del mismo producto o combinando varios. Basta con cumplir una de las dos condiciones. El envío se cotiza por separado.";
 
+export interface WholesaleValidationResult {
+  hasWholesale: boolean;
+  totalAmount: number;
+  totalUnits: number;
+  meetsMinimum: boolean;
+  missingAmount: number;
+  missingUnits: number;
+  errorMessage?: string;
+}
+
+export function validateWholesaleOrder(
+  lines: { channel?: string; price: number; quantity: number }[]
+): WholesaleValidationResult {
+  const wholesaleLines = lines.filter((l) => l.channel === "wholesale");
+  if (!wholesaleLines.length) {
+    return {
+      hasWholesale: false,
+      totalAmount: 0,
+      totalUnits: 0,
+      meetsMinimum: true,
+      missingAmount: 0,
+      missingUnits: 0,
+    };
+  }
+
+  const totalAmount = wholesaleLines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+  const totalUnits = wholesaleLines.reduce((sum, l) => sum + l.quantity, 0);
+  const meetsMinimum = totalAmount >= WHOLESALE_MIN_AMOUNT || totalUnits >= WHOLESALE_MIN_UNITS;
+  const missingAmount = Math.max(0, WHOLESALE_MIN_AMOUNT - totalAmount);
+  const missingUnits = Math.max(0, WHOLESALE_MIN_UNITS - totalUnits);
+
+  return {
+    hasWholesale: true,
+    totalAmount,
+    totalUnits,
+    meetsMinimum,
+    missingAmount,
+    missingUnits,
+    errorMessage: meetsMinimum
+      ? undefined
+      : `El pedido mayorista requiere alcanzar $100.000 o sumar al menos 5 unidades combinadas. Te faltan $${missingAmount.toLocaleString("es-AR")} o ${missingUnits} ${missingUnits === 1 ? "unidad" : "unidades"} para continuar.`,
+  };
+}
+
 export function wholesaleProductInquiry(product: { title: string; slug: string }, quantity: number, variantTitle?: string | null) {
   return `Hola MYA Importaciones. Quisiera una cotización MAYORISTA.\nProducto: ${product.title}${variantTitle ? ` (${variantTitle})` : ""}.\nEnlace: https://myaimportaciones.com/producto/${encodeURIComponent(product.slug)}\nCantidad de este producto a consultar: ${quantity}.\nMínimo mayorista: ${WHOLESALE_MINIMUM_LABEL}, combinables entre productos.\nPor favor, confirmen precio mayorista, disponibilidad, pago y entrega. Si la selección no alcanza el mínimo, quisiera consultar cómo completar el pedido.`;
 }

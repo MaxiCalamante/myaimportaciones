@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { ArrowRight, ShoppingBag, Trash2, X, ShieldCheck, Truck, Check, Smartphone, Sparkles, Gem, Wrench } from "lucide-react";
+import { ArrowRight, ShoppingBag, Trash2, X, ShieldCheck, Truck, Check, Smartphone, Sparkles, Gem, Wrench, AlertCircle, Lock } from "lucide-react";
+import { validateWholesaleOrder } from "@/lib/wholesale-policy";
 import { purchasableQuantity } from "@/lib/commerce-policy";
 import { trackAdsEvent } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
@@ -12,6 +13,14 @@ import { useCommerce } from "./commerce-provider";
 
 export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
   const { cart, cartReady, cartOpen, cartCount, cartTotal, setCartOpen, updateQuantity, removeFromCart, openWhatsApp } = useCommerce();
+
+  const wholesaleValidation = validateWholesaleOrder(
+    cart.map((line) => ({
+      channel: line.channel,
+      price: line.variantPrice != null ? line.variantPrice : (line.channel === "wholesale" ? line.product.wholesalePrice : line.product.retailPrice),
+      quantity: line.quantity,
+    }))
+  );
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!cartOpen) return;
@@ -108,7 +117,29 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
               Ver catálogo completo <ArrowRight className="size-4" />
             </Link>
           </div>
-        ) : <div className="space-y-3">{cart.map(line => {
+        ) : <div className="space-y-3">
+          {wholesaleValidation.hasWholesale && (
+            !wholesaleValidation.meetsMinimum ? (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <div className="flex items-center gap-2 font-bold text-amber-900">
+                  <AlertCircle className="size-4 shrink-0 text-amber-600" />
+                  <span>Mínimo Mayorista Combinable</span>
+                </div>
+                <p className="mt-1 leading-relaxed">
+                  Para compras mayoristas necesitás alcanzar <strong>$100.000</strong> o sumar al menos <strong>5 unidades combinadas</strong>.
+                </p>
+                <div className="mt-2 flex items-center justify-between border-t border-amber-200/80 pt-2 text-[11px] font-semibold text-amber-900">
+                  <span>Actual: {formatCurrency(wholesaleValidation.totalAmount)} ({wholesaleValidation.totalUnits} un.)</span>
+                  <span className="text-amber-800">Faltan {formatCurrency(wholesaleValidation.missingAmount)} o {wholesaleValidation.missingUnits} un.</span>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-950 flex items-center gap-2 font-semibold">
+                <Check className="size-4 text-emerald-600 shrink-0" />
+                <span>¡Genial! Tu pedido cumple el mínimo de compra mayorista.</span>
+              </div>
+            )
+          )}{cart.map(line => {
           const unitPrice = line.variantPrice != null ? line.variantPrice : (line.channel === "wholesale" ? line.product.wholesalePrice : line.product.retailPrice);
           const lineKey = `${line.product.id}-${line.channel}-${line.variantId || "base"}`;
           const imageSrc = line.variantImage || line.product.imageUrl || "/placeholder-product.svg";
@@ -117,7 +148,24 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
           return <article key={lineKey} className="flex gap-3 rounded-2xl border border-zinc-200 p-3"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="relative size-16 shrink-0 sm:size-20 overflow-hidden rounded-xl bg-slate-50"><Image src={imageSrc} alt={line.variantTitle ? `${line.product.title} (${line.variantTitle})` : line.product.title} fill sizes="80px" className="object-contain p-2" /></Link><div className="min-w-0 flex-1"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="line-clamp-2 text-sm font-bold leading-5 text-zinc-950 hover:text-sky-700">{line.product.title}</Link>{line.variantTitle && <div className="mt-1 flex flex-wrap items-center gap-1.5"><span className="inline-flex items-center gap-1 rounded-md max-w-full break-words bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 border border-sky-200/80"><span className="size-1.5 rounded-full bg-sky-600"></span>{line.variantTitle}</span>{line.variantSku && <span className="break-all text-[10px] text-zinc-400">{line.variantSku}</span>}</div>}<p className="mt-1 text-xs text-zinc-500">{formatCurrency(unitPrice)} por unidad</p><p className="mt-1 text-base font-bold tabular-nums text-zinc-950">{formatCurrency(unitPrice * line.quantity)}</p><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><QuantityStepper quantity={line.quantity} min={line.channel === "wholesale" ? line.product.wholesaleMinQuantity : 1} max={maxQty} onChange={value => updateQuantity(line.product.id, line.channel, value, line.variantId)} label={`Cantidad de ${line.product.title}`}/><button type="button" aria-label={`Quitar ${line.product.title} del carrito`} onClick={() => removeFromCart(line.product.id, line.channel, line.variantId)} className="grid size-11 place-items-center rounded-xl text-zinc-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="size-4" /></button></div></div></article>;
         })}</div>}
       </div>
-      {cart.length > 0 && <footer className="shrink-0 border-t border-zinc-200 bg-white px-4 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.04)] sm:px-6" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-zinc-700">Subtotal</span><strong className="text-xl tabular-nums text-zinc-950 font-black">{formatCurrency(cartTotal)}</strong></div><div className="mt-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-950"><p className="font-bold">Beneficio por transferencia</p><p className="mt-1 leading-5">El descuento disponible y el total se confirman en el resumen de compra.</p></div><p className="mt-2 text-xs leading-5 text-zinc-500">Envíos a todo el país por Correo Argentino y retiros en Tandil.</p><Link href="/checkout" onClick={() => setCartOpen(false)} className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-bold text-white hover:bg-sky-800 active:scale-98 transition shadow-xs"><ShieldCheck className="size-4.5 text-sky-200" /><span>{checkoutEnabled ? "Iniciar Compra Segura" : "Coordinar mi compra"}</span><ArrowRight className="size-4" /></Link><button type="button" onClick={() => { setCartOpen(false); openWhatsApp(whatsappMessage); }} className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50/60 text-sm font-bold text-emerald-800 hover:bg-emerald-100/70 transition cursor-pointer"><span>Consultar disponibilidad por WhatsApp</span></button><Link href="/catalogo" onClick={() => setCartOpen(false)} className="mt-2 flex min-h-10 items-center justify-center text-xs font-semibold text-zinc-500 hover:text-sky-700 transition">Seguir explorando productos</Link></footer>}
+      {cart.length > 0 && <footer className="shrink-0 border-t border-zinc-200 bg-white px-4 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.04)] sm:px-6" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-zinc-700">Subtotal</span><strong className="text-xl tabular-nums text-zinc-950 font-black">{formatCurrency(cartTotal)}</strong></div><div className="mt-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-950"><p className="font-bold">Beneficio por transferencia</p><p className="mt-1 leading-5">El descuento disponible y el total se confirman en el resumen de compra.</p></div><p className="mt-2 text-xs leading-5 text-zinc-500">Envíos a todo el país por Correo Argentino y retiros en Tandil.</p>{wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum ? (
+          <div className="mt-4 flex flex-col gap-2">
+            <div className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-zinc-100 border border-zinc-300 px-4 text-xs sm:text-sm font-bold text-zinc-500 cursor-not-allowed">
+              <Lock className="size-4 text-zinc-400" />
+              <span>Mínimo Mayorista no alcanzado</span>
+            </div>
+            <Link
+              href="/mayorista#lista"
+              onClick={() => setCartOpen(false)}
+              className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-4 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-amber-300 transition shadow-xs"
+            >
+              <span>Completar mínimo mayorista en catálogo</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        ) : (
+          <Link href="/checkout" onClick={() => setCartOpen(false)} className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-bold text-white hover:bg-sky-800 active:scale-98 transition shadow-xs"><ShieldCheck className="size-4.5 text-sky-200" /><span>{checkoutEnabled ? "Iniciar Compra Segura" : "Coordinar mi compra"}</span><ArrowRight className="size-4" /></Link>
+        )}<button type="button" onClick={() => { setCartOpen(false); openWhatsApp(whatsappMessage); }} className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50/60 text-sm font-bold text-emerald-800 hover:bg-emerald-100/70 transition cursor-pointer"><span>Consultar disponibilidad por WhatsApp</span></button><Link href="/catalogo" onClick={() => setCartOpen(false)} className="mt-2 flex min-h-10 items-center justify-center text-xs font-semibold text-zinc-500 hover:text-sky-700 transition">Seguir explorando productos</Link></footer>}
     </aside>
   </div>;
 }

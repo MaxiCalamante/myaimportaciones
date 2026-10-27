@@ -105,7 +105,7 @@ export function mapCategory(category: DbCategory, admin = false): Category {
   };
 }
 
-export function mapProduct(product: DbProduct, admin = false): Product {
+export function mapProduct(product: DbProduct, admin = false, wholesale = false): Product {
   const category = Array.isArray(product.categories)
     ? product.categories[0]
     : product.categories;
@@ -156,7 +156,7 @@ export function mapProduct(product: DbProduct, admin = false): Product {
     categoryName: category?.name ?? "Catalogo",
     imageUrl: product.image_url ?? "",
     retailPrice: effectiveRetailPrice,
-    wholesalePrice: (WHOLESALE_ENABLED || admin) ? Number(product.wholesale_price ?? 0) : 0,
+    wholesalePrice: (WHOLESALE_ENABLED || admin || wholesale) ? Number(product.wholesale_price ?? 0) : 0,
     wholesaleMinQuantity: Number(product.wholesale_min_qty ?? 1),
     stock: effectiveStock,
     paymentMethods: product.payment_methods ?? ["transferencia"],

@@ -26,6 +26,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
   admin?: boolean;
   limit?: number;
   all?: boolean;
+  wholesale?: boolean;
 }): Promise<StorefrontData> {
   if (!hasSupabaseConfig()) return { categories: [], products: [], source: "demo", error: "La tienda está en preparación. Consultanos por WhatsApp." };
   const supabase = options?.admin ? await getAdminClient() : await createServerSupabaseClient();
@@ -60,7 +61,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
       );
     if (!options?.admin) query = query.eq("is_active", true).is("deleted_at", null);
 
-    if (!WHOLESALE_ENABLED && !options?.admin) query = query.eq("is_wholesale_only", false);
+    if (!WHOLESALE_ENABLED && !options?.admin && !options?.wholesale) query = query.eq("is_wholesale_only", false);
     if (options?.brand) query = query.eq("brand", options.brand);
     if (options?.categoryId) {
       const childIds = ((categoriesData ?? []) as unknown as DbCategory[])
@@ -94,10 +95,10 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(c => mapCategory(c, options?.admin));
   const excluded = new Set(categories.filter(c => isExcludedCategory(c.slug)).map(c => c.id));
   categories.forEach(c => { if (c.parentId && excluded.has(c.parentId)) excluded.add(c.id); });
-  const products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin)).filter(p => options?.admin || !excluded.has(p.categoryId));
+  const products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin, options?.wholesale)).filter(p => options?.admin || !excluded.has(p.categoryId));
 
   const result: StorefrontData = {
-    categories: options?.admin ? categories : categories.filter(c => !c.wholesaleOnly && !excluded.has(c.id)),
+    categories: options?.admin || options?.wholesale ? categories : categories.filter(c => !c.wholesaleOnly && !excluded.has(c.id)),
     products,
     source: "supabase",
   };
