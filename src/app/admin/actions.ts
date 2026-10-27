@@ -1815,8 +1815,10 @@ export async function searchSupplierOpportunitiesAction(params: OpportunitySearc
 }
 
 export async function importSupplierOpportunityAction(input: ImportOpportunityInput) {
-  const db = await getAdminClient();
-  const res = await importSupplierOpportunity(input, { client: db });
+  // Supplier offers are private and production only grants administrators read access.
+  // Check the caller first, then use the service client for the complete import.
+  await getAdminClient();
+  const res = await importSupplierOpportunity(input, { client: createCommerceService() });
   invalidateAdminStorefrontCache();
   return res;
 }
