@@ -5,7 +5,7 @@ import {
   calculateCommercialMargin,
   getCategoryMarginBenchmark,
 } from "./supplier-commercial";
-import { buildMercadoLibreSearchUrl } from "./mercadolibre-url";
+import { buildMercadoLibreSearchUrl, isMercadoLibreProductUrl } from "./mercadolibre-url";
 export { buildMercadoLibreSearchUrl };
 import { revalidatePath } from "next/cache";
 
@@ -70,7 +70,7 @@ export interface MarketComparisonFilterParams {
  * Calcula la recomendación de precio competitivo y de maximización de ganancias contra Mercado Libre.
  *
  * Estrategia oficial:
- * 1. Precio objetivo competitivo: 8% por debajo de Mercado Libre (el cliente ve "¡más barato que en ML!").
+ * 1. Precio objetivo según el descuento configurado para el producto.
  * 2. Terminación psicológica (.900 o .000).
  * 3. Piso de seguridad: el costo landed + margen mínimo de categoría.
  * 4. Si nuestro precio es mucho menor que el objetivo, PODEMOS SUBIR PRECIO para ganar más margen sin perder la venta.
@@ -81,7 +81,8 @@ export function calculateCompetitivePricing(
   landedCostArs: number,
   mlPrice: number | null,
   categorySlug?: string,
-  title?: string
+  title?: string,
+  discountPercent = 10
 ): {
   targetPrice: number;
   priceDifferenceArs: number;
@@ -93,27 +94,23 @@ export function calculateCompetitivePricing(
   targetMarginPercent: number;
 } {
   const benchmark = getCategoryMarginBenchmark(categorySlug, title);
-  const currentMargin = calculateCommercialMargin(currentPrice, landedCostArs);
+  const currentMargin = landedCostArs > 0 ? calculateCommercialMargin(currentPrice, landedCostArs) : { marginPercent: 0 };
 
-  if (!mlPrice || mlPrice <= 0) {
+  if (!mlPrice || mlPrice <= 0 || landedCostArs <= 0) {
     return {
       targetPrice: currentPrice,
       priceDifferenceArs: 0,
       priceDifferencePercent: 0,
       action: "missing_benchmark",
-      actionLabel: "Sin referencia ML",
+      actionLabel: landedCostArs <= 0 ? "Costo sin verificar" : "Sin referencia ML vigente",
       potentialGainArs: 0,
       currentMarginPercent: currentMargin.marginPercent,
       targetMarginPercent: currentMargin.marginPercent,
     };
   }
 
-  // Objetivo: ~8% por debajo de Mercado Libre para ser claramente más baratos
-  const baseTarget = mlPrice * 0.92;
-  let targetPrice = Math.round(baseTarget / 100) * 100;
-  if (targetPrice > 1000 && targetPrice % 1000 === 0) {
-    targetPrice -= 100; // e.g. 40.000 -> 39.900
-  }
+  // Objetivo configurado, redondeado hacia abajo.
+  const targetPrice = Math.floor((mlPrice * (1 - discountPercent / 100)) / 100) * 100;
 
   // Piso de seguridad según margen mínimo
   const minCostFloor = landedCostArs > 0 ? landedCostArs / (1 - benchmark.minMargin / 100) : 0;
@@ -128,7 +125,10 @@ export function calculateCompetitivePricing(
 
   // CASO 1: Subir precio para maximizar ganancia
   // Si nuestro precio actual es más de 6% inferior al targetPrice, estamos regalando margen
-  if (currentPrice < targetPrice * 0.94) {
+  if (targetPrice < minCostFloor) {
+    action = "cost_constrained";
+    actionLabel = "Alerta: Costo alto vs ML";
+  } else if (currentPrice < targetPrice * 0.94) {
     action = "raise_price";
     potentialGainArs = targetPrice - currentPrice;
     actionLabel = `Subir a $${targetPrice.toLocaleString("es-AR")} (+${Math.round(potentialGainArs).toLocaleString("es-AR")})`;
@@ -180,7 +180,7 @@ export async function getProductMarketComparisons(
   const db = options?.client ?? (await getAdminClient());
 
   // 1. Cargar productos activos, categorías, referencias ML y costos en paralelo
-  const [productsRes, categoriesRes, marketRefsRes, productCostsRes] = await Promise.all([
+  const [productsRes, categoriesRes, marketRefsRes, productCostsRes, settingsRes] = await Promise.all([
     readAllPages<{
       id: string;
       slug: string;
@@ -203,10 +203,16 @@ export async function getProductMarketComparisons(
         .range(from, to)
     ),
     db.from("categories").select("id, name, slug"),
-    db.from("supplier_market_references").select("id, product_id, price_ars, source_url, checked_at").not("price_ars", "is", null),
-    db.from("product_costs").select("product_id, landed_cost, ml_price, ml_url, ml_checked_at"),
+    readAllPages<{ id: string; product_id: string; price_ars: number; source_url: string; checked_at: string | null; identity_verified: boolean; variant_id: string | null }>((from, to) => db.from("supplier_market_references").select("id, product_id, price_ars, source_url, checked_at, identity_verified, variant_id").eq("identity_verified", true).is("variant_id", null).not("price_ars", "is", null).order("id").range(from, to)),
+    readAllPages<{ product_id: string; landed_cost: number | null }>((from, to) => db.from("product_costs").select("product_id, landed_cost").order("product_id").range(from, to)),
+    db.from("supplier_tracking_settings").select("config").eq("id", true).single(),
   ]);
 
+  if (categoriesRes.error || settingsRes.error || !settingsRes.data?.config) throw new Error("No se pudieron cargar las categorías o la configuración de precios.");
+  const settings = settingsRes.data.config;
+  const freshnessHours = Number(settings.marketFreshnessHours);
+  const defaultDiscount = Number(settings.marketDiscountPercent);
+  if (!(freshnessHours > 0) || !(defaultDiscount >= 0 && defaultDiscount < 100)) throw new Error("Revisá la configuración de referencias y precios.");
   const categories = categoriesRes.data ?? [];
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
@@ -215,23 +221,18 @@ export async function getProductMarketComparisons(
   const costMap = new Map<string, number>();
 
   // 1ro: product_costs
-  for (const pc of productCostsRes.data ?? []) {
+  for (const pc of productCostsRes) {
     if (pc.landed_cost && Number(pc.landed_cost) > 0) {
       costMap.set(pc.product_id, Number(pc.landed_cost));
-    }
-    if (pc.ml_price && pc.ml_price > 0) {
-      mlMap.set(pc.product_id, {
-        priceArs: Number(pc.ml_price),
-        url: pc.ml_url || null,
-        checkedAt: pc.ml_checked_at || null,
-      });
     }
   }
 
   // 2do: supplier_market_references (tienen prioridad si son más recientes o menores)
-  for (const ref of marketRefsRes.data ?? []) {
+  for (const ref of marketRefsRes) {
+    const checked = ref.checked_at ? Date.parse(ref.checked_at) : NaN;
+    if (!isMercadoLibreProductUrl(ref.source_url) || !Number.isFinite(checked) || checked > Date.now() + 300000 || Date.now() - checked > freshnessHours * 3600000) continue;
     const existing = mlMap.get(ref.product_id);
-    if (!existing || Number(ref.price_ars) < existing.priceArs) {
+    if (!existing || checked > Date.parse(existing.checkedAt || "")) {
       mlMap.set(ref.product_id, {
         priceArs: Number(ref.price_ars),
         url: ref.source_url || null,
@@ -252,7 +253,7 @@ export async function getProductMarketComparisons(
     const mlCheckedAt = ref ? ref.checkedAt : null;
     const mlSearchUrl = buildMercadoLibreSearchUrl(prod.title, prod.brand || undefined, prod.model || undefined);
 
-    const landedCost = costMap.get(prod.id) ?? (prod.retail_price ? Math.round(Number(prod.retail_price) * 0.5) : 0);
+    const landedCost = costMap.get(prod.id) ?? 0;
     const currentPrice = Number(prod.retail_price || 0);
 
     const pricing = calculateCompetitivePricing(
@@ -260,7 +261,8 @@ export async function getProductMarketComparisons(
       landedCost,
       mlPrice,
       categorySlug,
-      prod.title
+      prod.title,
+      Number(settings.productDiscountPercent?.[prod.id] ?? defaultDiscount)
     );
 
     return {
@@ -396,28 +398,8 @@ export async function applyCompetitivePrice(
 ): Promise<{ success: boolean; productId: string; newPrice: number }> {
   const db = options?.client ?? (await getAdminClient());
 
-  if (!productId) throw new Error("ID de producto inválido.");
-  if (!newPrice || newPrice <= 0) throw new Error("El precio de venta debe ser mayor a 0.");
-
-  const { error } = await db
-    .from("products")
-    .update({
-      retail_price: newPrice,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", productId);
-
-  if (error) {
-    throw new Error(`No se pudo actualizar el precio del producto: ${error.message}`);
-  }
-
-  try {
-    revalidatePath("/admin");
-    revalidatePath("/admin/precios");
-    revalidatePath("/catalogo");
-  } catch {}
-
-  return { success: true, productId, newPrice };
+  void db; void productId; void newPrice;
+  throw new Error("Revisá y aplicá precios desde Proveedores → Precios y stock, donde se revalidan costos y referencias.");
 }
 
 /**
@@ -435,48 +417,16 @@ export async function linkMercadoLibreReference(
   if (!priceArs || priceArs <= 0) throw new Error("El precio de Mercado Libre debe ser mayor a 0.");
 
   const cleanUrl = sourceUrl.trim();
+  if (!isMercadoLibreProductUrl(cleanUrl)) throw new Error("Pegá el enlace HTTPS de una publicación concreta de Mercado Libre Argentina, no una búsqueda.");
+  if (!Number.isFinite(priceArs)) throw new Error("Revisá el precio.");
   const stamp = new Date().toISOString();
-
-  // 1. Guardar en supplier_market_references
-  const { data: existingRef } = await db
-    .from("supplier_market_references")
-    .select("id")
-    .eq("product_id", productId)
-    .maybeSingle();
-
-  if (existingRef) {
-    await db
-      .from("supplier_market_references")
-      .update({
-        source_url: cleanUrl || existingRef.id,
-        price_ars: priceArs,
-        checked_at: stamp,
-        last_attempt_at: stamp,
-        last_error: null,
-      })
-      .eq("id", existingRef.id);
-  } else {
-    await db.from("supplier_market_references").insert({
-      product_id: productId,
-      source_url: cleanUrl || `https://listado.mercadolibre.com.ar/manual-${productId}`,
-      price_ars: priceArs,
-      identity_verified: true,
-      checked_at: stamp,
-      last_attempt_at: stamp,
-      refresh_mode: "manual",
-    });
-  }
-
-  // 2. Actualizar también en product_costs
-  await db
-    .from("product_costs")
-    .update({
-      ml_price: priceArs,
-      ml_url: cleanUrl || null,
-      ml_checked_at: stamp,
-      updated_at: stamp,
-    })
-    .eq("product_id", productId);
+  const { data: existing, error: lookupError } = await db.from("supplier_market_references")
+    .select("id").eq("product_id", productId).eq("source_url", cleanUrl).maybeSingle();
+  if (lookupError) throw new Error("No se pudo consultar la referencia.");
+  const result = existing
+    ? await db.from("supplier_market_references").update({ price_ars: priceArs, identity_verified: true, checked_at: stamp, last_error: null, refresh_mode: "manual" }).eq("id", existing.id)
+    : await db.from("supplier_market_references").insert({ product_id: productId, source_url: cleanUrl, price_ars: priceArs, identity_verified: true, checked_at: stamp, refresh_mode: "manual" });
+  if (result.error) throw new Error(`No se pudo guardar la referencia: ${result.error.message}`);
 
   try {
     revalidatePath("/admin/precios");
@@ -493,38 +443,6 @@ export async function bulkApplyRecommendedRaises(
   productIds?: string[],
   options?: { client?: SupabaseClient }
 ): Promise<{ updatedCount: number; extraProfitArs: number }> {
-  const db = options?.client ?? (await getAdminClient());
-  const { items } = await getProductMarketComparisons({ action: "raise_price", pageSize: 500 }, { client: db });
-
-  const candidates = productIds && productIds.length > 0
-    ? items.filter((i) => productIds.includes(i.productId))
-    : items;
-
-  let updatedCount = 0;
-  let extraProfitArs = 0;
-
-  for (const item of candidates) {
-    if (item.targetPrice > item.currentPrice) {
-      const { error } = await db
-        .from("products")
-        .update({
-          retail_price: item.targetPrice,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.productId);
-
-      if (!error) {
-        updatedCount++;
-        extraProfitArs += (item.targetPrice - item.currentPrice);
-      }
-    }
-  }
-
-  try {
-    revalidatePath("/admin");
-    revalidatePath("/admin/precios");
-    revalidatePath("/catalogo");
-  } catch {}
-
-  return { updatedCount, extraProfitArs };
+  void productIds; void options;
+  throw new Error("Los cambios de precio se revisan desde Proveedores → Precios y stock, con evidencia revalidada.");
 }

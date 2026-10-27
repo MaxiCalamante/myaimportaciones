@@ -3,13 +3,25 @@ import { getAdminClient } from "./admin-auth";
 import { readAllPages } from "./read-all-pages";
 import { slugifyProduct } from "./admin-product";
 import {
-  calculateLandedCostArs,
   calculateSuggestedRetailPrice,
   calculateCommercialMargin,
   getCategoryMarginBenchmark,
 } from "./supplier-commercial";
 import { calculateProductWholesalePricing } from "./wholesale-pricing-engine";
 import { revalidatePath } from "next/cache";
+import { fetchSupplierPage, readSupplierHtml } from "./supplier-url";
+import { productImageUrl } from "./admin-product";
+import { publicReadRules } from "./supplier-automation";
+import { supplierSourceUrl } from "./supplier-intelligence";
+import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
+
+function estimateOpportunityCost(offer: { id: string; title: string; brand: string | null; origin_cost: number; source_url: string; cost_checked_at: string | null }, config: { acquisitionArsPerUsd: number; shippingPaidByMya: boolean; shippingArs: number }, policy: ImportPolicy): number | null {
+  try {
+    const inches = Number(offer.title.match(/\b(\d{2,3})\s*(?:pulgadas|polegadas|["″]|'')/i)?.[1]) || undefined;
+    const result = calculateImport({ lines: [{ id: offer.id, title: offer.title, quantity: 1, currency: "USD", origin: Number(offer.origin_cost), acquisitionArsPerUnit: Number(config.acquisitionArsPerUsd), originUnitsPerUsd: 1, kind: classifyImport(offer.title, offer.brand ?? ""), inches, sourceConfirmed: false, sourceReference: offer.source_url, observedAt: offer.cost_checked_at ?? undefined }], expenses: config.shippingPaidByMya ? [{ label: "Transporte", amountArs: config.shippingArs, method: "quantity" }] : [], expensesConfirmed: false, targetMargin: 20 }, policy);
+    return result.totalArs;
+  } catch { return null; }
+}
 
 export interface SupplierOpportunity {
   offerId: string;
@@ -36,6 +48,7 @@ export interface SupplierOpportunity {
   categoryBenchmarkMargin: number;
   marginHealth: "excelente" | "adecuado" | "bajo" | "negativo";
   availability: "in_stock" | "out_of_stock" | "unknown";
+  pricingNeedsReview: boolean;
   lastCheckedAt: string | null;
 }
 
@@ -89,8 +102,8 @@ export function cleanWholesaleTitle(title: string): string {
   let clean = title.trim();
 
   // Eliminar prefijos de perfumería
-  clean = clean.replace(/^PERF\s+(?:TESTER\s+)?(?:FEM|MASC|UNI)\s+/i, "Perfume ");
-  clean = clean.replace(/^PERF\s+(?:TESTER\s+)?/i, "Perfume ");
+  clean = clean.replace(/^PERF\s+(TESTER\s+)?(?:FEM|MASC|UNI)\s+/i, (_match, tester) => tester ? "Perfume Tester " : "Perfume ");
+  clean = clean.replace(/^PERF\s+(TESTER\s+)?/i, (_match, tester) => tester ? "Perfume Tester " : "Perfume ");
   clean = clean.replace(/^MIST\s+(?:CORP\s+)?/i, "Body Mist ");
 
   // Normalizar mayúsculas sostenidas si la mayoría está en mayúsculas
@@ -125,14 +138,7 @@ export function detectStoreCategory(
 
   // Helper para buscar categoría por slug
   const findCat = (slug: string) => categories.find((c) => c.slug === slug);
-  const generalFallbacks = [
-    findCat("cosmetica-coreana"),
-    findCat("cuidado-capilar"),
-    findCat("perfumeria"),
-    findCat("herramientas-equipamiento"),
-    findCat("electronica"),
-    categories[0],
-  ].filter(Boolean) as CategoryInfo[];
+
 
   // 1. Perfumería
   if (/lattafa|asdaf|yara|khamrah|bade'e|asad|qaed|fakhar|ejaazi|orientica|al haramain|afnan/i.test(t)) {
@@ -250,12 +256,8 @@ export function detectStoreCategory(
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
 
-  const fallback = generalFallbacks[0];
-  return {
-    categoryId: fallback.id,
-    categorySlug: fallback.slug,
-    categoryName: fallback.name,
-  };
+  // Sin coincidencia clara, la categoría debe elegirse en el editor.
+  return { categoryId: "", categorySlug: "", categoryName: "Sin clasificar" };
 }
 
 /**
@@ -269,11 +271,19 @@ export async function searchSupplierOpportunities(
   const db = options?.client ?? (await getAdminClient());
 
   // 1. Cargar proveedores y categorías en paralelo
-  const [suppliersRes, categoriesRes] = await Promise.all([
-    db.from("suppliers").select("id, name, official_key, is_active").eq("is_active", true),
+  const [suppliersRes, categoriesRes, settingsRes, policyRes] = await Promise.all([
+    db.from("suppliers").select("id, name, official_key, is_active, freshness_hours").eq("is_active", true),
     db.from("categories").select("id, name, slug, parent_id, image_url").order("name"),
+    db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
+    db.from("import_cost_policies").select("config").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
+  if (suppliersRes.error || categoriesRes.error || settingsRes.error || policyRes.error || !settingsRes.data?.config || !policyRes.data?.config) throw new Error("No se pudo leer la configuración de proveedores y costos.");
+  const trackingConfig = settingsRes.data.config;
+  const importPolicy = policyRes.data.config;
+  const fx = Number(trackingConfig.acquisitionArsPerUsd);
+  const pasero = Number(policyRes.data.config.generalPercent);
+  if (!(fx > 0) || !(pasero >= 0)) throw new Error("Revisá la configuración de costos y cotización.");
   const suppliers = suppliersRes.data ?? [];
   const categories: CategoryInfo[] = (categoriesRes.data ?? []).map((c) => ({
     id: c.id,
@@ -297,12 +307,15 @@ export async function searchSupplierOpportunities(
     currency: string;
     availability: string | null;
     last_success_at: string | null;
+    availability_checked_at: string | null;
+    cost_checked_at: string | null;
   }>((from, to) =>
     db
       .from("supplier_offers")
-      .select("id, supplier_id, external_id, title, brand, model, source_url, origin_cost, currency, availability, last_success_at")
+      .select("id, supplier_id, external_id, title, brand, model, source_url, origin_cost, currency, availability, last_success_at, availability_checked_at, cost_checked_at")
       .is("product_id", null)
       .gt("origin_cost", 0)
+      .eq("currency", "USD")
       .order("id")
       .range(from, to)
   );
@@ -313,10 +326,9 @@ export async function searchSupplierOpportunities(
     const cleanTitle = cleanWholesaleTitle(offer.title);
     const cat = detectStoreCategory(offer.title, categories, offer.brand);
 
-    // Tipo de cambio oficial configurado: 1.600 ARS/USD + 20% pasero
-    const fx = 1600;
-    const pasero = 20;
-    const { totalLandedArs } = calculateLandedCostArs(offer.origin_cost, fx, pasero);
+    // Estimación general: las tarifas particulares y cotizaciones requieren revisión.
+    const estimatedCost = estimateOpportunityCost(offer, trackingConfig, importPolicy);
+    const totalLandedArs = estimatedCost ?? 0;
     const benchmark = getCategoryMarginBenchmark(cat.categorySlug, offer.title);
 
     // Sugerir precio minorista con terminación psicológica .900
@@ -335,7 +347,9 @@ export async function searchSupplierOpportunities(
       marginHealth = "excelente";
     }
 
-    const avail = (offer.availability === "in_stock" || offer.availability === "out_of_stock")
+    const checked = offer.availability_checked_at ? Date.parse(offer.availability_checked_at) : NaN;
+    const fresh = Number.isFinite(checked) && checked <= Date.now() + 300000 && Date.now() - checked <= Number(sup?.freshness_hours || 24) * 3600000;
+    const avail = fresh && (offer.availability === "in_stock" || offer.availability === "out_of_stock")
       ? offer.availability
       : "unknown";
 
@@ -364,6 +378,7 @@ export async function searchSupplierOpportunities(
       categoryBenchmarkMargin: benchmark.benchmarkMargin,
       marginHealth,
       availability: avail,
+      pricingNeedsReview: estimatedCost === null || !importPolicy.confirmed || importPolicy.carrierFxDate !== new Date().toISOString().slice(0, 10) || !offer.cost_checked_at || !Number.isFinite(Date.parse(offer.cost_checked_at)) || Date.now() - Date.parse(offer.cost_checked_at) > Number(sup?.freshness_hours || 24) * 3600000 || !trackingConfig.fxConfirmedOn || Date.now() - new Date(trackingConfig.fxConfirmedOn + "T00:00:00Z").getTime() > Number(trackingConfig.fxValidityHours || 72) * 3600000 || /\b(iphone|tv|televisor)\b/i.test(offer.title),
       lastCheckedAt: offer.last_success_at,
     };
   });
@@ -451,6 +466,42 @@ export async function searchSupplierOpportunities(
   };
 }
 
+
+/** Only accept the primary structured product with an exact supplier ID. Variant listings need review. */
+export function imageFromOpportunityPage(html: string, offer: { external_id: string | null; variant_key: string | null; source_url: string }): string | null {
+  if (!offer.external_id || !["base", `listing:${offer.external_id}`].includes(offer.variant_key ?? "")) return null;
+  // Related-item lists may contain the same SKU. Only a top-level Product is accepted.
+  const products: Record<string, unknown>[] = [];
+  for (const match of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const item = JSON.parse(match[1]);
+      if (item && !Array.isArray(item) && (item["@type"] === "Product" || (Array.isArray(item["@type"]) && item["@type"].includes("Product"))) && String(item.productID ?? item.sku ?? "") === offer.external_id) products.push(item);
+    } catch { /* malformed structured data is not evidence */ }
+  }
+  if (products.length !== 1) return null;
+  const raw = products[0].image;
+  const image = Array.isArray(raw) ? raw[0] : raw;
+  const url = typeof image === "string" ? image : image && typeof image === "object" ? (image as Record<string, unknown>).url : null;
+  if (typeof url !== "string") return null;
+  try { return productImageUrl(new URL(url, offer.source_url).href) || null; } catch { return null; }
+}
+
+async function opportunityProductImage(db: SupabaseClient, offer: { supplier_id: string; external_id: string | null; variant_key: string | null; source_url: string }): Promise<string | null> {
+  try {
+    const { data: supplier, error } = await db.from("suppliers").select("*").eq("id", offer.supplier_id).eq("is_active", true).single();
+    if (error || !supplier || !supplier.automation_authorized || !["total", "star-company", "atacado-usa", "atacado-connect"].includes(supplier.official_key)) return null;
+    const url = supplierSourceUrl(offer.source_url, supplier);
+    const rules = await publicReadRules(url);
+    const slot = await db.rpc("reserve_supplier_source_slot_v1", { supplier_input: offer.supplier_id, delay_input: rules.delay });
+    if (slot.error) return null;
+    if (slot.data) await new Promise(resolve => setTimeout(resolve, Number(slot.data)));
+    const response = await fetchSupplierPage(url, "MYA-SupplierCheck/1.0");
+    if (!response.ok) return null;
+    supplierSourceUrl(response.url, supplier);
+    return imageFromOpportunityPage(await readSupplierHtml(response), offer);
+  } catch { return null; }
+}
+
 /**
  * Importa y publica una oportunidad mayorista en el catálogo de MYA Importaciones.
  * Crea el producto con fulfillment 'supplier', asigna precios oficiales y vincula la oferta.
@@ -467,14 +518,16 @@ export async function importSupplierOpportunity(
   if (!input.title || input.title.trim().length < 2) {
     throw new Error("El título del producto debe tener al menos 2 caracteres.");
   }
-  if (!input.retailPrice || input.retailPrice <= 0) {
+  if (!Number.isFinite(input.retailPrice) || input.retailPrice <= 0) {
     throw new Error("El precio de venta minorista debe ser mayor a 0.");
   }
 
   // 1. Verificar la oferta mayorista
+  if (!input.categoryId) throw new Error("Elegí una categoría para el producto.");
+
   const { data: offer, error: offerError } = await db
     .from("supplier_offers")
-    .select("id, supplier_id, external_id, title, brand, model, source_url, origin_cost, currency, availability, product_id")
+    .select("id, supplier_id, external_id, variant_key, title, brand, model, source_url, origin_cost, currency, availability, availability_checked_at, cost_checked_at, product_id")
     .eq("id", input.offerId)
     .single();
 
@@ -485,10 +538,16 @@ export async function importSupplierOpportunity(
     throw new Error("Esta oferta ya está vinculada a un producto existente del catálogo.");
   }
 
-  // 2. Validar categoría y obtener imagen de portada de respaldo
+  // Leer la ficha principal. Una foto de categoría o de productos relacionados no es evidencia.
+  const imageUrl = await opportunityProductImage(db, offer);
+  if (input.isActive !== false && !imageUrl) {
+    throw new Error("No pudimos verificar la foto de esta variante en la ficha del proveedor. Guardala como borrador y revisala en el editor de productos.");
+  }
+
+  // 2. Validar categoría
   const { data: category } = await db
     .from("categories")
-    .select("id, name, slug, image_url")
+    .select("id, name, slug")
     .eq("id", input.categoryId)
     .single();
 
@@ -498,18 +557,26 @@ export async function importSupplierOpportunity(
 
   // 3. Generar slug único
   const baseSlug = slugifyProduct(input.title);
-  const { data: existingSlug } = await db
+  const { data: existingSlug, error: slugError } = await db
     .from("products")
     .select("id")
     .eq("slug", baseSlug)
     .maybeSingle();
 
-  const finalSlug = existingSlug ? `${baseSlug}-${crypto.randomUUID().slice(0, 6)}` : baseSlug;
+  if (slugError) throw new Error("No se pudo comprobar si el producto ya existe.");
+  if (!baseSlug) throw new Error("El título no permite generar una dirección válida.");
+  if (existingSlug) throw new Error("Ya existe un producto con este título. Revisá el catálogo antes de crear otro.");
+  const finalSlug = baseSlug;
 
   // 4. Costo landed calculado con pasero oficial
-  const fx = 1600;
-  const pasero = 20;
-  const { totalLandedArs } = calculateLandedCostArs(offer.origin_cost || 0, fx, pasero);
+  const [settings, policy] = await Promise.all([
+    db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
+    db.from("import_cost_policies").select("config").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const fx = Number(settings.data?.config?.acquisitionArsPerUsd);
+  const pasero = Number(policy.data?.config?.generalPercent);
+  if (settings.error || policy.error || !(fx > 0) || !(pasero >= 0) || offer.currency !== "USD") throw new Error("Revisá moneda y configuración de costos antes de agregar el producto.");
+  const totalLandedArs = estimateOpportunityCost(offer, settings.data!.config, policy.data!.config) ?? 0;
 
   // 5. Precio mayorista según teoría financiera comercial si el producto es apto
   const wholesaleEval = calculateProductWholesalePricing({
@@ -533,8 +600,7 @@ export async function importSupplierOpportunity(
 
   const finalWholesaleMinQty = wholesaleEval.isEligible ? wholesaleEval.minQuantity : 1;
 
-  const defaultImageUrl = category.image_url || null;
-  const defaultImageUrls = defaultImageUrl ? [defaultImageUrl] : [];
+
 
   // 6. Insertar el nuevo producto en products
   const { data: newProduct, error: insertError } = await db
@@ -542,7 +608,7 @@ export async function importSupplierOpportunity(
     .insert({
       title: input.title.trim(),
       slug: finalSlug,
-      description: `Producto importado con abastecimiento mayorista directo. Garantía oficial y entrega coordinada.`,
+      description: `${input.title.trim()}. Consultá disponibilidad y condiciones de entrega antes de comprar.`,
       category_id: category.id,
       retail_price: input.retailPrice,
       wholesale_price: finalWholesalePrice,
@@ -552,15 +618,16 @@ export async function importSupplierOpportunity(
       tags: [category.slug, offer.brand || ""].filter(Boolean),
       is_featured: false,
       is_wholesale_only: false,
-      is_active: input.isActive ?? true,
-      image_url: defaultImageUrl,
-      image_urls: defaultImageUrls,
+      // Keep a draft until the supplier link has succeeded.
+      is_active: false,
+      image_url: imageUrl,
+      image_urls: imageUrl ? [imageUrl] : [],
       source_url: offer.source_url,
       fulfillment_mode: "supplier",
-      supplier_available: offer.availability !== "out_of_stock",
-      supplier_live_price: totalLandedArs,
+      supplier_available: offer.availability === "in_stock" && !!offer.availability_checked_at && Number.isFinite(Date.parse(offer.availability_checked_at)) && Date.parse(offer.availability_checked_at) <= Date.now() + 300000 && Date.now() - Date.parse(offer.availability_checked_at) < 24 * 60 * 60 * 1000,
+      supplier_live_price: null,
       supplier_stock_status: offer.availability || "unknown",
-      supplier_last_checked_at: new Date().toISOString(),
+      supplier_last_checked_at: offer.availability_checked_at,
       brand: offer.brand || "",
       model: offer.model || "",
     })
@@ -576,13 +643,20 @@ export async function importSupplierOpportunity(
     .from("supplier_offers")
     .update({
       product_id: newProduct.id,
-      verification: "verified",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", offer.id);
+    .eq("id", offer.id)
+    .is("product_id", null)
+    .select("id")
+    .single();
 
   if (linkError) {
-    console.error("Advertencia: No se pudo actualizar el vínculo en supplier_offers:", linkError);
+    throw new Error(`Se creó un borrador, pero no se pudo vincular la oferta. Revisalo en Productos antes de reintentar: ${linkError.message}`);
+  }
+
+  if (input.isActive !== false) {
+    const { error: activationError } = await db.from("products").update({ is_active: true }).eq("id", newProduct.id).select("id").single();
+    if (activationError) throw new Error(`El producto quedó como borrador vinculado; no se pudo publicarlo: ${activationError.message}`);
   }
 
   // 7. Invalidar cachés

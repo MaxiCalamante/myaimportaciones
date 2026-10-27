@@ -19,7 +19,7 @@ export async function requestSupplierSearchAction(query:string){
  const saved=await db.from('supplier_search_requests').insert({query:query.trim()});if(saved.error)throw new Error('No se pudo solicitar la búsqueda.');refresh();return 'Búsqueda registrada. El procesador consulta los proveedores y guarda los resultados aquí.';
 }
 export async function runSupplierTrackingAction(){
- await getAdminClient();const result=await runSupplierAutomation(createCommerceService(),{worker:'admin-manual',limit:6,timeBudgetMs:35000});invalidateAdminStorefrontCache();revalidatePath('/','layout');refresh();return `Seguimiento: ${result.checked} consultas, ${result.success} correctas y ${result.errors} con incidencia registrada.`;
+ await getAdminClient();const result=await runSupplierAutomation(createCommerceService(),{worker:'admin-manual',limit:6,timeBudgetMs:35000});invalidateAdminStorefrontCache();revalidatePath('/','layout');refresh();return 'disabled' in result && result.disabled ? 'El seguimiento está desactivado en la configuración.' : `Seguimiento: ${result.checked} consultas, ${result.success} correctas y ${result.errors} con incidencia registrada.`;
 }
 export async function saveMarketReferenceAction(form:FormData){
  const db=await getAdminClient();const productId=String(form.get('product_id')??'');validId(productId);

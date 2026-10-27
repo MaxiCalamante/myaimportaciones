@@ -293,7 +293,7 @@ export function calculateProductWholesalePricing(
   }
 
   // 1. Precio que dejaría el margen objetivo al revendedor vendiendo al techo
-  let wholesalePriceTarget = resaleCeiling * (1 - resellerTargetMarginPercent);
+  const wholesalePriceTarget = resaleCeiling * (1 - resellerTargetMarginPercent);
 
   // 2. Piso de rentabilidad de MYA (costo landed + markup de seguridad)
   const myaFloor = costLanded * myaSafetyMarkup;

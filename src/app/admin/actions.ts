@@ -17,10 +17,6 @@ import { parseProductForm, productImageUrl, httpsUrl, validId, validateImageCont
 import { prepareProductImages, cleanupOrphanProductImages } from "@/lib/admin-media";
 import { checkAndAlertSuddenPriceChange, getPriceAlertThreshold } from "@/lib/price-alert";
 import {
-  checkAndUpdateProductSupplierStock,
-  runBatchSupplierStockSync,
-  runCatalogSyncChunk,
-  huntSuppliersForUnlinkedProducts,
   type SupplierCheckResult,
   type CatalogSyncProgress,
   type AutoHuntResult,
@@ -445,40 +441,22 @@ export async function toggleProductSupplierAvailabilityAction(productId: string,
 
 export async function checkSingleProductSupplierStockAction(productId: string): Promise<SupplierCheckResult> {
   await getAdminClient();
-  const db = createCommerceService();
-  const result = await checkAndUpdateProductSupplierStock(productId, db);
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/catalogo");
-  return result;
+  throw new Error("La revisión por producto se gestiona en Proveedores, con identidad y disponibilidad verificadas.");
 }
 
 export async function triggerBatchSupplierSyncAction(limit: number = 30) {
   await getAdminClient();
-  const db = createCommerceService();
-  const report = await runBatchSupplierStockSync({ limit, client: db });
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/catalogo");
-  return report;
+  throw new Error("Usá el seguimiento de proveedores para ejecutar un lote coordinado.");
 }
 
 export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
   await getAdminClient();
-  const db = createCommerceService();
-  const progress = await runCatalogSyncChunk({ offset, limit, client: db });
-  invalidateAdminStorefrontCache();
-  return progress;
+  throw new Error("Usá el seguimiento de proveedores; el procesamiento está coordinado en la nube.");
 }
 
 export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promise<AutoHuntResult> {
   await getAdminClient();
-  const db = createCommerceService();
-  const result = await huntSuppliersForUnlinkedProducts({ limit, client: db });
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/catalogo");
-  return result;
+  throw new Error("Revisá los candidatos en Productos y proveedores; no se activan productos automáticamente.");
 }
 
 export async function toggleAutoPauseWhenOutOfStockAction(enabled: boolean) {
@@ -1871,10 +1849,7 @@ export async function bulkApplyRecommendedRaisesAction(productIds?: string[]) {
 
 export async function syncCatalogWholesalePricesAction(dryRun: boolean = false): Promise<CatalogWholesaleSyncSummary> {
   await getAdminClient();
-  const summary = await calculateAndSyncCatalogWholesalePrices({ dryRun });
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  revalidatePath("/admin/costos");
-  revalidatePath("/admin/precios");
+  if (!dryRun) throw new Error("La aplicación masiva requiere revisión de precios y evidencia; usá la vista previa.");
+  const summary = await calculateAndSyncCatalogWholesalePrices({ dryRun: true, client: createCommerceService() });
   return summary;
 }

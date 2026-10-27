@@ -35,7 +35,7 @@ test("cleanWholesaleTitle elimina prefijos técnicos de mayorista y normaliza te
   );
   assert.equal(
     cleanWholesaleTitle("PERF TESTER MASC CAROLINA HERRERA BAD BOY 100ML"),
-    "Perfume Carolina Herrera Bad Boy 100ML"
+    "Perfume Tester Carolina Herrera Bad Boy 100ML"
   );
   assert.equal(
     cleanWholesaleTitle("MIST CORP VICTORIA SECRET PURE SEDUCTION 250ML"),
@@ -106,4 +106,17 @@ test("cálculo financiero: evaluación de margen saludable y positivo", () => {
   assert.equal(profitArs, 47900);
   assert.ok(marginPercent > 49);
   assert.ok(markupPercent > 99); // Markup sobre costo ~99.8%
+});
+
+test("imagen de oportunidad exige identidad exacta y variante inequívoca", async () => {
+  const { imageFromOpportunityPage } = await import("../src/lib/supplier-opportunities");
+  const page = `<script type="application/ld+json">${JSON.stringify({ "@type": "Product", productID: "381352", image: "https://www.totalherramientasoficial.com.py/img/12053/produtos/1500/8effc1499399a35089d3afdf94923fd9.jpg" })}</script>`;
+  const offer = { external_id: "381352", variant_key: "base", source_url: "https://www.totalherramientasoficial.com.py/produto/test" };
+  assert.match(imageFromOpportunityPage(page, offer) || "", /12053/);
+  assert.equal(imageFromOpportunityPage(page, { ...offer, external_id: "other" }), null);
+  assert.equal(imageFromOpportunityPage(page, { ...offer, variant_key: "attribute:2" }), null);
+  assert.equal(imageFromOpportunityPage(page + page, offer), null);
+  const relatedOnly = `<script type="application/ld+json">${JSON.stringify({ "@type": "ItemList", itemListElement: [{ "@type": "Product", productID: "381352", image: "https://www.totalherramientasoficial.com.py/img/12053/a.jpg" }] })}</script>`;
+  assert.equal(imageFromOpportunityPage(relatedOnly, offer), null);
+  assert.equal(imageFromOpportunityPage(page.replace("www.totalherramientasoficial.com.py/img", "example.com/img"), offer), null);
 });

@@ -135,6 +135,8 @@ docs/tools-selection-2026-10-01/*
 .next-giveaway-qa/
 .next-email-qa/
 .next-storefront-qa/
+.next-opportunities-qa/
+.next-opportunities-webpack-qa/
 docs/sorteos/qa-private/
 docs/sorteos/lint-local.json
 # Existing supplier/financial snapshots stay private on this machine.

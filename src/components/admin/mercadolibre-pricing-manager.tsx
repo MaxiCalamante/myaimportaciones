@@ -6,22 +6,17 @@ import Link from "next/link";
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
   Search,
   ExternalLink,
-  CheckCircle2,
   AlertTriangle,
   RefreshCw,
   ShoppingBag,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
-  Link as LinkIcon,
   X,
   Check,
   ShieldCheck,
-  ArrowUpDown,
   Zap,
 } from "lucide-react";
 import type {
@@ -32,8 +27,6 @@ import type {
 } from "@/lib/mercadolibre-pricing";
 import {
   getProductMarketComparisonsAction,
-  applyCompetitivePriceAction,
-  bulkApplyRecommendedRaisesAction,
   linkMercadoLibreReferenceAction,
 } from "@/app/admin/actions";
 
@@ -68,18 +61,15 @@ export function MercadoLibrePricingManager({
   const [sortBy, setSortBy] = useState<MarketComparisonFilterParams["sortBy"]>("gain_desc");
 
   // Single Item Action States
-  const [applyingProductId, setApplyingProductId] = useState<string | null>(null);
-  const [appliedProductIds, setAppliedProductIds] = useState<Set<string>>(new Set());
 
   // Link ML Modal State
   const [linkingProduct, setLinkingProduct] = useState<ProductMarketComparison | null>(null);
   const [inputMlUrl, setInputMlUrl] = useState("");
   const [inputMlPrice, setInputMlPrice] = useState<number>(0);
   const [isSavingRef, setIsSavingRef] = useState(false);
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
 
   // Bulk Raise State
-  const [isBulkApplying, setIsBulkApplying] = useState(false);
-  const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
 
   // Search / Filter execution
   const applyFilters = (newPage: number = 1, overrides: Partial<MarketComparisonFilterParams> = {}) => {
@@ -104,68 +94,9 @@ export function MercadoLibrePricingManager({
         setStats(res.stats);
         setTotalPages(res.totalPages);
       } catch (err) {
-        console.error("Error filtrando comparativas:", err);
+        alert(err instanceof Error ? err.message : "No se pudo actualizar el monitor.");
       }
     });
-  };
-
-  // Apply single recommended price
-  const handleApplySinglePrice = async (item: ProductMarketComparison) => {
-    setApplyingProductId(item.productId);
-    try {
-      const res = await applyCompetitivePriceAction(item.productId, item.targetPrice);
-      if (res.success) {
-        setAppliedProductIds((prev) => new Set(prev).add(item.productId));
-        // Update item in local state
-        setItems((prev) =>
-          prev.map((i) =>
-            i.productId === item.productId
-              ? {
-                  ...i,
-                  currentPrice: item.targetPrice,
-                  action: "optimal",
-                  actionLabel: "Precio óptimo aplicado ✓",
-                  potentialGainArs: 0,
-                  priceDifferenceArs: item.targetPrice - (item.mlPrice || 0),
-                  priceDifferencePercent: item.mlPrice
-                    ? Math.round(((item.targetPrice - item.mlPrice) / item.mlPrice) * 1000) / 10
-                    : 0,
-                }
-              : i
-          )
-        );
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al aplicar precio.");
-    } finally {
-      setApplyingProductId(null);
-    }
-  };
-
-  // Bulk Apply Raises
-  const handleBulkApplyRaises = async () => {
-    if (
-      !confirm(
-        `¿Confirmás aplicar los aumentos de precio recomendados a los ${stats.canRaiseCount} productos?\n\nEsto sumará un estimado de +$${stats.potentialExtraProfitArs.toLocaleString("es-AR")} de ganancia neta manteniendo los precios más baratos que Mercado Libre.`
-      )
-    ) {
-      return;
-    }
-
-    setIsBulkApplying(true);
-    setBulkSuccessMessage(null);
-
-    try {
-      const res = await bulkApplyRecommendedRaisesAction();
-      setBulkSuccessMessage(
-        `¡Se actualizaron con éxito los precios de ${res.updatedCount} productos! Ganancia extra proyectada: +$${res.extraProfitArs.toLocaleString("es-AR")}.`
-      );
-      applyFilters(page);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al aplicar aumentos masivos.");
-    } finally {
-      setIsBulkApplying(false);
-    }
   };
 
   // Save ML Reference Modal
@@ -173,10 +104,12 @@ export function MercadoLibrePricingManager({
     setLinkingProduct(item);
     setInputMlUrl(item.mlUrl || "");
     setInputMlPrice(item.mlPrice || 0);
+    setIdentityConfirmed(false);
   };
 
   const handleSaveMlReference = async () => {
     if (!linkingProduct) return;
+    if (!identityConfirmed || !inputMlUrl.trim()) { alert("Pegá una publicación concreta y confirmá que corresponde a la misma variante."); return; }
     if (!inputMlPrice || inputMlPrice <= 0) {
       alert("Ingresá un precio válido de Mercado Libre.");
       return;
@@ -186,7 +119,7 @@ export function MercadoLibrePricingManager({
     try {
       await linkMercadoLibreReferenceAction(
         linkingProduct.productId,
-        inputMlUrl.trim() || linkingProduct.mlSearchUrl,
+        inputMlUrl.trim(),
         Number(inputMlPrice)
       );
       setLinkingProduct(null);
@@ -209,16 +142,14 @@ export function MercadoLibrePricingManager({
               Sistema 4: Monitor de Precios Mercado Libre & Precios Dinámicos
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950">
-              Maximizá Ganancias y Asegurá Precios Competitivos
+              Revisá tus precios y referencias de mercado
             </h1>
             <p className="text-sm text-zinc-600 leading-relaxed">
-              Monitoreá los precios de Mercado Libre para todo tu catálogo. Identificá qué productos tienen
-              margen para <strong>subir de precio</strong> y ganar más plata, y en cuáles conviene <strong>bajar un poco</strong>{" "}
-              para que el comprador diga <em>&ldquo;¡uuu más barato!&rdquo;</em> y te elija a vos.
+              Compará con publicaciones revisadas y vigentes. La búsqueda de Mercado Libre ayuda a encontrar referencias; verificá siempre la variante y el precio antes de vincularlas.
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto">
             <Link
               href="/admin"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 transition-all"
@@ -239,7 +170,7 @@ export function MercadoLibrePricingManager({
         </div>
 
         {/* 4 Actionable KPI Metric Cards */}
-        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="mt-6 grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Card 1: Subir Precio (Maximizar Ganancia) */}
           <button
             type="button"
@@ -259,7 +190,7 @@ export function MercadoLibrePricingManager({
               {stats.canRaiseCount} productos
             </div>
             <div className="text-[11px] font-bold text-emerald-800 mt-0.5">
-              +${stats.potentialExtraProfitArs.toLocaleString("es-AR")} ganancia extra
+              +${stats.potentialExtraProfitArs.toLocaleString("es-AR")} diferencia estimada
             </div>
           </button>
 
@@ -282,7 +213,7 @@ export function MercadoLibrePricingManager({
               {stats.canLowerCount} productos
             </div>
             <div className="text-[11px] text-zinc-500 mt-0.5">
-              Más caros que ML · Bajando ganás la venta
+              Más caros que ML · Revisá el comparable
             </div>
           </button>
 
@@ -305,7 +236,7 @@ export function MercadoLibrePricingManager({
               {stats.optimalCount} productos
             </div>
             <div className="text-[11px] text-zinc-500 mt-0.5">
-              Más baratos que ML con excelente margen
+              Comparación con la referencia registrada
             </div>
           </button>
 
@@ -334,61 +265,7 @@ export function MercadoLibrePricingManager({
         </div>
       </div>
 
-      {/* Bulk Action Callout when there is money on the table */}
-      {stats.canRaiseCount > 0 && (
-        <div className="rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-emerald-100/40 to-teal-50 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
-                <Sparkles className="h-3.5 w-3.5" />
-              </span>
-              <h3 className="text-sm font-black text-emerald-950">
-                Oportunidad de Maximización de Ganancias Detectada
-              </h3>
-            </div>
-            <p className="text-xs text-emerald-900 leading-relaxed max-w-2xl">
-              Hay <strong>{stats.canRaiseCount} productos</strong> con precio muy por debajo de Mercado Libre. Podés
-              capturar un estimado de <strong>+${stats.potentialExtraProfitArs.toLocaleString("es-AR")} de ganancia neta</strong>{" "}
-              sin perder competitividad (quedan exactamente un 8% más baratos que Mercado Libre).
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleBulkApplyRaises}
-            disabled={isBulkApplying || isPending}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] px-5 text-xs font-black text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
-          >
-            {isBulkApplying ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Aplicando Aumentos...
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 fill-white" />
-                Aplicar Aumentos Sugeridos ({stats.canRaiseCount})
-              </>
-            )}
-          </button>
-        </div>
-      )}
-
-      {bulkSuccessMessage && (
-        <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs font-bold text-emerald-900 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-            <span>{bulkSuccessMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setBulkSuccessMessage(null)}
-            className="text-emerald-700 hover:text-emerald-950"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Las sugerencias son orientativas. Para aplicar cambios, revisá costos y evidencia en <Link className="font-bold underline" href="/admin/proveedores/inteligencia">Proveedores → Precios y stock</Link>.</div>
 
       {/* Filter and Control Bar */}
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs space-y-3">
@@ -492,7 +369,7 @@ export function MercadoLibrePricingManager({
               }}
               className="h-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 outline-none cursor-pointer focus:border-sky-500"
             >
-              <option value="gain_desc">Mayor Ganancia Extra ($ ARS)</option>
+              <option value="gain_desc">Mayor diferencia estimada ($ ARS)</option>
               <option value="diff_desc">Más Caro vs ML (Urgente Bajar)</option>
               <option value="diff_asc">Más Barato vs ML (Espacio para Subir)</option>
               <option value="price_desc">Mayor Precio de Venta</option>
@@ -520,12 +397,29 @@ export function MercadoLibrePricingManager({
 
       {/* Comparisons Table / List */}
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xs">
-        <div className="overflow-x-auto">
+        <div className="space-y-3 p-3 lg:hidden">
+          {items.length === 0 && <p className="py-8 text-center text-sm text-zinc-500">No se encontraron productos con estos filtros.</p>}
+          {items.map(item => <article key={item.productId} className="min-w-0 rounded-xl border border-zinc-200 p-4">
+            <Link href={`/producto/${item.slug}`} target="_blank" className="block break-words text-sm font-bold text-zinc-900">{item.title}</Link>
+            <p className="mt-1 text-xs text-zinc-500">{item.categoryName} {item.brand ? `· ${item.brand}` : ""}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div><span className="block text-zinc-500">Precio MYA</span><strong>${item.currentPrice.toLocaleString("es-AR")}</strong></div>
+              <div><span className="block text-zinc-500">Referencia ML</span><strong>{item.mlPrice ? `$${item.mlPrice.toLocaleString("es-AR")}` : "Sin referencia vigente"}</strong></div>
+              <div><span className="block text-zinc-500">Costo registrado</span><strong>{item.landedCostArs ? `$${item.landedCostArs.toLocaleString("es-AR")}` : "Sin costo"}</strong></div>
+              <div><span className="block text-zinc-500">Evaluación</span><strong>{item.actionLabel}</strong></div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a href={item.mlUrl || item.mlSearchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-zinc-200 px-3 text-xs font-bold text-sky-700">{item.mlUrl ? "Ver referencia" : "Buscar en ML"} ↗</a>
+              <button type="button" onClick={() => handleOpenLinkModal(item)} className="inline-flex min-h-11 items-center rounded-xl bg-zinc-900 px-3 text-xs font-bold text-white">{item.mlPrice ? "Actualizar referencia" : "Vincular referencia"}</button>
+            </div>
+          </article>)}
+        </div>
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-black text-[10px] tracking-wider">
               <tr>
                 <th className="py-3 px-4">Producto</th>
-                <th className="py-3 px-3">Costo Puesto en Mano</th>
+                <th className="py-3 px-3">Costo registrado</th>
                 <th className="py-3 px-3">Nuestro Precio</th>
                 <th className="py-3 px-3">Mercado Libre</th>
                 <th className="py-3 px-3">Diferencia</th>
@@ -542,8 +436,6 @@ export function MercadoLibrePricingManager({
                 </tr>
               ) : (
                 items.map((item) => {
-                  const isApplied = appliedProductIds.has(item.productId);
-                  const isApplying = applyingProductId === item.productId;
 
                   return (
                     <tr
@@ -692,7 +584,7 @@ export function MercadoLibrePricingManager({
                               Sugerido: ${item.targetPrice.toLocaleString("es-AR")}
                             </span>
                             <span className="text-[10px] font-bold text-emerald-800 block">
-                              +${item.potentialGainArs.toLocaleString("es-AR")} más ganancia por unidad
+                              +${item.potentialGainArs.toLocaleString("es-AR")} de diferencia por unidad
                             </span>
                           </div>
                         )}
@@ -704,7 +596,7 @@ export function MercadoLibrePricingManager({
                               Sugerido: ${item.targetPrice.toLocaleString("es-AR")}
                             </span>
                             <span className="text-[10px] text-zinc-500 block">
-                              8% más barato que ML para ganar la venta
+                              Objetivo estimado según descuento configurado
                             </span>
                           </div>
                         )}
@@ -725,38 +617,15 @@ export function MercadoLibrePricingManager({
 
                         {item.action === "missing_benchmark" && (
                           <span className="text-[10px] text-zinc-400">
-                            Sin comparable para evaluar
+                            {item.actionLabel}
                           </span>
                         )}
                       </td>
 
                       {/* Action Button */}
                       <td className="py-3 px-4 text-right">
-                        {isApplied ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                            <Check className="h-3.5 w-3.5" />
-                            Aplicado ✓
-                          </span>
-                        ) : item.action === "raise_price" || item.action === "lower_price" ? (
-                          <button
-                            type="button"
-                            onClick={() => handleApplySinglePrice(item)}
-                            disabled={isApplying}
-                            className={`inline-flex h-8 items-center justify-center gap-1 rounded-lg px-3 text-xs font-bold transition-all cursor-pointer shadow-2xs ${
-                              item.action === "raise_price"
-                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                : "bg-zinc-900 hover:bg-black text-white"
-                            }`}
-                          >
-                            {isApplying ? (
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <>
-                                <Zap className="h-3 w-3 fill-current" />
-                                <span>Aplicar ${item.targetPrice.toLocaleString("es-AR")}</span>
-                              </>
-                            )}
-                          </button>
+                        {item.action === "raise_price" || item.action === "lower_price" ? (
+                          <Link href="/admin/proveedores/inteligencia" className="inline-flex min-h-10 items-center rounded-lg bg-zinc-900 px-3 text-xs font-bold text-white">Revisar precio</Link>
                         ) : (
                           <button
                             type="button"
@@ -807,7 +676,7 @@ export function MercadoLibrePricingManager({
 
       {/* Modal: Vincular / Editar Referencia de Mercado Libre */}
       {linkingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-xs p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3">
               <div>
@@ -854,7 +723,8 @@ export function MercadoLibrePricingManager({
                 />
               </div>
 
-              <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-3 flex items-center justify-between">
+              <label className="flex items-start gap-2 text-xs text-zinc-700"><input type="checkbox" checked={identityConfirmed} onChange={e => setIdentityConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" /> Confirmé que la publicación coincide en marca, modelo, variante, presentación y contenido.</label>
+              <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-3 flex flex-wrap gap-3 items-center justify-between">
                 <div>
                   <span className="font-bold text-sky-900 block">
                     ¿No tenés la publicación a mano?
@@ -886,7 +756,7 @@ export function MercadoLibrePricingManager({
               <button
                 type="button"
                 onClick={handleSaveMlReference}
-                disabled={isSavingRef || !inputMlPrice || inputMlPrice <= 0}
+                disabled={isSavingRef || !inputMlPrice || inputMlPrice <= 0 || !inputMlUrl.trim() || !identityConfirmed}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-zinc-900 hover:bg-black px-4 text-xs font-bold text-white disabled:opacity-50"
               >
                 {isSavingRef ? (

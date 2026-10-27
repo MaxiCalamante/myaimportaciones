@@ -6,10 +6,8 @@ import {
   Sparkles,
   TrendingUp,
   Search,
-  Filter,
   CheckCircle2,
   ExternalLink,
-  ArrowUpDown,
   DollarSign,
   PackageCheck,
   RefreshCw,
@@ -20,7 +18,6 @@ import {
   X,
   Check,
   AlertTriangle,
-  Info,
   Zap,
 } from "lucide-react";
 import type {
@@ -69,7 +66,6 @@ export function SupplierOpportunitiesRadar({
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [minMargin, setMinMargin] = useState<number | undefined>(undefined);
   const [sortBy, setSortBy] = useState<OpportunitySearchParams["sortBy"]>("profit_desc");
-  const [page, setPage] = useState(1);
 
   // Import Modal State
   const [activeOpportunity, setActiveOpportunity] = useState<SupplierOpportunity | null>(null);
@@ -93,7 +89,6 @@ export function SupplierOpportunitiesRadar({
 
   // Trigger search with current filters or overrides
   const applySearch = (newPage: number = 1, overrides: Partial<OpportunitySearchParams> = {}) => {
-    setPage(newPage);
     startTransition(async () => {
       try {
         const qVal = overrides.query !== undefined ? overrides.query : (query.trim() || undefined);
@@ -115,13 +110,19 @@ export function SupplierOpportunitiesRadar({
         });
         setData(res);
       } catch (err) {
-        console.error("Error buscando oportunidades:", err);
+        setImportError(err instanceof Error ? err.message : "No se pudieron actualizar las oportunidades.");
       }
     });
   };
 
   const handleQuickImport = async (opp: SupplierOpportunity) => {
+    if (opp.pricingNeedsReview || !opp.categoryId) {
+      handleOpenImport(opp);
+      setImportError("Revisá la categoría y el precio: la cotización puede estar vencida o el producto puede tener una tarifa particular.");
+      return;
+    }
     setQuickImportingOfferId(opp.offerId);
+    setImportError(null);
     try {
       const isExcluded =
         /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(opp.cleanTitle) ||
@@ -150,7 +151,7 @@ export function SupplierOpportunitiesRadar({
         });
       }
     } catch (err) {
-      console.error("Error en publicación rápida:", err);
+      setImportError(err instanceof Error ? err.message : "No se pudo agregar el producto.");
     } finally {
       setQuickImportingOfferId(null);
     }
@@ -225,6 +226,7 @@ export function SupplierOpportunitiesRadar({
 
   return (
     <div className="space-y-6 pb-12">
+      {importError && !activeOpportunity && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{importError}</div>}
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-3xl border border-sky-200/80 bg-gradient-to-br from-white via-sky-50/40 to-indigo-50/30 p-6 sm:p-8 shadow-xs">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -234,16 +236,14 @@ export function SupplierOpportunitiesRadar({
               Radar de Abastecimiento & Oportunidades Mayoristas
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950">
-              Descubrí y sumá productos con margen garantizado
+              Descubrí y sumá oportunidades para revisar
             </h1>
             <p className="text-sm text-zinc-600 leading-relaxed">
-              El radar evalúa más de 1.500 ofertas de los 7 mayoristas oficiales. Calcula automáticamente el
-              costo real puesto en mano (<strong>Dólar x $1.600 + 20% pasero</strong>), aplica el benchmark de
-              ganancia de la categoría y sugiere el precio minorista con terminación psicológica.
+              El radar estima el costo con la cotización configurada y la tarifa general. Revisá vigencia, tarifas particulares y precio de mercado antes de publicar. El precio sugerido es una estimación basada en márgenes, no un comparable de mercado.
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto md:grid-cols-1 lg:grid-cols-3">
             <Link
               href="/admin/precios"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 px-4 text-xs font-bold text-amber-900 shadow-2xs transition-all"
@@ -271,7 +271,7 @@ export function SupplierOpportunitiesRadar({
         </div>
 
         {/* 4 Metric Cards */}
-        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="mt-6 grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="rounded-2xl border border-sky-100 bg-white/90 backdrop-blur-xs p-4 shadow-2xs">
             <div className="flex items-center justify-between text-zinc-400">
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
@@ -290,7 +290,7 @@ export function SupplierOpportunitiesRadar({
           <div className="rounded-2xl border border-emerald-100 bg-white/90 backdrop-blur-xs p-4 shadow-2xs">
             <div className="flex items-center justify-between text-zinc-400">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
-                Stock Inmediato
+                Disponibilidad proveedor
               </span>
               <PackageCheck className="h-4 w-4 text-emerald-500" />
             </div>
@@ -320,7 +320,7 @@ export function SupplierOpportunitiesRadar({
           <div className="rounded-2xl border border-purple-100 bg-white/90 backdrop-blur-xs p-4 shadow-2xs">
             <div className="flex items-center justify-between text-zinc-400">
               <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700">
-                Ganancia Estimada
+                Diferencia estimada
               </span>
               <DollarSign className="h-4 w-4 text-purple-500" />
             </div>
@@ -355,7 +355,7 @@ export function SupplierOpportunitiesRadar({
               },
             },
             {
-              label: "🔥 Top Ganancia",
+              label: "🔥 Mayor diferencia",
               active: sortBy === "profit_desc" && minMargin === 30,
               onClick: () => {
                 setSortBy("profit_desc");
@@ -474,7 +474,7 @@ export function SupplierOpportunitiesRadar({
         </div>
 
         {/* Filter Dropdowns */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+        <div className="grid min-w-0 grid-cols-1 min-[380px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
           {/* Supplier */}
           <div>
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
@@ -549,7 +549,7 @@ export function SupplierOpportunitiesRadar({
               }}
               className="h-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700 outline-none cursor-pointer focus:border-sky-500"
             >
-              <option value="profit_desc">Mayor Ganancia ($ ARS)</option>
+              <option value="profit_desc">Mayor diferencia ($ ARS)</option>
               <option value="margin_desc">Mayor Margen (%)</option>
               <option value="cost_asc">Menor Costo Mayorista (USD)</option>
               <option value="cost_desc">Mayor Costo Mayorista (USD)</option>
@@ -614,7 +614,7 @@ export function SupplierOpportunitiesRadar({
               setSelectedCategory("");
               setOnlyInStock(false);
               setMinMargin(undefined);
-              applySearch(1);
+              applySearch(1, { query: "", supplierId: "", categorySlug: "", onlyInStock: false, minMargin: 0 });
             }}
             className="inline-flex h-9 items-center justify-center rounded-xl bg-zinc-900 px-4 text-xs font-bold text-white cursor-pointer"
           >
@@ -645,7 +645,7 @@ export function SupplierOpportunitiesRadar({
                     {opp.availability === "in_stock" ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        En Stock
+                        Disponible proveedor
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">
@@ -655,6 +655,7 @@ export function SupplierOpportunitiesRadar({
                     )}
                   </div>
 
+                  {new URL(opp.sourceUrl).pathname === "/" && <p className="mb-2 text-xs text-amber-800">La fuente es el catálogo general; falta el enlace al producto.</p>}
                   {/* Title & Category */}
                   <h3 className="text-sm font-bold text-zinc-900 leading-snug line-clamp-2 title-hover group-hover:text-sky-700 transition-colors">
                     {opp.cleanTitle}
@@ -679,11 +680,11 @@ export function SupplierOpportunitiesRadar({
                     </div>
 
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-500" title="Dólar x $1.600 + 20% pasero">
-                        Costo Puesto en Mano:
+                      <span className="text-zinc-500" title="Estimación con cotizaciones y tarifa configuradas; revisá su vigencia">
+                        Costo estimado:
                       </span>
                       <span className="font-bold text-zinc-900">
-                        ${opp.landedCostArs.toLocaleString("es-AR")}
+                        {opp.landedCostArs > 0 ? `$${opp.landedCostArs.toLocaleString("es-AR")}` : "A confirmar"}
                       </span>
                     </div>
 
@@ -692,7 +693,7 @@ export function SupplierOpportunitiesRadar({
                         Precio Sugerido:
                       </span>
                       <span className="text-sm font-black text-sky-700">
-                        ${opp.suggestedRetailPrice.toLocaleString("es-AR")}
+                        {opp.landedCostArs > 0 ? `$${opp.suggestedRetailPrice.toLocaleString("es-AR")}` : "A confirmar"}
                       </span>
                     </div>
                   </div>
@@ -705,10 +706,10 @@ export function SupplierOpportunitiesRadar({
                       </div>
                       <div>
                         <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider leading-none">
-                          Ganancia Neta
+                          Diferencia estimada
                         </div>
                         <div className="text-xs font-extrabold text-emerald-700">
-                          +${opp.profitArs.toLocaleString("es-AR")}
+                          {opp.landedCostArs > 0 ? `+$${opp.profitArs.toLocaleString("es-AR")}` : "A confirmar"}
                         </div>
                       </div>
                     </div>
@@ -726,7 +727,7 @@ export function SupplierOpportunitiesRadar({
                             : "text-amber-700"
                         }`}
                       >
-                        {opp.marginPercent}%
+                        {opp.landedCostArs > 0 ? `${opp.marginPercent}%` : "—"}
                       </div>
                     </div>
                   </div>
@@ -739,17 +740,19 @@ export function SupplierOpportunitiesRadar({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-                    title="Ver publicación oficial en el mayorista"
+                    title={new URL(opp.sourceUrl).pathname === "/" ? "Abrir catálogo del proveedor: ficha exacta no disponible" : "Abrir enlace de proveedor; verificá que corresponda al producto"}
+                    aria-label={new URL(opp.sourceUrl).pathname === "/" ? "Abrir catálogo del proveedor, ficha exacta no disponible" : "Abrir enlace de proveedor"}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
 
                   <a
-                    href={`https://listado.mercadolibre.com.ar/${encodeURIComponent(opp.cleanTitle)}`}
+                    href={buildMercadoLibreSearchUrl(opp.cleanTitle, opp.brand || undefined, opp.model || undefined)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 text-amber-800 hover:bg-amber-100 transition-colors"
-                    title="Comparar precio en Mercado Libre"
+                    title="Buscar en Mercado Libre: verificá modelo y variante"
+                    aria-label="Buscar en Mercado Libre"
                   >
                     <Zap className="h-3.5 w-3.5 text-amber-600 fill-amber-600" />
                   </a>
@@ -758,7 +761,7 @@ export function SupplierOpportunitiesRadar({
                     <div className="flex-1 inline-flex h-9 items-center justify-between gap-1 rounded-xl bg-emerald-100 px-2.5 text-emerald-950 text-xs font-bold">
                       <span className="flex items-center gap-1">
                         <Check className="h-3.5 w-3.5 text-emerald-700" />
-                        ¡En Tienda!
+                        Agregado
                       </span>
                       {quickImportSuccessMap.get(opp.offerId) && (
                         <Link
@@ -872,7 +875,7 @@ export function SupplierOpportunitiesRadar({
                     ¡Producto agregado exitosamente!
                   </h4>
                   <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
-                    &ldquo;{importSuccess.title}&rdquo; ya está disponible en la tienda con abastecimiento vinculado.
+                    &ldquo;{importSuccess.title}&rdquo; fue agregado. Revisá su estado en Productos.
                   </p>
                 </div>
                 <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
@@ -925,6 +928,7 @@ export function SupplierOpportunitiesRadar({
                     onChange={(e) => setEditCategoryId(e.target.value)}
                     className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-800 focus:border-sky-500 focus:outline-none cursor-pointer"
                   >
+                    <option value="">Elegí una categoría</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -942,9 +946,9 @@ export function SupplierOpportunitiesRadar({
                     </span>
                   </div>
                   <div className="flex justify-between text-zinc-500">
-                    <span>Costo Puesto en Mano (USD x 1.600 + 20% pasero):</span>
+                    <span>Costo estimado según tarifa configurada:</span>
                     <span className="font-extrabold text-zinc-900">
-                      ${activeOpportunity.landedCostArs.toLocaleString("es-AR")}
+                      {activeOpportunity.landedCostArs > 0 ? `$${activeOpportunity.landedCostArs.toLocaleString("es-AR")}` : "A confirmar"}
                     </span>
                   </div>
                 </div>
@@ -1005,7 +1009,7 @@ export function SupplierOpportunitiesRadar({
                         Margen Comercial: {modalLiveMargin.marginPercent}%
                       </span>
                       <span className="text-[11px] text-emerald-700">
-                        Ganancia por unidad: +${modalLiveMargin.profitArs.toLocaleString("es-AR")}
+                        Diferencia estimada por unidad: +${modalLiveMargin.profitArs.toLocaleString("es-AR")}
                       </span>
                     </div>
                     <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-900">

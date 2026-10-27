@@ -41,6 +41,7 @@ import {
   Zap,
 
 } from "lucide-react";
+import { runSupplierTrackingAction } from "@/app/admin/proveedores/automation-actions";
 import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -48,8 +49,6 @@ import type { Category, Product, StockLog } from "@/lib/types";
 import {
   toggleProductActiveAction,
   toggleProductSupplierAvailabilityAction,
-  checkSingleProductSupplierStockAction,
-  triggerBatchSupplierSyncAction,
   quickUpdateProductPriceAction,
   bulkUpdateProductStatusAction,
   bulkAdjustPricesAction,
@@ -61,9 +60,6 @@ import {
   quickUpdateSupplierLinkAction,
   exportProductAuditLogsCsvAction,
   updatePriceAlertThresholdAction,
-  syncCatalogChunkAction,
-  autoHuntUnlinkedProductsAction,
-  toggleAutoPauseWhenOutOfStockAction,
   syncCatalogWholesalePricesAction,
 } from "@/app/admin/actions";
 import {
@@ -126,36 +122,8 @@ export function ProductControlCenter({
   const [isExportingGlobalAudit, setIsExportingGlobalAudit] = useState(false);
   const [priceAlertThreshold, setPriceAlertThreshold] = useState<number>(30);
 
-  // Live supplier verification state
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [verificationFeedback, setVerificationFeedback] = useState<Record<string, { message: string; ok: boolean }>>({});
-  const [isBatchSyncRunning, setIsBatchSyncRunning] = useState(false);
   const [isFullSyncRunning, setIsFullSyncRunning] = useState(false);
-  const [fullSyncProgress, setFullSyncProgress] = useState<{
-    processed: number;
-    total: number;
-    inStock: number;
-    outOfStock: number;
-    pausedCount: number;
-    reactivatedCount: number;
-    errors: number;
-  } | null>(null);
-  const [isAutoHunting, setIsAutoHunting] = useState(false);
   const [isSyncingWholesale, setIsSyncingWholesale] = useState(false);
-  const [autoHuntReport, setAutoHuntReport] = useState<{
-    totalUnlinked: number;
-    checked: number;
-    matchedAndActivated: number;
-    keptInPause: number;
-  } | null>(null);
-  const [batchSyncReport, setBatchSyncReport] = useState<{
-    total: number;
-    checked: number;
-    inStock: number;
-    outOfStock: number;
-    errors: number;
-    timestamp: string;
-  } | null>(null);
 
   // UI feedback notifications
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
@@ -305,7 +273,7 @@ export function ProductControlCenter({
         }
         return 0; // default recent/original
       });
-  }, [products, search, statusFilter, availabilityFilter, fulfillmentFilter, productTypeFilter, categoryFilter, brandFilter, sortBy, categories]);
+  }, [products, search, statusFilter, availabilityFilter, fulfillmentFilter, supplierLinkFilter, productTypeFilter, categoryFilter, brandFilter, sortBy, categories]);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
@@ -364,142 +332,21 @@ export function ProductControlCenter({
     });
   };
 
-  // Quick Action: Live Single Product Supplier Stock Verification
-  const handleVerifySupplierStock = (product: Product) => {
-    setVerifyingId(product.id);
-    startTransition(async () => {
-      try {
-        const result = await checkSingleProductSupplierStockAction(product.id);
-        router.refresh();
-
-        setVerificationFeedback((prev) => ({
-          ...prev,
-          [product.id]: { message: result.message, ok: result.available },
-        }));
-        showToast(result.message, result.available ? "success" : "info");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Error al conectar al mayorista";
-        setVerificationFeedback((prev) => ({
-          ...prev,
-          [product.id]: { message: msg, ok: false },
-        }));
-        showToast(msg, "error");
-      } finally {
-        setVerifyingId(null);
-      }
-    });
-  };
-
-  // Batch Supplier Sync Trigger
-  const handleTriggerBatchSync = () => {
-    setIsBatchSyncRunning(true);
-    startTransition(async () => {
-      try {
-        const report = await triggerBatchSupplierSyncAction(35);
-        setBatchSyncReport({
-          total: report.total,
-          checked: report.checked,
-          inStock: report.inStock,
-          outOfStock: report.outOfStock,
-          errors: report.errors,
-          timestamp: new Date().toLocaleTimeString(),
-        });
-        router.refresh();
-        showToast(
-          `Sincronización completada: ${report.inStock} disponibles, ${report.outOfStock} sin stock pausados automáticamente.`,
-          "success"
-        );
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : "Error en sincronización por lote.", "error");
-      } finally {
-        setIsBatchSyncRunning(false);
-      }
-    });
-  };
-
   const handleFullCatalogSync = async () => {
     setIsFullSyncRunning(true);
-    let offset = 0;
-    const limit = 15;
-    let total = 0;
-    let inStock = 0;
-    let outOfStock = 0;
-    let pausedCount = 0;
-    let reactivatedCount = 0;
-    let errors = 0;
-
-    try {
-      while (true) {
-        const progress = await syncCatalogChunkAction(offset, limit);
-        total = progress.total;
-        inStock += progress.inStock;
-        outOfStock += progress.outOfStock;
-        pausedCount += progress.pausedCount;
-        reactivatedCount += progress.reactivatedCount;
-        errors += progress.errors;
-
-        setFullSyncProgress({
-          processed: progress.processed,
-          total: progress.total,
-          inStock,
-          outOfStock,
-          pausedCount,
-          reactivatedCount,
-          errors,
-        });
-
-        if (progress.done || !progress.nextOffset) {
-          break;
-        }
-        offset = progress.nextOffset;
-        await new Promise((r) => setTimeout(r, 200));
-      }
-
-      router.refresh();
-      showToast(
-        `Sincronización completa finalizada: ${inStock} disponibles, ${pausedCount} pausados sin stock, ${reactivatedCount} reactivados.`,
-        "success"
-      );
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : "Error durante la sincronización continua.", "error");
-    } finally {
-      setIsFullSyncRunning(false);
-    }
-  };
-
-  const handleAutoHuntUnlinked = () => {
-    setIsAutoHunting(true);
-    startTransition(async () => {
-      try {
-        const report = await autoHuntUnlinkedProductsAction(30);
-        setAutoHuntReport({
-          totalUnlinked: report.totalUnlinked,
-          checked: report.checked,
-          matchedAndActivated: report.matchedAndActivated,
-          keptInPause: report.keptInPause,
-        });
-        router.refresh();
-        showToast(
-          `Cazador de proveedores: ${report.matchedAndActivated} emparejados al menor costo y activados; ${report.keptInPause} quedaron en pausa.`,
-          "success"
-        );
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : "Error al rastrear proveedores.", "error");
-      } finally {
-        setIsAutoHunting(false);
-      }
-    });
+    try { const result = await runSupplierTrackingAction(); showToast(result, "info"); router.refresh(); }
+    catch (err) { showToast(err instanceof Error ? err.message : "No se pudo ejecutar el seguimiento.", "error"); }
+    finally { setIsFullSyncRunning(false); }
   };
 
   const handleSyncWholesalePrices = () => {
     setIsSyncingWholesale(true);
     startTransition(async () => {
       try {
-        const report = await syncCatalogWholesalePricesAction(false);
-        router.refresh();
+        const report = await syncCatalogWholesalePricesAction(true);
         showToast(
-          `¡Precios mayoristas calculados y guardados! ${report.eligibleCount} productos aptos actualizados (margen MYA: ${report.avgMyaWholesaleMarginPercent}%, revendedor: ${report.avgResellerMarginPercent}%).`,
-          "success"
+          `Vista previa: ${report.eligibleCount} productos aptos de ${report.totalEvaluated} evaluados. Revisá costos y referencias antes de cambiar precios.`,
+          "info"
         );
       } catch (err: unknown) {
         showToast(err instanceof Error ? err.message : "Error al sincronizar precios mayoristas.", "error");
@@ -782,7 +629,7 @@ export function ProductControlCenter({
             <CheckCircle2 className="h-4 w-4 text-indigo-600" />
           </div>
           <p className="text-2xl font-black text-indigo-900">{stats.supplierAvailable.toLocaleString("es-AR")}</p>
-          <span className="text-[11px] text-indigo-700 font-semibold">Listos para vender</span>
+          <span className="text-[11px] text-indigo-700 font-semibold">Disponibilidad registrada</span>
         </div>
 
         <div className="min-w-0 rounded-2xl border border-red-200/60 bg-red-50/40 p-3.5 sm:p-4 shadow-xs">
@@ -791,7 +638,7 @@ export function ProductControlCenter({
             <XCircle className="h-4 w-4 text-red-600" />
           </div>
           <p className="text-2xl font-black text-red-900">{stats.supplierPaused.toLocaleString("es-AR")}</p>
-          <span className="text-[11px] text-red-700 font-medium">Sin stock en proveedor</span>
+          <span className="text-[11px] text-red-700 font-medium">Disponibilidad pausada o pendiente</span>
         </div>
       </div>
 
@@ -801,7 +648,7 @@ export function ProductControlCenter({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-sky-100/80 pb-3.5">
           <div className="flex items-start sm:items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-sky-700 text-white shadow-xs">
-              <RefreshCw className={`h-4.5 w-4.5 ${isFullSyncRunning || isBatchSyncRunning ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-4.5 w-4.5 ${isFullSyncRunning ? "animate-spin" : ""}`} />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -810,11 +657,11 @@ export function ProductControlCenter({
                 </h3>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Nube 24/7 Activa
+                  Seguimiento alojado
                 </span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
-                Evalúa ofertas en los 7 mayoristas, elige el menor costo puesto en mano ($1.600 + 20% pasero) y pausa publicaciones sin stock.
+                Procesá un lote de la cola y revisá las fuentes, incidencias y propuestas en Proveedores.
               </p>
             </div>
           </div>
@@ -859,10 +706,10 @@ export function ProductControlCenter({
               disabled={isSyncingWholesale || isPending}
               onClick={handleSyncWholesalePrices}
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-sky-300 bg-sky-50 hover:bg-sky-100/90 px-3 text-xs font-bold text-sky-900 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-              title="Calcular y fijar internamente los precios mayoristas para cosmética, capilar, perfumería y herramientas"
+              title="Calcular una vista previa sin cambiar precios"
             >
               <Package className={`h-3.5 w-3.5 text-sky-700 ${isSyncingWholesale ? "animate-spin" : ""}`} />
-              <span>{isSyncingWholesale ? "Calculando..." : "Fijar Precios Mayoristas"}</span>
+              <span>{isSyncingWholesale ? "Calculando..." : "Vista previa mayorista"}</span>
             </button>
             
 
@@ -890,7 +737,7 @@ export function ProductControlCenter({
 
         {/* Main Hero Actions: 2 balanced, responsive command cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Card 1: Sincronizar Catálogo Completo */}
+          {/* Card 1: Procesar lote de seguimiento */}
           <div className="flex flex-col justify-between rounded-xl border border-sky-200/80 bg-white p-3.5 shadow-2xs hover:border-sky-300 transition-all">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
@@ -898,10 +745,10 @@ export function ProductControlCenter({
                   Revisión Global Multi-Proveedor
                 </span>
                 <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
-                  Sincronización Total de Stock
+                  Seguimiento de proveedores
                 </h4>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Evalúa todas las fuentes vinculadas, toma el precio más bajo con stock y pausa los agotados.
+                  Procesa hasta seis consultas pendientes. El seguimiento conserva los datos cuando la evidencia no alcanza.
                 </p>
               </div>
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
@@ -911,12 +758,12 @@ export function ProductControlCenter({
 
             <button
               type="button"
-              disabled={isFullSyncRunning || isAutoHunting || isPending}
+              disabled={isFullSyncRunning || isPending}
               onClick={handleFullCatalogSync}
               className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isFullSyncRunning ? "animate-spin" : ""}`} />
-              <span>{isFullSyncRunning ? "Sincronizando Catálogo en Vivo..." : "Sincronizar Catálogo Completo"}</span>
+              <span>{isFullSyncRunning ? "Procesando lote..." : "Procesar lote de seguimiento"}</span>
             </button>
           </div>
 
@@ -926,7 +773,7 @@ export function ProductControlCenter({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
-                    Auto-Hunter de Huérfanos
+                    Búsqueda y revisión
                   </span>
                   <span className="rounded-full bg-amber-100 px-2 py-0.2 text-[10px] font-bold text-amber-800">
                     {stats.withoutSupplierLink} sin enlace
@@ -936,25 +783,15 @@ export function ProductControlCenter({
                   Cazador de Proveedores
                 </h4>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Rastrea coincidencias en los 7 mayoristas. Si hay stock vincula el más económico; si no, pausa.
+                  Revisá coincidencias y variantes de las ofertas registradas antes de vincularlas.
                 </p>
               </div>
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                <Sparkles className={`h-4 w-4 ${isAutoHunting ? "animate-spin" : ""}`} />
+                <Sparkles className={`h-4 w-4 `} />
               </div>
             </div>
 
-            <button
-              type="button"
-              disabled={isAutoHunting || isFullSyncRunning || isPending}
-              onClick={handleAutoHuntUnlinked}
-              className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles className={`h-3.5 w-3.5 ${isAutoHunting ? "animate-spin" : ""}`} />
-              <span>
-                {isAutoHunting ? "Rastreando en los 7 mayoristas..." : `Cazador de Proveedores (${stats.withoutSupplierLink})`}
-              </span>
-            </button>
+            <Link href="/admin/proveedores/inteligencia" className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-center text-xs font-extrabold text-white hover:bg-emerald-800"><Sparkles className="h-3.5 w-3.5" /> Revisar proveedores y coincidencias</Link>
           </div>
 
           {/* Card 3: Radar de Oportunidades Mayoristas */}
@@ -966,14 +803,14 @@ export function ProductControlCenter({
                     Expansión de Catálogo
                   </span>
                   <span className="rounded-full bg-indigo-100 px-2 py-0.2 text-[10px] font-bold text-indigo-800">
-                    +1.500 ofertas
+                    Ofertas registradas
                   </span>
                 </div>
                 <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
                   Radar de Oportunidades
                 </h4>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Explorá productos mayoristas rentables con cálculo automático de costo y reventa.
+                  Explorá ofertas registradas y revisá costos, identidad y referencias antes de publicarlas.
                 </p>
               </div>
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
@@ -991,51 +828,6 @@ export function ProductControlCenter({
           </div>
         </div>
 
-        {/* Full Sync Progress Bar and Live Stats */}
-        {fullSyncProgress && (
-          <div className="rounded-xl border border-sky-200 bg-white p-3.5 shadow-xs space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-bold">
-              <span className="text-sky-900">
-                Sincronización en curso: {fullSyncProgress.processed} de {fullSyncProgress.total} productos ({Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100)}%)
-              </span>
-              <span className="text-zinc-500 font-semibold">
-                {fullSyncProgress.inStock} disponibles · {fullSyncProgress.pausedCount} pausados · {fullSyncProgress.reactivatedCount} reactivados
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
-              <div
-                className="h-full bg-sky-600 transition-all duration-300"
-                style={{ width: `${Math.min(100, Math.round((fullSyncProgress.processed / Math.max(1, fullSyncProgress.total)) * 100))}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Auto Hunt Report */}
-        {autoHuntReport && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-emerald-950 font-semibold">
-            <span>
-              🎯 Auto-Hunter: {autoHuntReport.matchedAndActivated} productos emparejados con mayorista y activados en tienda.
-            </span>
-            <span className="text-zinc-600 font-medium">
-              {autoHuntReport.keptInPause} quedaron en pausa por falta de stock.
-            </span>
-          </div>
-        )}
-
-        {/* Last Batch Sync Report note */}
-        {batchSyncReport && !fullSyncProgress && (
-          <div className="text-[11px] text-zinc-500 pt-1 border-t border-sky-100/50 flex flex-wrap items-center justify-between gap-2">
-            <span>
-              Último reporte ({batchSyncReport.timestamp}): <strong>{batchSyncReport.checked}</strong> revisados ·{" "}
-              <strong className="text-emerald-700">{batchSyncReport.inStock}</strong> en stock ·{" "}
-              <strong className="text-amber-700">{batchSyncReport.outOfStock}</strong> sin stock
-            </span>
-            {batchSyncReport.errors > 0 && (
-              <span className="text-red-600 font-semibold">{batchSyncReport.errors} sin respuesta</span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Stock Audit Table (Expandable) */}
@@ -1515,8 +1307,6 @@ export function ProductControlCenter({
               ) : (
                 paginatedProducts.map((product) => {
                   const isSelected = selectedIds.includes(product.id);
-                  const isLiveChecking = verifyingId === product.id;
-                  const feedback = verificationFeedback[product.id];
                   const prodCategory = categories.find((c) => c.id === product.categoryId);
                   let categoryDisplay = product.categoryName;
                   if (prodCategory && prodCategory.parentId) {
@@ -1834,16 +1624,7 @@ export function ProductControlCenter({
                                       )}
                                     </button>
 
-                                    <button
-                                      type="button"
-                                      disabled={isLiveChecking}
-                                      onClick={() => handleVerifySupplierStock(product)}
-                                      className="inline-flex h-5 items-center gap-1 rounded bg-zinc-100 hover:bg-zinc-200 px-1.5 text-[9px] font-bold text-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-                                      title="Verificar stock en vivo en la web del mayorista"
-                                    >
-                                      <RefreshCw className={`h-2.5 w-2.5 ${isLiveChecking ? "animate-spin text-sky-600" : ""}`} />
-                                      {isLiveChecking ? "..." : "Sync"}
-                                    </button>
+                                    <Link href="/admin/proveedores/inteligencia" className="inline-flex min-h-8 items-center rounded bg-zinc-100 px-2 text-[10px] font-bold text-zinc-700" title="Revisar seguimiento de proveedores">Seguimiento</Link>
                                   </div>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 border border-indigo-200">
@@ -1857,11 +1638,7 @@ export function ProductControlCenter({
                                 )}
                               </div>
 
-                              {feedback && (
-                                <p className={`text-[10px] font-bold ${feedback.ok ? "text-emerald-700" : "text-amber-800"}`}>
-                                  {feedback.message}
-                                </p>
-                              )}
+
                             </div>
                           </td>
 
