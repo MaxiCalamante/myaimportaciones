@@ -152,6 +152,13 @@ export default async function WholesalePage({
                     <FileSpreadsheet className="h-4 w-4 text-zinc-950" />
                     Descargar Lista Excel / CSV
                   </a>
+                  <Link
+                    href="/mayorista/presupuesto"
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-4 py-3 text-xs sm:text-sm transition shadow-sm cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4 text-amber-400" />
+                    Presupuesto Formal PDF
+                  </Link>
                   <a
                     href={getWhatsAppUrl("Hola MYA Importaciones! Quisiera consultar por compras por bulto cerrado y stock disponible.")}
                     target="_blank"

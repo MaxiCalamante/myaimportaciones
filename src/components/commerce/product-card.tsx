@@ -134,6 +134,11 @@ export function ProductCard({
                     · Mínimo {product.wholesaleMinQuantity || 1} {product.wholesaleMinQuantity === 1 ? "unidad" : "unidades"}
                   </p>
                 </div>
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 bg-indigo-50/80 rounded px-1.5 py-0.5 border border-indigo-200/60" title="Descuentos adicionales por volumen en bulto cerrado">
+                    📦 12+ un: -5% · 24+ un: -10% extra
+                  </span>
+                </div>
               </div>
             ) : (
               <div>

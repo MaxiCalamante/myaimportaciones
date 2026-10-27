@@ -7,7 +7,7 @@ import { siteConfig } from "@/lib/site";
 
 export async function GET(request: Request) {
   const { profile } = await getCurrentProfile();
-  if (profile?.role !== "admin") return new NextResponse("No autorizado", { status: 403 });
+  if (profile?.role !== "admin" && !profile?.isApprovedWholesale) return new NextResponse("No autorizado. Requiere cuenta mayorista verificada.", { status: 403 });
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "wholesale"; // 'wholesale' | 'retail' | 'full'
 

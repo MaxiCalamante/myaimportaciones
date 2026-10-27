@@ -69,6 +69,25 @@ export async function applyForWholesaleAction(
     };
   }
 
+  // Notificación automática al email de administración (Máximo / Agustina)
+  try {
+    await serviceDb.rpc("queue_transactional_email_v1", {
+      key_input: `wholesale_app/${user.id}/${Date.now()}`,
+      event_input: "wholesale_application_received",
+      audience_input: "admin",
+      order_input: null,
+      snapshot_input: {
+        profile_id: user.id,
+        buyer_name: businessName || user.email,
+        customer_email: user.email,
+        shipping_phone: phone,
+        reference: cuit,
+        order_notes: notes || "Sin observaciones",
+      },
+    });
+    scheduleTransactionalEmails();
+  } catch {}
+
   revalidatePath("/mayorista");
   revalidatePath("/cuenta");
   revalidatePath("/admin/mayoristas");

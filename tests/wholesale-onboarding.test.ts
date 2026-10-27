@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mapProduct } from "../src/lib/catalog-data";
-import { validateWholesaleOrder, WHOLESALE_MIN_AMOUNT, WHOLESALE_MIN_UNITS } from "../src/lib/wholesale-policy";
+import {
+  validateWholesaleOrder,
+  calculateTieredWholesalePrice,
+  WHOLESALE_MIN_AMOUNT,
+  WHOLESALE_MIN_UNITS,
+} from "../src/lib/wholesale-policy";
 import { renderTransactionalEmail } from "../src/lib/email-templates";
 
 test("mapProduct: expone wholesalePrice solo para canales o perfiles mayoristas", () => {
@@ -115,6 +120,30 @@ test("validateWholesaleOrder: valida compra mínima combinable ($100.000 o 5 uni
   assert.equal(meetsByAmount.totalAmount, 120000);
 });
 
+test("calculateTieredWholesalePrice: aplica descuentos escalonados por volumen", () => {
+  const basePrice = 20000;
+
+  // 1. Menos de 12 unidades -> Sin descuento extra
+  const tier0 = calculateTieredWholesalePrice(basePrice, 5);
+  assert.equal(tier0.discountPct, 0);
+  assert.equal(tier0.unitPrice, 20000);
+  assert.equal(tier0.total, 100000);
+
+  // 2. Entre 12 y 23 unidades -> -5% extra (Caja Cerrada)
+  const tier1 = calculateTieredWholesalePrice(basePrice, 12);
+  assert.equal(tier1.discountPct, 5);
+  assert.equal(tier1.unitPrice, 19000); // 20000 * 0.95
+  assert.equal(tier1.total, 19000 * 12);
+  assert.match(tier1.tierLabel || "", /Caja Cerrada/);
+
+  // 3. 24 o más unidades -> -10% extra (Master Box)
+  const tier2 = calculateTieredWholesalePrice(basePrice, 24);
+  assert.equal(tier2.discountPct, 10);
+  assert.equal(tier2.unitPrice, 18000); // 20000 * 0.90
+  assert.equal(tier2.total, 18000 * 24);
+  assert.match(tier2.tierLabel || "", /Master Box/);
+});
+
 test("email-templates: wholesale_approved incluye bienvenida personalizada, mínimo combinable y enlace", () => {
   const origin = "https://myaimportaciones.com";
   const result = renderTransactionalEmail(
@@ -132,4 +161,26 @@ test("email-templates: wholesale_approved incluye bienvenida personalizada, mín
   assert.match(result.html, /100\.000/);
   assert.match(result.html, /https:\/\/myaimportaciones\.com\/mayorista/);
   assert.match(result.html, /Ver catálogo mayorista/);
+});
+
+test("email-templates: wholesale_application_received notifica al admin con enlace a /admin/mayoristas", () => {
+  const origin = "https://myaimportaciones.com";
+  const result = renderTransactionalEmail(
+    "wholesale_application_received",
+    "admin",
+    {
+      buyer_name: "Ferretería Tandil S.A.",
+      customer_email: "compras@ferreteriatandil.com",
+      shipping_phone: "2494112233",
+      reference: "30-71123456-8",
+      order_notes: "Herramientas eléctricas y manuales",
+    },
+    origin
+  );
+
+  assert.match(result.subject, /postulación mayorista/i);
+  assert.match(result.html, /Ferretería Tandil S\.A\./);
+  assert.match(result.html, /30-71123456-8/);
+  assert.match(result.html, /https:\/\/myaimportaciones\.com\/admin\/mayoristas/);
+  assert.match(result.html, /Revisar en Panel Mayoristas/);
 });

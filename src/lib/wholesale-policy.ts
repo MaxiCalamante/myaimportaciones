@@ -4,6 +4,44 @@ export const WHOLESALE_MIN_UNITS = 5;
 export const WHOLESALE_MINIMUM_LABEL = "$100.000 en productos o 5 unidades en total";
 export const WHOLESALE_MINIMUM_DETAILS = "Alcanzá $100.000 en productos o sumá al menos 5 unidades, del mismo producto o combinando varios. Basta con cumplir una de las dos condiciones. El envío se cotiza por separado.";
 
+export interface VolumeTier {
+  minQty: number;
+  discountPct: number;
+  label: string;
+}
+
+export const WHOLESALE_VOLUME_TIERS: VolumeTier[] = [
+  { minQty: 24, discountPct: 10, label: "Master Box (24+ un.): -10% extra" },
+  { minQty: 12, discountPct: 5, label: "Caja Cerrada (12+ un.): -5% extra" },
+];
+
+export function getVolumeDiscount(quantity: number): { discountPct: number; tierLabel: string | null } {
+  for (const tier of WHOLESALE_VOLUME_TIERS) {
+    if (quantity >= tier.minQty) {
+      return { discountPct: tier.discountPct, tierLabel: tier.label };
+    }
+  }
+  return { discountPct: 0, tierLabel: null };
+}
+
+export function calculateTieredWholesalePrice(baseWholesalePrice: number, quantity: number): {
+  unitPrice: number;
+  discountPct: number;
+  tierLabel: string | null;
+  total: number;
+} {
+  const { discountPct, tierLabel } = getVolumeDiscount(quantity);
+  const unitPrice = discountPct > 0
+    ? Math.round(baseWholesalePrice * (1 - discountPct / 100))
+    : baseWholesalePrice;
+  return {
+    unitPrice,
+    discountPct,
+    tierLabel,
+    total: unitPrice * quantity,
+  };
+}
+
 export interface WholesaleValidationResult {
   hasWholesale: boolean;
   totalAmount: number;
@@ -29,7 +67,10 @@ export function validateWholesaleOrder(
     };
   }
 
-  const totalAmount = wholesaleLines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+  const totalAmount = wholesaleLines.reduce((sum, l) => {
+    const tiered = calculateTieredWholesalePrice(l.price, l.quantity);
+    return sum + tiered.total;
+  }, 0);
   const totalUnits = wholesaleLines.reduce((sum, l) => sum + l.quantity, 0);
   const meetsMinimum = totalAmount >= WHOLESALE_MIN_AMOUNT || totalUnits >= WHOLESALE_MIN_UNITS;
   const missingAmount = Math.max(0, WHOLESALE_MIN_AMOUNT - totalAmount);
