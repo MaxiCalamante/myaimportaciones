@@ -141,7 +141,7 @@ export function detectStoreCategory(
 
 
   // 1. Perfumería
-  if (/lattafa|asdaf|yara|khamrah|bade'e|asad|qaed|fakhar|ejaazi|orientica|al haramain|afnan/i.test(t)) {
+  if (/\b(?:lattafa|asdaf|yara|khamrah|bade'e|asad|qaed|fakhar|ejaazi|orientica|al haramain|afnan)\b/i.test(t)) {
     const c = findCat("perfumes-arabes") || findCat("perfumeria");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
@@ -155,7 +155,7 @@ export function detectStoreCategory(
   }
 
   // 2. Cosmética Coreana (K-Beauty)
-  if (/medicube|skin1004|anua|celimax|althea|beauty of joseon|cosrx|torriden|round lab|dr\.?jart/i.test(t)) {
+  if (/\b(?:medicube|skin1004|anua|celimax|althea|beauty of joseon|cosrx|torriden|round lab|dr\.?jart)\b/i.test(t)) {
     if (/serum|ampoule|ampolla/i.test(t)) {
       const c = findCat("serums-ampollas") || findCat("cosmetica-coreana");
       if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
@@ -231,6 +231,10 @@ export function detectStoreCategory(
   }
   if (/macbook|notebook|laptop|vivobook|thinkpad|zenbook|asus|hp|lenovo/i.test(t)) {
     const c = findCat("electronica-notebooks") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/\b(mac mini|mac studio|computadora de escritorio|pc de escritorio)\b/i.test(t)) {
+    const c = findCat("electronica-computadoras-escritorio") || findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
   if (/ipad|tablet|tab s/i.test(t)) {

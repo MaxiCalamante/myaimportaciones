@@ -239,7 +239,7 @@ export function SupplierOpportunitiesRadar({
               Descubrí y sumá oportunidades para revisar
             </h1>
             <p className="text-sm text-zinc-600 leading-relaxed">
-              El radar estima el costo con la cotización configurada y la tarifa general. Revisá vigencia, tarifas particulares y precio de mercado antes de publicar. El precio sugerido es una estimación basada en márgenes, no un comparable de mercado.
+              El radar estima costos con las cotizaciones y tarifas configuradas. Revisá su vigencia y el precio de mercado antes de publicar. El precio sugerido es una estimación basada en márgenes, no un comparable de mercado.
             </p>
           </div>
 

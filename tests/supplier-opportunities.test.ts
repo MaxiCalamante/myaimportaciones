@@ -74,6 +74,8 @@ test("detectStoreCategory clasifica correctamente fragancias árabes, k-beauty, 
   // Herramienta
   const tool = detectStoreCategory("Total Taladro Rotomartillo 800W TH308266", mockCategories);
   assert.equal(tool.categorySlug, "taladros-rotomartillos");
+  assert.equal(detectStoreCategory("Wadfow Elevador Manual Paletera 1000KG", mockCategories, "Total").categorySlug, "herramientas-equipamiento");
+  assert.equal(detectStoreCategory("Apple Mac Mini M5 Pro", mockCategories).categorySlug, "electronica");
 });
 
 test("cálculo financiero: USD 25 a Dólar 1600 + 20% pasero da Landed ARS $48.000", () => {
