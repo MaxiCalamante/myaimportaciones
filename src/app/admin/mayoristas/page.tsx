@@ -1,4 +1,6 @@
 import { createCommerceService } from "@/lib/supabase/service";
+import { getCurrentProfile } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { AdminMetric } from "@/components/admin/commerce-ui";
 import { CommerceRefresh } from "@/components/admin/commerce-refresh";
 import {
@@ -13,6 +15,9 @@ export const metadata = {
 };
 
 export default async function AdminWholesalePage() {
+  const { profile } = await getCurrentProfile();
+  if (!profile) redirect("/login?next=/admin/mayoristas");
+  if (profile.role !== "admin") redirect("/cuenta");
   const serviceDb = createCommerceService();
 
   // 1. Solicitudes pendientes (wholesale_requested_at no nulo y no aprobado)
@@ -85,11 +90,11 @@ export default async function AdminWholesalePage() {
   }));
 
   const productMargins: WholesaleProductMargin[] = (rawProductMargins || [])
-    .filter((row: any) => {
+    .filter((row) => {
       const pc = Array.isArray(row.product_costs) ? row.product_costs[0] : row.product_costs;
       return pc && Number(pc.landed_cost) > 0;
     })
-    .map((row: any) => {
+    .map((row) => {
       const pc = Array.isArray(row.product_costs) ? row.product_costs[0] : row.product_costs;
       const landedCost = Number(pc.landed_cost);
       const wholesalePrice = Number(row.wholesale_price);

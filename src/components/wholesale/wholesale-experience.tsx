@@ -8,6 +8,7 @@ import { breadcrumbData, jsonLd } from "@/lib/seo";
 import { WholesaleContactLinks } from "./wholesale-contact";
 import { WholesaleInquiry } from "./wholesale-inquiry";
 import { WholesaleProducts } from "./wholesale-products";
+import { WholesaleGuideLinks } from "./wholesale-guide-links";
 import styles from "./wholesale-experience.module.css";
 
 const generalFaq = [
@@ -133,6 +134,7 @@ export async function WholesaleLanding({ category }: { category?: WholesaleCateg
       </section>
 
       {category && <section className={styles.section}><h2 className={styles.heading}>Más categorías de la tienda para revender.</h2><nav aria-label="Más opciones mayoristas" className={styles.brands}>{WHOLESALE_CATEGORIES.filter(item => item.slug !== category.slug).map(item => <Link key={item.slug} href={item.brand ? `/catalogo?brand=${encodeURIComponent(item.brand)}` : `/catalogo?category=${item.categorySlug}`}>{item.name}<ArrowUpRight size={13} className="ml-3" /></Link>)}</nav></section>}
+      <WholesaleGuideLinks currentSlug={category?.slug} />
       <p className={styles.footnote}>¿Buscás una compra individual? <Link href={catalogPath}>Explorá el catálogo de la tienda</Link>, con precios minoristas. También podés revisar las <Link href="/condiciones">condiciones de compra y entrega</Link>.</p>
     </div>
   </div>;

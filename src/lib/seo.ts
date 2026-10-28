@@ -4,6 +4,7 @@ import { OFFICIAL_ORIGIN } from "./site-origin";
 import { isVerifiedStock } from "./commerce-policy";
 import { verifiedGtin } from "./product-identifiers";
 import { retailContent } from "./retail-content";
+import { productVariantHref } from "./variant-preview";
 
 export function publicUrl(path = "/") { return new URL(path, OFFICIAL_ORIGIN).href; }
 export function jsonLd(value: unknown) { return JSON.stringify(value).replace(/</g, "\\u003c"); }
@@ -146,14 +147,14 @@ export function productStructuredData(product: Product) {
   const gtin = verifiedGtin(product.specifications?.GTIN || product.specifications?.EAN || product.specifications?.UPC);
   const gtinData: Partial<Record<`gtin${8 | 12 | 13 | 14}`, string>> = gtin ? { [`gtin${gtin.length}`]: gtin } : {};
 
-  const activeVariants = product.variants?.filter(v => v.isActive) || [];
+  const activeVariants = product.variants?.filter(v => v.isActive && Number.isFinite(v.retailPrice) && v.retailPrice > 0) || [];
 
   let offers: Record<string, unknown> | undefined = undefined;
 
   if (product.hasVariants && activeVariants.length > 0) {
-    const prices = activeVariants.map(v => v.retailPrice).filter(p => p > 0);
-    const lowPrice = prices.length ? Math.min(...prices) : product.retailPrice;
-    const highPrice = prices.length ? Math.max(...prices) : product.retailPrice;
+    const prices = activeVariants.map(v => v.retailPrice);
+    const lowPrice = Math.min(...prices);
+    const highPrice = Math.max(...prices);
     offers = {
       "@type": "AggregateOffer",
       url: publicUrl(`/producto/${product.slug}`),
@@ -169,11 +170,11 @@ export function productStructuredData(product: Product) {
         availability: `https://schema.org/${isVerifiedStock(v) ? "InStock" : "OutOfStock"}`,
         itemCondition: `https://schema.org/${condition}`,
         ...(v.sku ? { sku: v.sku } : {}),
-        url: publicUrl(`/producto/${product.slug}`),
+        url: publicUrl(productVariantHref(product.slug, v.id)),
         seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" }
       }))
     };
-  } else if (product.retailPrice > 0) {
+  } else if (!product.hasVariants && Number.isFinite(product.retailPrice) && product.retailPrice > 0) {
     offers = {
       "@type": "Offer",
       url: publicUrl(`/producto/${product.slug}`),

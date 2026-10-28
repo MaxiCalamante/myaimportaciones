@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Printer, ArrowLeft, Download, ShieldCheck, Check, Sparkles, Building2 } from "lucide-react";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -14,22 +13,17 @@ import {
 } from "@/lib/wholesale-policy";
 import type { Profile } from "@/lib/auth";
 import type { Product } from "@/lib/types";
+import type { wholesaleQuoteHeader } from "@/lib/wholesale-quote-header";
 
 interface Props {
   profile: Profile | null;
   catalogProducts?: Product[];
+  header: ReturnType<typeof wholesaleQuoteHeader>;
 }
 
-export function WholesaleQuotePrintable({ profile, catalogProducts = [] }: Props) {
+export function WholesaleQuotePrintable({ profile, catalogProducts = [], header }: Props) {
   const { cart } = useCommerce();
-  const [mounted, setMounted] = useState(false);
-  const [quoteNumber, setQuoteNumber] = useState("MYA-2026-0001");
-
-  useEffect(() => {
-    setMounted(true);
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    setQuoteNumber(`MYA-B2B-${randomSuffix}`);
-  }, []);
+  const { quoteNumber, issueDate, expirationDate } = header;
 
   const wholesaleCartLines = cart.filter((l) => l.channel === "wholesale");
   const useCartItems = wholesaleCartLines.length > 0;
@@ -75,14 +69,6 @@ export function WholesaleQuotePrintable({ profile, catalogProducts = [] }: Props
   const totalQuote = quoteItems.reduce((acc, i) => acc + i.total, 0);
   const volumeSavings = Math.max(0, subtotalBeforeVolume - totalQuote);
   const totalUnits = quoteItems.reduce((acc, i) => acc + i.quantity, 0);
-
-  const issueDate = mounted
-    ? new Date().toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
-    : "Fecha actual";
-
-  const expirationDate = mounted
-    ? new Date(Date.now() + 15 * 86400000).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
-    : "15 días";
 
   const handlePrint = () => {
     window.print();

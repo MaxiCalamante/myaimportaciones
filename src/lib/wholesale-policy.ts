@@ -1,4 +1,4 @@
-/** Owner-confirmed terms, 23/10/2026. The two minimums are alternatives. */
+/** Owner-confirmed terms, reconfirmed 28/10/2026. The two minimums are alternatives. */
 export const WHOLESALE_MIN_AMOUNT = 100_000;
 export const WHOLESALE_MIN_UNITS = 5;
 export const WHOLESALE_MINIMUM_LABEL = "$100.000 en productos o 5 unidades en total";

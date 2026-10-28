@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
 import { ButtonLink } from "@/components/ui/button";
+import { WHOLESALE_MINIMUM_LABEL } from "@/lib/wholesale-policy";
 
 export function StoreHero({ slides = defaultCarouselSlides, preview = false }: { slides?: CarouselSlide[]; preview?: boolean }) {
   const heroSlides = slides;
@@ -386,7 +387,7 @@ export function WholesaleTeaser({
             Precios directos de importación para revendedores y comercios.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-300">
-            Optimizá los costos de tu negocio. Comprá herramientas Total y Wadfow, cosmética coreana y tecnología por bulto cerrado con un mínimo accesible desde $100.000, Factura A oficial y envíos a toda la Argentina.
+            Optimizá los costos de tu negocio. Comprá herramientas Total y Wadfow, cosmética coreana y tecnología por bulto cerrado con un mínimo de {WHOLESALE_MINIMUM_LABEL}, Factura A oficial y envíos a toda la Argentina.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/mayorista" icon={<Boxes className="h-4 w-4" />}>

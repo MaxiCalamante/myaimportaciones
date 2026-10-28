@@ -27,6 +27,8 @@ import { getCurrentProfile } from "@/lib/auth";
 import { ResellerStarterKits } from "@/components/commerce/reseller-starter-kits";
 import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 import { WholesaleApplicationForm } from "@/components/wholesale/wholesale-application-form";
+import { WholesaleGuideLinks } from "@/components/wholesale/wholesale-guide-links";
+import { WHOLESALE_MINIMUM_LABEL } from "@/lib/wholesale-policy";
 
 export const metadata = wholesaleMetadata();
 
@@ -138,7 +140,7 @@ export default async function WholesalePage({
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
                   Accedé a precios comerciales directos de importación en cosmética coreana (K-Beauty), cuidado capilar y herramientas Total Tools / Wadfow.
-                  Mínimo de compra general de <strong>$100.000</strong> combinable entre todos los rubros.
+                  Mínimo de compra: <strong>{WHOLESALE_MINIMUM_LABEL}</strong>, combinables entre todos los rubros.
                 </p>
                 <div className="mt-7 flex flex-wrap items-center gap-3">
                   <ButtonLink href="#lista" icon={<Boxes className="h-4 w-4" />}>
@@ -351,7 +353,7 @@ export default async function WholesalePage({
                 <span>Mínimo Combinable</span>
               </div>
               <p className="mt-1.5 text-xs text-zinc-400">
-                Mínimo general de $100.000 combinable entre cosmética coreana, capilar y herramientas.
+                Mínimo general: {WHOLESALE_MINIMUM_LABEL}; podés combinar marcas y rubros.
               </p>
             </div>
 
@@ -494,7 +496,7 @@ export default async function WholesalePage({
         <div className="mt-8 grid gap-3 sm:grid-cols-3 text-center text-xs text-zinc-400 border-t border-zinc-800 pt-6">
           <div>
             <strong className="text-zinc-200 block text-sm">Mínimo de Compra</strong>
-            $100.000 combinables entre cualquier rubro del catálogo.
+            {WHOLESALE_MINIMUM_LABEL}, combinables entre cualquier rubro del catálogo.
           </div>
           <div>
             <strong className="text-zinc-200 block text-sm">Marcas Oficiales</strong>
@@ -505,6 +507,7 @@ export default async function WholesalePage({
             Envíos diarios a todo el país con seguimiento y seguro de carga.
           </div>
         </div>
+        <WholesaleGuideLinks dark />
       </div>
     </section>
   );

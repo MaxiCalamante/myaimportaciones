@@ -4,7 +4,7 @@ import { catalogSeo, productMetadata, productStructuredData, jsonLd, buildProduc
 import { merchantFeed, verifiedGtin } from "../src/lib/merchant-feed";
 import { resolveSiteOrigin } from "../src/lib/site-origin";
 import { parseProductForm } from "../src/lib/admin-product";
-import type { Product, Category } from "../src/lib/types";
+import type { Product, ProductVariant, Category } from "../src/lib/types";
 import { canonicalRedirect } from "../src/lib/site-redirect";
 import { canonicalProductSlug } from "../src/lib/seo-product-aliases";
 
@@ -49,6 +49,33 @@ test("product schema shares real price and supplier availability and never inven
   for (const key of ["shippingDetails", "hasMerchantReturnPolicy", "priceValidUntil", "aggregateRating", "mpn"]) assert.ok(!JSON.stringify(schema).includes(key));
   assert.equal(schema.image[0], "https://myaimportaciones.com/foto.webp");
 });
+test("variant offers link to the exact selection and preserve real prices and availability", () => {
+  const variant: ProductVariant = { id: "rouge", productId: product.id, title: "Rouge 60 ml", retailPrice: 25000, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: { Versión: "Rouge" }, displayOrder: 0 };
+  const schema = productStructuredData({ ...product, hasVariants: true, variants: [variant, { ...variant, id: "leather", title: "Leather 60 ml", retailPrice: 28000, supplierAvailable: false }] });
+  assert.equal(schema.offers?.lowPrice, 25000);
+  assert.equal(schema.offers?.highPrice, 28000);
+  assert.equal(schema.offers?.offerCount, 2);
+  const offers = schema.offers?.offers as Record<string, unknown>[];
+  assert.equal(offers[0].url, "https://myaimportaciones.com/producto/producto-50-ml?variant=rouge");
+  assert.equal(offers[1].url, "https://myaimportaciones.com/producto/producto-50-ml?variant=leather");
+  assert.equal(offers[0].availability, "https://schema.org/InStock");
+  assert.equal(offers[1].availability, "https://schema.org/OutOfStock");
+  assert.equal(productMetadata({ ...product, hasVariants: true }).alternates?.canonical, "https://myaimportaciones.com/producto/producto-50-ml");
+});
+
+test("schema excludes inactive or unpriced variants without substituting a parent offer", () => {
+  const variant: ProductVariant = { id: "choice", productId: product.id, title: "Presentación", retailPrice: 25000, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: {}, displayOrder: 0 };
+  const invalid = [0, -1, NaN, Infinity].map((retailPrice, index) => ({ ...variant, id: `invalid-${index}`, retailPrice }));
+  const variants = [...invalid, { ...variant, id: "inactive", isActive: false }];
+  assert.equal(productStructuredData({ ...product, hasVariants: true, variants }).offers, undefined);
+  const mixed = productStructuredData({ ...product, hasVariants: true, variants: [variant, ...variants] });
+  assert.equal(mixed.offers?.offerCount, 1);
+  assert.equal(mixed.offers?.lowPrice, 25000);
+  assert.equal(mixed.offers?.highPrice, 25000);
+  assert.equal(productStructuredData({ ...product, hasVariants: true, variants: [] }).offers, undefined);
+  assert.equal(productStructuredData({ ...product, retailPrice: Infinity }).offers, undefined);
+});
+
 test("metadata is individual, escapes JSON-LD and permits saved editorial overrides without changing canonical", () => {
   const metadata = productMetadata({ ...product, specifications: { _seo_title: "Marca Producto 50 ml", _seo_description: "Presentación de 50 ml, con un frasco." } });
   assert.equal(metadata.description, "Presentación de 50 ml, con un frasco.");

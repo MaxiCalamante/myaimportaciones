@@ -16,6 +16,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { getWhatsAppUrl } from "@/lib/site";
+import { WHOLESALE_MINIMUM_LABEL } from "@/lib/wholesale-policy";
 import type { Product } from "@/lib/types";
 
 interface ResellerStarterKitsProps {
@@ -144,7 +145,7 @@ export function ResellerStarterKits({ products }: ResellerStarterKitsProps) {
 
           <div className="shrink-0">
             <span className="text-xs font-semibold text-zinc-500 block">
-              Mínimo de compra B2B: <strong>$100.000</strong>
+              Mínimo de compra B2B: <strong>{WHOLESALE_MINIMUM_LABEL}</strong>
             </span>
           </div>
         </div>
