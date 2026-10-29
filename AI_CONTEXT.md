@@ -1,8 +1,16 @@
 # MYA Importaciones — contexto vigente
 
+## Ficha de producto y consulta de envío — 29/10/2026
+
+La ficha prioriza galería, resumen del producto, datos técnicos y compra. Mayorista, pagos/comprobante y garantía conservan su función en desplegables; descripción y ficha técnica se leen debajo del bloque principal. No agregar certificaciones, compatibilidades, garantías o plazos genéricos sin evidencia del producto. El origen logístico es privado y no debe publicarse ni confundirse con el domicilio de atención comercial.
+
+La auditoría encontró tarifas estáticas por zona, no una cotización API del paquete. La ficha ahora solicita código postal y abre una consulta contextual por WhatsApp, sin presentar esos importes como oficiales ni prometer fechas. No se configuró una API de tarifas ni se modificó el cálculo global del checkout. Alcance y verificación: `docs/product-detail-2026-10-29.md`.
+
 ## Adquisición con USDT y auditoría de seguimiento — 29/10/2026
 
 El dueño confirmó que pagará 1 USDT por cada USD publicado por los proveedores y delegó el criterio de ajuste. Se implementó la cotización horaria de compra CriptoYa/Binance contrastada con Binance Spot, privada y con vencimiento. Migración `20261029180902_supplier_usdt_pricing.sql` aplicada y Edge `supplier-tracking` v4 desplegada; una ejecución real guardó la cotización con el ajuste de venta todavía deshabilitado. El ajuste conserva el margen sobre costos registrados mediante bases fijas aprobadas; no modifica costos históricos, pasador, inventario ni activaciones. Una corrección masiva requiere aprobar la lista concreta. Las variantes sin base exacta quedan fuera. Operación y límites: `docs/suppliers/USDT-2026-10-29.md`. Publicación del frontend y aprobación inicial: verificar cierre de entrega.
+
+Decisión posterior del dueño el 29/10: conservar los precios actuales. La propuesta fue rechazada; `autoPrices=false` y `usdtAutoPrices=false`. No inscribir bases ni aplicar ajustes automáticos de venta. El frontend se publicó en `8e42eb5`; la cotización privada y el seguimiento continúan. Esta decisión reemplaza la aprobación pendiente mencionada arriba.
 
 La auditoría acredita ejecuciones y cambios reales en fichas compatibles, pero no cobertura integral de los nueve catálogos. Hay búsquedas dinámicas pendientes, errores de identidad/404 y referencias de mercado vencidas. Atacado USA cambió su ficha pública: la muestra actual no expone moneda ni stock suficientes para el adaptador. El radar ahora descarta comparables vencidos/con error y no renueva la fecha al reutilizar uno; el panel distingue el procesador alojado y las fuentes con lecturas recientes.
 

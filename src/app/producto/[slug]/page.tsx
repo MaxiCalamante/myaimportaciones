@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductShowcase } from "@/components/commerce/product-showcase";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronRight, PackageCheck, ShieldCheck, Star, Truck } from "lucide-react";
+import { ArrowLeft, ChevronRight, PackageCheck, Star } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
 import { ProductCard } from "@/components/commerce/product-card";
 import { breadcrumbData, productMetadata, productStructuredData } from "@/lib/seo";
 import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
 import { getProductReviews } from "@/lib/product-reviews";
 import { ProductReviewsSection } from "@/components/commerce/product-reviews-section";
+import { productDescriptionParagraphs, productDetailSummary } from "@/lib/product-detail-content";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -50,6 +51,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
     .slice(0, 4);
 
   const { reviews, summary } = getProductReviews(product);
+  const { intro, highlights } = productDetailSummary(product);
+  const descriptionParagraphs = productDescriptionParagraphs(product.description);
+  const specifications = Object.entries(product.specifications ?? {}).filter(([key,value]) => value && !key.startsWith("_seo_"));
 
   const productJsonLd = productStructuredData(product);
 
@@ -115,7 +119,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   </a>
                   )}
                 </div>
-                <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-semibold text-zinc-950 tracking-tight leading-tight">
+                <h1 className="mt-3 text-2xl sm:text-3xl lg:text-3xl font-semibold text-zinc-950 tracking-tight leading-tight">
                   {product.title}
                 </h1>
                 <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
@@ -136,60 +140,27 @@ export default async function ProductPage({ params, searchParams }: Props) {
                       </div>
                     ))}
                 </dl>
-                {product.tags.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {product.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 capitalize"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {intro && <p className="mt-4 max-w-prose text-sm leading-7 text-zinc-600">{intro}</p>}
+                {highlights.length > 0 && <dl className="mt-5 grid grid-cols-3 gap-3 border-y border-zinc-200 py-4">{highlights.map(([label,value]) => <div key={label} className="min-w-0"><dt className="break-words text-[11px] leading-5 text-zinc-500">{label.replaceAll("_", " ")}</dt><dd className="mt-1 break-words text-sm font-semibold text-zinc-900">{value}</dd></div>)}</dl>}
+
               </div>
             </>
           }
           afterInteractive={
-            <>
-              <details className="group rounded-2xl border border-zinc-200 bg-white px-4 sm:px-5">
-                <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 text-sm font-semibold text-zinc-900">Descripción del producto<ChevronRight className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-90"/></summary>
-                <p className="whitespace-pre-line break-words pb-5 text-sm leading-7 text-zinc-600">{product.description}</p>
-              </details>
-              {alternativeProduct && (
-                <Link
-                  href={`/producto/${alternativeProduct.slug}`}
-                  className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900 transition hover:bg-sky-100"
-                >
-                  Ver otra versión: {alternativeProduct.title}
-                </Link>
-              )}
-              {Object.entries(product.specifications ?? {}).filter(([k, v]) => v && !k.startsWith("_seo_")).length > 0 && (
-                <dl className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white px-4">
-                  {Object.entries(product.specifications ?? {})
-                    .filter(([k, v]) => v && !k.startsWith("_seo_"))
-                    .map(([k, v]) => (
-                      <div key={k} className="grid min-w-0 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4">
-                        <dt className="text-sm font-semibold text-zinc-800">{k.replaceAll("_", " ")}</dt>
-                        <dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{v}</dd>
-                      </div>
-                    ))}
-                </dl>
-              )}
-              {product.warrantyTerms && <p className="mt-4 text-sm">Garantía: {product.warrantyTerms}</p>}
-
-              <div className="pt-4 border-t border-zinc-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <span>Condiciones y garantía informadas en la ficha</span>
+            <section id="detalles-producto" className="scroll-mt-24 border-t border-zinc-200 pt-7 sm:pt-9" aria-label="Información del producto">
+              <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-10">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-800">Conocé el producto</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950">Descripción y uso</h2>
+                  <div className="mt-4 space-y-4 text-sm leading-7 text-zinc-600">{descriptionParagraphs.length ? descriptionParagraphs.map((paragraph,index) => <p key={index} className="whitespace-pre-line break-words">{paragraph}</p>) : <p>Consultanos por los detalles de este producto antes de comprar.</p>}</div>
+                  {alternativeProduct && <Link href={`/producto/${alternativeProduct.slug}`} className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-sky-800 underline underline-offset-4">Ver otra versión: {alternativeProduct.title}</Link>}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 shrink-0 text-sky-600" />
-                  <span>Envíos a todo el país desde Tandil</span>
-                </div>
+                {specifications.length > 0 && <section aria-labelledby="product-specifications" className="min-w-0">
+                  <h2 id="product-specifications" className="text-xl font-semibold tracking-tight text-zinc-950">Ficha técnica</h2>
+                  <dl className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200">{specifications.map(([label,value]) => <div key={label} className="grid min-w-0 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] sm:gap-4"><dt className="break-words text-sm font-medium text-zinc-800">{label.replaceAll("_", " ").replace(/ por el proveedor/gi, "")}</dt><dd className="whitespace-pre-line break-words text-sm leading-6 text-zinc-600">{value}</dd></div>)}</dl>
+                </section>}
               </div>
-            </>
+            </section>
           }
         />
 

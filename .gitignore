@@ -140,6 +140,7 @@ docs/tools-selection-2026-10-01/*
 .next-opportunities-webpack-qa/
 .next-usdt-ui-qa/
 .next-usdt-build/
+.next-product-detail-qa/
 docs/sorteos/qa-private/
 docs/sorteos/lint-local.json
 # Existing supplier/financial snapshots stay private on this machine.

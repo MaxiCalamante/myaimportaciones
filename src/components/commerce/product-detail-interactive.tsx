@@ -8,31 +8,20 @@ import {
   Heart,
   MessageCircle,
   ShoppingCart,
-  Truck,
   Share2,
   Copy,
   Check,
-  ReceiptText,
-  Zap,
-  Clock,
   CreditCard,
   ChevronDown,
   ShieldCheck,
-  Wrench,
-  Sparkles,
-  Gem,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { ElectronicsPrice } from "./electronics-price";
 import { useCommerce } from "@/components/commerce/commerce-provider";
-import {
-  isProductImmediateStock,
-  getProductShippingTimeInfo,
-} from "@/lib/shipping";
+import { isProductImmediateStock } from "@/lib/shipping";
 import { siteConfig } from "@/lib/site";
 import type { Product, ProductVariant } from "@/lib/types";
 import { trackAdsEvent } from "@/lib/analytics";
-import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 import { StickyMobileBuyBar } from "./sticky-mobile-buy-bar";
 import { QuantityStepper } from "./quantity-stepper";
 import { getColorSwatch } from "@/lib/variant-swatches";
@@ -53,13 +42,6 @@ export function ProductDetailInteractive({
     isFavorite,
     cartCount,
     setCartOpen,
-    postalCode,
-    setPostalCode,
-    province,
-    city,
-    address,
-    selectedShippingOptionId,
-    setSelectedShippingOptionId,
     openWhatsApp,
   } = useCommerce();
   const [quantity, setQuantity] = useState(1);
@@ -139,8 +121,6 @@ export function ProductDetailInteractive({
     }
     return isProductImmediateStock(product);
   }, [matchedVariant, product]);
-
-  const shippingTimeInfo = useMemo(() => getProductShippingTimeInfo(targetItem), [targetItem]);
 
   const discount = useMemo(() => {
     if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
@@ -235,16 +215,12 @@ export function ProductDetailInteractive({
             {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{formatCurrency(price)}
           </p>
           {channel === "retail" && price > 0 && (
-            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
-              <p className="font-bold">Pagá por transferencia bancaria</p>
-              <p className="mt-1 text-xs leading-5">El descuento disponible y el total se confirman en el resumen antes de registrar el pedido.</p>
-              <p className="mt-2 text-xs leading-5">Con Mercado Pago, las cuotas y los cargos se informan al elegir el medio de pago.</p>
-            </div>
+            <p className="mt-2 text-xs leading-5 text-zinc-600">Beneficio por transferencia y opciones de pago a confirmar antes de comprar.</p>
           )}
           {channel === "retail" && <ElectronicsPrice product={{ ...product, retailPrice: price }} detail />}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className={`inline-flex items-center gap-1.5 font-medium ${inStock ? "text-emerald-800" : "text-amber-800"}`}><span className={`size-1.5 shrink-0 rounded-full ${inStock ? "bg-emerald-600" : "bg-amber-500"}`}/>{inStock ? "Disponible" : "Disponibilidad a confirmar"}</span>
-            <span className="text-zinc-500">{isImmediate ? "Stock en Tandil" : shippingTimeInfo.deliveryText}</span>
+            <span className="text-zinc-500">{isImmediate ? "Stock confirmado" : "Entrega a coordinar"}</span>
             {inStock && isImmediate && targetItem.stock > 0 && targetItem.stock <= 3 && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-300 px-2.5 py-0.5 text-xs font-bold text-amber-900 shadow-2xs">
                 <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -356,11 +332,6 @@ export function ProductDetailInteractive({
           <p className="min-w-0 break-words"><span className="font-medium text-zinc-900">{matchedVariant.title}</span>{matchedVariant.sku && <span className="mt-1 block text-[11px] text-zinc-500">Código: {matchedVariant.sku}</span>}</p>
         </div>}
 
-        {channel === "retail" && <details className="border-t border-zinc-100 pt-3 text-xs text-zinc-600">
-          <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-medium text-zinc-800"><CreditCard className="size-4 shrink-0 text-sky-700"/>Medios de pago y cuotas<ChevronDown className="ml-auto size-4 shrink-0 text-zinc-400"/></summary>
-          <p className="pb-2 leading-6">Tarjeta de crédito, débito, saldo en cuenta o transferencia. Las cuotas y promociones disponibles se informan antes de confirmar tu compra.</p>
-        </details>}
-
         {/* Wholesale Reseller Profit Demonstration */}
         {channel === "wholesale" && product.retailPrice > product.wholesalePrice && (
           <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-1.5">
@@ -393,244 +364,38 @@ export function ProductDetailInteractive({
           </button>
         </div>
 
-        {channel === "retail" && <section aria-label="Consulta mayorista del producto" className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-          <h2 className="text-sm font-bold text-sky-950">¿Comprás para tu comercio o para revender?</h2>
-          <p className="mt-2 text-xs leading-6 text-sky-950">Mínimo: {WHOLESALE_MINIMUM_LABEL}. Podés combinar distintos productos; el precio mayorista se cotiza aparte.</p>
-          <button type="button" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-sky-800 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-900" onClick={() => openWhatsApp(wholesaleProductInquiry(product, quantity, matchedVariant?.title), { type: "wholesale", source: "product_detail", category: product.categoryName })}>Cotizar este producto por mayor</button>
-          <Link href="/mayorista" className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-sky-900 underline underline-offset-2">Ver condiciones y rubros mayoristas</Link>
-        </section>}
-
-        {/* Share & Copy Link */}
-        <div className="grid grid-cols-2 gap-2 border-t border-zinc-100 pt-3">
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50"
-            aria-live="polite"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
-            {copied ? "¡Copiado!" : "Copiar enlace"}
-          </button>
-          <a
-            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Mirá este producto en MYA Importaciones: ${product.title} - ${siteConfig.appUrl}/producto/${product.slug}`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Compartir producto por WhatsApp"
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50"
-          >
-            <Share2 className="h-3.5 w-3.5 text-emerald-600" />
-            Compartir
-          </a>
+        <div className="flex flex-wrap items-center gap-x-4 border-t border-zinc-100 pt-2 text-xs text-zinc-500">
+          <button type="button" onClick={handleCopyLink} className="inline-flex min-h-11 items-center gap-1.5 hover:text-zinc-900" aria-live="polite">{copied ? <Check className="size-3.5"/> : <Copy className="size-3.5"/>}{copied ? "Enlace copiado" : "Copiar enlace"}</button>
+          <a href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Mirá este producto en MYA Importaciones: ${product.title} - ${siteConfig.appUrl}/producto/${product.slug}`)}`} target="_blank" rel="noopener noreferrer" aria-label="Compartir producto por WhatsApp" className="inline-flex min-h-11 items-center gap-1.5 hover:text-zinc-900"><Share2 className="size-3.5"/>Compartir</a>
+          <span className="ml-auto text-[11px]">Atención de Máximo y Agustina</span>
         </div>
-        {copyError && <p role="status" className="mt-2 text-xs leading-5 text-zinc-600">No pudimos copiar el enlace. Podés copiar la dirección del navegador o compartir por WhatsApp.</p>}
-
-        {/* Buyer Trust Guarantees */}
-        <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-3.5 space-y-2 text-xs">
-          <div className="flex items-center gap-2 text-zinc-900 font-bold">
-            <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>Comprá seguro en MYA Importaciones:</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-600 pt-1 border-t border-zinc-200/50">
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-600 font-bold">✓</span>
-              <span>Garantía de 30 días oficial MYA</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-600 font-bold">✓</span>
-              <span>Embalaje reforzado de protección</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-600 font-bold">✓</span>
-              <span>Seguimiento online Correo Argentino</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-600 font-bold">✓</span>
-              <span>Atención directa de los dueños</span>
-            </div>
-          </div>
-        </div>
+        {copyError && <p role="status" className="text-xs leading-5 text-zinc-600">No pudimos copiar el enlace. Podés compartirlo por WhatsApp.</p>}
       </div>
 
-      {/* Interactive Correo Argentino Shipping Calculator */}
       <ProductShippingCalculator
         product={{ ...product, stock: targetItem.stock, stockVerifiedAt: targetItem.stockVerifiedAt, supplierAvailable: targetItem.supplierAvailable }}
         price={price}
         quantity={quantity}
         isImmediate={isImmediate}
         fulfillmentMode={targetItem.fulfillmentMode}
+        variantTitle={matchedVariant?.title}
       />
 
-      {/* Payment methods & Invoicing perks */}
-      <div className="rounded-2xl border border-zinc-200 p-4 space-y-3 text-xs text-zinc-600 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-zinc-800">
-          <div className="flex items-center gap-2">
-            <ReceiptText className="h-4 w-4 text-zinc-500" />
-            <span>Consultá el comprobante disponible para tu compra</span>
-          </div>
-          <span className="text-[11px] text-zinc-600 font-medium">IVA incluido</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-100">
-          <span className="font-semibold text-zinc-500">Medios aceptados:</span>
-          {product.paymentMethods.map((m) => (
-            <span key={m} className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-700 uppercase">
-              {formatPaymentMethod(m)}
-            </span>
-          ))}
-          {!product.paymentMethods.includes("mercado_pago") && <span className="rounded-md bg-sky-50 text-sky-800 px-2 py-0.5 text-[10px] font-bold uppercase border border-sky-100">
-            Mercado Pago
-          </span>}
-        </div>
-      </div>
-
-      {/* Category-Specific Trust & Origin Banner */}
-      {(() => {
-        const isElectronics = /electr[oó]nica|smartphone|apple|samsung|celular|tablet|notebook/i.test(product.categoryName) || /iphone|macbook|ipad|galaxy/i.test(product.title);
-        const isTools = /herramienta/i.test(product.categoryName) || /total|wadfow/i.test(product.brand || "") || /rotomartillo|amoladora|taladro|atornillador|llave de impacto|ingleteadora/i.test(product.title);
-        const isCosmetics = /cosm[eé]tica|k-beauty|facial|corporal|skincare|serum|t[oó]nico|limpieza|solar/i.test(product.categoryName) || /skin1004|medicube|dr\.?\s*althea|anua|celimax|numbuzin|round lab|beauty of joseon|torriden|cosrx|tree hut/i.test(product.brand || "");
-        const isPerfume = /perfum|fragancia|mist|bruma/i.test(product.categoryName) || /lattafa|asdaf|victoria'?s secret/i.test(product.brand || "");
-
-        if (isElectronics) {
-          return (
-            <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4 space-y-2.5 text-xs text-sky-950 shadow-2xs">
-              <div className="flex items-center gap-2 font-bold text-sky-900 border-b border-sky-200/80 pb-2">
-                <ShieldCheck className="size-4 text-sky-700 shrink-0" />
-                <span>Garantía Oficial y Origen · Electrónica MYA</span>
-              </div>
-              <ul className="space-y-1.5 text-sky-900/90 leading-relaxed">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-sky-700 shrink-0">✓</span>
-                  <span><strong>100% Nuevos y Sellados:</strong> Equipos en empaque original sellado con número de serie oficial verificado ante el fabricante.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-sky-700 shrink-0">✓</span>
-                  <span><strong>Despacho Protegido:</strong> Embalaje reforzado y despacho oficial por Correo Argentino con código de seguimiento nacional.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-sky-700 shrink-0">✓</span>
-                  <span><strong>Garantía de Funcionamiento:</strong> Comprobante de compra y respaldo directo de MYA Importaciones desde Tandil.</span>
-                </li>
-              </ul>
-            </div>
-          );
-        }
-
-        if (isTools) {
-          return (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-2.5 text-xs text-amber-950 shadow-2xs">
-              <div className="flex items-center gap-2 font-bold text-amber-950 border-b border-amber-200/80 pb-2">
-                <Wrench className="size-4 text-amber-700 shrink-0" />
-                <span>Herramientas Profesionales Certificadas · Total Tools & Wadfow</span>
-              </div>
-              <ul className="space-y-1.5 text-amber-950/90 leading-relaxed">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-amber-700 shrink-0">✓</span>
-                  <span><strong>Accesorios y Baterías Declarados:</strong> Detalle explícito de baterías 20V, cargador inteligente y maletín incluidos en cada kit.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-amber-700 shrink-0">✓</span>
-                  <span><strong>Plataforma P20S Compartida:</strong> Baterías de litio 20V compatibles entre todas las herramientas inalámbricas del sistema.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-amber-700 shrink-0">✓</span>
-                  <span><strong>Inspección Técnica:</strong> Control de integridad de embalaje antes de salir de nuestro depósito central en Tandil.</span>
-                </li>
-              </ul>
-            </div>
-          );
-        }
-
-        if (isPerfume) {
-          return (
-            <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4 space-y-2.5 text-xs text-purple-950 shadow-2xs">
-              <div className="flex items-center gap-2 font-bold text-purple-900 border-b border-purple-200/80 pb-2">
-                <Gem className="size-4 text-purple-700 shrink-0" />
-                <span>Perfumería Exclusiva y Esencias de Dubai · MYA Importaciones</span>
-              </div>
-              <ul className="space-y-1.5 text-purple-900/90 leading-relaxed">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-purple-700 shrink-0">✓</span>
-                  <span><strong>Fragancias 100% Auténticas:</strong> Frascos originales importados directamente de Emiratos Árabes en celofán sellado con holograma y batch code verificable.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-purple-700 shrink-0">✓</span>
-                  <span><strong>Alta Concentración y Fijación:</strong> Fórmulas Eau de Parfum de larga estela con duración superior a 8-12 horas en piel y textiles.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-purple-700 shrink-0">✓</span>
-                  <span><strong>Embalaje Especial Anti-Impacto:</strong> Acondicionado con triple capa de burbuja de alta densidad y seguro nacional por Correo Argentino.</span>
-                </li>
-              </ul>
-            </div>
-          );
-        }
-
-        if (isCosmetics) {
-          return (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 space-y-2.5 text-xs text-rose-950 shadow-2xs">
-              <div className="flex items-center gap-2 font-bold text-rose-900 border-b border-rose-200/80 pb-2">
-                <Sparkles className="size-4 text-rose-600 shrink-0" />
-                <span>Autenticidad K-Beauty Certificada · Cosmética Coreana</span>
-              </div>
-              <ul className="space-y-1.5 text-rose-900/90 leading-relaxed">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-rose-600 shrink-0">✓</span>
-                  <span><strong>100% Originales de Corea del Sur:</strong> Productos legítimos en empaque sellado de fábrica con número de lote y fecha de vencimiento visible.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-rose-600 shrink-0">✓</span>
-                  <span><strong>Activos Puros Protegidos:</strong> Embalaje con aislación térmica desde Tandil para conservar la estabilidad de principios activos (Centella, PDRN, Niacinamida, Retinal).</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-rose-600 shrink-0">✓</span>
-                  <span><strong>Fórmulas Seguras e Hipoalergénicas:</strong> Productos Cruelty-Free certificados, testeados dermatológicamente y no comedogénicos.</span>
-                </li>
-              </ul>
-            </div>
-          );
-        }
-
-        return null;
-      })()}
-
-      {/* Trust & Guarantee Badges */}
-      <TrustGuaranteeBadges variant="compact" />
-
-      {/* Quick Buyer Confidence FAQ */}
-      <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 space-y-3 text-xs shadow-xs">
-        <p className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-          Preguntas frecuentes sobre tu compra
-        </p>
-        <div className="divide-y divide-zinc-100">
-          <details className="group py-2.5" open>
-            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
-              <span>¿Cómo se realiza el envío y cuánto tarda?</span>
-              <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
-            </summary>
-            <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
-              Despachamos desde Tandil hacia toda la Argentina mediante Correo Argentino (a domicilio o sucursal). Te enviamos el código de seguimiento apenas el paquete ingresa al correo para que sigas el trayecto en tiempo real.
-            </p>
-          </details>
-
-          <details className="group py-2.5">
-            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
-              <span>¿Cuál es la condición y presentación del producto?</span>
-              <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
-            </summary>
-            <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
-              Revisá la condición, el modelo y la presentación informados en esta ficha. Si necesitás confirmar un detalle o la garantía aplicable, consultanos antes de comprar.
-            </p>
-          </details>
-
-          <details className="group py-2.5">
-            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-zinc-800 hover:text-sky-700">
-              <span>¿Cómo consulto el beneficio por transferencia?</span>
-              <span className="text-zinc-400 group-open:rotate-180 transition">▼</span>
-            </summary>
-            <p className="mt-1.5 text-zinc-600 leading-relaxed pl-1 border-l-2 border-sky-300">
-              Elegí transferencia bancaria al finalizar la compra. El resumen muestra el descuento disponible y el importe final antes de confirmar; si coordinás por WhatsApp, te confirmamos las condiciones allí.
-            </p>
-          </details>
-        </div>
+      <div className="divide-y divide-zinc-200 border-y border-zinc-200">
+        {channel === "retail" && <details className="group" aria-label="Consulta mayorista del producto">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-zinc-900">Compra mayorista para tu comercio<ChevronDown className="size-4 shrink-0 text-zinc-400 transition group-open:rotate-180"/></summary>
+          <div className="pb-5 text-sm text-zinc-600"><p className="leading-6">Mínimo: {WHOLESALE_MINIMUM_LABEL}. Podés combinar productos de distintos rubros. Consultá precio y disponibilidad de la cantidad que necesitás.</p>
+          <button type="button" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-sky-800 underline underline-offset-4" onClick={() => openWhatsApp(wholesaleProductInquiry(product, quantity, matchedVariant?.title), { type: "wholesale", source: "product_detail", category: product.categoryName })}>Cotizar este producto por mayor</button>
+          <Link href="/mayorista" className="mt-1 block w-fit py-2 text-xs text-zinc-600 underline underline-offset-4">Ver condiciones de venta mayorista</Link></div>
+        </details>}
+        <details className="group">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-zinc-900"><span className="flex items-center gap-2"><CreditCard className="size-4 text-sky-700"/>Pagos y comprobante de compra</span><ChevronDown className="size-4 shrink-0 text-zinc-400 transition group-open:rotate-180"/></summary>
+          <div className="pb-5 text-sm leading-6 text-zinc-600"><p>Medios informados para este producto: {product.paymentMethods.map(formatPaymentMethod).join(", ")}. Las condiciones, cuotas y promociones disponibles se confirman antes de pagar.</p><p className="mt-2">Consultanos por el comprobante disponible para tu compra.</p></div>
+        </details>
+        <details className="group">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-zinc-900"><span className="flex items-center gap-2"><ShieldCheck className="size-4 text-sky-700"/>Garantía y atención después de la compra</span><ChevronDown className="size-4 shrink-0 text-zinc-400 transition group-open:rotate-180"/></summary>
+          <div className="pb-5 text-sm leading-6 text-zinc-600"><p>{product.warrantyTerms || "Consultá las condiciones de garantía aplicables a este producto antes de confirmar la compra."}</p><p className="mt-2">Máximo y Agustina te acompañan antes y después de comprar.</p><Link href="/condiciones" className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-sky-800 underline underline-offset-4">Condiciones de compra, envíos y devoluciones</Link></div>
+        </details>
       </div>
 
       {/* Modern Sticky Mobile Buy Bar */}
