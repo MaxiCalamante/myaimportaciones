@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/supabase/.temp/
 /.pnp
 .pnp.*
 .yarn/*
@@ -137,6 +138,8 @@ docs/tools-selection-2026-10-01/*
 .next-storefront-qa/
 .next-opportunities-qa/
 .next-opportunities-webpack-qa/
+.next-usdt-ui-qa/
+.next-usdt-build/
 docs/sorteos/qa-private/
 docs/sorteos/lint-local.json
 # Existing supplier/financial snapshots stay private on this machine.

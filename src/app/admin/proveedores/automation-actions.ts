@@ -7,16 +7,30 @@ import{validId}from'@/lib/admin-product';
 import{revalidatePath}from'next/cache';
 import{invalidateAdminStorefrontCache}from'@/lib/storefront';
 import{readCrosslinkCatalog,linkPayload,type TrackedOffer}from'@/lib/supplier-crosslinks';
+import{refreshSupplierUsdtQuote,readSupplierFxPreview,runSupplierFxPrices}from'@/lib/supplier-usdt';
 const refresh=()=>{revalidatePath('/admin/proveedores/inteligencia');};
 export async function saveTrackingSettingsAction(config:TrackingConfig,confirmed:boolean){
  const db=await getAdminClient();if(confirmed!==true)throw new Error('Confirmá las condiciones del seguimiento.');validateTrackingConfig(config);
- const result=await db.from('supplier_tracking_settings').update({config,updated_at:new Date().toISOString()}).eq('id',true).select('id').single();if(result.error)throw new Error('No se pudo guardar el seguimiento.');refresh();
+ const current=await db.from('supplier_tracking_settings').select('config,updated_at').eq('id',true).single();if(current.error)throw new Error('No se pudo verificar la configuración.');
+ // Quotes are server-owned; a stale browser form must not overwrite a newer hourly quote.
+ const next={...current.data.config,...config};
+ for(const key of ['usdtQuoteId','usdtQuotedAt','usdtSource'])next[key]=current.data.config[key];
+ if(config.acquisitionFxMode==='usdt'){next.acquisitionArsPerUsd=current.data.config.acquisitionArsPerUsd;next.fxConfirmedOn=current.data.config.fxConfirmedOn;}
+ const result=await db.from('supplier_tracking_settings').update({config:next,updated_at:new Date().toISOString()}).eq('id',true).eq('updated_at',current.data.updated_at).select('id').single();if(result.error)throw new Error('La configuración o cotización cambió durante el guardado. Actualizá la página y revisala de nuevo.');refresh();
+}
+export async function refreshSupplierUsdtAction(){await getAdminClient();const q=await refreshSupplierUsdtQuote(createCommerceService());refresh();return `USDT actualizado: $${q.rateArs.toLocaleString('es-AR')} para comprar 1 USDT. Cargos de red aparte.`;}
+export async function previewSupplierFxAction(){const db=await getAdminClient();return readSupplierFxPreview(db);}
+export async function approveSupplierFxPlanAction(rows:Array<{productId:string;retail:number;wholesale:number;cost:unknown}>,quoteId:string,confirmed:boolean){
+ const db=await getAdminClient();if(confirmed!==true||!Array.isArray(rows)||rows.length<1||rows.length>500)throw new Error('Revisá y confirmá la corrección.');validId(quoteId);
+ const prices:Record<string,{retail:number;wholesale:number;cost:unknown}>={};for(const row of rows){validId(row.productId);if(!Number.isFinite(row.retail)||row.retail<=0||!Number.isFinite(row.wholesale)||row.wholesale<0)throw new Error('Precio revisado inválido.');prices[row.productId]={retail:row.retail,wholesale:row.wholesale,cost:row.cost};}
+ const result=await db.rpc('enroll_supplier_fx_prices_v1',{product_inputs:rows.map(r=>r.productId),confirmed_input:true,expected_input:{quoteId,prices}});if(result.error)throw new Error(result.error.message);
+ const applied=await runSupplierFxPrices(createCommerceService(),40);invalidateAdminStorefrontCache();revalidatePath('/','layout');refresh();return `${result.data} bases incorporadas. ${applied.applied} precios ajustados en el primer lote; el resto se procesa en la nube con las mismas verificaciones.`;
 }
 export async function requestSupplierSearchAction(query:string){
  const db=await getAdminClient();if(typeof query!=='string'||query.trim().length<2||query.length>80)throw new Error('Ingresá marca/modelo o palabras del producto (2 a 80 caracteres).');
  const recent=await db.from('supplier_search_requests').select('id').in('state',['queued','running']).eq('query',query.trim()).limit(1);if(recent.error)throw new Error('No se pudo verificar la búsqueda.');
  if(recent.data?.length)return 'Esta búsqueda ya está en la cola del procesador.';
- const saved=await db.from('supplier_search_requests').insert({query:query.trim()});if(saved.error)throw new Error('No se pudo solicitar la búsqueda.');refresh();return 'Búsqueda registrada. El procesador consulta los proveedores y guarda los resultados aquí.';
+ const saved=await db.from('supplier_search_requests').insert({query:query.trim()});if(saved.error)throw new Error('No se pudo solicitar la búsqueda.');refresh();return 'Solicitud privada registrada. Las búsquedas de catálogos dinámicos requieren revisión o una lista autorizada; no se ejecutan automáticamente desde esta PC.';
 }
 export async function runSupplierTrackingAction(){
  await getAdminClient();const result=await runSupplierAutomation(createCommerceService(),{worker:'admin-manual',limit:6,timeBudgetMs:35000});invalidateAdminStorefrontCache();revalidatePath('/','layout');refresh();return 'disabled' in result && result.disabled ? 'El seguimiento está desactivado en la configuración.' : `Seguimiento: ${result.checked} consultas, ${result.success} correctas y ${result.errors} con incidencia registrada.`;

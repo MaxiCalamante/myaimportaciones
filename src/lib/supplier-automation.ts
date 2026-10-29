@@ -4,8 +4,9 @@ import { inspectSupplierProduct } from "./supplier-offer-adapters";
 import { observationFromPublic, titleIdentity } from "./supplier-public-data";
 import {parseObservation,type IntelligenceSupplier,type SupplierOffer} from "./supplier-intelligence";
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
+import { acquisitionFxFresh, type UsdtSettings } from "./supplier-usdt";
 
-export interface TrackingConfig {enabled:boolean;autoStock:boolean;autoPrices:boolean;autoPauseWhenOutOfStock?:boolean;acquisitionArsPerUsd:number;fxConfirmedOn:string;shippingPaidByMya:boolean;shippingArs:number;targetMarginPercent:number;marketDiscountPercent:number;productDiscountPercent?:Record<string,number>;roundArs:number;maxPriceChangePercent:number;freshnessHours:number;marketFreshnessHours:number;fxValidityHours:number;notes:string}
+export interface TrackingConfig extends UsdtSettings {enabled:boolean;autoStock:boolean;autoPrices:boolean;autoPauseWhenOutOfStock?:boolean;acquisitionArsPerUsd:number;fxConfirmedOn:string;shippingPaidByMya:boolean;shippingArs:number;targetMarginPercent:number;marketDiscountPercent:number;productDiscountPercent?:Record<string,number>;roundArs:number;maxPriceChangePercent:number;freshnessHours:number;marketFreshnessHours:number;fxValidityHours:number;notes:string}
 export interface SyncJob {id:string;supplier_id:string;product_id:string|null;variant_id:string|null;offer_id:string|null;source_url:string;attempts:number}
 const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const robotCache=new Map<string,Promise<{disallow:string[];delay:number}>>();
@@ -29,6 +30,8 @@ export async function publicReadRules(url:string){
   return rules;
 }
 export function validateTrackingConfig(c:TrackingConfig){
+  if(c.acquisitionFxMode!==undefined&&!['manual','usdt'].includes(c.acquisitionFxMode))throw new Error('Modo de cotización inválido.');
+  if(c.usdtAutoPrices!==undefined&&typeof c.usdtAutoPrices!=='boolean')throw new Error('Revisá el ajuste automático por USDT.');
   if(!c||[c.enabled,c.autoStock,c.autoPrices,c.shippingPaidByMya].some(v=>typeof v!=='boolean'))throw new Error('Configuración de seguimiento inválida.');
   if(c.autoPauseWhenOutOfStock!==undefined&&typeof c.autoPauseWhenOutOfStock!=='boolean')throw new Error('Configuración de pausa automática inválida.');
   for(const key of ['acquisitionArsPerUsd','shippingArs','targetMarginPercent','marketDiscountPercent','roundArs','maxPriceChangePercent','freshnessHours','marketFreshnessHours','fxValidityHours']as const)if(!Number.isFinite(c[key])||c[key]<0)throw new Error(`Revisá ${key}.`);
@@ -112,6 +115,9 @@ export async function runSupplierAutomation(db:SupabaseClient,options:{worker:st
   }catch(error){if(claimedJobs.length)await db.from('supplier_sync_queue').update({state:'ready',leased_until:null}).eq('state','running').in('id',claimedJobs.map(j=>j.id));await db.from('supplier_sync_runs').update({completed_at:new Date().toISOString(),status:'error',report:{...report,error:error instanceof Error?error.message:'Error'}}).eq('id',run.id);throw error;}
 }
 export async function repriceProduct(db:SupabaseClient,productId:string,config:TrackingConfig,policy:ImportPolicy){
+  // USDT pricing has its own approved fixed baselines; do not race it with legacy market writes.
+  if(config.acquisitionFxMode==='usdt')return 'usdt_policy';
+  if(!acquisitionFxFresh(config))return 'expired_fx';
   const keep=async(reason:string)=>{
     const recent=await db.from('supplier_price_decisions').select('id').eq('product_id',productId).eq('reason',reason).gte('created_at',new Date(Date.now()-2*3600000).toISOString()).limit(1);
     if(recent.error)throw new Error('No se pudo revisar el historial de precio.');

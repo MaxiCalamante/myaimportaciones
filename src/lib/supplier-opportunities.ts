@@ -16,6 +16,7 @@ import { productImageUrl } from "./admin-product";
 import { publicReadRules } from "./supplier-automation";
 import { supplierSourceUrl } from "./supplier-intelligence";
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
+import { acquisitionFxFresh } from "./supplier-usdt";
 
 function estimateOpportunityCost(offer: { id: string; title: string; brand: string | null; origin_cost: number; source_url: string; cost_checked_at: string | null }, config: { acquisitionArsPerUsd: number; shippingPaidByMya: boolean; shippingArs: number }, policy: ImportPolicy): number | null {
   try {
@@ -293,7 +294,7 @@ export async function searchSupplierOpportunities(
   const [suppliersRes, categoriesRes, marketRefsRes, productsWithModelRes, settingsRes, policyRes] = await Promise.all([
     db.from("suppliers").select("id, name, official_key, is_active, freshness_hours").eq("is_active", true),
     db.from("categories").select("id, name, slug, parent_id, image_url").order("name"),
-    db.from("supplier_market_references").select("product_id, price_ars, source_url, checked_at").eq("identity_verified", true).not("price_ars", "is", null),
+    db.from("supplier_market_references").select("product_id, price_ars, source_url, checked_at").eq("identity_verified", true).is("variant_id", null).is("last_error", null).gte("checked_at", new Date(Date.now()-48*3600000).toISOString()).not("price_ars", "is", null),
     db.from("products").select("id, model").not("model", "is", null).neq("model", ""),
     db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
     db.from("import_cost_policies").select("config").order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -425,7 +426,7 @@ export async function searchSupplierOpportunities(
       categoryBenchmarkMargin: benchmark.benchmarkMargin,
       marginHealth,
       availability: avail,
-      pricingNeedsReview: estimatedCost === null || !importPolicy.confirmed || importPolicy.carrierFxDate !== new Date().toISOString().slice(0, 10) || !offer.cost_checked_at || !Number.isFinite(Date.parse(offer.cost_checked_at)) || Date.now() - Date.parse(offer.cost_checked_at) > Number(sup?.freshness_hours || 24) * 3600000 || !trackingConfig.fxConfirmedOn || Date.now() - new Date(trackingConfig.fxConfirmedOn + "T00:00:00Z").getTime() > Number(trackingConfig.fxValidityHours || 72) * 3600000 || /\b(iphone|tv|televisor)\b/i.test(offer.title),
+      pricingNeedsReview: estimatedCost === null || !importPolicy.confirmed || importPolicy.carrierFxDate !== new Date().toISOString().slice(0, 10) || !offer.cost_checked_at || !Number.isFinite(Date.parse(offer.cost_checked_at)) || Date.now() - Date.parse(offer.cost_checked_at) > Number(sup?.freshness_hours || 24) * 3600000 || !acquisitionFxFresh(trackingConfig) || /\b(iphone|tv|televisor)\b/i.test(offer.title),
       lastCheckedAt: offer.last_success_at,
       mlPrice: mlRef ? mlRef.priceArs : null,
       mlUrl: mlRef ? mlRef.url : null,
@@ -857,6 +858,8 @@ export async function importSupplierOpportunity(
         .select("price_ars, source_url, checked_at")
         .eq("product_id", siblingProduct.id)
         .eq("identity_verified", true)
+        .is("last_error", null)
+        .gte("checked_at", new Date(Date.now()-48*3600000).toISOString())
         .not("price_ars", "is", null)
         .order("checked_at", { ascending: false })
         .limit(1)
@@ -966,7 +969,7 @@ export async function importSupplierOpportunity(
           source_url: matchedMlUrl,
           price_ars: matchedMlPrice,
           identity_verified: true,
-          checked_at: new Date().toISOString(),
+          checked_at: matchedMlCheckedAt,
           refresh_mode: "automatic",
         },
         { onConflict: "product_id,source_url" }

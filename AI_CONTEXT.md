@@ -1,5 +1,11 @@
 # MYA Importaciones — contexto vigente
 
+## Adquisición con USDT y auditoría de seguimiento — 29/10/2026
+
+El dueño confirmó que pagará 1 USDT por cada USD publicado por los proveedores y delegó el criterio de ajuste. Se implementó la cotización horaria de compra CriptoYa/Binance contrastada con Binance Spot, privada y con vencimiento. Migración `20261029180902_supplier_usdt_pricing.sql` aplicada y Edge `supplier-tracking` v4 desplegada; una ejecución real guardó la cotización con el ajuste de venta todavía deshabilitado. El ajuste conserva el margen sobre costos registrados mediante bases fijas aprobadas; no modifica costos históricos, pasador, inventario ni activaciones. Una corrección masiva requiere aprobar la lista concreta. Las variantes sin base exacta quedan fuera. Operación y límites: `docs/suppliers/USDT-2026-10-29.md`. Publicación del frontend y aprobación inicial: verificar cierre de entrega.
+
+La auditoría acredita ejecuciones y cambios reales en fichas compatibles, pero no cobertura integral de los nueve catálogos. Hay búsquedas dinámicas pendientes, errores de identidad/404 y referencias de mercado vencidas. Atacado USA cambió su ficha pública: la muestra actual no expone moneda ni stock suficientes para el adaptador. El radar ahora descarta comparables vencidos/con error y no renueva la fecha al reutilizar uno; el panel distingue el procesador alojado y las fuentes con lecturas recientes.
+
 ## Publicación Rápida Perfeccionada, Registro de Costos Landed y Descripciones Ricas — 27/10/2026
 
 El dueño solicitó que al hacer clic en "Publicar rápido" desde Oportunidades de Proveedores, el producto se publique de inmediato en la tienda activa con todos sus datos calculados perfectamente: costo landed registrado en `product_costs`, precio minorista competitivo con benchmark y terminación psicológica, precio mayorista sugerido, foto de ficha verificada, título optimizado y descripción técnica y comercial completa con garantías y logística de MYA.

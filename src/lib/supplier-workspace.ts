@@ -17,7 +17,7 @@ export interface TrackingWorkspace {
   health: Array<{ supplier_id: string; status: string; message: string | null; last_attempt_at: string | null; last_success_at: string | null; products_seen: number }>;
   runs: Array<{ id: string; worker: string; started_at: string; completed_at: string | null; status: string; report: Record<string, unknown> }>;
   searches: Array<{ id: string; query: string; state: string; created_at: string }>;
-  decisions: Array<{ id: string; product_id: string; old_price: number | null; new_price: number | null; status: string; reason: string }>;
+  decisions: Array<{ id: string; product_id: string; old_price: number | null; new_price: number | null; status: string; reason: string; basis?: {kind?:string} }>;
 }
 
 async function readTrackingWorkspace(db: SupabaseClient): Promise<TrackingWorkspace | null> {
@@ -33,7 +33,7 @@ async function readTrackingWorkspace(db: SupabaseClient): Promise<TrackingWorksp
     db.from("supplier_source_health").select("*"),
     db.from("supplier_sync_runs").select("*").order("started_at", { ascending: false }).limit(50),
     db.from("supplier_search_requests").select("id,query,state,created_at").order("created_at", { ascending: false }).limit(12),
-    db.from("supplier_price_decisions").select("id,product_id,old_price,new_price,status,reason").order("created_at", { ascending: false }).limit(30),
+    db.from("supplier_price_decisions").select("id,product_id,old_price,new_price,status,reason,basis").order("created_at", { ascending: false }).limit(30),
     db.from("supplier_sync_queue").select("id,product_id,source_url,state,last_error,next_run_at,attempts").in("state", ["retry", "blocked"]).order("next_run_at").limit(50),
   ]);
   for (const r of [queue, errors, health, runs, searches, decisions, issues]) if (r.error) throw new Error("No se pudo completar el estado de seguimiento.");

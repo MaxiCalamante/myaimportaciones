@@ -6,6 +6,7 @@ import {refreshMarketReferences} from '../../../src/lib/supplier-market';
 import {readAllPages} from '../../../src/lib/read-all-pages';
 import {boundedWorkerFetch} from '../../../src/lib/worker-fetch';
 import type {ImportPolicy} from '../../../src/lib/import-costs';
+import {refreshSupplierUsdtQuote,runSupplierFxPrices} from '../../../src/lib/supplier-usdt';
 
 declare const Deno:{env:{get(name:string):string|undefined};serve(handler:(request:Request)=>Promise<Response>):void};
 declare const EdgeRuntime:{waitUntil(promise:Promise<unknown>):void};
@@ -29,6 +30,10 @@ async function run(job:string){
    const settings=await db.from('supplier_tracking_settings').select('config').eq('id',true).single();
    if(settings.error)throw new Error('No se pudo leer la configuración comercial.');
    const config=settings.data.config as TrackingConfig;
+   if(config.acquisitionFxMode==='usdt'){
+    try{report.fx=await refreshSupplierUsdtQuote(db);report.fxPrices=await runSupplierFxPrices(db);}
+    catch(e){report.fx={error:e instanceof Error?e.message:'No se pudo actualizar USDT'};}
+   }
    if(config.enabled&&config.autoPrices){
     const policy=await db.from('import_cost_policies').select('config').order('created_at',{ascending:false}).limit(1).single();if(policy.error)throw new Error('No se pudo verificar tarifas.');
     const references=await readAllPages<{product_id:string}>((from,to)=>db.from('supplier_market_references').select('product_id').is('variant_id',null).eq('identity_verified',true).is('last_error',null).gte('checked_at',new Date(Date.now()-config.marketFreshnessHours*3600000).toISOString()).order('id').range(from,to));
@@ -42,7 +47,7 @@ async function run(job:string){
    }
   }else throw new Error('Tarea desconocida.');
   const marketErrors=(report.market as {errors?:number}|undefined)?.errors??0;
-  const closed=await db.from('supplier_sync_runs').update({status:Number(report.errors)>0||marketErrors>0?'partial':'success',completed_at:new Date().toISOString(),report}).eq('id',initial.data.id).select('id').single();
+  const closed=await db.from('supplier_sync_runs').update({status:Number(report.errors)>0||marketErrors>0||(report.fx as {error?:string}|undefined)?.error?'partial':'success',completed_at:new Date().toISOString(),report}).eq('id',initial.data.id).select('id').single();
   if(closed.error)throw new Error('No se pudo confirmar el cierre del ciclo.');
  }catch(e){
   await db.from('supplier_sync_runs').update({status:'error',completed_at:new Date().toISOString(),report:{...report,error:e instanceof Error?e.message:'Error del procesador'}}).eq('id',initial.data.id);

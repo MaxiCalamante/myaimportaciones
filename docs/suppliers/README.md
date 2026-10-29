@@ -46,6 +46,8 @@ Se respetan robots, cadencia de al menos 10 segundos y limites de respuesta. Las
 
 ## Costos y precios
 
+Desde el 29/10/2026 el dueño indicó pago a proveedores a paridad de **1 USD publicado = 1 USDT**. El modo de adquisición USDT consulta la punta de compra con comisión informada y la contrasta con Binance Spot en el ciclo horario alojado. Los ajustes de venta usan bases aprobadas, evidencia y límites; consultar [USDT-2026-10-29.md](USDT-2026-10-29.md). La cotización de USDT no renueva las tarifas o el cambio del pasador, ni certifica gastos de red. Los parámetros históricos siguientes se conservan como antecedentes.
+
 El usuario confirmo el 20/10/2026 ARS 1600 por USD de adquisicion y transporte hasta Tandil pagado por tercero: se excluye de sus costos. La cotizacion se puede actualizar en el panel; no es una constante permanente. Separar siempre cambio de compra y cambio para pagar al pasador.
 
 Motor `src/lib/import-costs.ts`, tarifas versionadas en `import_cost_policies`: 20% general; 15% al superar USD1000 solo bajo interpretacion confirmada; USD25 por iPhone; tarifas TV por pulgadas exactas 32/43/50/60/70/80/100. No interpolar TV de 55 ni sumar porcentaje a una tarifa fija. La aplicacion del umbral y los pedidos mixtos no estan confirmados: se conserva 20% general, con advertencia. Las simulaciones admiten cotizaciones especiales y gastos por valor, cantidad, peso, volumen o asignacion manual, conservando centavos.
