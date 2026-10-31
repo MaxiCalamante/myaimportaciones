@@ -1,5 +1,7 @@
 "use client";
 
+import { siteConfig } from "@/lib/site";
+
 import {
   ChevronDown,
   DollarSign,
@@ -667,7 +669,8 @@ Logística / Despacho: +${calcShippingPercent}%
 
     text += `────────────────────────────\n`;
     text += `📲 *Para hacer tu pedido directo al WhatsApp:* +54 9 2494638919\n`;
-    text += `✉️ Email comercial: maximocalamante14@gmail.com\n`;
+    text += `📲 WhatsApp Agustina: ${siteConfig.phoneAgustina}\n`;
+    text += `📸 Instagram: ${siteConfig.instagram}\n`;
     text += `🌐 Catálogo Completo Online: ${window.location.origin}/mayorista\n`;
 
     navigator.clipboard.writeText(text);

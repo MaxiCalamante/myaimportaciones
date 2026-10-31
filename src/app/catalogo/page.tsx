@@ -9,6 +9,9 @@ import { CatalogBuyingGuide } from "@/components/commerce/catalog-buying-guide";
 import { getPublicNavigation, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
 import { deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "@/lib/catalog-facets";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { searchPublicProductIds } from "@/lib/public-product-search";
+import { rankProductSearch } from "@/lib/product-search";
+import { readAllPages } from "@/lib/read-all-pages";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import type { Product } from "@/lib/types";
 import type { Metadata } from "next";
@@ -19,12 +22,14 @@ const pageSize = 24;
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<CatalogParams> }): Promise<Metadata> {
   const params = normalizeCatalogParams(await searchParams);
+  if (params.category === "smartphones-tecnologia") params.category = "electronica";
   const [{ categories }, products] = await Promise.all([getPublicNavigation(), getPublicFacetProducts()]);
   const facets = deriveCatalogFacets(categories, products);
-  const seo = catalogSeo(params, facets.categories, facets.brands.map(b => b.brand));
+  const seo = catalogSeo(params, facets.publicCategories, facets.brands.map(b => b.brand));
+  if (seo.category && !facets.categories.some(c => c.id === seo.category!.id)) seo.index = false;
   if ((params.category && !seo.category) || (params.brand && !seo.brand)) notFound();
   if (seo.page > 1 && !params.q && !params.min && !params.max) {
-    const ids = new Set(seo.category ? facets.categories.filter(c => c.id === seo.category!.id || c.parentId === seo.category!.id).map(c => c.id) : facets.categories.map(c => c.id));
+    const ids = new Set(seo.category ? facets.publicCategories.filter(c => c.id === seo.category!.id || c.parentId === seo.category!.id).map(c => c.id) : facets.publicCategories.map(c => c.id));
     const total = products.filter(p => ids.has(p.category_id) && (!seo.brand || p.brand === seo.brand) && (!params.family || p.model === params.family)).length;
     if ((seo.page - 1) * pageSize >= total) notFound();
   }
@@ -59,7 +64,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     try {
       facetProducts = await getPublicFacetProducts();
       const facets = deriveCatalogFacets(visibleCategories, facetProducts);
-      visibleCategories = facets.categories;
+      visibleCategories = facets.publicCategories;
       brands = facets.brands;
       brandsByCategory = facets.brandsByCategory;
     } catch {
@@ -72,31 +77,46 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null).in("category_id", ids);
       if (brand) query = query.eq("brand", brand);
       if (family) query = query.eq("model", family);
-      if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,sku.ilike.%${q}%`);
+      let searchIds: string[] = [];
+      if (q) {
+        try { searchIds = await searchPublicProductIds(q, ids); }
+        catch { failed = true; }
+        query = query.in("id", searchIds);
+      }
       if (minPrice) query = query.gte("retail_price", Number(minPrice));
       if (maxPrice) query = query.lte("retail_price", Number(maxPrice));
       query = sort === "price_asc" ? query.order("retail_price") : sort === "price_desc" ? query.order("retail_price", { ascending: false }) : sort === "name_asc" ? query.order("title") : query.order("is_featured", { ascending: false }).order("title");
-      const result = await query.order("id").range((page - 1) * pageSize, page * pageSize - 1);
-      products = ((result.data ?? []) as unknown as DbProduct[]).map(p => mapProduct(p));
-      count = result.count ?? 0;
-      failed = failed || Boolean(result.error);
+      if (q && !sort) {
+        try {
+          const rows = await readAllPages((from, to) => query.order("id").range(from, to));
+          rows.sort((a, b) => searchIds.indexOf(a.id) - searchIds.indexOf(b.id));
+          count = rows.length;
+          products = (rows.slice((page - 1) * pageSize, page * pageSize) as unknown as DbProduct[]).map(p => mapProduct(p));
+        } catch { failed = true; }
+      } else {
+        const result = await query.order("id").range((page - 1) * pageSize, page * pageSize - 1);
+        products = ((result.data ?? []) as unknown as DbProduct[]).map(p => mapProduct(p));
+        count = result.count ?? 0;
+        failed = failed || Boolean(result.error);
+      }
     }
   } else {
     const matching = fallback.filter(product => {
       if (category && product.categoryId !== category.id && !visibleCategories.some(c => c.id === product.categoryId && c.parentId === category.id)) return false;
       if (brand && product.brand !== brand) return false;
       if (family && product.model !== family) return false;
-      if (q && ![product.title, product.brand, product.model, product.sku, product.description].some(value => value?.toLocaleLowerCase("es").includes(q.toLocaleLowerCase("es")))) return false;
+      if (q && !rankProductSearch([product], q).length) return false;
       if (minPrice && product.retailPrice < Number(minPrice)) return false;
       if (maxPrice && product.retailPrice > Number(maxPrice)) return false;
       return true;
     });
     matching.sort((a, b) => sort === "price_asc" ? a.retailPrice - b.retailPrice : sort === "price_desc" ? b.retailPrice - a.retailPrice : sort === "name_asc" ? a.title.localeCompare(b.title, "es") : Number(b.featured) - Number(a.featured) || a.title.localeCompare(b.title, "es"));
+    if (q && !sort) matching.splice(0, matching.length, ...rankProductSearch(matching, q));
     count = matching.length;
     products = matching.slice((page - 1) * pageSize, page * pageSize);
     facetProducts = fallback.map(p => ({ category_id: p.categoryId, brand: p.brand ?? null, model: p.model }));
     const facets = deriveCatalogFacets(visibleCategories, facetProducts);
-    visibleCategories = facets.categories;
+    visibleCategories = facets.publicCategories;
     brands = facets.brands;
     brandsByCategory = facets.brandsByCategory;
   }
@@ -163,7 +183,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd).replace(/</g, "\\u003c") }}
       />
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       {/* Breadcrumbs */}
       <nav
         aria-label="Ubicación"
@@ -332,17 +352,21 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         />
       ) : products.length ? (
         <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {products.map((product, index) => (
+            <ProductCard key={product.id} product={product} priority={index < 4} />
           ))}
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center">
           <h2 className="text-lg font-bold text-zinc-950">
-            No encontramos productos con esos filtros
+            {category && !q && !brand && !family && !minPrice && !maxPrice
+              ? "Todavía no hay productos activos en esta subcategoría"
+              : "No encontramos productos con esos filtros"}
           </h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Probá ajustando el término de búsqueda, la marca o el rango de precio.
+            {category && !q && !brand && !family && !minPrice && !maxPrice
+              ? "Podés explorar los demás productos del rubro o volver al catálogo completo."
+              : "Probá con el nombre, la marca o el modelo, o ajustá los filtros."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {root ? (

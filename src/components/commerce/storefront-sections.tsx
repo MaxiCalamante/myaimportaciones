@@ -4,7 +4,7 @@ import { defaultCarouselSlides, type CarouselSlide } from "@/lib/carousel";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -12,359 +12,117 @@ import { ButtonLink } from "@/components/ui/button";
 import { WHOLESALE_MINIMUM_LABEL } from "@/lib/wholesale-policy";
 
 export function StoreHero({ slides = defaultCarouselSlides, preview = false }: { slides?: CarouselSlide[]; preview?: boolean }) {
-  const heroSlides = slides;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [paused, setPaused] = useState(false);
-
+  const [interacting, setInteracting] = useState(false);
   useEffect(() => {
-    if (paused || preview || heroSlides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
+    if (paused || interacting || preview || slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => setCurrentSlide(index => (index + 1) % slides.length), 6500);
     return () => clearInterval(timer);
-  }, [paused, preview, heroSlides.length]);
-
-  const handlePrev = () => {
-    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
-  };
-
-  const handleNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  };
-
-  if (!heroSlides.length) return null;
-  const visibleIndex = currentSlide % heroSlides.length;
-  return (
-    <section aria-label={preview ? "Vista previa del carrusel" : "Carrusel de inicio"} className="relative overflow-hidden bg-zinc-950 text-white min-h-[520px]">
-      {!preview && <h1 className="sr-only">MYA Importaciones: catálogo de productos</h1>}
-      {heroSlides.length > 1 && <button type="button" className="absolute right-4 top-4 z-20 min-h-11 rounded-lg bg-black/80 px-3 py-2 text-xs text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" onClick={() => setPaused(!paused)}>{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>}
-      {/* Slides */}
-      {heroSlides.map((slide, idx) => (
-        <div
-          key={slide.id}
-          aria-hidden={idx !== visibleIndex}
-          inert={idx !== visibleIndex}
-          className={`inset-0 transition-opacity duration-200 ease-out ${
-            idx === visibleIndex ? "relative opacity-100 z-10" : "absolute opacity-0 z-0 pointer-events-none"
-          }`}
-        >
-          <div className="absolute inset-0 opacity-50">
-            {(idx === 0 || idx === visibleIndex) && <Image src={slide.image} alt="" fill sizes="100vw" quality={75} preload={idx === 0} className="object-cover object-center"/>}
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,9,11,0.95),rgba(9,9,11,0.4))]"/>
-          </div>
-          <div className="relative mx-auto grid min-h-[520px] w-full max-w-7xl content-center gap-8 px-4 py-16 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase text-sky-300 tracking-wider">
-                {slide.eyebrow}
-              </p>
-              <h2 className="mt-4 max-w-xl text-3xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl tracking-tight">
-                {slide.title}
-              </h2>
-              <p className="mt-5 max-w-xl text-base leading-7 text-zinc-200 sm:text-lg">
-                {slide.description}
-              </p>
-              {slide.btnText && slide.btnLink && <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href={slide.btnLink} aria-disabled={preview || undefined} onClick={preview ? event => event.preventDefault() : undefined} icon={<ArrowRight className="h-4 w-4" />}>
-                  {slide.btnText}
-                </ButtonLink>
-              </div>}
-            </div>
-          </div>
+  }, [paused, interacting, preview, slides.length]);
+  if (!slides.length) return null;
+  const current = currentSlide % slides.length;
+  return <section aria-label={preview ? "Vista previa del carrusel" : "Carrusel de inicio"}
+    onMouseEnter={() => setInteracting(true)} onMouseLeave={() => setInteracting(false)}
+    onFocus={() => setInteracting(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false); }}
+    className="border-b border-zinc-200/70 bg-white">
+    {!preview && <h1 className="sr-only">MYA Importaciones: catálogo de productos</h1>}
+    <div className="relative mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      {slides.map((slide, index) => <div key={slide.id} hidden={index !== current} aria-hidden={index !== current} inert={index !== current}
+        className={index === current ? "grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12" : "hidden"}>
+        <div className="order-2 min-w-0 pb-2 lg:order-1 lg:py-8">
+          <p className="mb-4 inline-flex items-center gap-2 text-xs font-medium text-sky-800"><span className="h-px w-6 bg-sky-600" />{slide.eyebrow}</p>
+          <h2 className="max-w-xl text-balance text-3xl font-semibold leading-tight text-zinc-950 sm:text-4xl lg:text-5xl">{slide.title}</h2>
+          <p className="mt-4 max-w-lg text-pretty text-sm leading-7 text-zinc-600 sm:mt-5 sm:text-base">{slide.description}</p>
+          {slide.btnText && slide.btnLink && <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-7">
+            <ButtonLink href={slide.btnLink} aria-disabled={preview || undefined} onClick={preview ? event => event.preventDefault() : undefined}
+              className="min-h-12 px-5" icon={<ArrowRight className="size-4" />}>{slide.btnText}</ButtonLink>
+            {slide.btnLink !== "/catalogo" && <Link href="/catalogo" className="inline-flex min-h-12 items-center px-3 text-sm font-medium text-zinc-600 hover:text-zinc-950">Todo el catálogo</Link>}
+          </div>}
+          <p className="mt-7 text-xs text-zinc-500">MYA Importaciones <span className="mx-2 text-zinc-300">/</span> Tandil · Argentina</p>
         </div>
-      ))}
+        <div className="relative order-1 aspect-[16/9] min-w-0 overflow-hidden rounded-2xl bg-zinc-100 sm:rounded-3xl lg:order-2 lg:aspect-[6/5]">
+          {(index === 0 || index === current) && <Image src={slide.image} alt="" fill sizes="(min-width: 1024px) 600px, 100vw" quality={75} preload={index === 0} className="object-cover" />}
+          <span className="absolute bottom-4 left-4 rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-zinc-700">Selección MYA</span>
+        </div>
+      </div>)}
+      {slides.length > 1 && <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3 sm:mt-5">
+        <button type="button" onClick={() => setPaused(value => !value)} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-zinc-600 hover:bg-zinc-50">{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+          <button type="button" aria-label="Slide anterior" onClick={() => setCurrentSlide(value => (value - 1 + slides.length) % slides.length)} className="grid size-11 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"><ChevronLeft className="size-4" /></button>
+          <select aria-label="Elegir diapositiva" value={current} onChange={event => setCurrentSlide(Number(event.target.value))} className="min-h-11 rounded-lg bg-white px-2 text-xs tabular-nums text-zinc-600">
+            {slides.map((_, index) => <option key={index} value={index}>{String(index + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}</option>)}
+          </select>
+          <button type="button" aria-label="Siguiente slide" onClick={() => setCurrentSlide(value => (value + 1) % slides.length)} className="grid size-11 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"><ChevronRight className="size-4" /></button>
+        </div>
+      </div>}
 
-      {/* Navigation Arrows */}
-      {heroSlides.length > 1 && <>
-      <button
-        aria-label="Slide anterior"
-        onClick={handlePrev}
-        className="absolute bottom-1 left-3 z-25 grid size-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button
-        aria-label="Siguiente slide"
-        onClick={handleNext}
-        className="absolute bottom-1 right-3 z-25 grid size-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
-
-      {/* Slide Indicators */}
-      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-25 flex w-max max-w-[calc(100%-120px)] gap-1">
-        {heroSlides.map((_, idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => setCurrentSlide(idx)}
-            className="grid h-11 w-11 min-w-0 shrink place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            aria-label={`Ir al slide ${idx + 1}`}
-            aria-current={idx === visibleIndex ? "true" : undefined}
-          ><span aria-hidden className={`size-2.5 rounded-full ${idx === visibleIndex ? "bg-sky-400" : "bg-white/50"}`} /></button>
-        ))}
-      </div>
-      </>}
-    </section>
-  );
+    </div>
+  </section>;
 }
 
 export function RetailHighlights() {
   const items = [
-    { 
-      icon: BadgePercent, 
-      title: "Pagos Seguros & Cuotas",
-      desc: "Mercado Pago con todas las tarjetas y descuento especial abonando por transferencia."
-    },
-    { 
-      icon: Truck, 
-      title: "Envíos a Todo el País",
-      desc: "Despachos por Correo Argentino a domicilio o sucursal con seguimiento online."
-    },
-    { 
-      icon: ShieldCheck, 
-      title: "Productos 100% Originales",
-      desc: "Importaciones legítimas con empaque de origen, soporte posventa y trazabilidad."
-    },
-    { 
-      icon: Warehouse, 
-      title: "Atención Máximo & Agustina",
-      desc: "Atención directa desde Tandil: respondemos tus dudas al instante por WhatsApp."
-    },
+    { icon: BadgePercent, title: "Precios en pesos", desc: "Condiciones de pago claras antes de comprar." },
+    { icon: Truck, title: "Envíos a Argentina", desc: "Consultá entrega y seguimiento para tu destino." },
+    { icon: ShieldCheck, title: "Elegí con información", desc: "Fotos, versiones y características en cada ficha." },
+    { icon: Warehouse, title: "Atención personal", desc: "Hablá con Máximo y Agustina por WhatsApp." },
   ];
-
-  return (
-    <section className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 p-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-4 lg:px-8">
-        {items.map((item) => (
-          <div
-            className="flex flex-col sm:flex-row items-start gap-2.5 sm:gap-3.5 rounded-2xl bg-zinc-50/80 p-3 border border-zinc-100 sm:rounded-none sm:bg-transparent sm:border-0 sm:p-0"
-            key={item.title}
-          >
-            <span className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100 shadow-2xs">
-              <item.icon className="h-4 w-4 sm:h-5 sm:w-5" />
-            </span>
-            <div>
-              <p className="text-xs sm:text-sm font-bold text-zinc-950 leading-tight">{item.title}</p>
-              <p className="mt-1 text-[11px] sm:text-xs text-zinc-500 leading-snug line-clamp-2 sm:line-clamp-none">{item.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  return <section aria-label="Comprar en MYA" className="border-b border-zinc-200/70 bg-white">
+    <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-5 gap-y-6 px-4 py-6 sm:px-6 lg:grid-cols-4 lg:px-8 lg:py-7">
+      {items.map(({ icon: Icon, title, desc }) => <div key={title} className="flex min-w-0 items-start gap-3">
+        <Icon className="mt-0.5 size-5 shrink-0 stroke-[1.5] text-sky-800" />
+        <div><p className="text-xs font-semibold leading-5 text-zinc-900 sm:text-sm">{title}</p><p className="mt-1 text-pretty text-[11px] leading-5 text-zinc-500 sm:text-xs">{desc}</p></div>
+      </div>)}
+    </div>
+  </section>;
 }
 
 export function CategoryStrip({ categories }: { categories: Category[] }) {
-  const visibleCategories = categories.filter((category) => !category.parentId);
-
-  const getSubcategories = (parentId: string) =>
-    categories.filter((category) => category.parentId === parentId);
-
-  const getCategoryTheme = (slug: string) => {
-    if (slug === "electronica") return {
-      badge: "Apple & Samsung",
-      tagClass: "bg-sky-600 text-white",
-      count: "Smartphones, tablets y computadoras",
-      bgHover: "hover:border-sky-300 hover:shadow-sky-50/50",
-    };
-    if (slug.includes("herramienta")) {
-      return {
-        badge: "Total Tools & Wadfow",
-        tagClass: "bg-blue-600 text-white",
-        count: "Línea profesional y para el hogar",
-        bgHover: "hover:border-blue-300 hover:shadow-blue-50/50",
-      };
-    }
-    if (slug.includes("cosmetica")) {
-      return {
-        badge: "K-Beauty Original",
-        tagClass: "bg-pink-600 text-white",
-        count: "Skincare coreano y salud de la piel",
-        bgHover: "hover:border-pink-300 hover:shadow-pink-50/50",
-      };
-    }
-    if (slug.includes("capilar")) {
-      return {
-        badge: "Kérastase, Fino & Karseell",
-        tagClass: "bg-amber-700 text-white",
-        count: "Tratamientos capilares y fragancias",
-        bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
-      };
-    }
-    if (slug.includes("perfumeria") || slug.includes("perfume")) {
-      return {
-        badge: "Perfumería Árabe & Exclusiva",
-        tagClass: "bg-amber-600 text-white",
-        count: "Perfumes de Dubai y body mists virales",
-        bgHover: "hover:border-amber-300 hover:shadow-amber-50/50",
-      };
-    }
-    return {
-      badge: "Importación Directa",
-      tagClass: "bg-sky-600 text-white",
-      count: "Consultá disponibilidad",
-      bgHover: "hover:border-sky-300 hover:shadow-sky-50/50",
-    };
-  };
-
-  return (
-    <section id="categorias" className="bg-zinc-50/70 py-12 sm:py-16 scroll-mt-16 border-b border-zinc-200/60">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-200 pb-6 mb-8">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 border border-sky-200/60">
-              <Sparkles className="h-3.5 w-3.5 text-sky-600" />
-              Nuestros rubros
-            </div>
-            <h2 className="mt-2 text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
-              ¿Qué estás buscando?
-            </h2>
-            <p className="mt-1 text-sm text-zinc-600 max-w-2xl">
-              Explorá electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas.
-            </p>
-          </div>
-          <Link
-            className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-xs font-bold text-zinc-900 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white shadow-xs transition-all duration-200 group shrink-0"
-            href="/catalogo"
-          >
-            <span>Ver catálogo completo</span>
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-
-        <div className={`grid gap-6 sm:grid-cols-2 ${visibleCategories.length === 4 ? "xl:grid-cols-4" : "lg:grid-cols-3"}`}>
-          {visibleCategories.map((category) => {
-            const subs = getSubcategories(category.id);
-            const theme = getCategoryTheme(category.slug);
-            const initialImg = category.imageUrl || "/placeholder-product.svg";
-
-            return (
-              <div
-                key={category.id}
-                className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xs hover:shadow-xl transition-all duration-300 ${theme.bgHover}`}
-              >
-                <div>
-                  {/* Image container */}
-                  <Link
-                    href={`/catalogo?category=${category.slug}`}
-                    className="relative aspect-[16/10] overflow-hidden bg-zinc-100 block cursor-pointer"
-                  >
-                    <Image
-                      alt={category.name}
-                      className={`${category.slug === "electronica" ? "object-contain p-4" : "object-cover"} transition-transform duration-700 group-hover:scale-105`}
-                      fill
-                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                      src={initialImg}
-                      quality={90}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    <span className={`absolute top-3 left-3 rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-sm ${theme.tagClass}`}>
-                      {theme.badge}
-                    </span>
-                    <span className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-white/90 drop-shadow-sm">
-                      {theme.count}
-                    </span>
-                  </Link>
-
-                  {/* Body Info */}
-                  <div className="p-5">
-                    <Link href={`/catalogo?category=${category.slug}`}>
-                      <h3 className="text-lg font-black text-black group-hover:text-emerald-700 transition-colors">
-                        {category.name}
-                      </h3>
-                    </Link>
-                    <p className="mt-1.5 text-xs text-zinc-500 line-clamp-2 leading-relaxed">
-                      {category.description || "Explorá productos y consultá disponibilidad y entrega."}
-                    </p>
-
-                    {/* Curated Subcategories Preview */}
-                    {subs.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-zinc-100">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mb-2">
-                          Subcategorías destacadas:
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {subs.slice(0, 4).map((sub) => (
-                            <Link
-                              key={sub.id}
-                              href={`/catalogo?category=${sub.slug}`}
-                              className="inline-block rounded-md bg-zinc-100/90 hover:bg-zinc-200/80 px-2 py-0.5 text-[11px] font-medium text-zinc-700 transition"
-                            >
-                              {sub.name}
-                            </Link>
-                          ))}
-                          {subs.length > 4 && (
-                            <Link
-                              href={`/catalogo?category=${category.slug}`}
-                              className="inline-block rounded-md bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 transition"
-                            >
-                              +{subs.length - 4} más
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer Action Link */}
-                <div className="px-5 pb-5 pt-0">
-                  <Link
-                    href={`/catalogo?category=${category.slug}`}
-                    className="flex items-center justify-between w-full rounded-xl bg-zinc-50 hover:bg-zinc-900 px-3.5 py-2.5 text-xs font-bold text-zinc-800 hover:text-white border border-zinc-200 hover:border-zinc-900 transition-all duration-200 group/btn"
-                  >
-                    <span>Explorar catálogo</span>
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+  const roots = categories.filter(category => !category.parentId);
+  return <section id="categorias" className="scroll-mt-40 border-b border-zinc-200/70 bg-zinc-50 py-10 sm:py-14">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
+        <div><p className="text-xs font-medium text-sky-800">Un mundo para elegir</p><h2 className="mt-2 text-balance text-2xl font-semibold text-zinc-950 sm:text-3xl">Encontrá tu próximo favorito</h2></div>
+        <Link href="/catalogo" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-zinc-700 hover:text-sky-800">Ver todo el catálogo<ArrowRight className="size-4" /></Link>
       </div>
-    </section>
-  );
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scrollbar-thin sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 xl:grid-cols-5">
+        {roots.map(category => {
+          const subs = categories.filter(child => child.parentId === category.id);
+          const href = `/catalogo?category=${encodeURIComponent(category.slug)}`;
+          return <article key={category.id} className="w-[min(16rem,80vw)] shrink-0 snap-start overflow-hidden rounded-2xl border border-zinc-200/80 bg-white sm:w-auto">
+            <Link href={href} className="relative block aspect-[4/3] overflow-hidden bg-zinc-100" aria-label={`Explorar ${category.name}`}>
+              <Image src={category.imageUrl || "/placeholder-product.svg"} alt={category.name} fill sizes="(min-width: 1280px) 230px, (min-width: 640px) 40vw, 260px" quality={75}
+                className={category.slug === "electronica" ? "object-contain p-5" : "object-cover"} />
+            </Link>
+            <div className="p-4">
+              <Link href={href} className="flex min-h-12 items-start justify-between gap-2 text-sm font-semibold leading-6 text-zinc-900 hover:text-sky-800"><h3>{category.name}</h3><ArrowRight className="mt-1 size-4 shrink-0 text-zinc-400" /></Link>
+              {subs.length > 0 && <details className="mt-3 border-t border-zinc-100 pt-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-zinc-500 [&::-webkit-details-marker]:hidden">{subs.length} subcategorías<ChevronRight className="size-3.5 shrink-0" /></summary>
+                <div className="grid gap-1 pb-1">{subs.map(sub => <Link key={sub.id} href={`/catalogo?category=${encodeURIComponent(sub.slug)}`} className="flex min-h-11 items-center rounded-lg bg-zinc-50 px-2.5 py-2 text-xs leading-5 text-zinc-700 hover:bg-sky-50 hover:text-sky-900">{sub.name}</Link>)}</div>
+              </details>}
+            </div>
+          </article>;
+        })}
+      </div>
+      <p className="mt-2 text-xs text-zinc-500 sm:hidden">Deslizá para explorar los rubros →</p>
+    </div>
+  </section>;
 }
 
-export function ProductSection({
-  id,
-  eyebrow,
-  title,
-  products,
-  channel = "retail",
-}: {
-  id?: string;
-  eyebrow: string;
-  title: string;
-  products: Product[];
-  channel?: ProductChannel;
+export function ProductSection({ id, eyebrow, title, products, channel = "retail" }: {
+  id?: string; eyebrow: string; title: string; products: Product[]; channel?: ProductChannel;
 }) {
   if (!products.length) return null;
-  return (
-    <section className="bg-white py-12" id={id}>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase text-sky-700">
-              {eyebrow}
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-zinc-950">{title}</h2>
-          </div>
-          {channel === "wholesale" ? (
-            <p className="text-sm font-medium text-zinc-500">
-              Compra mínima y precios por volumen
-            </p>
-          ) : <Link href="/catalogo" className="text-sm font-semibold text-sky-700 underline underline-offset-2">Ver todo el catálogo</Link>}
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard channel={channel} key={product.id} product={product} />
-          ))}
-        </div>
+  return <section className="bg-white py-10 sm:py-14" id={id}>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-100 pb-5">
+        <div><p className="text-xs font-medium text-sky-800">{eyebrow}</p><h2 className="mt-2 text-balance text-2xl font-semibold text-zinc-950 sm:text-3xl">{title}</h2></div>
+        {channel === "wholesale" ? <p className="text-sm text-zinc-500">Compra mínima y precios por volumen</p> : <Link href="/catalogo" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-zinc-700 hover:text-sky-800">Ver catálogo<ArrowRight className="size-4" /></Link>}
       </div>
-    </section>
-  );
+      <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-5 lg:grid-cols-4">{products.map(product => <ProductCard channel={channel} key={product.id} product={product} />)}</div>
+    </div>
+  </section>;
 }
 
 export function WholesaleTeaser({

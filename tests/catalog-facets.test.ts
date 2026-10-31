@@ -10,6 +10,8 @@ const products = [{ category_id: "drills", brand: "Total" }, { category_id: "saw
 test("catalog navigation keeps populated parents and omits empty or excluded categories", () => {
   const facets = deriveCatalogFacets(categories, [...products, { category_id: "private", brand: "Private" }, { category_id: "unknown", brand: "Hidden" }]);
   assert.deepEqual(facets.categories.map(c => c.id), ["tools", "drills", "saws", "cosmetics", "serums"]);
+  assert.ok(facets.publicCategories.some(c => c.id === "empty"));
+  assert.ok(!facets.publicCategories.some(c => c.id === "private"));
   assert.deepEqual(facets.brands.map(b => b.brand), ["Medicube", "Total", "Wadfow"]);
 });
 

@@ -119,7 +119,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   </a>
                   )}
                 </div>
-                <h1 className="mt-3 text-2xl sm:text-3xl lg:text-3xl font-semibold text-zinc-950 tracking-tight leading-tight">
+                <h1 className="mt-3 text-balance text-2xl sm:text-3xl lg:text-4xl font-semibold text-zinc-950 tracking-tight leading-tight">
                   {product.title}
                 </h1>
                 <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
@@ -147,7 +147,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
             </>
           }
           afterInteractive={
-            <section id="detalles-producto" className="scroll-mt-24 border-t border-zinc-200 pt-7 sm:pt-9" aria-label="Información del producto">
+            <section id="detalles-producto" className="scroll-mt-44 rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-8" aria-label="Información del producto">
               <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-10">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-800">Conocé el producto</p>
@@ -175,7 +175,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
         {relatedProducts.length > 0 && (
           <div className="mt-16 pt-12 border-t border-zinc-200">
             <h2 className="text-2xl font-bold text-zinc-950 mb-6">
-              Productos Relacionados en {product.categoryName}
+              Seguí explorando {product.categoryName.toLocaleLowerCase("es-AR")}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {relatedProducts.map((p) => (

@@ -35,7 +35,7 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
         type="button"
         onClick={() => { dialog.current?.showModal(); setEnlarged(true); }}
         aria-label={`Ampliar foto de ${title}`}
-        className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-3xl border border-zinc-200/90 bg-white p-6 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-sky-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-sky-600"
+        className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-3xl border border-zinc-200/70 bg-white p-6 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-sky-600"
       >
         <Image
           src={src}
@@ -43,7 +43,7 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
           fill
           priority
           sizes="(min-width: 1024px) 560px, 100vw"
-          className="object-contain p-6 transition-transform duration-300 ease-out group-hover:scale-105"
+          className="object-contain p-7 sm:p-10"
           onError={() => {
             if (selected && selected !== "/placeholder-product.svg") {
               setFailed((a) => [...a, selected]);
@@ -75,7 +75,7 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
                 aria-label={`Ver foto ${i + 1}`}
                 aria-pressed={isCurrent}
                 onClick={() => setUserSelected(url)}
-                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-white p-1 transition-all duration-150 cursor-pointer ${
+                className={`relative size-16 shrink-0 overflow-hidden rounded-2xl border bg-white p-1 transition-all duration-150 cursor-pointer ${
                   isCurrent
                     ? "border-sky-700 ring-2 ring-sky-600/30 shadow-xs"
                     : "border-zinc-200 hover:border-zinc-300 hover:shadow-2xs opacity-80 hover:opacity-100"
@@ -85,7 +85,7 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
                   src={failed.includes(url) ? "/placeholder-product.svg" : url}
                   alt={`${title}, foto ${i + 1}`}
                   fill
-                  sizes="80px"
+                  sizes="64px"
                   className="object-contain p-1"
                   onError={() => {
                     if (url && url !== "/placeholder-product.svg") {

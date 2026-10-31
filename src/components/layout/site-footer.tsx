@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, MapPin, Phone, MessageCircle } from "lucide-react";
+import { MapPin, MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { siteConfig } from "@/lib/site";
+import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 
 function InstagramIcon({ className }: { className?: string }) {
@@ -32,9 +32,9 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-zinc-900 bg-zinc-950 text-white">
-      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr] lg:px-8 lg:py-16">
         {/* Column 1: Info */}
-        <div className="space-y-4">
+        <div className="col-span-2 space-y-4 md:col-span-1">
           <div className="flex items-center gap-3">
             <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-white/30">
               <Image
@@ -60,7 +60,7 @@ export function SiteFooter() {
               href={siteConfig.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-pink-500/10 border border-pink-500/20 px-3 py-1.5 text-xs font-semibold text-pink-400 hover:bg-pink-500/20 transition-colors"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white/5 border border-white/15 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 transition-colors"
             >
               <InstagramIcon className="h-4 w-4" />
               {siteConfig.instagramHandle}
@@ -142,51 +142,16 @@ export function SiteFooter() {
           </div>
         </div>
 
-        {/* Column 4: Contact */}
-        <div>
-          <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Contacto & Envíos</h2>
+        <div className="col-span-2 md:col-span-1">
+          <h2 className="text-sm font-semibold text-zinc-200">Hablemos de tu próxima compra</h2>
           <div className="mt-4 grid gap-3 text-sm text-zinc-400">
-            <div>
-              <p className="text-xs font-bold text-zinc-300">Máximo (Ventas & Envíos)</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Phone className="h-3.5 w-3.5 text-sky-400" />
-                <a href={`tel:${siteConfig.phone.replace(/[^+0-9]/g, "")}`} className="hover:text-white text-xs">{siteConfig.phone}</a>
-                <button
-                  type="button"
-                  onClick={() => openWhatsApp("Hola Máximo! Quería hacerte una consulta.")}
-                  className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded hover:bg-emerald-500/30 font-semibold cursor-pointer ml-1"
-                >
-                  Wpp
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-zinc-300">Agustina (Ventas & Asesoramiento)</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Phone className="h-3.5 w-3.5 text-pink-400" />
-                <a href={`tel:${siteConfig.phoneAgustina.replace(/[^+0-9]/g, "")}`} className="hover:text-white text-xs">{siteConfig.phoneAgustina}</a>
-                <button
-                  type="button"
-                  onClick={() => openWhatsApp("Hola Agustina! Quería hacerte una consulta sobre skincare o cosmética.")}
-                  className="text-[10px] bg-pink-500/20 text-pink-400 px-1.5 py-0.5 rounded hover:bg-pink-500/30 font-semibold cursor-pointer ml-1"
-                >
-                  Wpp
-                </button>
-              </div>
-            </div>
-
-            <span className="flex items-center gap-2 pt-1 border-t border-zinc-900">
-              <Mail className="h-4 w-4 text-sky-400" />
-              <a href={`mailto:${siteConfig.email}`} className="inline-flex min-h-11 break-all items-center hover:text-white">{siteConfig.email}</a>
-            </span>
-            <span className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-sky-400" />
-              {siteConfig.location}
-            </span>
-            <div className="border-t border-zinc-900 pt-2.5 mt-1 text-xs text-zinc-400 space-y-1">
-              <p>Despachos por Correo Argentino a todo el país.</p>
-            </div>
+            {siteConfig.whatsappContacts.map(contact => <a key={contact.id} href={getWhatsAppUrl(`Hola ${contact.name}, quiero hacer una consulta sobre MYA Importaciones.`, contact.whatsappNumber)} target="_blank" rel="noopener noreferrer"
+              className="flex min-h-16 items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+              <MessageCircle className="size-5 shrink-0 stroke-[1.5] text-zinc-200" />
+              <span className="min-w-0"><span className="block text-xs font-medium text-white">WhatsApp de {contact.name}</span><span className="mt-1 block text-xs tabular-nums text-zinc-400">{contact.phone}</span></span>
+            </a>)}
+            <p className="flex items-center gap-2 pt-2 text-xs leading-5"><MapPin className="size-4 shrink-0" />{siteConfig.location}</p>
+            <p className="text-xs leading-5">Envíos a toda Argentina. Consultanos por tu destino.</p>
           </div>
         </div>
       </div>

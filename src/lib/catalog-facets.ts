@@ -25,6 +25,8 @@ export function deriveCatalogFacets(categories: Category[], products: CatalogFac
   const list = (brands: Map<string, number>): BrandFacet[] => [...brands]
     .map(([brand, count]) => ({ brand, count })).sort((a, b) => a.brand.localeCompare(b.brand, "es"));
   return {
+    // A valid category remains a page even when its last active product is removed.
+    publicCategories: categories.filter(category => !category.wholesaleOnly),
     categories: categories.filter(category => populated.has(category.id) && !category.wholesaleOnly),
     brands: list(global),
     brandsByCategory: Object.fromEntries([...counts].map(([id, brands]) => [id, list(brands)])),

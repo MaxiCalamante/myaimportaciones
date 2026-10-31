@@ -11,7 +11,6 @@ import {
 } from "@/components/commerce/storefront-sections";
 import { getStorefrontData, getPublicFacetProducts } from "@/lib/storefront";
 import { deriveCatalogFacets } from "@/lib/catalog-facets";
-import { TrustGuaranteeBadges } from "@/components/commerce/trust-guarantee-badges";
 import { StoreSeoFaq } from "@/components/commerce/store-seo-faq";
 import { SocialProofSection } from "@/components/commerce/social-proof-section";
 import { siteConfig } from "@/lib/site";
@@ -52,7 +51,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     {retailProducts.length > 0 && <ProductSection eyebrow="Explorá la tienda" id="ofertas" products={discoveryProducts} title="Más para descubrir" />}
     <WholesalePromo />
     <SocialProofSection />
-    <TrustGuaranteeBadges />
     <StoreSeoFaq />
   </>;
 }

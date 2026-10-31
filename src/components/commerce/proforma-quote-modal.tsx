@@ -138,7 +138,8 @@ Alias: MYA.IMPORTACIONES.TD
               </span>
               <p className="text-[11px] text-zinc-500 mt-1">
                 Tandil, Provincia de Buenos Aires, Argentina<br />
-                WhatsApp: +54 9 249 463-8919 | Email: maximocalamante14@gmail.com
+                WhatsApp: {siteConfig.phone} / {siteConfig.phoneAgustina}<br />
+                Instagram: <a href={siteConfig.instagram}>{siteConfig.instagramHandle}</a>
               </p>
             </div>
 

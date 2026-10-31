@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, HelpCircle, ShieldCheck, Truck, Sparkles, MapPin, CreditCard } from "lucide-react";
-import { siteConfig } from "@/lib/site";
+import { ArrowRight, HelpCircle, Sparkles } from "lucide-react";
 
 const faqs = [
   { question: "¿MYA vende por mayor y por menor con envíos a toda Argentina?", answer: "Sí. Comprá por menor desde una unidad en el catálogo, con precios en pesos. Para comprar por mayor, el mínimo es 5 productos en total o $100.000 en productos; podés combinar marcas y rubros. Los precios mayoristas se consultan con Máximo o Agustina por WhatsApp. Hacemos envíos a toda Argentina; el envío se cotiza por separado." },
@@ -97,7 +96,7 @@ export function StoreSeoFaq() {
                   <h3 className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition">
                     {cat.title}
                   </h3>
-                  <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-sky-600 group-hover:translate-x-0.5 transition" />
+                  <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-sky-600 group-hover:translate-x-0.5 transition" />
                 </div>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
                   {cat.desc}
@@ -119,7 +118,7 @@ export function StoreSeoFaq() {
                   className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50/50 hover:text-sky-800 shadow-2xs active:scale-95"
                 >
                   <span>{brand.name}</span>
-                  <span className="text-[10px] font-normal text-slate-400">· {brand.subtitle}</span>
+                  <span className="text-[10px] font-normal text-slate-600">· {brand.subtitle}</span>
                 </Link>
               ))}
             </div>
@@ -147,7 +146,7 @@ export function StoreSeoFaq() {
               >
                 <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-4 py-1 font-semibold text-slate-900 hover:text-sky-700 transition text-sm sm:text-base focus-visible:outline-2 focus-visible:outline-sky-700 rounded-md">
                   <span>{faq.question}</span>
-                  <span className="shrink-0 text-slate-400 transition group-open:rotate-180">
+                  <span className="shrink-0 text-slate-600 transition group-open:rotate-180">
                     ▼
                   </span>
                 </summary>

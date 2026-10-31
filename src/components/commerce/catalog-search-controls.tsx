@@ -253,7 +253,7 @@ export function CatalogSearchControls({
   };
 
   const currentSortLabel =
-    SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Destacados";
+    (query && !sort ? "Más relevantes" : SORT_OPTIONS.find((s) => s.value === sort)?.label) ?? "Destacados";
 
   return (
     <div className="catalog-controls min-w-0 w-full" aria-busy={pending}>
@@ -349,7 +349,7 @@ export function CatalogSearchControls({
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  Ordenar por: {opt.label}
+                  Ordenar por: {opt.value === "" && query ? "Más relevantes" : opt.label}
                 </option>
               ))}
             </select>
@@ -478,7 +478,7 @@ export function CatalogSearchControls({
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {opt.value === "" && query ? "Más relevantes" : opt.label}
                 </option>
               ))}
             </select>
@@ -915,7 +915,7 @@ export function CatalogSearchControls({
                             : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
                         }`}
                       >
-                        <span>{opt.label}</span>
+                        <span>{opt.value === "" && query ? "Más relevantes" : opt.label}</span>
                         {isSelected && <Check className="h-4 w-4 text-sky-700" />}
                       </button>
                     );

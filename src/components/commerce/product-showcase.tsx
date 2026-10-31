@@ -37,7 +37,7 @@ export function ProductShowcase({
     <div className="min-w-0 space-y-8 sm:space-y-12">
     <div className="grid min-w-0 grid-cols-1 gap-6 sm:gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start">
       {/* Left Column: Image Gallery (Sticky on desktop) */}
-      <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+      <div className="min-w-0 lg:sticky lg:top-32 xl:top-44 lg:self-start">
         <ProductGallery
           title={product.title}
           image={displayImage}

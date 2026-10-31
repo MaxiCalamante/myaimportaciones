@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
+  --background: #fafafa;
   --foreground: #09090b;
 }
 
@@ -33,7 +33,7 @@ textarea {
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 5rem;
+  scroll-padding-top: 7rem;
 }
 
 @layer base {
@@ -68,6 +68,10 @@ html {
 .catalog-controls button { min-height: 2.75rem; }
 .catalog-controls button > svg { flex-shrink: 0; }
 .catalog-controls button[class*="rounded-full"] { max-width: 100%; }
+
+@media (min-width: 1280px) {
+  html { scroll-padding-top: 10rem; }
+}
 
 @media (min-width: 640px) {
   .content-page { padding: 2.5rem; }

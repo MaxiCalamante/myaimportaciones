@@ -115,8 +115,8 @@ export function WholesaleQuotePrintable({ profile, catalogProducts = [], header 
               Distribución Mayorista Oficial &middot; Tandil, Buenos Aires
             </p>
             <div className="mt-3 text-xs text-zinc-600 space-y-0.5">
-              <p>Email: {siteConfig.email}</p>
-              <p>WhatsApp Comercial: {siteConfig.phone}</p>
+              <p>WhatsApp: {siteConfig.phone} / {siteConfig.phoneAgustina}</p>
+              <p>Instagram: <a href={siteConfig.instagram}>{siteConfig.instagramHandle}</a></p>
               <p>Sitio Web: https://myaimportaciones.com</p>
             </div>
           </div>

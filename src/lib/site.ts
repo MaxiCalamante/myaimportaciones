@@ -42,7 +42,6 @@ export const siteConfig = {
   shareTitle: "MYA Importaciones | Cosmética, Tecnología y Herramientas",
   description:
     "Descubrí cosmética coreana, tecnología, cuidado capilar y herramientas importadas. Comprá online en MYA Importaciones con envíos a toda Argentina.",
-  email: "maximocalamante14@gmail.com",
   phone: "+54 9 249 463-8919",
   phoneAgustina: "+54 9 2494 25-1541",
   whatsappNumber: "5492494638919",
@@ -59,7 +58,6 @@ export const siteConfig = {
     cvu: "0000003100045616945389",
     cbu: "0000003100045616945389",
     holder: "Máximo Calamante",
-    email: "maximocalamante14@gmail.com",
     cuit: process.env.NEXT_PUBLIC_BUSINESS_CUIT ?? "",
   },
 };

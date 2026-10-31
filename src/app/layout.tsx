@@ -48,7 +48,7 @@ const orgJsonLd = {
   contactPoint: [siteConfig.phone, siteConfig.phoneAgustina].map(telephone => ({
     "@type": "ContactPoint",
     telephone,
-    email: siteConfig.email,
+    url: `https://wa.me/${telephone.replace(/\D/g, "")}`,
     contactType: "sales",
     areaServed: "AR",
     availableLanguage: "es",
@@ -76,7 +76,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const { profile } = await getCurrentProfile();
-  const { categories, products } = await getPublicNavigation();
+  const { categories } = await getPublicNavigation();
 
   return (
     <html
@@ -94,11 +94,11 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: jsonLd(websiteJsonLd) }}
         />
       </head>
-      <body className="min-h-full bg-slate-50 text-zinc-950">
+      <body className="min-h-full bg-zinc-50 text-zinc-950">
         <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-5 focus:py-3 focus:font-bold focus:shadow-xl">Saltar al contenido</a>
         <CommerceProvider key={profile?.id || 'guest'} accountId={profile?.id}>
           <div className="storefront-shell flex min-h-screen flex-col">
-            <SiteHeader initialCategories={categories} initialProducts={products} profile={profile} />
+            <SiteHeader initialCategories={categories} profile={profile} />
             <main id="contenido" tabIndex={-1} className="flex-1">{children}</main>
             <SiteFooter />
             <AnalyticsConsent />

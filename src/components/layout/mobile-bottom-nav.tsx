@@ -25,16 +25,16 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white/95 backdrop-blur-md border-t border-zinc-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+      className="fixed bottom-0 left-0 right-0 z-40 block md:hidden bg-white border-t border-zinc-200/80 shadow-sm"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <nav aria-label="Navegación principal móvil" className="flex items-center justify-around h-16 px-2">
+      <nav aria-label="Navegación principal móvil" className="flex h-16 items-center justify-around px-2 [&_svg]:stroke-[1.75] [&_a[aria-current=page]]:bg-sky-50 [&_a[aria-current=page]]:rounded-xl [&_a[aria-current=page]]:h-13">
         {/* Home */}
         <Link
           href="/"
           aria-current={isHome ? "page" : undefined}
           className={`flex flex-col items-center justify-center flex-1 h-full transition active:scale-95 ${
-            isHome ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
+            isHome ? "text-sky-700 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
         >
           <Home className="h-5 w-5" />
@@ -73,7 +73,7 @@ export function MobileBottomNav({ signedIn }: { signedIn: boolean }) {
           href={orderPath}
           aria-current={isTracking ? "page" : undefined}
           className={`flex flex-col items-center justify-center flex-1 h-full transition active:scale-95 ${
-            isTracking ? "text-sky-600 font-bold" : "text-zinc-600 hover:text-zinc-950"
+            isTracking ? "text-sky-700 font-bold" : "text-zinc-600 hover:text-zinc-950"
           }`}
         >
           <Truck className="h-5 w-5" />
