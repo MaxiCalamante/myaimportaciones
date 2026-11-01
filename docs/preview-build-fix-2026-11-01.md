@@ -13,3 +13,5 @@ Configuración pendiente en Vercel: seleccionar Preview para las dos variables p
 El build puede completarse sin Supabase para mostrar los estados de preparación existentes, pero el catálogo y el acceso real requieren esas variables en Preview. Habilitarlas exige un nuevo build porque NEXT_PUBLIC se incorpora al bundle.
 
 Verificación: build de producción aprobado con ambas variables vacías y también con configuración pública real. Suite completa317/317 aprobada; las3pruebas focalizadas finales (incluido sitemap) aprobadas. ESLint focalizado sin advertencias. No se alteraron cobros ni credenciales reales.
+
+El deploy de Preview del commitbd40f08 quedó READY en Vercel. La falta de variables ya no interrumpe el build; sigue siendo necesario habilitarlas en Preview para mostrar datos reales. Se excluyeron de ESLint únicamente los directorios generados de las pruebas de build (.next-no-supabase y .next-visual), manteniendo el análisis de código fuente.
