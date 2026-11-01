@@ -36,4 +36,6 @@ test('public catalogue RAM/storage notation retains both dimensions and explicit
   const phone=matchTargets([{id:'4',title:'Apple iPhone 17 A3520 256GB Black',brand:'Apple',model:'A3520'}],[]);
   assert.notEqual(matchSupplierProduct({title:'Apple iPhone 17 A3520 256GB Black SWAP'},phone).status,'exact');
   assert.notEqual(matchSupplierProduct({title:'Apple iPhone 17 A3520 256GB Black Sin Lacre'},phone).status,'exact');
+  const cpo=matchTargets([{id:'5',title:'Apple iPhone 17 A3520 256GB Black CPO',brand:'Apple',model:'A3520'}],[]);
+  assert.notEqual(matchSupplierProduct({title:'Apple iPhone 17 A3520 256GB Black SWAP'},cpo).status,'exact');
 });

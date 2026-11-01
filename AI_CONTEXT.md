@@ -1,5 +1,9 @@
 # MYA Importaciones — contexto vigente
 
+## Vínculos y variantes de proveedores — 01/11/2026
+
+Revisión solicitada por el dueño y autorización posterior para completar configuraciones desde fichas verificadas, conservando precios. Se completaron 52 URLs y 57 vínculos primarios, incluidos 36 de variantes revisadas con la sesión administrativa. Quedan 109 productos sin ficha exacta verificada, siete activos; no inferir agotamiento de esa ausencia. Precios e inventario físico de productos/variantes permanecieron iguales a la instantánea inicial. El seguimiento pausó dos productos simples con agotamiento comprobado. Atlántico incorpora lector HTTP y capacidad persistente `product_page`; Edge v6 activo. El panel incorpora confirmación de lote con destinos explícitos y revalidación transaccional por vínculo. Se corrigió en Edge la confusión entre “evidencia aplicada” y “hay stock”, preservando borradores. Informe y límites: `docs/suppliers/LINKING-2026-11-01.md`. Evidencia y CSV privados en `scratch/suppliers-private/linking-2026-11-01/`. No declarar cobertura completa ni habilitar ajustes de venta; los precios automáticos siguen deshabilitados.
+
 ## Ficha de producto y consulta de envío — 29/10/2026
 
 La ficha prioriza galería, resumen del producto, datos técnicos y compra. Mayorista, pagos/comprobante y garantía conservan su función en desplegables; descripción y ficha técnica se leen debajo del bloque principal. No agregar certificaciones, compatibilidades, garantías o plazos genéricos sin evidencia del producto. El origen logístico es privado y no debe publicarse ni confundirse con el domicilio de atención comercial.

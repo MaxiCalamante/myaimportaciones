@@ -96,8 +96,11 @@ function evaluate(source:MatchSource,target:MatchTarget){
  if(/\.\.\.|…/.test(source.title))return {exact:false,score:0,reason:'Título del proveedor truncado'};
  const brand=normalized(target.brand),sourceBrand=normalized(source.brand??'');
  if(brand&&sourceBrand&&brand!==sourceBrand)return{exact:false,score:0,reason:'Marca de fabricante diferente'};
- const condPattern = /\b(cpo|outlet|swap|refurbished|reacondicionado|usado|seminovo|ativo|activado|sin lacre|sem lacre)\b/i;
- if(condPattern.test(raw)!==condPattern.test(own))return {exact:false,score:0,reason:'Condición de unidad diferente'};
+ const condition=(value:string)=>[
+  /\bcpo\b/i,/\boutlet\b/i,/\bswap\b/i,/\b(?:refurbished|reacondicionado)\b/i,
+  /\b(?:usado|seminovo)\b/i,/\b(?:ativo|activado)\b/i,/\b(?:sin lacre|sem lacre)\b/i
+ ].map(pattern=>pattern.test(value));
+ if(JSON.stringify(condition(raw))!==JSON.stringify(condition(own)))return {exact:false,score:0,reason:'Condición de unidad diferente'};
  const accessories=/\b(escobillas|carbones|repuesto|compat[ií]vel|compatible|funda|carcasa|protector|pelicula|correa|pulseira|cargador|carregador|charger|adaptador|adapter|bateria|battery)\b/gi;
  if([...raw.matchAll(accessories)].some(m=>!normalized(own).includes(normalized(m[0]))))return {exact:false,score:0,reason:'Accesorio o contenido adicional distinto del producto'};
  if(source.supplierKey==='atacado-connect'&&/\biphone\b/i.test(raw)&&!/\b(nuevo sellado|new sealed|novo lacrado|new_sealed)\b/i.test(raw+' '+source.variant_key))return{exact:false,score:0,reason:'iPhone sin condición nuevo sellado explícita'};

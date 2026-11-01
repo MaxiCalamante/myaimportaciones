@@ -2,6 +2,8 @@
 
 Panel: `/admin/proveedores/inteligencia`. Agenda: `/admin/proveedores`. Editor y costos comerciales existentes se conservan.
 
+Revisión de vínculos y variantes del 01/11/2026: [LINKING-2026-11-01.md](LINKING-2026-11-01.md). Atlántico dispone ahora de lector HTTP de ficha primaria y confirmación administrativa de propuestas por lote. La cobertura restante sigue explícitamente pendiente.
+
 ## Funcionamiento actual
 
 Los nueve proveedores oficiales estan registrados en `suppliers`. Ocho catalogos publicos devolvieron productos reales: Star Company, Vencell Alberdi, Neo Import, Atacado USA, Total Herramientas Oficial, Atlantico Shop, Atacado Connect y Mobile Zone. Madrid Center restringe el acceso automatizado y dispone de importacion CSV o carga manual. No se evitan controles de acceso ni se usan claves internas.
@@ -37,7 +39,7 @@ Los instaladores locales rechazan su ejecución. La PC puede estar apagada; la e
 | Star Company / Atacado USA | Ficha PrestaShop: ID, atributo, cantidad, moneda explicita; catalogo visible y buscador | Variantes ambiguas requieren revision; un relacionado no es el producto principal |
 | Total | SKU/JSON-LD principal, disponibilidad explicita y USD visible del bloque principal con impuestos | El precio JSON-LD puede ser anterior a impuestos; no reemplaza el precio visible |
 | Vencell / Neo Import | Tarjetas publicas renderizadas, ID visible y USD | Condiciones de pase incluido de Neo requieren revision para evitar doble cargo |
-| Atlantico Shop | Tarjetas y buscador publico renderizado | Nombres truncados y variantes siguen privados hasta identificar el producto |
+| Atlantico Shop | Tarjetas/buscador públicos y ficha primaria OpenCart por HTTP | ID de URL/canonical/formulario concordantes; stock textual y moneda explícitos; tarjetas truncadas requieren ficha |
 | Atacado Connect | Tarjetas y fichas publicas, USD, condicion y modelo | No usar claves de buscadores internos; iPhone solo nuevo sellado |
 | Mobile Zone | Precio de tarjeta visible; stock y moneda de respuestas publicas sin credenciales que usa su interfaz | El precio base de su respuesta puede omitir recargo; se usa el visible |
 | Madrid Center | Registro, incidencias, manual / CSV | Proteccion antibots sin evasion |
