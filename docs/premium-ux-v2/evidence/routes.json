@@ -1,0 +1,163 @@
+[
+  {
+    "route": "/catalogo",
+    "width": 320,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/catalogo",
+    "width": 375,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/catalogo",
+    "width": 390,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/catalogo",
+    "width": 430,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/catalogo",
+    "width": 768,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/catalogo",
+    "width": 1024,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/catalogo",
+    "width": 1440,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 320,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 375,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 390,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 430,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 768,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 1024,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/lattafa-asad-eau-de-parfum-100-ml",
+    "width": 1440,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 320,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 375,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 390,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 430,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 768,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 1024,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "/producto/apple-adaptador-de-corriente-usb-c-20w",
+    "width": 1440,
+    "overflow": false,
+    "prices": 0
+  },
+  {
+    "route": "carrito",
+    "width": 320,
+    "dialogWidth": 320
+  },
+  {
+    "route": "carrito",
+    "width": 375,
+    "dialogWidth": 375
+  },
+  {
+    "route": "carrito",
+    "width": 390,
+    "dialogWidth": 390
+  },
+  {
+    "route": "carrito",
+    "width": 430,
+    "dialogWidth": 430
+  },
+  {
+    "route": "carrito",
+    "width": 768,
+    "dialogWidth": 448
+  },
+  {
+    "route": "carrito",
+    "width": 1024,
+    "dialogWidth": 448
+  },
+  {
+    "route": "carrito",
+    "width": 1440,
+    "dialogWidth": 448
+  }
+]

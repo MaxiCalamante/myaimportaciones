@@ -1,0 +1,477 @@
+{
+  "widths": [
+    {
+      "width": 320,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 139,
+          "height": 347
+        },
+        {
+          "width": 139,
+          "height": 347
+        },
+        {
+          "width": 139,
+          "height": 371
+        },
+        {
+          "width": 139,
+          "height": 371
+        }
+      ],
+      "productY": 775.125,
+      "variantLinks": 0
+    },
+    {
+      "width": 375,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 166.5,
+          "height": 354.5
+        },
+        {
+          "width": 166.5,
+          "height": 354.5
+        },
+        {
+          "width": 166.5,
+          "height": 357.5
+        },
+        {
+          "width": 166.5,
+          "height": 357.5
+        }
+      ],
+      "productY": 775.390625,
+      "variantLinks": 0
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 174,
+          "height": 362
+        },
+        {
+          "width": 174,
+          "height": 362
+        },
+        {
+          "width": 174,
+          "height": 365
+        },
+        {
+          "width": 174,
+          "height": 365
+        }
+      ],
+      "productY": 778.625,
+      "variantLinks": 0
+    },
+    {
+      "width": 430,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 194,
+          "height": 382
+        },
+        {
+          "width": 194,
+          "height": 382
+        },
+        {
+          "width": 194,
+          "height": 385
+        },
+        {
+          "width": 194,
+          "height": 385
+        }
+      ],
+      "productY": 787.390625,
+      "variantLinks": 0
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 229.328125,
+          "height": 423.328125
+        },
+        {
+          "width": 229.328125,
+          "height": 423.328125
+        },
+        {
+          "width": 229.328125,
+          "height": 423.328125
+        },
+        {
+          "width": 229.328125,
+          "height": 427.328125
+        }
+      ],
+      "productY": 854.5,
+      "variantLinks": 0
+    },
+    {
+      "width": 1024,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 228,
+          "height": 426
+        },
+        {
+          "width": 228,
+          "height": 426
+        },
+        {
+          "width": 228,
+          "height": 426
+        },
+        {
+          "width": 228,
+          "height": 426
+        }
+      ],
+      "productY": 977.40625,
+      "variantLinks": 0
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "cards": [
+        {
+          "width": 292,
+          "height": 490
+        },
+        {
+          "width": 292,
+          "height": 490
+        },
+        {
+          "width": 292,
+          "height": 490
+        },
+        {
+          "width": 292,
+          "height": 490
+        }
+      ],
+      "productY": 1033.25,
+      "variantLinks": 0
+    }
+  ],
+  "categories": [
+    {
+      "slug": "cuidado-capilar",
+      "sub": false,
+      "status": 200
+    },
+    {
+      "slug": "cosmetica-coreana",
+      "sub": false,
+      "status": 200
+    },
+    {
+      "slug": "serums-ampollas",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "limpieza-exfoliantes",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "cremas-mascarillas",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "kits-de-viaje-k-beauty",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "taladros-rotomartillos",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "amoladoras-pulidoras",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "atornilladores-llaves-impacto",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "sierras-corte",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "compresores-neumatica",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "soldadoras-inverter",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "herramientas-equipamiento",
+      "sub": false,
+      "status": 200
+    },
+    {
+      "slug": "tonicos-pads",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "lociones-corporales-fragancias",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "tratamientos-mascarillas-capilares",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "aceites-leave-in",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "maquinas-industriales-construccion",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "baterias-cargadores-litio",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "herramientas-automotrices",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "shampoos-acondicionadores",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "niveles-laser-medicion",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "lijadoras-mezcladoras",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "pistolas-pintura-calor",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "herramientas-manuales",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "seguridad-industrial-epi",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "kits-cajas-herramientas",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "agro-jardineria",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "generadores-energia",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "martillos-cinceles",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "corte-manual",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "accesorios-consumibles",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "plomeria",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "electricidad-iluminacion",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "albanileria-pintura",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "transporte-sujecion",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "kits-capilares",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "mascarillas-faciales",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "proteccion-solar",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "dispositivos-faciales",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "contorno-ojos",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "limpieza-ventilacion",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "llaves-tubos-criques",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "destornilladores-puntas",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "kits-herramientas",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "cepillos-fresadoras",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "alicates-pinzas",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "hidrolavadoras-alta-presion",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "electronica-smartphones",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "electronica-tablets",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "electronica-notebooks",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "electronica-computadoras-escritorio",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "electronica",
+      "sub": false,
+      "status": 200
+    },
+    {
+      "slug": "gatos-hidraulicos-criques",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "perfumes-arabes",
+      "sub": true,
+      "status": 200
+    },
+    {
+      "slug": "perfumeria",
+      "sub": false,
+      "status": 200
+    },
+    {
+      "slug": "body-mists-brumas",
+      "sub": true,
+      "status": 200
+    }
+  ],
+  "products": [
+    {
+      "slug": "lattafa-asad-eau-de-parfum-100-ml",
+      "hasVariants": true,
+      "status": 200
+    },
+    {
+      "slug": "apple-adaptador-de-corriente-usb-c-20w",
+      "hasVariants": false,
+      "status": 200
+    }
+  ],
+  "consoleErrors": [],
+  "networkErrors": [],
+  "webkit": {
+    "passed": false,
+    "reason": "browserType.launch: \n╔══════════════════════════════════════════════════════╗\n║ Host system is missing dependencies to run browsers. ║\n║ Missing libraries:                                   ║\n║     libgtk-4.so.1                                    ║\n║     libgraphene-1.0.so.0                         "
+  }
+}

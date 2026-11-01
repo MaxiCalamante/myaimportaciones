@@ -12,7 +12,6 @@ import {
 import { getStorefrontData, getPublicFacetProducts } from "@/lib/storefront";
 import { deriveCatalogFacets } from "@/lib/catalog-facets";
 import { StoreSeoFaq } from "@/components/commerce/store-seo-faq";
-import { SocialProofSection } from "@/components/commerce/social-proof-section";
 import { siteConfig } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 
@@ -50,7 +49,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     {retailProducts.length > 0 && <ProductSection eyebrow="Selección especial" id="catalogo" products={featuredProducts} title="Productos destacados" />}
     {retailProducts.length > 0 && <ProductSection eyebrow="Explorá la tienda" id="ofertas" products={discoveryProducts} title="Más para descubrir" />}
     <WholesalePromo />
-    <SocialProofSection />
     <StoreSeoFaq />
   </>;
 }

@@ -94,7 +94,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: jsonLd(websiteJsonLd) }}
         />
       </head>
-      <body className="min-h-full bg-zinc-50 text-zinc-950">
+      <body className="min-h-full bg-white text-zinc-950">
         <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-5 focus:py-3 focus:font-bold focus:shadow-xl">Saltar al contenido</a>
         <CommerceProvider key={profile?.id || 'guest'} accountId={profile?.id}>
           <div className="storefront-shell flex min-h-screen flex-col">

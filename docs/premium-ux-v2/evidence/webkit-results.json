@@ -1,0 +1,117 @@
+{
+  "engine": "Playwright WebKit2370 Linux WPE, mobile viewport emulation; not physical iPhone or Safari application",
+  "base": "http://127.0.0.1:3000",
+  "checkedAt": "2026-11-01T06:46:30.372Z",
+  "views": [
+    {
+      "width": 375,
+      "views": [
+        {
+          "label": "home",
+          "width": 375,
+          "scroll": 375
+        },
+        {
+          "label": "menu",
+          "width": 375,
+          "scroll": 375
+        },
+        {
+          "label": "PDP selected variant",
+          "width": 375,
+          "scroll": 375
+        },
+        {
+          "label": "cart drawer",
+          "width": 375,
+          "scroll": 375
+        }
+      ],
+      "variants": {
+        "choices": [
+          "Asad Clásico (Pimienta & Tabaco)",
+          "Asad Zanzibar (Sal Marina & Agua de Coco)"
+        ],
+        "selected": [
+          "Asad Zanzibar (Sal Marina & Agua de Coco)"
+        ],
+        "changed": true
+      },
+      "cart": true
+    },
+    {
+      "width": 390,
+      "views": [
+        {
+          "label": "home",
+          "width": 390,
+          "scroll": 390
+        },
+        {
+          "label": "menu",
+          "width": 390,
+          "scroll": 390
+        },
+        {
+          "label": "PDP selected variant",
+          "width": 390,
+          "scroll": 390
+        },
+        {
+          "label": "cart drawer",
+          "width": 390,
+          "scroll": 390
+        }
+      ],
+      "variants": {
+        "choices": [
+          "Asad Clásico (Pimienta & Tabaco)",
+          "Asad Zanzibar (Sal Marina & Agua de Coco)"
+        ],
+        "selected": [
+          "Asad Zanzibar (Sal Marina & Agua de Coco)"
+        ],
+        "changed": true
+      },
+      "cart": true
+    },
+    {
+      "width": 430,
+      "views": [
+        {
+          "label": "home",
+          "width": 430,
+          "scroll": 430
+        },
+        {
+          "label": "menu",
+          "width": 430,
+          "scroll": 430
+        },
+        {
+          "label": "PDP selected variant",
+          "width": 430,
+          "scroll": 430
+        },
+        {
+          "label": "cart drawer",
+          "width": 430,
+          "scroll": 430
+        }
+      ],
+      "variants": {
+        "choices": [
+          "Asad Clásico (Pimienta & Tabaco)",
+          "Asad Zanzibar (Sal Marina & Agua de Coco)"
+        ],
+        "selected": [
+          "Asad Zanzibar (Sal Marina & Agua de Coco)"
+        ],
+        "changed": true
+      },
+      "cart": true
+    }
+  ],
+  "pageerrors": [],
+  "passed": true
+}

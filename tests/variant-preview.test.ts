@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ProductVariantPreview } from "../src/components/commerce/product-variant-preview";
 import { resolveVariantDimensions, variantPreview, productVariantHref } from "../src/lib/variant-preview";
 import type { ProductVariant } from "../src/lib/types";
 
@@ -27,4 +30,17 @@ test("variant links preserve the selected row and safely encode arbitrary identi
   assert.equal(productVariantHref("producto"), "/producto/producto");
   assert.ok(!productVariantHref("</script>", "a&admin=1").includes("<"));
   assert.equal(new URL(productVariantHref("producto", "a&admin=1"), "https://myaimportaciones.com").searchParams.get("variant"), "a&admin=1");
+});
+
+test("card preview summarizes real active options without expanding variant selection into cards", () => {
+  const choices = [variant("1", { Color: "Azul" }), variant("2", { Color: "Negro" }), variant("2", { Color: "Negro" }), variant("3", { Color: "Rosa" }, false)];
+  const html = renderToStaticMarkup(createElement(ProductVariantPreview, { slug: "producto", variants: choices }));
+  assert.match(html, /2 opciones disponibles/);
+  assert.doesNotMatch(html, /<a\b|<button\b|<img\b|Azul|Negro|Rosa/);
+});
+
+test("empty and inactive variant rows never advertise card options", () => {
+  assert.equal(renderToStaticMarkup(createElement(ProductVariantPreview, { slug: "producto", variants: [] })), "");
+  assert.equal(renderToStaticMarkup(createElement(ProductVariantPreview, { slug: "producto", variants: [variant("1", { Color: "Azul" }, false)] })), "");
+  assert.match(renderToStaticMarkup(createElement(ProductVariantPreview, { slug: "producto", variants: [variant("1", { Color: "Azul" })] })), /1 opción disponible/);
 });

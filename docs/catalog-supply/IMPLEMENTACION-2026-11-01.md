@@ -64,3 +64,6 @@ No hubo sesión administrativa real ni compra/pago de prueba remoto: validación
 - `node --import tsx scripts/verify-catalog-import-responsive.ts`: Chromium local,320/390/1440px sin desborde horizontal de página. Fixture explícito sin persistencia ni login. Captura390px en `evidence/import-390.png`; prueba disposición visual, no pagos ni operaciones remotas.
 - Se corrigió un fixture de checkout que omitía la columna histórica supplier_last_checked_at requerida por el nuevo permiso. Después de la corrección pasan las4 pruebas de checkout/operaciones y la suite completa.
 - Revisión propia: corregida discrepancia entre payload de target y snapshots de vinculación; identidad conservadora incluye GTIN/modelo para no colisionar cuando el matcher rechaza coincidencias. Costos y evidencias permanecen privados.
+
+## Actualización posterior autorizada por el usuario
+Durante UX/UI V2, el usuario pidió expresamente ejecutar las migraciones pendientes antes del commit/push. Se aplicaron y verificaron remotamente `catalog_pricing_rules`, `supplier_catalog_import` y `supplier_checkout_operations`. El estado anterior «pendientes» queda como registro de la primera entrega. No se importaron/publicaron productos ni se ejecutaron pagos/pedidos de prueba. Código/Edge siguen pendientes de despliegue coordinado. Ver docs/premium-ux-v2/IMPLEMENTACION.md para evidencia y límites.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, HelpCircle, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 const faqs = [
   { question: "¿MYA vende por mayor y por menor con envíos a toda Argentina?", answer: "Sí. Comprá por menor desde una unidad en el catálogo, con precios en pesos. Para comprar por mayor, el mínimo es 5 productos en total o $100.000 en productos; podés combinar marcas y rubros. Los precios mayoristas se consultan con Máximo o Agustina por WhatsApp. Hacemos envíos a toda Argentina; el envío se cotiza por separado." },
@@ -63,101 +63,10 @@ export function StoreSeoFaq() {
     })),
   };
 
-  return (
-    <section aria-labelledby="store-seo-heading" className="bg-slate-50 border-t border-slate-200/80 py-12 sm:py-16">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c") }}
-      />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Authority Section */}
-        <div className="mb-12">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50/80 px-3 py-1 text-xs font-semibold text-sky-800">
-            <Sparkles className="h-3.5 w-3.5 text-sky-600" />
-            <span>Comprá en Argentina</span>
-          </div>
-          <h2 id="store-seo-heading" className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            MYA Importaciones: productos y envíos a toda Argentina
-          </h2>
-          <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-600 max-w-3xl">
-            Somos Máximo y Agustina. Desde Tandil, provincia de Buenos Aires, seleccionamos e importamos productos originales
-            para el cuidado personal, el hogar y el trabajo profesional. Comprá online con precios claros en pesos argentinos,
-            atención humana y condiciones de entrega claras.
-          </p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {categoryLinks.map((cat) => (
-              <Link
-                key={cat.href}
-                href={cat.href}
-                className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-sky-300 hover:shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition">
-                    {cat.title}
-                  </h3>
-                  <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-sky-600 group-hover:translate-x-0.5 transition" />
-                </div>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                  {cat.desc}
-                </p>
-              </Link>
-            ))}
-          </div>
-
-          {/* Brand Discovery Chips */}
-          <div className="mt-8 pt-6 border-t border-slate-200/70">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-              Explorá las marcas del catálogo
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {brandChips.map((brand) => (
-                <Link
-                  key={brand.name}
-                  href={brand.href}
-                  className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50/50 hover:text-sky-800 shadow-2xs active:scale-95"
-                >
-                  <span>{brand.name}</span>
-                  <span className="text-[10px] font-normal text-slate-600">· {brand.subtitle}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* FAQs Section */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 lg:p-10 shadow-sm">
-          <div className="flex items-center gap-2.5 text-sky-700">
-            <HelpCircle className="h-5 w-5" />
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">
-              Preguntas Frecuentes sobre Compras y Envíos
-            </h3>
-          </div>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Todo lo que necesitás saber antes de hacer tu pedido en MYA Importaciones.
-          </p>
-
-          <div className="mt-6 divide-y divide-slate-100">
-            {faqs.map((faq, index) => (
-              <details
-                key={faq.question}
-                className="group py-4 sm:py-5 first:pt-0 last:pb-0"
-                open={index === 0}
-              >
-                <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-4 py-1 font-semibold text-slate-900 hover:text-sky-700 transition text-sm sm:text-base focus-visible:outline-2 focus-visible:outline-sky-700 rounded-md">
-                  <span>{faq.question}</span>
-                  <span className="shrink-0 text-slate-600 transition group-open:rotate-180">
-                    ▼
-                  </span>
-                </summary>
-                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-slate-600 pl-1 border-l-2 border-sky-100">
-                  {faq.answer}
-                </p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return <section aria-labelledby="store-seo-heading" className="mya-section border-t border-zinc-100 bg-zinc-50"><div className="mya-container">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(faqJsonLd).replace(/</g,"\\u003c")}}/>
+    <h2 id="store-seo-heading" className="mya-section-title">Comprá con información clara</h2>
+    <div className="mt-4 grid gap-x-8 lg:grid-cols-2">{faqs.map(faq=><details key={faq.question} className="group border-b border-zinc-200 py-1"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-zinc-800 [&::-webkit-details-marker]:hidden">{faq.question}<ChevronDown className="size-4 shrink-0 text-zinc-500 group-open:rotate-180"/></summary><p className="pb-4 text-sm leading-6 text-zinc-600">{faq.answer}</p></details>)}</div>
+    <details className="mt-4"><summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-sky-800">Conocé MYA y explorá nuestras marcas<ChevronDown className="size-4"/></summary><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">Somos Máximo y Agustina. Desde Tandil, provincia de Buenos Aires, seleccionamos productos para el cuidado personal, el hogar y el trabajo. Precios en pesos, atención humana y condiciones de entrega claras.</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">{categoryLinks.map(cat=><Link key={cat.href} href={cat.href} className="inline-flex min-h-11 items-center text-xs font-medium text-sky-800">{cat.title}</Link>)}</div><div className="mt-2 flex flex-wrap gap-2">{brandChips.map(brand=><Link key={brand.name} href={brand.href} className="inline-flex min-h-11 items-center rounded-lg border border-zinc-200 bg-white px-3 text-xs text-zinc-700">{brand.name}</Link>)}</div></details>
+  </div></section>;
 }

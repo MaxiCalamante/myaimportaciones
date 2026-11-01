@@ -36,19 +36,23 @@ export function CategoryNavigation({ categories, catalogPath, onNavigate, mobile
     </div>
   </>;
 
-  if (mobile) return <nav aria-label="Categorías y subcategorías" className="my-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-2">
-    <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-3 pt-2">
-      <h2 className="text-base font-bold text-zinc-950">Explorá por categoría</h2>
-      <Link href={catalogPath} onClick={onNavigate} className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-sky-800">Ver catálogo <ArrowRight className="size-3" /></Link>
-    </div>
-    <div className="space-y-2">{roots.map(category => <details key={category.id} name="store-categories" className="group rounded-xl border border-zinc-200 bg-white open:border-sky-300">
-      <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 p-3 focus-visible:outline-2 focus-visible:outline-sky-600 [&::-webkit-details-marker]:hidden">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700"><CategoryIcon slug={category.slug} /></span>
-        <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-zinc-900">{category.name}</span>
-        <ChevronDown className="size-4 shrink-0 text-zinc-400 group-open:rotate-180 group-open:text-sky-700" />
-      </summary>
-      <div className="border-t border-zinc-100 p-3">{subcategoryLinks(category, true)}</div>
-    </details>)}</div>
+  if (mobile) return <nav aria-label="Categorías y subcategorías" className="py-4">
+    <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">Categorías</h2>
+    <div className="divide-y divide-zinc-100">{roots.map(category => {
+      const row = <>
+        <span className="grid size-8 shrink-0 place-items-center text-sky-700"><CategoryIcon slug={category.slug} /></span>
+        <span className="min-w-0 flex-1 text-sm font-medium leading-5 text-zinc-900">{category.name}</span>
+      </>;
+      return children(category.id).length ? <details key={category.id} name={`store-categories-${panelId}`} className="group">
+        <summary className="flex min-h-13 cursor-pointer list-none items-center gap-2 rounded-lg px-1 py-2 focus-visible:outline-2 focus-visible:outline-sky-600 [&::-webkit-details-marker]:hidden">
+          {row}<ChevronDown aria-hidden="true" className="mr-1 size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180 group-open:text-sky-700" />
+        </summary>
+        <div className="rounded-xl bg-zinc-50 p-3 pb-4">{subcategoryLinks(category, true)}</div>
+      </details> : <Link key={category.id} href={url(category.slug)} onClick={onNavigate}
+        className="flex min-h-13 items-center gap-2 rounded-lg px-1 py-2 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600">
+        {row}<ChevronRight aria-hidden="true" className="mr-1 size-4 shrink-0 text-zinc-400" />
+      </Link>;
+    })}</div>
   </nav>;
 
   return <nav aria-label="Categorías y subcategorías" className="grid grid-cols-[250px_1fr] bg-white text-zinc-950">

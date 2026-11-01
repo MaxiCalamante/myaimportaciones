@@ -4,7 +4,7 @@ import { defaultCarouselSlides, type CarouselSlide } from "@/lib/carousel";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgePercent, Boxes, Truck, Warehouse, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Boxes, Truck, Warehouse, ShieldCheck, Headphones, Pause, Play, Store } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -24,105 +24,50 @@ export function StoreHero({ slides = defaultCarouselSlides, preview = false }: {
   const current = currentSlide % slides.length;
   return <section aria-label={preview ? "Vista previa del carrusel" : "Carrusel de inicio"}
     onMouseEnter={() => setInteracting(true)} onMouseLeave={() => setInteracting(false)}
-    onFocus={() => setInteracting(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false); }}
-    className="border-b border-zinc-200/70 bg-white">
-    {!preview && <h1 className="sr-only">MYA Importaciones: catálogo de productos</h1>}
-    <div className="relative mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
-      {slides.map((slide, index) => <div key={slide.id} hidden={index !== current} aria-hidden={index !== current} inert={index !== current}
-        className={index === current ? "grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12" : "hidden"}>
-        <div className="order-2 min-w-0 pb-2 lg:order-1 lg:py-8">
-          <p className="mb-4 inline-flex items-center gap-2 text-xs font-medium text-sky-800"><span className="h-px w-6 bg-sky-600" />{slide.eyebrow}</p>
-          <h2 className="max-w-xl text-balance text-3xl font-semibold leading-tight text-zinc-950 sm:text-4xl lg:text-5xl">{slide.title}</h2>
-          <p className="mt-4 max-w-lg text-pretty text-sm leading-7 text-zinc-600 sm:mt-5 sm:text-base">{slide.description}</p>
-          {slide.btnText && slide.btnLink && <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-7">
-            <ButtonLink href={slide.btnLink} aria-disabled={preview || undefined} onClick={preview ? event => event.preventDefault() : undefined}
-              className="min-h-12 px-5" icon={<ArrowRight className="size-4" />}>{slide.btnText}</ButtonLink>
-            {slide.btnLink !== "/catalogo" && <Link href="/catalogo" className="inline-flex min-h-12 items-center px-3 text-sm font-medium text-zinc-600 hover:text-zinc-950">Todo el catálogo</Link>}
-          </div>}
-          <p className="mt-7 text-xs text-zinc-500">MYA Importaciones <span className="mx-2 text-zinc-300">/</span> Tandil · Argentina</p>
-        </div>
-        <div className="relative order-1 aspect-[16/9] min-w-0 overflow-hidden rounded-2xl bg-zinc-100 sm:rounded-3xl lg:order-2 lg:aspect-[6/5]">
-          {(index === 0 || index === current) && <Image src={slide.image} alt="" fill sizes="(min-width: 1024px) 600px, 100vw" quality={75} preload={index === 0} className="object-cover" />}
-          <span className="absolute bottom-4 left-4 rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-zinc-700">Selección MYA</span>
+    onFocus={() => setInteracting(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false); }} className="bg-white">
+    {!preview && <h1 className="sr-only">MYA Importaciones: tecnología, cosmética, perfumería y herramientas</h1>}
+    <div className="mya-container pt-3 sm:pt-5">
+      <div className="relative overflow-hidden rounded-2xl bg-zinc-800">
+      {slides.map((slide,index)=><div key={slide.id} hidden={index!==current} aria-hidden={index!==current} inert={index!==current} className={index===current?'relative isolate min-h-56 sm:min-h-80 lg:min-h-100':'hidden'}>
+        {(index===0||index===current)&&<Image src={slide.image} alt="" fill sizes="(min-width:1280px) 1216px, 100vw" quality={75} preload={index===0} className="-z-20 object-cover object-[65%_center]"/>}
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-linear-to-r from-black/75 via-black/35 to-transparent"/>
+        <div className="w-full max-w-2xl px-4 pt-4 pb-11 sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+          <p className="mb-2 truncate text-[10px] font-medium tracking-wide text-white/90 sm:mb-3 sm:text-xs">{slide.eyebrow}</p>
+          <h2 className="max-w-[78%] text-balance sm:max-w-md text-[clamp(1.5rem,6.5vw,2rem)] font-bold leading-[1.12] tracking-tight text-white sm:text-4xl lg:text-5xl">{slide.title}</h2>
+          <p className="mt-3 max-w-[78%] line-clamp-2 text-pretty sm:max-w-sm text-xs leading-5 text-white/95 sm:text-sm sm:leading-6">{slide.description}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-6">
+            {slide.btnText&&slide.btnLink&&<Link href={slide.btnLink} aria-disabled={preview||undefined} onClick={preview?event=>event.preventDefault():undefined} className="mya-action inline-flex items-center gap-2 px-2 text-[11px] font-semibold sm:px-5 sm:text-sm">{slide.btnText}<ArrowRight className="size-4"/></Link>}
+            {!preview&&<Link href="/mayorista" className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--mya-radius-control)] bg-white px-2 text-[11px] font-semibold text-sky-900 sm:px-4 sm:text-sm"><Store className="size-4"/>Mayorista</Link>}
+          </div>
         </div>
       </div>)}
-      {slides.length > 1 && <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3 sm:mt-5">
-        <button type="button" onClick={() => setPaused(value => !value)} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-zinc-600 hover:bg-zinc-50">{paused ? "Reanudar carrusel" : "Pausar carrusel"}</button>
-        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-          <button type="button" aria-label="Slide anterior" onClick={() => setCurrentSlide(value => (value - 1 + slides.length) % slides.length)} className="grid size-11 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"><ChevronLeft className="size-4" /></button>
-          <select aria-label="Elegir diapositiva" value={current} onChange={event => setCurrentSlide(Number(event.target.value))} className="min-h-11 rounded-lg bg-white px-2 text-xs tabular-nums text-zinc-600">
-            {slides.map((_, index) => <option key={index} value={index}>{String(index + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}</option>)}
-          </select>
-          <button type="button" aria-label="Siguiente slide" onClick={() => setCurrentSlide(value => (value + 1) % slides.length)} className="grid size-11 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"><ChevronRight className="size-4" /></button>
-        </div>
+      {slides.length>1&&<div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-0.5">
+        {slides.map((slide,index)=><button key={slide.id} type="button" onClick={()=>setCurrentSlide(index)} aria-label={`Ver diapositiva ${index+1}`} aria-pressed={index===current} className="grid size-11 place-items-center rounded-full focus-visible:outline-white"><span className={`h-1.5 rounded-full transition-[width] ${index===current?'w-5 bg-white':'w-1.5 bg-white/60'}`}/></button>)}
+        <button type="button" onClick={()=>setPaused(v=>!v)} aria-label={paused?'Reanudar carrusel':'Pausar carrusel'} className="ml-1 grid size-11 place-items-center rounded-full bg-black/25 text-white hover:bg-black/50">{paused?<Play className="size-3.5"/>:<Pause className="size-3.5"/>}</button>
       </div>}
-
+      </div>
     </div>
   </section>;
 }
 
-export function RetailHighlights() {
-  const items = [
-    { icon: BadgePercent, title: "Precios en pesos", desc: "Condiciones de pago claras antes de comprar." },
-    { icon: Truck, title: "Envíos a Argentina", desc: "Consultá entrega y seguimiento para tu destino." },
-    { icon: ShieldCheck, title: "Elegí con información", desc: "Fotos, versiones y características en cada ficha." },
-    { icon: Warehouse, title: "Atención personal", desc: "Hablá con Máximo y Agustina por WhatsApp." },
-  ];
-  return <section aria-label="Comprar en MYA" className="border-b border-zinc-200/70 bg-white">
-    <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-5 gap-y-6 px-4 py-6 sm:px-6 lg:grid-cols-4 lg:px-8 lg:py-7">
-      {items.map(({ icon: Icon, title, desc }) => <div key={title} className="flex min-w-0 items-start gap-3">
-        <Icon className="mt-0.5 size-5 shrink-0 stroke-[1.5] text-sky-800" />
-        <div><p className="text-xs font-semibold leading-5 text-zinc-900 sm:text-sm">{title}</p><p className="mt-1 text-pretty text-[11px] leading-5 text-zinc-500 sm:text-xs">{desc}</p></div>
-      </div>)}
-    </div>
-  </section>;
+export function RetailHighlights(){
+ const items=[{icon:Truck,title:'Envíos a toda Argentina'},{icon:ShieldCheck,title:'Condiciones claras'},{icon:Headphones,title:'Atención personalizada'}];
+ return <section aria-label="Comprar en MYA" className="mya-container"><div className="grid grid-cols-3 divide-x divide-zinc-200 border-b border-zinc-100 py-2 sm:py-5">{items.map(({icon:Icon,title})=><div key={title} className="flex flex-col items-center gap-1.5 px-2 text-center sm:flex-row sm:justify-center sm:gap-3"><Icon className="size-5 shrink-0 stroke-[1.6] text-sky-700"/><p className="max-w-28 text-[10px] font-medium leading-4 text-zinc-700 sm:max-w-none sm:text-xs">{title}</p></div>)}</div></section>;
 }
 
-export function CategoryStrip({ categories }: { categories: Category[] }) {
-  const roots = categories.filter(category => !category.parentId);
-  return <section id="categorias" className="scroll-mt-40 border-b border-zinc-200/70 bg-zinc-50 py-10 sm:py-14">
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
-        <div><p className="text-xs font-medium text-sky-800">Un mundo para elegir</p><h2 className="mt-2 text-balance text-2xl font-semibold text-zinc-950 sm:text-3xl">Encontrá tu próximo favorito</h2></div>
-        <Link href="/catalogo" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-zinc-700 hover:text-sky-800">Ver todo el catálogo<ArrowRight className="size-4" /></Link>
-      </div>
-      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scrollbar-thin sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 xl:grid-cols-5">
-        {roots.map(category => {
-          const subs = categories.filter(child => child.parentId === category.id);
-          const href = `/catalogo?category=${encodeURIComponent(category.slug)}`;
-          return <article key={category.id} className="w-[min(16rem,80vw)] shrink-0 snap-start overflow-hidden rounded-2xl border border-zinc-200/80 bg-white sm:w-auto">
-            <Link href={href} className="relative block aspect-[4/3] overflow-hidden bg-zinc-100" aria-label={`Explorar ${category.name}`}>
-              <Image src={category.imageUrl || "/placeholder-product.svg"} alt={category.name} fill sizes="(min-width: 1280px) 230px, (min-width: 640px) 40vw, 260px" quality={75}
-                className={category.slug === "electronica" ? "object-contain p-5" : "object-cover"} />
-            </Link>
-            <div className="p-4">
-              <Link href={href} className="flex min-h-12 items-start justify-between gap-2 text-sm font-semibold leading-6 text-zinc-900 hover:text-sky-800"><h3>{category.name}</h3><ArrowRight className="mt-1 size-4 shrink-0 text-zinc-400" /></Link>
-              {subs.length > 0 && <details className="mt-3 border-t border-zinc-100 pt-1">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-zinc-500 [&::-webkit-details-marker]:hidden">{subs.length} subcategorías<ChevronRight className="size-3.5 shrink-0" /></summary>
-                <div className="grid gap-1 pb-1">{subs.map(sub => <Link key={sub.id} href={`/catalogo?category=${encodeURIComponent(sub.slug)}`} className="flex min-h-11 items-center rounded-lg bg-zinc-50 px-2.5 py-2 text-xs leading-5 text-zinc-700 hover:bg-sky-50 hover:text-sky-900">{sub.name}</Link>)}</div>
-              </details>}
-            </div>
-          </article>;
-        })}
-      </div>
-      <p className="mt-2 text-xs text-zinc-500 sm:hidden">Deslizá para explorar los rubros →</p>
-    </div>
-  </section>;
+export function CategoryStrip({categories}:{categories:Category[]}){
+ const roots=categories.filter(c=>!c.parentId);
+ return <section id="categorias" className="bg-white py-4 sm:py-8"><div className="mya-container">
+ <h2 className="mya-section-title mb-3">Explorá por categoría</h2>
+ <div className="grid grid-cols-6 gap-2 sm:grid-cols-5 sm:gap-3">{roots.map((category,index)=><Link key={category.id} href={`/catalogo?category=${encodeURIComponent(category.slug)}`} className={`group min-w-0 overflow-hidden rounded-xl border border-zinc-100 bg-zinc-50 p-1.5 sm:p-2 hover:border-sky-200 hover:bg-sky-50 ${roots.length===5&&index>2?'col-span-3':'col-span-2'} sm:col-span-1`}>
+ <div className="relative mx-auto h-12 w-full sm:h-28 lg:h-32"><Image src={category.imageUrl||'/placeholder-product.svg'} alt="" fill sizes="(min-width:1024px) 200px, 30vw" quality={75} className="object-contain p-1 mix-blend-multiply"/></div>
+ <div className="mt-1 flex min-h-6 items-center justify-between gap-1 text-[11px] font-semibold leading-4 text-zinc-900 sm:text-sm"><span>{/cosm[eé]tica/i.test(category.name)?"Cosmética":/herramientas/i.test(category.name)?"Herramientas":/cabello|capilar/i.test(category.name)?"Cuidado capilar":category.name}</span><ArrowRight className="size-3.5 shrink-0 text-zinc-600 group-hover:text-sky-700"/></div>
+ </Link>)}</div></div></section>;
 }
 
-export function ProductSection({ id, eyebrow, title, products, channel = "retail" }: {
-  id?: string; eyebrow: string; title: string; products: Product[]; channel?: ProductChannel;
-}) {
-  if (!products.length) return null;
-  return <section className="bg-white py-10 sm:py-14" id={id}>
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-100 pb-5">
-        <div><p className="text-xs font-medium text-sky-800">{eyebrow}</p><h2 className="mt-2 text-balance text-2xl font-semibold text-zinc-950 sm:text-3xl">{title}</h2></div>
-        {channel === "wholesale" ? <p className="text-sm text-zinc-500">Compra mínima y precios por volumen</p> : <Link href="/catalogo" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-zinc-700 hover:text-sky-800">Ver catálogo<ArrowRight className="size-4" /></Link>}
-      </div>
-      <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-5 lg:grid-cols-4">{products.map(product => <ProductCard channel={channel} key={product.id} product={product} />)}</div>
-    </div>
-  </section>;
+export function ProductSection({id,eyebrow,title,products,channel='retail'}:{id?:string;eyebrow:string;title:string;products:Product[];channel?:ProductChannel}){
+ if(!products.length)return null;
+ return <section className="bg-white py-4 sm:py-8" id={id}><div className="mya-container"><div className="mb-3 flex items-center justify-between gap-3"><h2 className="mya-section-title">{title}</h2><span className="sr-only">{eyebrow}</span><Link href={channel==='wholesale'?'/mayorista':'/catalogo'} className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[11px] font-semibold text-sky-800 sm:text-sm">Ver catálogo<ArrowRight className="size-3.5"/></Link></div><div className="grid grid-cols-2 items-start gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">{products.map((product,index)=><ProductCard key={product.id} product={product} channel={channel} priority={id==='catalogo'&&index<2}/>)}</div></div></section>;
 }
 
 export function WholesaleTeaser({

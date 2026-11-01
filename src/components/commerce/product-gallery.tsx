@@ -35,7 +35,7 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
         type="button"
         onClick={() => { dialog.current?.showModal(); setEnlarged(true); }}
         aria-label={`Ampliar foto de ${title}`}
-        className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-3xl border border-zinc-200/70 bg-white p-6 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-sky-600"
+        className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl border border-zinc-200/70 bg-white p-6 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-sky-600"
       >
         <Image
           src={src}
@@ -43,7 +43,7 @@ export function ProductGallery({ title, image, images = [] }: { title: string; i
           fill
           priority
           sizes="(min-width: 1024px) 560px, 100vw"
-          className="object-contain p-7 sm:p-10"
+          className="object-contain p-4 sm:p-7"
           onError={() => {
             if (selected && selected !== "/placeholder-product.svg") {
               setFailed((a) => [...a, selected]);

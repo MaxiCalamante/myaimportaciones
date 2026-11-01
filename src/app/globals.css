@@ -1,7 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
+  --background: #ffffff;
+  --mya-blue: #0369a1;
+  --mya-blue-hover: #075985;
+  --mya-blue-soft: #eff8ff;
+  --mya-ink: #18181b;
+  --mya-muted: #52525b;
+  --mya-line: #e4e4e7;
+  --mya-radius-card: 0.875rem;
+  --mya-radius-control: 0.625rem;
+  --mya-control: 2.75rem;
+  --mya-space-1: 0.25rem;
+  --mya-space-2: 0.5rem;
+  --mya-space-3: 0.75rem;
+  --mya-space-4: 1rem;
+  --mya-space-6: 1.5rem;
+  --mya-section-space: 1.5rem;
+  --mya-heading: clamp(1.125rem, 2.2vw, 1.75rem);
+  --mya-shadow: 0 2px 10px rgb(24 24 27 / 0.04);
   --foreground: #09090b;
 }
 
@@ -77,7 +94,7 @@ html {
   .content-page { padding: 2.5rem; }
 }
 @media (max-width: 767px) {
-  .storefront-shell { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  .storefront-shell { padding-bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
   .storefront-shell:has([data-product-page]) { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
   .storefront-shell:has([data-product-page]) .privacy-banner { bottom: calc(7rem + env(safe-area-inset-bottom)); }
   :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]) { font-size: 1rem; }
@@ -185,3 +202,15 @@ html {
   .admin-cost-table td:nth-child(7)::before { content: "Control"; }
 }
 
+
+/* MYA V2: shared storefront scale. Tailwind breakpoints: sm640 / md768 / lg1024 / xl1280. */
+.mya-section { padding-block: var(--mya-section-space); }
+.mya-section-title { font-size: var(--mya-heading); font-weight: 700; line-height: 1.25; letter-spacing: -0.025em; }
+.mya-container { width: 100%; max-width: 80rem; margin-inline: auto; padding-inline: 1rem; }
+.mya-action { min-height: var(--mya-control); border-radius: var(--mya-radius-control); background: var(--mya-blue); color: #fff; }
+.mya-action:hover { background: var(--mya-blue-hover); }
+@media (min-width: 640px) { .mya-container { padding-inline: 1.5rem; } }
+@media (min-width: 1024px) {
+ :root { --mya-section-space: 2.5rem; }
+ .mya-container { padding-inline: 2rem; }
+}

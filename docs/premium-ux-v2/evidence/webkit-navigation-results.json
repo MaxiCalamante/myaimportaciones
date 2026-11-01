@@ -1,0 +1,81 @@
+{
+  "engine": "Playwright WebKit2370 Linux WPE; mobile viewport emulation, not physical iPhone",
+  "checkedAt": "2026-11-01T06:45:07.617Z",
+  "results": [
+    {
+      "width": 320,
+      "geometry": {
+        "client": 320,
+        "scroll": 320,
+        "dialog": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 844,
+          "top": 0,
+          "right": 320,
+          "bottom": 844,
+          "left": 0
+        },
+        "focusInside": true,
+        "scrollLocked": true
+      },
+      "restoration": {
+        "scroll": "",
+        "inert": false
+      },
+      "subcategory": "/catalogo?category=lociones-corporales-fragancias",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "geometry": {
+        "client": 390,
+        "scroll": 390,
+        "dialog": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "top": 0,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "focusInside": true,
+        "scrollLocked": true
+      },
+      "restoration": {
+        "scroll": "",
+        "inert": false
+      },
+      "subcategory": "/catalogo?category=lociones-corporales-fragancias",
+      "errors": []
+    },
+    {
+      "width": 430,
+      "geometry": {
+        "client": 430,
+        "scroll": 430,
+        "dialog": {
+          "x": 0,
+          "y": 0,
+          "width": 430,
+          "height": 844,
+          "top": 0,
+          "right": 430,
+          "bottom": 844,
+          "left": 0
+        },
+        "focusInside": true,
+        "scrollLocked": true
+      },
+      "restoration": {
+        "scroll": "",
+        "inert": false
+      },
+      "subcategory": "/catalogo?category=lociones-corporales-fragancias",
+      "errors": []
+    }
+  ]
+}
