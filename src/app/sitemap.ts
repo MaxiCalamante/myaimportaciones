@@ -5,6 +5,8 @@ import { deriveCatalogFacets } from "@/lib/catalog-facets";
 import { publicUrl } from "@/lib/seo";
 import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { categories, products: catalog, error } = await getStorefrontData({ all: true });
   if (error) throw new Error("No se pudo generar el sitemap con el catálogo actual.");
