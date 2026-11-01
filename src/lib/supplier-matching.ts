@@ -57,8 +57,6 @@ function normalized(text:string){
  s = s.replace(/\b(\d+)\s*\/\s*(\d+)\s*g\b/gi, '$1GB $2GB');
  s = s.replace(/(\d+)\s*\+\s*(\d+)\s*(gb|tb)\b/gi, '$1$3 $2$3');
  s = s.replace(/\b([A-Z]{1,2})\/(A\d{4})\b/gi, '$1/A $2');
- s = s.replace(/\b([2345]G)\b/gi, '');
-
  s = titleIdentity(s.replace(/\((?:[XB]0[A-Z0-9]{8}|\d{5,14})\)\s*$/i,'').replace(/(\d)[,.](\d)/g,'$1decimal$2')).replace(/(\d+)decimal(\d+)/g,'$1.$2');
  for(const [pattern,replacement]of substitutions)s=s.replace(pattern,replacement);
  if(s.includes('ampoule'))s=s.replace(/\bserum\b/g,'');
@@ -68,6 +66,11 @@ function normalized(text:string){
 const optional=new Set(['facial','face','coreano','coreana','korean','cosmetico','cosmeticos','producto','produto','de','do','da','del','para','e','the','and','con','com','original','new','sealed','pantalla','tela','chip','caixa','caja','slim','global']);
 export function identityTokens(text:string){return [...new Set(normalized(text).split(' ').filter(t=>t&&!optional.has(t)))].sort();}
 function measures(text:string){return [...new Set([...normalized(text).matchAll(/\b(\d+(?:\.\d+)?)(ml|gb|tb|mah|kg|mm|nm|w|v|g|l|units)\b/g)].map(m=>`${Number(m[1])*(m[2]==='l'||m[2]==='kg'||m[2]==='tb'?1000:1)}${m[2]==='l'?'ml':m[2]==='kg'?'g':m[2]==='tb'?'gb':m[2]}`))].sort();}
+function formulation(text:string){
+ const words=titleIdentity(text).replace(/\beau de parfum\b/g,'edp').replace(/\beau de toilette\b/g,'edt').replace(/\beau de cologne\b/g,'edc');
+ return [...new Set([...words.matchAll(/\b(edp|edt|edc|extrait)\b/g)].map(m=>m[1]).concat([...text.matchAll(/\b(\d+(?:[.,]\d+)?)\s*%/g)].map(m=>`${Number(m[1].replace(',','.'))}%`)))].sort();
+}
+function networks(text:string){return [...new Set(titleIdentity(text).match(/\b[2345]g\b/g)??[])].sort();}
 const colors=['black','white','gray','blue','green','pink','purple','silver','gold','titanium','natural','desert','cosmic','orange','yellow','starlight','midnight','graphite','burgundy','glacier','citrus','blush','lavender','sage'];
 function colorValues(text:string){return colors.filter(c=>normalized(text).split(' ').includes(c));}
 function codes(text:string){
@@ -89,6 +92,8 @@ function targetGtins(t:MatchTarget){return Object.entries(t.specifications).filt
 function evaluate(source:MatchSource,target:MatchTarget){
  const raw=[source.title,source.model??''].join(' '),own=target.title;
  if(/\.\.\.|…/.test(source.title))return {exact:false,score:0,reason:'Título del proveedor truncado'};
+ const brand=normalized(target.brand),sourceBrand=normalized(source.brand??'');
+ if(brand&&sourceBrand&&brand!==sourceBrand)return{exact:false,score:0,reason:'Marca de fabricante diferente'};
  const condPattern = /\b(cpo|outlet|refurbished|reacondicionado|usado|seminovo|ativo|activado)\b/i;
  if(condPattern.test(raw)!==condPattern.test(own))return {exact:false,score:0,reason:'Condición de unidad diferente'};
  const accessories=/\b(escobillas|carbones|repuesto|compat[ií]vel|compatible|funda|carcasa|protector|pelicula|correa|pulseira|cargador|carregador|charger|adaptador|adapter|bateria|battery)\b/gi;
@@ -97,14 +102,19 @@ function evaluate(source:MatchSource,target:MatchTarget){
  const a=identityTokens(own),b=identityTokens(source.title),set=new Set(b),overlap=a.filter(t=>set.has(t)).length;
  const score=overlap/Math.max(a.length,b.length,1);
  const ownMeasures=measures(own),theirMeasures=measures(source.title);
- if(ownMeasures.length&&JSON.stringify(ownMeasures)!==JSON.stringify(theirMeasures))return {exact:false,score:score*.5,reason:'Tamaño, capacidad, potencia o cantidad diferentes o incompletos'};
+ if(JSON.stringify(ownMeasures)!==JSON.stringify(theirMeasures))return {exact:false,score:score*.5,reason:'Tamaño, capacidad, potencia o cantidad diferentes o incompletos'};
+ if(JSON.stringify(networks(own))!==JSON.stringify(networks(source.title)))return{exact:false,score:score*.5,reason:'Red móvil diferente o ausente'};
+ if(JSON.stringify(formulation(own))!==JSON.stringify(formulation(source.title)))return{exact:false,score:score*.5,reason:'Concentración o fórmula diferente o ausente'};
  if(JSON.stringify(colorValues(own))!==JSON.stringify(colorValues(source.title)))return{exact:false,score:score*.5,reason:'Color o terminación diferente o ausente'};
  if(a.includes('kit')!==b.includes('kit'))return{exact:false,score:score*.5,reason:'Kit y unidad individual no son equivalentes'};
  const gtin=source.gtin&&validGtin(source.gtin)?source.gtin:null;
- if(gtin&&targetGtins(target).includes(gtin))return{exact:true,score:1,method:'gtin' as const,reason:'GTIN idéntico y presentación compatible'};
+ const ownGtins=targetGtins(target);
+ if(gtin&&ownGtins.length&&!ownGtins.includes(gtin))return{exact:false,score:0,reason:'GTIN de producto diferente'};
+ if(gtin&&ownGtins.includes(gtin))return{exact:true,score:1,method:'gtin' as const,reason:'GTIN idéntico y presentación compatible'};
  const ownCodes=codes([target.model,target.sku,target.specifications['Modelo / referencia']??'',target.title].join(' '));
  const sourceCodes=codes(raw),shared=ownCodes.filter(c=>sourceCodes.includes(c));
  if(shared.length){
+  if(brand&&sourceBrand!==brand&&!` ${normalized(source.title)} `.includes(` ${brand} `))return{exact:false,score,reason:'Código compartido sin marca de fabricante confirmada'};
   const conflicting = sourceCodes.filter(c => !ownCodes.includes(c) && !/^(RAM|ROM|DS|SIM|CHIP|A\d{2}|M\d|IOS|PANTALLA|TELA)/i.test(c));
   if(conflicting.length>0)return{exact:false,score,reason:'La ficha contiene códigos de modelos diferentes'};
   const hardware=/\b(apple|samsung)\b/i.test(target.brand);

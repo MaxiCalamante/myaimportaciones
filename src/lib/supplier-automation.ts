@@ -70,9 +70,13 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
     if(config.autoStock&&job.product_id){
       const stock=await db.rpc('refresh_supplier_availability_v1',{product_input:job.product_id});
       if(stock.error)throw new Error(stock.error.message);
-      if(config.autoPauseWhenOutOfStock!==false){
-        const hasStock=Boolean(stock.data);
-        await db.from('products').update({is_active:hasStock,updated_at:stamp}).eq('id',job.product_id).eq('fulfillment_mode','supplier');
+      if(config.autoPauseWhenOutOfStock!==false&&stock.data===true){
+        // The RPC reports that evidence was applied, not whether stock exists.
+        // Publication belongs to the reviewed catalog flow; tracking can only pause.
+        const paused=await db.from('products').update({is_active:false,updated_at:stamp})
+          .eq('id',job.product_id).eq('fulfillment_mode','supplier').eq('is_active',true)
+          .eq('has_variants',false).eq('supplier_available',false).eq('supplier_stock_status','out_of_stock');
+        if(paused.error)throw new Error('La evidencia se guardó pero no se pudo pausar el producto agotado.');
       }
     }
     await db.from('supplier_source_health').upsert({supplier_id:supplier.id,last_attempt_at:stamp,last_success_at:stamp,status:'connected',message:'Consulta real del producto principal',updated_at:stamp});

@@ -48,3 +48,39 @@ test('plan cubre todos los productos por proveedor sin depender de portada',()=>
  for(const supplier of['s','t'])assert.deepEqual([...new Set(jobs.filter(j=>j.supplier_id===supplier).flatMap(j=>j.product_ids))].sort(),['a','b','t']);
  assert.equal(validGtin('8800256112227'),true);assert.equal(validGtin('8800256112228'),false);
 });
+
+test('red móvil distingue 4G, 5G y especificación ausente incluso con el mismo código',()=>{
+ const target=matchTargets([{id:'a16',title:'Samsung Galaxy A16 4G 128GB Blue SM-A165F',brand:'Samsung',model:'SM-A165F'}],[]);
+ for(const title of ['Samsung Galaxy A16 5G 128GB Blue SM-A165F','Samsung Galaxy A16 128GB Blue SM-A165F'])assert.notEqual(matchSupplierProduct({title},target).status,'exact');
+ assert.equal(matchSupplierProduct({title:'Samsung Galaxy A16 4G 128GB Blue SM-A165F'},target).status,'exact');
+});
+
+test('medidas y concentración incompletas no se compensan con un código de fabricante',()=>{
+ for(const [own,other] of [
+  ['Total Drill ABC123','Total Drill ABC123 220V'],
+  ['Anua Serum ABC123','Anua Serum ABC123 50ml'],
+  ['Anua Serum ABC123 50ml 2%','Anua Serum ABC123 50ml 5%'],
+  ['Anua Serum ABC123 50ml 2%','Anua Serum ABC123 50ml'],
+  ['Lattafa Perfume ABC123 100ml EDP','Lattafa Perfume ABC123 100ml EDT'],
+  ['Lattafa Perfume ABC123 100ml EDP','Lattafa Perfume ABC123 100ml'],
+ ] as const){
+  const brand=own.split(' ')[0];
+  assert.notEqual(matchSupplierProduct({title:other},matchTargets([{id:'p',title:own,brand,model:'ABC123'}],[])).status,'exact',`${own} / ${other}`);
+  assert.notEqual(matchSupplierProduct({title:own},matchTargets([{id:'p',title:other,brand,model:'ABC123'}],[])).status,'exact',`${other} / ${own}`);
+ }
+});
+
+test('marca diferente o ausente no permite vincular códigos compartidos',()=>{
+ const targets=matchTargets([{id:'t',title:'Total Drill ABC123 220V',brand:'Total',model:'ABC123'}],[]);
+ for(const source of [
+  {title:'Wadfow Drill ABC123 220V'},
+  {title:'Total Drill ABC123 220V',brand:'Wadfow'},
+  {title:'Drill ABC123 220V'},
+ ])assert.notEqual(matchSupplierProduct(source,targets).status,'exact');
+});
+
+test('GTIN contradictorio impide coincidencia por título o por código',()=>{
+ const targets=matchTargets([{id:'p',title:'Anua Serum ABC123 50ml',brand:'Anua',model:'ABC123',specifications:{GTIN:'4006381333931'}}],[]);
+ assert.notEqual(matchSupplierProduct({title:'Anua Serum ABC123 50ml',gtin:'5901234123457'},targets).status,'exact');
+ assert.equal(matchSupplierProduct({title:'Anua Serum ABC123 50ml',gtin:'4006381333931'},targets).method,'gtin');
+});
