@@ -26,7 +26,7 @@ Dirección: blanco, texto neutro, azul MYA, fotos originales, cards cuadradas co
 - PDP conserva galería/zoom, selección de variantes, precios, envío, consultas y compra; se reduce el acolchado de imágenes. Mayorista y FAQ compactos, manteniendo reglas y contenido SEO.
 
 ## Verificación real
-`npm test`:315/315, sin fallos. Pruebas focalizadas de cards, variantes y navegación:15/15. TypeScript y build de producción aprobados con configuración pública real de Supabase, sin credenciales de servicio. ESLint sin errores;151warnings existentes (se revisó separadamente código modificado).
+`npm test`:315/315, sin fallos. Pruebas focalizadas de cards, variantes y navegación:15/15. TypeScript y build de producción aprobados con configuración pública real de Supabase, sin credenciales de servicio. ESLint sin errores;150warnings existentes (se revisó separadamente código modificado).
 
 Chromium: home y menú en320,375,390,430,768,1024,1440px. Catálogo, PDP simple, PDP con variantes y carrito en los7anchos:28casos aprobados, sin recortes horizontales de precios ni desbordes de página. Se verificó favorito ida/vuelta.57categorías/subcategorías reales devuelven200; no se rehacen rutas previamente corregidas. Ver `evidence/results.json` y `routes.json`.
 

@@ -4,7 +4,7 @@ import { defaultCarouselSlides, type CarouselSlide } from "@/lib/carousel";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Boxes, Truck, Warehouse, ShieldCheck, Headphones, Pause, Play, Store } from "lucide-react";
+import { ArrowRight, Boxes, Truck, ShieldCheck, Headphones, Pause, Play, Store } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
