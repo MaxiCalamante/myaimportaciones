@@ -3,6 +3,7 @@ import { parseTotalAvailability } from "./total-availability";
 import type { IntelligenceSupplier, SupplierOffer } from "./supplier-intelligence";
 import { supplierSourceUrl } from "./supplier-intelligence";
 import { publicProductFromJsonLd,totalVisibleOffer,type PublicProduct } from "./supplier-public-data";
+import { atlanticoPublicProduct } from './atlantico-product';
 
 type Outcome = { ok: true; values: { availability: string; origin_cost: number | null; currency: string | null } } | { ok: false; missing?: boolean; message: string };
 /** Read only a JSON literal assigned by PrestaShop. Never evaluate third-party scripts. */
@@ -23,6 +24,11 @@ export function pageCurrency(html: string): string | undefined {
 }
 /** Strict identity gate. Related cards, parser failures and 404s never mean no physical MYA stock. */
 export function parseRegisteredOffer(html: string, offer: SupplierOffer, supplier: IntelligenceSupplier): Outcome {
+  if (supplier.official_key === 'atlantico') {
+    const p = atlanticoPublicProduct(html, offer.source_url);
+    if (!p || p.external_id !== offer.external_id || offer.variant_key !== 'base' || p.availability === 'unknown') return {ok:false,message:'Atlántico: la ficha no confirma identidad primaria y disponibilidad.'};
+    return {ok:true,values:{availability:p.availability,origin_cost:p.origin_cost,currency:p.currency}};
+  }
   if (supplier.official_key === "atacado-connect") {
     const p=publicProductFromJsonLd(html,offer.source_url,offer.external_id);
     if(!p||p.external_id!==offer.external_id||p.availability==='unknown')return {ok:false,message:'La ficha no confirma identidad o disponibilidad del producto principal.'};
@@ -51,6 +57,7 @@ export function parseRegisteredOffer(html: string, offer: SupplierOffer, supplie
 }
 /** Discover identity only from the primary product of a curated source URL. */
 export function inspectSupplierProduct(html:string,url:string,supplier:IntelligenceSupplier,sku?:string):PublicProduct|null {
+  if (supplier.official_key === 'atlantico') return atlanticoPublicProduct(html, url);
   if(['star-company','atacado-usa'].includes(supplier.official_key??'')){
     const tag=[...html.matchAll(/<[^>]+>/g)].map(m=>m[0]).find(t=>/\bid\s*=\s*["']product-details["']/i.test(t));
     const attr=tag?.match(/\bdata-product\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];if(!attr)return null;

@@ -39,7 +39,7 @@ async function reserve(db:SupabaseClient,supplier:IntelligenceSupplier,url:strin
 function sourceOf(o:TrackedOffer){return{...o,title:o.evidence?.sourceTitle??o.title};}
 function plausible(source:string,targets:MatchTarget[]){const tokens=identityTokens(source.replace(/\.\.\.|…/g,''));return targets.some(t=>{const own=new Set(identityTokens(t.title));return tokens.filter(k=>k.length>2&&own.has(k)).length>=3;});}
 async function queueDetail(db:SupabaseClient,supplier:IntelligenceSupplier,url:string,productIds:string[],baseline=false){
- if(!['star-company','atacado-usa','total','atacado-connect'].includes(supplier.official_key??''))return;
+ if(!['star-company','atacado-usa','total','atacado-connect','atlantico'].includes(supplier.official_key??''))return;
  if(new URL(url).pathname==='/')return;
  const r=await db.from('supplier_discovery_jobs').upsert({supplier_id:supplier.id,kind:'detail',query:'',source_url:supplierSourceUrl(url,supplier),product_ids:[...new Set(productIds)],next_run_at:new Date(Date.now()-(baseline?2:1)*3600000).toISOString()},{onConflict:'supplier_id,kind,query,source_url',ignoreDuplicates:true});
  if(r.error)throw new Error('No se pudo programar la ficha exacta.');
@@ -58,7 +58,7 @@ export async function matchAndLinkOffer(db:SupabaseClient,o:TrackedOffer,catalog
  if(o.product_id&&o.verification==='verified')return'unchanged';
  const supplier=catalog.suppliers.find(s=>s.id===o.supplier_id);if(!supplier)return'none';
  const result=matchSupplierProduct({...sourceOf(o),supplierKey:supplier.official_key??''},catalog.targets);
- const needsDetail=o.variant_key.startsWith('listing:')&&['star-company','atacado-usa','total','atacado-connect'].includes(supplier.official_key??'');
+ const needsDetail=o.variant_key.startsWith('listing:')&&['star-company','atacado-usa','total','atacado-connect','atlantico'].includes(supplier.official_key??'');
  if(needsDetail&&(result.status!=='none'||plausible(o.evidence?.sourceTitle??o.title,catalog.targets))){await queueDetail(db,supplier,o.source_url,result.target?[result.target.productId]:result.alternatives);return'detail';}
  if(result.status==='exact'&&result.target){
   const r=await db.rpc('link_supplier_offer_v1',{link_input:linkPayload(o,result.target,catalog,result.method!,result.reason)});
