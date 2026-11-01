@@ -73,7 +73,7 @@ export function SupplierOpportunitiesRadar({
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editRetailPrice, setEditRetailPrice] = useState<number>(0);
   const [editWholesalePrice, setEditWholesalePrice] = useState<number>(0);
-  const [editIsActive, setEditIsActive] = useState(true);
+  const [editIsActive, setEditIsActive] = useState(false);
   const [editMlUrl, setEditMlUrl] = useState("");
   const [editMlPrice, setEditMlPrice] = useState<number>(0);
   const [mlAppliedMessage, setMlAppliedMessage] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export function SupplierOpportunitiesRadar({
         categoryId: opp.categoryId,
         retailPrice: opp.suggestedRetailPrice,
         wholesalePrice: suggestedWholesale,
-        isActive: true,
+        isActive: false,
         mlUrl: opp.mlUrl || undefined,
         mlPrice: opp.mlPrice && opp.mlPrice > 0 ? opp.mlPrice : undefined,
       });
@@ -189,7 +189,7 @@ export function SupplierOpportunitiesRadar({
       setEditWholesalePrice(0);
     }
 
-    setEditIsActive(true);
+    setEditIsActive(false);
     setImportSuccess(null);
     setImportError(null);
   };
@@ -830,7 +830,7 @@ export function SupplierOpportunitiesRadar({
                       </span>
                       {quickImportSuccessMap.get(opp.offerId) && (
                         <Link
-                          href={`/producto/${quickImportSuccessMap.get(opp.offerId)!.slug}`}
+                          href="/admin/oportunidades/importacion"
                           target="_blank"
                           className="text-[10px] underline text-emerald-800 hover:text-emerald-950"
                         >
@@ -1134,20 +1134,21 @@ export function SupplierOpportunitiesRadar({
                 <div className="flex items-center justify-between rounded-xl border border-zinc-200 p-3">
                   <div className="space-y-0.5">
                     <span className="text-xs font-bold text-zinc-900 block">
-                      Publicar inmediatamente en tienda
+                      Publicación sujeta a revisión
                     </span>
                     <span className="text-[11px] text-zinc-500 block">
-                      Visible en el catálogo público para comprar
+                      Se guarda como borrador; aprobalo en Importación masiva y revisión.
                     </span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={editIsActive}
+                    disabled checked={false}
                     onChange={(e) => setEditIsActive(e.target.checked)}
                     className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500 cursor-pointer"
                   />
                 </div>
 
+                <p className="text-xs text-zinc-600">El servidor calcula el precio del borrador con las reglas vigentes. Los ajustes particulares se guardan después desde Productos y Costos.</p>
                 {/* Modal Buttons */}
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button

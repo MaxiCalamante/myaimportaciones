@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { getAdminClient } from "@/lib/admin-auth";
@@ -49,6 +50,7 @@ export default async function AdminOpportunitiesPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-5 flex justify-end"><Link href="/admin/oportunidades/importacion" className="rounded-xl bg-sky-800 px-4 py-3 text-sm font-semibold text-white">Importación masiva y revisión de catálogo</Link></div>
       <SupplierOpportunitiesRadar
         initialData={initialData}
         categories={categories}

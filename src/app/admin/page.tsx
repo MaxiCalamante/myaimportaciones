@@ -9,7 +9,8 @@ export const metadata = {
   title: "Panel de Control | MYA Importaciones",
 };
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{editProduct?:string}> }) {
+  const requested = await searchParams;
   const auth = await getCurrentProfile();
 
   if (hasSupabaseConfig() && !auth.profile) {
@@ -22,5 +23,5 @@ export default async function AdminPage() {
 
   const data = await getAdminDashboardData();
 
-  return <AdminDashboard data={data} supabaseReady={hasSupabaseConfig()} />;
+  return <AdminDashboard data={data} supabaseReady={hasSupabaseConfig()} initialEditProductId={requested.editProduct} />;
 }

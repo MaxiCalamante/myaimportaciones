@@ -1,4 +1,5 @@
 // Supabase Edge runtime. Shared business rules are packaged from src/lib, never copied by hand.
+import {runCatalogImportJobs} from '../../../src/lib/catalog-import-worker';
 import {createClient} from '@supabase/supabase-js';
 import {runSupplierAutomation,repriceProduct,type TrackingConfig} from '../../../src/lib/supplier-automation';
 import {readCrosslinkCatalog,runSupplierDiscovery,seedSupplierDiscovery} from '../../../src/lib/supplier-crosslinks';
@@ -19,7 +20,10 @@ async function run(job:string){
  if(initial.error)throw new Error('No se pudo registrar el ciclo en la nube.');
  let report:Record<string,unknown>={};
  try{
-  if(job==='sync')report=await runSupplierAutomation(db,{worker:'supabase-linked-products',limit:18,timeBudgetMs:70000});
+  if(job==='sync'){
+   const catalogImports=await runCatalogImportJobs(db,8000);
+   report={...await runSupplierAutomation(db,{worker:'supabase-linked-products',limit:18,timeBudgetMs:70000}),catalogImports};
+  }
   else if(job==='details'){
    const catalog=await readCrosslinkCatalog(db);
    report=await runSupplierDiscovery(db,catalog,async()=>{throw new Error('Esta tarea solo procesa fichas primarias; no ejecuta navegadores locales.');},{detailsOnly:true,worker:'supabase-cross-supplier-details',limit:6,timeBudgetMs:65000});

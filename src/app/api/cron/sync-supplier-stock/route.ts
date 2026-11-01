@@ -1,5 +1,6 @@
 import { createCommerceService, hasCommerceService } from "@/lib/supabase/service";
 import { NextRequest, NextResponse } from "next/server";
+import { runCatalogImportJobs } from "@/lib/catalog-import-worker";
 import { runSupplierAutomation } from "@/lib/supplier-automation";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { revalidatePath } from "next/cache";
@@ -17,12 +18,14 @@ export async function GET(req: NextRequest) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) return NextResponse.json({ error: "Límite inválido" }, { status: 400 });
 
   try {
+    const catalogImports = await runCatalogImportJobs(createCommerceService(),8000);
     const report = await runSupplierAutomation(createCommerceService(),{worker:'vercel-daily',limit:Math.min(limit,9),timeBudgetMs:40000});
     invalidateAdminStorefrontCache();revalidatePath('/', 'layout');
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       report,
+      catalogImports,
     });
   } catch {
     return NextResponse.json(

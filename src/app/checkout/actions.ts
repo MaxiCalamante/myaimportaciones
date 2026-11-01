@@ -99,6 +99,8 @@ async function resolveQuote(input: CheckoutInput) {
       beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? ""),
     };
   });
+  const supplyCheck = await db.rpc('supplier_checkout_quote_v1', {items_input:items.map(i=>({id:i.id,variant_id:i.variant_id,price:i.price})), payment_input:input.paymentMethod});
+  if (supplyCheck.error) throw new Error('Necesitamos confirmar disponibilidad y costos del proveedor antes de cobrar. Consultanos para continuar.');
   const supplierDelivery = input.lines.some(line => {
     if (line.variantId) {
       const v = dbVariants.find(v => v.id === line.variantId);

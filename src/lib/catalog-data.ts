@@ -2,7 +2,7 @@ import { WHOLESALE_ENABLED, cleanProductTitle } from "./commerce-policy";
 import type { Category, PaymentMethod, Product } from "./types";
 import { resolveVariantDimensions } from "./variant-preview";
 // Public reads explicitly omit costs and supplier sources, including for signed-in admins.
-export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, tags, payment_methods, specifications, warranty_terms, has_variants, options_config, deleted_at, deleted_by";
+export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, supplier_last_checked_at, tags, payment_methods, specifications, warranty_terms, has_variants, options_config, deleted_at, deleted_by";
 
 export interface DbCategory {
   id: string;
@@ -111,7 +111,9 @@ export function mapProduct(product: DbProduct, admin = false, wholesale = false)
     : product.categories;
 
   const rawVariants = Array.isArray(product.product_variants) ? product.product_variants : [];
-  const variants = rawVariants.map(mapProductVariant);
+  const stamp=Date.parse(product.supplier_last_checked_at??'');
+  const freshSupplier=Number.isFinite(stamp)&&stamp<=Date.now()+300000&&Date.now()-stamp<=86400000;
+  const variants = rawVariants.map(v=>{const mapped=mapProductVariant(v);return !admin&&!freshSupplier?{...mapped,supplierAvailable:false}:mapped;});
   const activeVariants = variants.filter(v => admin || v.isActive);
   const activePrices = activeVariants.map(v => v.retailPrice).filter(p => p > 0);
   const minPrice = activePrices.length ? Math.min(...activePrices) : undefined;
@@ -129,7 +131,7 @@ export function mapProduct(product: DbProduct, admin = false, wholesale = false)
     : (product.stock_verified_at ?? null);
   const effectiveSupplierAvailable = hasVariants
     ? anySupplierAvailable
-    : Boolean(product.supplier_available);
+    : Boolean(product.supplier_available) && (admin || freshSupplier);
 
   return {
     id: product.id,

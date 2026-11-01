@@ -86,9 +86,11 @@ function availableOrderStatuses(status: OrderStatus, method: PaymentMethod): Ord
 export function AdminDashboard({
   data,
   supabaseReady,
+  initialEditProductId,
 }: {
   data: AdminDashboardData;
   supabaseReady: boolean;
+  initialEditProductId?: string;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
@@ -156,7 +158,7 @@ export function AdminDashboard({
   const [createCategoryParentId, setCreateCategoryParentId] = useState("");
 
   // Modals / Editing states
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(() => data.products.find(p => p.id === initialEditProductId) ?? null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   // Edit forms selection states
