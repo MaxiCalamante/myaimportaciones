@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import { calculateImport, classifyImport, type ImportPolicy } from './import-costs';
 import { quoteCatalogPrice, type CatalogPricingRule } from './catalog-pricing';
-import { offerEvidence, type SupplierOffer, type IntelligenceSupplier } from './supplier-intelligence';
+import { offerEvidence, supplierSourceUrl, type SupplierOffer, type IntelligenceSupplier } from './supplier-intelligence';
 import { acquisitionFxFresh } from './supplier-usdt';
 import type { TrackingConfig } from './supplier-automation';
 import { readAllPages } from './read-all-pages';
@@ -12,6 +12,7 @@ import { planCatalogImport, validateCatalogFilters } from './catalog-import-plan
 import type { CatalogCandidate, CatalogImportFilters, CatalogImportItem, CatalogImportJob, CatalogImportWorkspace, CatalogPreviewSelection, CatalogPreviewResult } from './catalog-import-types';
 const uuid=/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 export function catalogMessage(message:string):string {
+ if(/ficha HTTPS exacta/.test(message))return 'Falta la ficha HTTPS exacta del producto en el sitio del proveedor.';
  if(/source.*changed|source offer missing/i.test(message))return 'La oferta cambió después de la vista previa. Generá una nueva revisión.';
  if(/commercial policy changed/i.test(message))return 'Las reglas comerciales o el cambio se modificaron. Generá una nueva vista previa.';
  if(/variant|identity|existing title|slug/i.test(message))return 'Revisá la identidad y la variante: hay una coincidencia o un enlace que necesita confirmación.';
@@ -121,7 +122,14 @@ export async function previewCatalogImport(db:SupabaseClient,s:CatalogPreviewSel
  const planned=planCatalogImport(selected,targets,s.categoryId,o=>estimate(o,ctx,s.categoryId));
  for(const row of planned){
   const o=selected.find(o=>o.id===row.offer_id)!;
-  if(!ctx.suppliers.some(s=>s.id===o.supplier_id)){row.payload.action='review';row.payload.reason='Proveedor inactivo.';}
+  const supplier=ctx.suppliers.find(s=>s.id===o.supplier_id);
+  if(!supplier){row.payload.action='review';row.payload.reason='Proveedor inactivo.';}
+  else if(row.payload.action==='new'){
+   try{
+    const source=new URL(supplierSourceUrl(o.source_url,supplier));
+    if(!o.external_id||o.variant_key.startsWith('listing:')||['/','/home','/index.php'].includes(source.pathname.replace(/\/$/,'')||'/')&&!(source.searchParams.get('route')==='product/product'&&source.searchParams.has('product_id')))throw new Error('Ficha general');
+   }catch{row.payload.action='review';row.payload.reason='Falta la ficha HTTPS exacta del producto en el sitio del proveedor.';}
+  }
   if(row.payload.action==='link'&&row.payload.target){
    const p=products.find(p=>p.id===row.payload.target!.productId) as MatchProduct&{deleted_at?:string|null};
    if(p?.deleted_at){row.payload.action='review';row.payload.reason='El producto equivalente está archivado; revisá su recuperación.';}

@@ -25,7 +25,7 @@ function fakeDb(linkFails = false, linkedDuplicate = false) {
 }
 test("la importación individual no permite omitir la revisión ni publica fotos sin derechos", async()=>{
  const {db,events}=fakeDb();
- await assert.rejects(importSupplierOpportunity({offerId:'offer',title:'Equipo',categoryId:'cat',retailPrice:100,isActive:true},{client:db}),/borrador/);
+ await assert.rejects(importSupplierOpportunity({offerId:'offer',categoryId:'cat',isActive:true},{client:db}),/borrador/);
  assert.equal(events.length,0);
 });
 

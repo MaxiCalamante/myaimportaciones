@@ -1815,12 +1815,13 @@ export async function searchSupplierOpportunitiesAction(params: OpportunitySearc
 }
 
 export async function importSupplierOpportunityAction(input: ImportOpportunityInput) {
-  // Supplier offers are private and production only grants administrators read access.
-  // Check the caller first, then use the service client for the complete import.
   return runAdminFormAction(async () => {
-    await getAdminClient();
-    const res = await importSupplierOpportunity(input, { client: createCommerceService() });
+    // Catalog RPCs require the authenticated administrator, including auth.uid().
+    const db = await getAdminClient();
+    const res = await importSupplierOpportunity(input, { client: db });
     invalidateAdminStorefrontCache();
+    revalidatePath('/admin');
+    revalidatePath('/admin/oportunidades/importacion');
     return res;
   });
 }

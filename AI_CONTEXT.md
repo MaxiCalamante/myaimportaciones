@@ -1,3 +1,7 @@
+## Auditoría de seguimiento y alta desde Oportunidades — 01/11/2026
+
+Se corrigió el cliente autenticado del alta individual, la persistencia del enlace en futuros borradores y los campos editables que el servidor ignoraba. El radar exige presentación exacta para ML y no muestra stock confirmado ante errores o evidencia de listado. Proveedores permite verificar el vínculo pendiente de un borrador, habilitando su cola sin tocar precios ni unidades propias. Edge v7 incluye el trabajador de importaciones confirmadas. La descripción y fotos se completan durante revisión: no afirmar publicación automática completa. Informe: `docs/suppliers/AUDIT-ADMIN-2026-11-01.md`.
+
 # MYA Importaciones — contexto vigente
 
 ## Vínculos y variantes de proveedores — 01/11/2026

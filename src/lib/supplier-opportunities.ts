@@ -14,6 +14,7 @@ import { publicReadRules } from "./supplier-automation";
 import { supplierSourceUrl } from "./supplier-intelligence";
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
 import { acquisitionFxFresh } from "./supplier-usdt";
+import { matchSupplierProduct, matchTargets, type MatchProduct } from './supplier-matching';
 
 function estimateOpportunityCost(offer: { id: string; title: string; brand: string | null; origin_cost: number; source_url: string; cost_checked_at: string | null }, config: { acquisitionArsPerUsd: number; shippingPaidByMya: boolean; shippingArs: number }, policy: ImportPolicy): number | null {
   try {
@@ -82,13 +83,8 @@ export interface OpportunitySearchResult {
 
 export interface ImportOpportunityInput {
   offerId: string;
-  title: string;
   categoryId: string;
-  retailPrice: number;
-  wholesalePrice?: number;
   isActive?: boolean;
-  mlUrl?: string;
-  mlPrice?: number;
 }
 
 export interface CategoryInfo {
@@ -292,12 +288,12 @@ export async function searchSupplierOpportunities(
     db.from("suppliers").select("id, name, official_key, is_active, freshness_hours").eq("is_active", true),
     db.from("categories").select("id, name, slug, parent_id, image_url").order("name"),
     db.from("supplier_market_references").select("product_id, price_ars, source_url, checked_at").eq("identity_verified", true).is("variant_id", null).is("last_error", null).gte("checked_at", new Date(Date.now()-48*3600000).toISOString()).not("price_ars", "is", null),
-    db.from("products").select("id, model").not("model", "is", null).neq("model", ""),
+    db.from("products").select("id,title,brand,model,sku,specifications,source_url,has_variants").eq("has_variants",false).is("deleted_at",null),
     db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
     db.from("import_cost_policies").select("config").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
-  if (suppliersRes.error || categoriesRes.error || settingsRes.error || policyRes.error || !settingsRes.data?.config || !policyRes.data?.config) throw new Error("No se pudo leer la configuración de proveedores y costos.");
+  if (suppliersRes.error || categoriesRes.error || marketRefsRes.error || productsWithModelRes.error || settingsRes.error || policyRes.error || !settingsRes.data?.config || !policyRes.data?.config) throw new Error("No se pudo leer la configuración de proveedores y costos.");
   const trackingConfig = settingsRes.data.config;
   const importPolicy = policyRes.data.config;
   const fx = Number(trackingConfig.acquisitionArsPerUsd);
@@ -312,23 +308,10 @@ export async function searchSupplierOpportunities(
     imageUrl: c.image_url,
   }));
   const supplierMap = new Map(suppliers.map((s) => [s.id, s]));
-  const marketRefMap = new Map<string, { priceArs: number; url: string; checkedAt: string | null }>();
-  if (marketRefsRes?.data && productsWithModelRes?.data) {
-    const prodToModel = new Map<string, string>();
-    for (const p of productsWithModelRes.data as Array<{ id: string; model: string | null }>) {
-      if (p.model) prodToModel.set(p.id, p.model.toUpperCase().trim());
-    }
-    for (const ref of marketRefsRes.data as Array<{ product_id: string; price_ars: number; source_url: string; checked_at: string | null }>) {
-      const modelKey = prodToModel.get(ref.product_id);
-      if (modelKey && ref.price_ars) {
-        marketRefMap.set(modelKey, {
-          priceArs: Number(ref.price_ars),
-          url: ref.source_url,
-          checkedAt: ref.checked_at,
-        });
-      }
-    }
-  }
+  const marketRefMap = new Map((marketRefsRes.data ?? []).map(ref => [ref.product_id, {
+    priceArs: Number(ref.price_ars), url: ref.source_url, checkedAt: ref.checked_at,
+  }]));
+  const marketTargets = matchTargets(((productsWithModelRes.data ?? []) as MatchProduct[]).filter(p=>marketRefMap.has(p.id)), []);
 
   // 2. Cargar todas las ofertas sin producto asignado con costo de origen mayor a 0
   const unassignedOffers = await readAllPages<{
@@ -345,10 +328,12 @@ export async function searchSupplierOpportunities(
     last_success_at: string | null;
     availability_checked_at: string | null;
     cost_checked_at: string | null;
+    last_error: string | null;
+    evidence: {availabilityBasis?:string;sourceTitle?:string} | null;
   }>((from, to) =>
     db
       .from("supplier_offers")
-      .select("id, supplier_id, external_id, title, brand, model, source_url, origin_cost, currency, availability, last_success_at, availability_checked_at, cost_checked_at")
+      .select("id, supplier_id, external_id, title, brand, model, source_url, origin_cost, currency, availability, last_success_at, availability_checked_at, cost_checked_at, last_error, evidence")
       .is("product_id", null)
       .gt("origin_cost", 0)
       .eq("currency", "USD")
@@ -357,7 +342,7 @@ export async function searchSupplierOpportunities(
   );
 
   // 3. Procesar y enriquecer cada oportunidad con el motor financiero comercial
-  const allOpportunities: SupplierOpportunity[] = unassignedOffers.map((offer) => {
+  const allOpportunities: SupplierOpportunity[] = unassignedOffers.filter(offer => supplierMap.has(offer.supplier_id)).map((offer) => {
     const sup = supplierMap.get(offer.supplier_id);
     const cleanTitle = cleanWholesaleTitle(offer.title);
     const cat = detectStoreCategory(offer.title, categories, offer.brand);
@@ -367,8 +352,8 @@ export async function searchSupplierOpportunities(
     const totalLandedArs = estimatedCost ?? 0;
     const benchmark = getCategoryMarginBenchmark(cat.categorySlug, offer.title);
 
-    const model = opportunityModel(offer.title, offer.model);
-    const mlRef = model ? marketRefMap.get(model.toUpperCase()) : undefined;
+    const match = matchSupplierProduct({title:offer.evidence?.sourceTitle ?? offer.title,brand:offer.brand ?? '',model:offer.model ?? ''},marketTargets);
+    const mlRef = match.status === 'exact' && match.target ? marketRefMap.get(match.target.productId) : undefined;
 
     let suggestedPrice: number;
     if (mlRef && mlRef.priceArs > 0) {
@@ -394,7 +379,7 @@ export async function searchSupplierOpportunities(
 
     const checked = offer.availability_checked_at ? Date.parse(offer.availability_checked_at) : NaN;
     const fresh = Number.isFinite(checked) && checked <= Date.now() + 300000 && Date.now() - checked <= Number(sup?.freshness_hours || 24) * 3600000;
-    const avail = fresh && (offer.availability === "in_stock" || offer.availability === "out_of_stock")
+    const avail = fresh && !offer.last_error && (!offer.evidence?.availabilityBasis || offer.evidence.availabilityBasis === 'explicit') && (offer.availability === "in_stock" || offer.availability === "out_of_stock")
       ? offer.availability
       : "unknown";
 
@@ -635,7 +620,7 @@ export function buildRichProductDescription(params: {title:string;brand:string;m
 export async function importSupplierOpportunity(
   input: ImportOpportunityInput,
   options?: { client?: SupabaseClient }
-): Promise<{ success: boolean; productId: string; slug: string; title: string }> {
+): Promise<{ success: boolean; productId: string; slug: string; title: string; isActive: boolean; outcome: string }> {
   const db = options?.client ?? (await getAdminClient());
   if (input.isActive === true) throw new AdminFormError("Importá como borrador y aprobá la publicación en Importación masiva y revisión de catálogo.");
   const { previewCatalogImport, readCatalogJob } = await import('./supplier-catalog-import');
@@ -646,7 +631,7 @@ export async function importSupplierOpportunity(
   if (processed.error) throw new AdminFormError('El lote quedó registrado; revisá el progreso antes de reintentar.');
   const result = await readCatalogJob(db,preview.jobId), item=result.items[0];
   if (!item?.product_id) throw new AdminFormError(item?.error || 'La oferta requiere revisión de identidad en el panel de importación.');
-  const product=await db.from('products').select('id,slug,title').eq('id',item.product_id).single();
+  const product=await db.from('products').select('id,slug,title,is_active').eq('id',item.product_id).single();
   if(product.error) throw new AdminFormError('Se guardó el borrador; actualizá el catálogo para verlo.');
-  return {success:true,productId:product.data.id,slug:product.data.slug,title:product.data.title};
+  return {success:true,productId:product.data.id,slug:product.data.slug,title:product.data.title,isActive:product.data.is_active,outcome:item.state};
 }

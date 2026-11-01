@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -29,7 +29,6 @@ import {
   searchSupplierOpportunitiesAction,
   importSupplierOpportunityAction,
 } from "@/app/admin/actions";
-import { calculateCommercialMargin, evaluateWithMarketBenchmark } from "@/lib/supplier-commercial";
 import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 
 interface CategoryOption {
@@ -69,20 +68,14 @@ export function SupplierOpportunitiesRadar({
 
   // Import Modal State
   const [activeOpportunity, setActiveOpportunity] = useState<SupplierOpportunity | null>(null);
-  const [editTitle, setEditTitle] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
-  const [editRetailPrice, setEditRetailPrice] = useState<number>(0);
-  const [editWholesalePrice, setEditWholesalePrice] = useState<number>(0);
-  const [editIsActive, setEditIsActive] = useState(false);
-  const [editMlUrl, setEditMlUrl] = useState("");
-  const [editMlPrice, setEditMlPrice] = useState<number>(0);
-  const [mlAppliedMessage, setMlAppliedMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{
     productId: string;
     slug: string;
     title: string;
     isActive: boolean;
+    outcome: string;
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -122,30 +115,16 @@ export function SupplierOpportunitiesRadar({
   const handleQuickImport = async (opp: SupplierOpportunity) => {
     if (opp.pricingNeedsReview || !opp.categoryId) {
       handleOpenImport(opp);
-      setImportError("Revisá la categoría y el precio: la cotización puede estar vencida o el producto puede tener una tarifa particular.");
+      setImportError("La cotización o tarifa requiere revisión. Podés guardar el borrador y completar sus costos antes de publicar.");
       return;
     }
     setQuickImportingOfferId(opp.offerId);
     setImportError(null);
     try {
-      const isExcluded =
-        /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(opp.cleanTitle) ||
-        opp.categorySlug.includes("smartphone") ||
-        opp.categorySlug.includes("notebook");
-      const discount = opp.categorySlug.includes("herramienta") ? 0.20 : 0.28;
-      const suggestedWholesale = !isExcluded
-        ? Math.round((opp.suggestedRetailPrice * (1 - discount)) / 100) * 100
-        : 0;
-
       const res = await importSupplierOpportunityAction({
         offerId: opp.offerId,
-        title: opp.cleanTitle,
         categoryId: opp.categoryId,
-        retailPrice: opp.suggestedRetailPrice,
-        wholesalePrice: suggestedWholesale,
         isActive: false,
-        mlUrl: opp.mlUrl || undefined,
-        mlPrice: opp.mlPrice && opp.mlPrice > 0 ? opp.mlPrice : undefined,
       });
 
       if (res.success) {
@@ -168,28 +147,7 @@ export function SupplierOpportunitiesRadar({
 
   const handleOpenImport = (opp: SupplierOpportunity) => {
     setActiveOpportunity(opp);
-    setEditTitle(opp.cleanTitle);
     setEditCategoryId(opp.categoryId);
-    setEditRetailPrice(opp.suggestedRetailPrice);
-    setEditMlUrl(opp.mlUrl || "");
-    setEditMlPrice(opp.mlPrice || 0);
-    setMlAppliedMessage(null);
-
-    // Calcular sugerido mayorista según elegibilidad
-    const isExcluded =
-      /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(opp.cleanTitle) ||
-      opp.categorySlug.includes("smartphone") ||
-      opp.categorySlug.includes("notebook");
-
-    if (!isExcluded) {
-      const discount = opp.categorySlug.includes("herramienta") ? 0.20 : 0.28;
-      const suggestedWholesale = Math.round((opp.suggestedRetailPrice * (1 - discount)) / 100) * 100;
-      setEditWholesalePrice(suggestedWholesale);
-    } else {
-      setEditWholesalePrice(0);
-    }
-
-    setEditIsActive(false);
     setImportSuccess(null);
     setImportError(null);
   };
@@ -198,34 +156,6 @@ export function SupplierOpportunitiesRadar({
     setActiveOpportunity(null);
     setImportSuccess(null);
     setImportError(null);
-    setMlAppliedMessage(null);
-  };
-
-  const handleApplyMlPrice = (customPrice?: number) => {
-    const price = customPrice !== undefined ? customPrice : editMlPrice;
-    if (!price || price <= 0 || !activeOpportunity) return;
-    const evalRes = evaluateWithMarketBenchmark(
-      activeOpportunity.landedCostArs,
-      editRetailPrice,
-      price,
-      activeOpportunity.categorySlug,
-      editTitle
-    );
-    setEditRetailPrice(evalRes.suggestedPrice);
-
-    // Recalcular mayorista con el nuevo precio minorista
-    const isExcluded =
-      /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora/i.test(editTitle) ||
-      activeOpportunity.categorySlug.includes("smartphone") ||
-      activeOpportunity.categorySlug.includes("notebook");
-
-    if (!isExcluded) {
-      const discount = activeOpportunity.categorySlug.includes("herramienta") ? 0.20 : 0.28;
-      const suggestedWholesale = Math.round((evalRes.suggestedPrice * (1 - discount)) / 100) * 100;
-      setEditWholesalePrice(suggestedWholesale);
-    }
-
-    setMlAppliedMessage(evalRes.notes);
   };
 
   const handleConfirmImport = async () => {
@@ -236,13 +166,8 @@ export function SupplierOpportunitiesRadar({
     try {
       const res = await importSupplierOpportunityAction({
         offerId: activeOpportunity.offerId,
-        title: editTitle.trim(),
         categoryId: editCategoryId,
-        retailPrice: Number(editRetailPrice),
-        wholesalePrice: Number(editWholesalePrice),
-        isActive: editIsActive,
-        mlUrl: editMlUrl.trim() || undefined,
-        mlPrice: editMlPrice > 0 ? Number(editMlPrice) : undefined,
+        isActive: false,
       });
 
       if (res.success) {
@@ -250,7 +175,8 @@ export function SupplierOpportunitiesRadar({
           productId: res.data.productId,
           slug: res.data.slug,
           title: res.data.title,
-          isActive: editIsActive,
+          isActive: res.data.isActive,
+          outcome: res.data.outcome,
         });
         setImportedOfferIds((prev) => new Set(prev).add(activeOpportunity.offerId));
       } else {
@@ -262,12 +188,6 @@ export function SupplierOpportunitiesRadar({
       setIsImporting(false);
     }
   };
-
-  // Live margin calculation inside modal as retail price changes
-  const modalLiveMargin = useMemo(() => {
-    if (!activeOpportunity || !editRetailPrice) return null;
-    return calculateCommercialMargin(Number(editRetailPrice), activeOpportunity.landedCostArs);
-  }, [activeOpportunity, editRetailPrice]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -826,7 +746,7 @@ export function SupplierOpportunitiesRadar({
                     <div className="flex-1 inline-flex h-9 items-center justify-between gap-1 rounded-xl bg-emerald-100 px-2.5 text-emerald-950 text-xs font-bold">
                       <span className="flex items-center gap-1">
                         <Check className="h-3.5 w-3.5 text-emerald-700" />
-                        Agregado
+                        Procesado
                       </span>
                       {quickImportSuccessMap.get(opp.offerId) && (
                         <Link
@@ -845,21 +765,21 @@ export function SupplierOpportunitiesRadar({
                         disabled={quickImportingOfferId === opp.offerId}
                         onClick={() => handleQuickImport(opp)}
                         className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-xs font-bold text-white shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                        title="Publicar directo en 1 clic con precio sugerido"
+                        title="Crear borrador para revisar antes de publicar"
                       >
                         {quickImportingOfferId === opp.offerId ? (
                           <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Zap className="h-3.5 w-3.5" />
                         )}
-                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : "Publicar Rápido"}</span>
+                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : "Crear borrador"}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleOpenImport(opp)}
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors cursor-pointer"
-                        title="Personalizar título o precios antes de agregar"
+                        title="Revisar datos y elegir categoría del borrador"
                       >
                         <SlidersHorizontal className="h-3.5 w-3.5" />
                       </button>
@@ -905,7 +825,7 @@ export function SupplierOpportunitiesRadar({
       {/* Quick Import Modal */}
       {activeOpportunity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div role="dialog" aria-modal="true" aria-label="Crear borrador desde proveedor" className="relative max-h-[90dvh] overflow-y-auto w-full max-w-lg rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-4 border-b border-zinc-100 pb-4">
               <div className="flex items-center gap-3">
@@ -914,7 +834,7 @@ export function SupplierOpportunitiesRadar({
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-zinc-900">
-                    Agregar Producto al Catálogo
+                    Crear borrador desde proveedor
                   </h3>
                   <p className="text-xs text-zinc-500">
                     Proveedor: <strong>{activeOpportunity.supplierName}</strong>
@@ -924,6 +844,7 @@ export function SupplierOpportunitiesRadar({
               <button
                 type="button"
                 onClick={handleCloseModal}
+                aria-label="Cerrar importación"
                 className="rounded-xl p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
@@ -937,21 +858,21 @@ export function SupplierOpportunitiesRadar({
                 </div>
                 <div>
                   <h4 className="text-base font-extrabold text-zinc-900">
-                    {importSuccess.isActive ? "¡Producto publicado!" : "Borrador guardado"}
+                    {importSuccess.outcome === "linked" ? "Oferta vinculada al producto existente" : "Borrador guardado"}
                   </h4>
                   <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
                     {importSuccess.isActive
-                      ? <> &ldquo;{importSuccess.title}&rdquo; está publicado en la tienda.</>
+                      ? <> &ldquo;{importSuccess.title}&rdquo; ya estaba activo. Se conservó su publicación.</>
                       : <> &ldquo;{importSuccess.title}&rdquo; está guardado como borrador. Todavía no tiene una página pública.</>}
                   </p>
                 </div>
                 <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
                   <Link
-                    href={importSuccess.isActive ? `/producto/${importSuccess.slug}` : "/admin"}
+                    href={`/admin?editProduct=${encodeURIComponent(importSuccess.productId)}`}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-xs font-bold text-white hover:bg-black"
                   >
                     <ShoppingBag className="h-4 w-4" />
-                    {importSuccess.isActive ? "Ver en tienda" : "Ir al panel de productos"}
+                    Completar ficha
                   </Link>
                   <button
                     type="button"
@@ -971,184 +892,23 @@ export function SupplierOpportunitiesRadar({
                   </div>
                 )}
 
-                {/* Title */}
-                <div>
-                  <label className="text-xs font-extrabold text-zinc-700 block mb-1">
-                    Título Comercial
-                  </label>
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:bg-white focus:outline-none"
-                  />
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm">
+                  <p className="font-bold text-zinc-900">Título de la fuente</p>
+                  <p className="mt-1 break-words">{activeOpportunity.title}</p>
+                  <a href={activeOpportunity.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sky-800 underline">Ver publicación del proveedor</a>
                 </div>
-
-                {/* Category */}
-                <div>
-                  <label className="text-xs font-extrabold text-zinc-700 block mb-1">
-                    Categoría en MYA
-                  </label>
-                  <select
-                    value={editCategoryId}
-                    onChange={(e) => setEditCategoryId(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-800 focus:border-sky-500 focus:outline-none cursor-pointer"
-                  >
+                <label className="block text-xs font-bold text-zinc-700">
+                  Categoría en MYA
+                  <select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm">
                     <option value="">Elegí una categoría</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
+                </label>
+                <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950">
+                  Se guarda un borrador con la oferta y su enlace de proveedor. El servidor calcula el precio con las reglas vigentes; si faltan datos, queda pendiente.
+                  Completá título comercial, descripción, fotos autorizadas, costos y precio desde el editor. Confirmá la identidad del vínculo en Proveedores para habilitar su seguimiento.
                 </div>
-
-                {/* Cost Breakdown */}
-                <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 text-xs space-y-1.5">
-                  <div className="flex justify-between text-zinc-500">
-                    <span>Costo Mayorista Origen:</span>
-                    <span className="font-bold text-zinc-800">
-                      US$ {activeOpportunity.originCostUsd}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-zinc-500">
-                    <span>Costo estimado según tarifa configurada:</span>
-                    <span className="font-extrabold text-zinc-900">
-                      {activeOpportunity.landedCostArs > 0 ? `$${activeOpportunity.landedCostArs.toLocaleString("es-AR")}` : "A confirmar"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mercado Libre Benchmark Verification & Linking */}
-                <div className="rounded-2xl border border-amber-200/90 bg-amber-50/60 p-3 text-xs space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-extrabold text-amber-950 block">
-                        Referencia de Mercado Libre
-                      </span>
-                      <span className="text-[11px] text-amber-800">
-                        Vigila el comparable y aplica el precio competitivo (-8%)
-                      </span>
-                    </div>
-                    <a
-                      href={buildMercadoLibreSearchUrl(editTitle, activeOpportunity.brand || undefined, activeOpportunity.model || undefined)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-lg bg-amber-600 hover:bg-amber-700 px-2.5 py-1 text-xs font-bold text-white shadow-2xs"
-                    >
-                      <span>Buscar en ML</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                    <div className="sm:col-span-2">
-                      <label className="text-[11px] font-bold text-zinc-700 block mb-0.5">
-                        Link de publicación ML
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://articulo.mercadolibre.com.ar/MLA-..."
-                        value={editMlUrl}
-                        onChange={(e) => setEditMlUrl(e.target.value)}
-                        className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-medium text-zinc-900 focus:border-amber-500 focus:outline-none placeholder:text-zinc-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-zinc-700 block mb-0.5">
-                        Precio ML (ARS)
-                      </label>
-                      <div className="flex gap-1.5">
-                        <input
-                          type="number"
-                          placeholder="98500"
-                          value={editMlPrice || ""}
-                          onChange={(e) => setEditMlPrice(Number(e.target.value))}
-                          className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2 text-xs font-bold text-zinc-900 focus:border-amber-500 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleApplyMlPrice()}
-                          disabled={!editMlPrice || editMlPrice <= 0}
-                          title="Calcular precio competitivo (-8%)"
-                          className="shrink-0 h-8 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-black transition-colors"
-                        >
-                          Aplicar -8%
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {mlAppliedMessage && (
-                    <div className="text-[11px] text-amber-900 bg-amber-100/70 rounded-lg p-1.5 font-medium">
-                      ✓ {mlAppliedMessage}
-                    </div>
-                  )}
-                </div>
-
-                {/* Retail Price and Live Margin */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-extrabold text-zinc-700 block mb-1">
-                      Precio de Venta (ARS)
-                    </label>
-                    <input
-                      type="number"
-                      value={editRetailPrice}
-                      onChange={(e) => setEditRetailPrice(Number(e.target.value))}
-                      className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-sky-700 focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-extrabold text-zinc-700 block mb-1">
-                      Precio Mayorista (ARS)
-                    </label>
-                    <input
-                      type="number"
-                      value={editWholesalePrice}
-                      onChange={(e) => setEditWholesalePrice(Number(e.target.value))}
-                      className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-indigo-700 focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Live Margin Calculation */}
-                {modalLiveMargin && (
-                  <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="text-emerald-900 font-bold block">
-                        Margen Comercial: {modalLiveMargin.marginPercent}%
-                      </span>
-                      <span className="text-[11px] text-emerald-700">
-                        Diferencia estimada por unidad: +${modalLiveMargin.profitArs.toLocaleString("es-AR")}
-                      </span>
-                    </div>
-                    <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-900">
-                      Markup {modalLiveMargin.markupPercent}%
-                    </span>
-                  </div>
-                )}
-
-                {/* Active Toggle */}
-                <div className="flex items-center justify-between rounded-xl border border-zinc-200 p-3">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-zinc-900 block">
-                      Publicación sujeta a revisión
-                    </span>
-                    <span className="text-[11px] text-zinc-500 block">
-                      Se guarda como borrador; aprobalo en Importación masiva y revisión.
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    disabled checked={false}
-                    onChange={(e) => setEditIsActive(e.target.checked)}
-                    className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500 cursor-pointer"
-                  />
-                </div>
-
-                <p className="text-xs text-zinc-600">El servidor calcula el precio del borrador con las reglas vigentes. Los ajustes particulares se guardan después desde Productos y Costos.</p>
+                <p className="text-xs text-zinc-600">La publicación se aprueba después en <Link href="/admin/oportunidades/importacion" className="text-sky-800 underline">Importación masiva y revisión</Link>. Si ya existe el producto exacto, se vincula la oferta conservando su ficha y precios.</p>
                 {/* Modal Buttons */}
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button
@@ -1162,7 +922,7 @@ export function SupplierOpportunitiesRadar({
                   <button
                     type="button"
                     onClick={handleConfirmImport}
-                    disabled={isImporting || !editRetailPrice || editRetailPrice <= 0}
+                    disabled={isImporting || !editCategoryId}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 px-5 text-xs font-extrabold text-white shadow-xs cursor-pointer disabled:opacity-50"
                   >
                     {isImporting ? (
@@ -1173,7 +933,7 @@ export function SupplierOpportunitiesRadar({
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4" />
-                        Confirmar y Sumar a la Tienda
+                        Guardar borrador
                       </>
                     )}
                   </button>

@@ -73,3 +73,7 @@ RLS y acciones `getAdminClient` requieren administrador. Workers usan exclusivam
 `npm test`, `npm run type-check`, `npm run lint`, `npm run build`, `node scripts/check-public-evidence.mjs`, `node scripts/verify-supplier-workspace.mjs`. La UI se verifica a 320,390,1440 px con datos aislados: no acredita por si sola guardados reales. Las pruebas PostgreSQL verifican RLS, rollback, inventario, tarifas y revalidacion transaccional. Ver [IMPLEMENTATION-2026-10-20.md](IMPLEMENTATION-2026-10-20.md) para evidencia de entrega.
 
 La revisión periódica local de Codex `mya-revisar-abastecimiento-y-comparables` fue eliminada el21/10/2026 por pedido del dueño. La revisión humana de comparables se hace solo cuando se solicita; nunca renovar evidencia desde resultados indexados. Referencias humanas se conservan hasta48horas sin ser invalidadas por un fallo del robot; pueden ser de Mercado Libre o de otra tienda argentina verificada.
+
+## Auditoría del alta y controles — 01/11/2026
+
+Ver [AUDIT-ADMIN-2026-11-01.md](AUDIT-ADMIN-2026-11-01.md): resultado real del lote, cobertura parcial, permisos del alta individual, enlace de futuros borradores, confirmación de identidad para seguimiento y requisitos de publicación. «Crear borrador» no completa automáticamente descripción ni fotos.
