@@ -62,3 +62,23 @@ export async function linkSupplierOfferAction(offerId:string,productId:string,va
  const r=await db.rpc('link_supplier_offer_v1',{link_input:linkPayload(offer as TrackedOffer,target,catalog,'admin_review','Vínculo interno revisado por administrador',true)});
  if(r.error)throw new Error(`No se vinculó: ${r.error.message}`);refresh();return 'Oferta vinculada internamente; el seguimiento conserva fuente, precio y disponibilidad.';
 }
+export async function linkReviewedSupplierBatchAction(reviewIds:string[],confirmed:boolean){
+ const db=await getAdminClient();
+ if(confirmed!==true||!Array.isArray(reviewIds)||reviewIds.length<1||reviewIds.length>50||new Set(reviewIds).size!==reviewIds.length)throw new Error('Revisá y confirmá entre 1 y 50 propuestas distintas.');
+ reviewIds.forEach(validId);
+ const rows=await db.from('supplier_link_decisions').select('id,offer_id,product_id,variant_id,status,method,evidence').in('id',reviewIds);
+ if(rows.error||rows.data?.length!==reviewIds.length)throw new Error('No se pudieron verificar todas las propuestas.');
+ const catalog=await readCrosslinkCatalog(createCommerceService());
+ // Validate the entire submitted plan before writing its first link. RPCs recheck each snapshot.
+ const plans=rows.data.map(row=>{
+  if(row.status!=='review'||row.method!=='admin_review'||!row.product_id)throw new Error('El lote contiene propuestas sin destino revisado.');
+  const offer=catalog.offers.find(o=>o.id===row.offer_id),target=catalog.targets.find(t=>t.productId===row.product_id&&t.variantId===row.variant_id);
+  if(!offer||!target||row.evidence?.sourceTitle!==(offer.evidence?.sourceTitle??offer.title)||row.evidence?.sourceUrl!==offer.source_url)throw new Error('Cambió la fuente o el destino de una propuesta. Revisá el lote nuevamente.');
+  if(offer.product_id&&(offer.product_id!==target.productId||offer.variant_id!==target.variantId))throw new Error('Una oferta ya está vinculada a otra identidad.');
+  return{offer,target};
+ });
+ if(new Set(plans.map(p=>p.offer.id)).size!==plans.length)throw new Error('El lote repite una oferta. Revisá las propuestas.');
+ let linked=0;
+ for(const{offer,target}of plans){const r=await db.rpc('link_supplier_offer_v1',{link_input:linkPayload(offer,target,catalog,'admin_review','Lote de propuestas de identidad revisado por administrador',true)});if(r.error){refresh();throw new Error(`${linked} vínculos guardados. El siguiente requiere revisión: ${r.error.message}`);}if(r.data==='linked')linked++;}
+ invalidateAdminStorefrontCache();revalidatePath('/','layout');refresh();revalidatePath('/admin');return `${linked} vínculos verificados y guardados. Precios de venta e inventario conservados.`;
+}
