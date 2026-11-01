@@ -47,3 +47,6 @@ Sólo se recibió el mockup principal; no se recibieron las otras8capturas menci
 El diseño aún no está desplegado. Las migraciones del trabajo anterior ya están aplicadas, pero publicar esa funcionalidad requiere desplegar código y actualizar Edge coordinadamente, sin habilitar publicación automática.
 
 Git por HTTPS rechazó escritura403; la integración GitHub también rechazó crear blobs403 «Resource not accessible by integration», aunque la cuenta indica permisos de push. No se ocultó el bloqueo ni se usaron credenciales ajenas. Se dejan commits y bundle completo para transportar a la PC. Para subir al remoto hace falta reconectar/habilitar escritura de contenidos en la integración o ejecutar git push desde una PC autorizada.
+
+## Actualización de acceso a GitHub
+El usuario actualizó los permisos de ChatGPT Codex Connector a lectura/escritura. Después se completó y verificó el push de `feat/mya-premium-ux-v2` a `MaxiCalamante/myaimportaciones`, incluyendo los commits anteriores de abastecimiento y el rediseño. El bloqueo403 registrado arriba queda como antecedente resuelto. No se fusionó `main` ni se solicitó despliegue de producción.
