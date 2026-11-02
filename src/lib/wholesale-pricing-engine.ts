@@ -81,19 +81,22 @@ export function classifyWholesaleRubro(
   const b = (brand || "").toLowerCase();
   const price = retailPrice || 0;
 
-  // 1. EXCLUSIONES ABSOLUTAS: Alta tecnología y dispositivos caros
+  // 1. EXCLUSIONES ABSOLUTAS: Celulares, telefonía, smartwatches, notebooks, PCs, consolas y alta tecnología
   const isExcludedTech =
-    /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora|desktop|pc |tablet|monitor|laptop/i.test(t) ||
+    /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora|desktop|pc |tablet|monitor|laptop|celular|telefonia|telefono|smartwatch|apple watch|reloj inteligente|galaxy watch|playstation|nintendo|xbox|consola|redmi note|moto g/i.test(t) ||
     cat.includes("smartphone") ||
     cat.includes("notebook") ||
     cat.includes("tablet") ||
-    cat.includes("computadoras");
+    cat.includes("computadoras") ||
+    cat.includes("celular") ||
+    cat.includes("telefonia") ||
+    (b === "apple" && !/cable|funda|adaptador|cargador|earpods/i.test(t));
 
   if (isExcludedTech) {
     return {
       rubro: "ineligible",
       isEligible: false,
-      reason: "Tecnología de alto valor no apta para reventa mayorista (smartphones, notebooks, PCs o tablets).",
+      reason: "Tecnología, celulares, smartwatches o informática no aptos para reventa mayorista.",
     };
   }
 

@@ -48,8 +48,13 @@ export function ProductDetailInteractive({
     openWhatsApp,
   } = useCommerce();
   const [quantity, setQuantity] = useState(1);
+  const isWholesaleAvailable = Boolean(
+    product.wholesaleOnly ||
+    (product.wholesalePrice !== null && product.wholesalePrice !== undefined && product.wholesalePrice > 0) ||
+    (product.wholesaleOffer !== undefined && product.wholesaleOffer !== null && product.wholesaleOffer.status !== "unavailable")
+  );
   const [channel, setChannel] = useState<"retail" | "wholesale">(
-    product.wholesaleOnly||initialChannel==='wholesale' ? "wholesale" : "retail"
+    product.wholesaleOnly || (initialChannel === "wholesale" && isWholesaleAvailable) ? "wholesale" : "retail"
   );
   const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -182,7 +187,7 @@ export function ProductDetailInteractive({
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
       {/* Channel Switcher */}
-      {WHOLESALE_ENABLED && <div className="flex rounded-xl bg-zinc-100 p-1 border border-zinc-200">
+      {WHOLESALE_ENABLED && isWholesaleAvailable && <div className="flex rounded-xl bg-zinc-100 p-1 border border-zinc-200">
         <button
           type="button"
           disabled={product.wholesaleOnly}
@@ -390,7 +395,7 @@ export function ProductDetailInteractive({
       />
 
       <div className="divide-y divide-zinc-200 border-y border-zinc-200">
-        {channel === "retail" && <details className="group" aria-label="Consulta mayorista del producto">
+        {channel === "retail" && isWholesaleAvailable && <details className="group" aria-label="Consulta mayorista del producto">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-zinc-900">Compra mayorista para tu comercio<ChevronDown className="size-4 shrink-0 text-zinc-400 transition group-open:rotate-180"/></summary>
           <div className="pb-5 text-sm text-zinc-600"><p className="leading-6">Mínimo: {WHOLESALE_MINIMUM_LABEL}. Podés combinar productos de distintos rubros. El precio mayorista confirmado y la disponibilidad se muestran al elegir ese canal.</p>
 <button type="button" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-sky-800 underline underline-offset-4" onClick={() => {setChannel('wholesale');setQuantity(1);}}>Ver precio mayorista de esta presentación</button>

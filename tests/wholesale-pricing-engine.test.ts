@@ -47,6 +47,14 @@ test("classifyWholesaleRubro: excluye estrictamente alta gama, iPhones, MacBooks
   const expensivePc = classifyWholesaleRubro("PC Gamer Desktop Ryzen 7 RTX 4070", "computadoras-de-escritorio", "Custom", 1950000);
   assert.equal(expensivePc.isEligible, false);
   assert.equal(expensivePc.rubro, "ineligible");
+
+  const watch = classifyWholesaleRubro("Apple Watch Ultra 3 MF1N4LW/A 49mm (GPS+Cellular)", "electronica", "Apple", 3551900);
+  assert.equal(watch.isEligible, false);
+  assert.equal(watch.rubro, "ineligible");
+
+  const celular = classifyWholesaleRubro("Celular Motorola Moto G54 5G 256GB", "telefonia", "Motorola", 340000);
+  assert.equal(celular.isEligible, false);
+  assert.equal(celular.rubro, "ineligible");
 });
 
 test("calculateProductWholesalePricing: fija precio win-win en cosmética contra precio de Mercado Libre", () => {

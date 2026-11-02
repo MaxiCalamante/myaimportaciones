@@ -23,7 +23,7 @@ export const getWholesaleCatalog=cache(async()=>{
   const eligibleProducts = data.products.filter(p => {
     const catSlug = categoryMap.get(p.categoryId) ?? "";
     const classification = classifyWholesaleRubro(p.title, catSlug, p.brand, p.retailPrice);
-    return classification.isEligible || (p.wholesalePrice && p.wholesalePrice > 0);
+    return classification.isEligible && classification.rubro !== "ineligible";
   });
   const items=eligibleProducts.flatMap(p=>[
     ...(!p.wholesaleOffer?[{productId:p.id,variantId:null as string|null}]:[]),

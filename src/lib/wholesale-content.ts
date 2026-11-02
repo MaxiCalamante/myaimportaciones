@@ -8,7 +8,7 @@ const entries:[string,string,string,string,string,string[]][]=[
  ['perfumeria','perfumeria','Perfumería y fragancias','Perfumes árabes y fragancias por mayor en Argentina','Perfumerías, tiendas de regalos y revendedores',['Lattafa',"Victoria's Secret",'Maison Alhambra']],
  ['cuidado-capilar','cuidado-capilar','Cuidado capilar','Productos capilares por mayor para peluquerías y comercios','Peluquerías, perfumerías y tiendas de cuidado personal',['Karseell','Shiseido','Kérastase']],
  ['herramientas','herramientas-equipamiento','Herramientas y ferretería','Herramientas TOTAL y WADFOW por mayor para ferreterías','Ferreterías, electricistas, instaladores y talleres',['Total','Wadfow']],
- ['electronica','electronica','Electrónica y accesorios','Electrónica y accesorios por mayor en Argentina','Comercios de tecnología, tiendas online y revendedores',['Apple','Samsung','JBL']],
+ ['electronica','electronica','Accesorios y electrónica','Accesorios y electrónica por mayor en Argentina','Comercios, tiendas online y revendedores',['Xiaomi','JBL']],
  ['medicube','cosmetica-coreana','Medicube','Medicube por mayor: catálogo de skincare en Argentina','Comercios de skincare, perfumerías y revendedores',['Medicube']],
 ];
 export const WHOLESALE_CATEGORIES:WholesaleCategory[]=entries.map(([slug,categorySlug,name,title,audience,brands])=>({

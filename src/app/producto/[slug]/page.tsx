@@ -12,6 +12,7 @@ import { ProductReviewsSection } from "@/components/commerce/product-reviews-sec
 import { productDescriptionParagraphs, productDetailSummary } from "@/lib/product-detail-content";
 import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import { getPublicWholesaleOffers } from "@/lib/wholesale-v2-read";
+import { classifyWholesaleRubro } from "@/lib/wholesale-pricing-engine";
 import type { ProductChannel } from "@/lib/types";
 
 interface Props {
@@ -39,14 +40,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
     notFound();
   }
 
+  const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
+  const category = categories.find((c) => c.id === product.categoryId);
+  const catSlug = category?.slug || "";
+  const classification = classifyWholesaleRubro(product.title, catSlug, product.brand, product.retailPrice);
+  const isWholesaleEligible = classification.isEligible && classification.rubro !== "ineligible";
+
   const sp = await searchParams;
   const requestedVariant = sp.variant;
   const initialVariantId = typeof requestedVariant === "string" ? product.variants?.find(variant => variant.isActive && variant.id === requestedVariant)?.id : undefined;
-  const isWholesale = sp.canal === "mayorista";
+  const isWholesale = sp.canal === "mayorista" && isWholesaleEligible;
   const initialChannel: ProductChannel | undefined = isWholesale ? "wholesale" : undefined;
+  const showIneligibleWholesaleNotice = sp.canal === "mayorista" && !isWholesaleEligible;
 
   let enrichedProduct = product;
-  if (WHOLESALE_ENABLED) {
+  if (WHOLESALE_ENABLED && isWholesaleEligible) {
     const items = [
       { productId: product.id, variantId: null },
       ...(product.variants ?? []).filter(v => v.isActive).map(v => ({ productId: product.id, variantId: v.id }))
@@ -66,9 +74,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
       // Fallback to base product without dynamic offers
     }
   }
-
-  const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
-  const category = categories.find((c) => c.id === product.categoryId);
   const parent = categories.find(c => c.id === category?.parentId);
   const alternativeModel = product.specifications?.["Modelo alternativo"];
   const alternativeProduct = alternativeModel
@@ -120,6 +125,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
           <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
           <span className="min-w-0 truncate font-medium text-zinc-900">{product.title}</span>
         </nav>
+
+        {showIneligibleWholesaleNotice && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs sm:text-sm text-amber-900 shadow-2xs">
+            <PackageCheck className="size-5 shrink-0 text-amber-700 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-950">Este producto no forma parte del canal mayorista</p>
+              <p className="mt-1 text-amber-800 leading-relaxed">
+                Los dispositivos de telefonía, celulares y computación se comercializan exclusivamente al por menor con garantía y entrega asegurada. Podés explorar nuestro catálogo mayorista de cosmética, perfumería y herramientas en{" "}
+                <Link href="/mayorista#catalogo" className="font-semibold underline underline-offset-2 text-amber-950 hover:text-amber-900">
+                  /mayorista
+                </Link>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Product Showcase (Gallery + Interactive Info) */}
         <ProductShowcase
