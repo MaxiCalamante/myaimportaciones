@@ -1,3 +1,5 @@
+import type { PublicWholesaleOffer } from "./wholesale-v2";
+
 export type AccountRole = "admin" | "customer";
 
 export type CustomerTier = "retail" | "wholesale";
@@ -38,6 +40,7 @@ export interface ProductOptionDimension {
 }
 
 export interface ProductVariant {
+  wholesaleOffer?: PublicWholesaleOffer;
   id: string;
   productId: string;
   title: string;
@@ -57,6 +60,7 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  wholesaleOffer?: PublicWholesaleOffer;
   sourceUrl?: string | null;
   supplierLastCheckedAt?: string | null;
   supplierStockStatus?: string | null;

@@ -1,9 +1,9 @@
 "use client";
-import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
+import { MAX_ORDER_QUANTITY, WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { WHOLESALE_MINIMUM_LABEL, wholesaleProductInquiry } from "@/lib/wholesale-policy";
+import { WHOLESALE_MINIMUM_LABEL } from "@/lib/wholesale-policy";
 import {
   Heart,
   MessageCircle,
@@ -20,21 +20,24 @@ import { ElectronicsPrice } from "./electronics-price";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { isProductImmediateStock } from "@/lib/shipping";
 import { siteConfig } from "@/lib/site";
-import type { Product, ProductVariant } from "@/lib/types";
+import type { Product, ProductVariant, ProductChannel } from "@/lib/types";
 import { trackAdsEvent } from "@/lib/analytics";
 import { StickyMobileBuyBar } from "./sticky-mobile-buy-bar";
 import { QuantityStepper } from "./quantity-stepper";
 import { getColorSwatch } from "@/lib/variant-swatches";
+import {wholesaleDisplay} from "@/components/wholesale/public-price";
 import { ProductShippingCalculator } from "./shipping-calculator";
 
 export function ProductDetailInteractive({
   product,
   onVariantChange,
   initialVariantId,
+  initialChannel,
 }: {
   product: Product;
   onVariantChange?: (variant: ProductVariant | null) => void;
   initialVariantId?: string;
+  initialChannel?: ProductChannel;
 }) {
   const {
     addToCart,
@@ -46,7 +49,7 @@ export function ProductDetailInteractive({
   } = useCommerce();
   const [quantity, setQuantity] = useState(1);
   const [channel, setChannel] = useState<"retail" | "wholesale">(
-    product.wholesaleOnly ? "wholesale" : "retail"
+    product.wholesaleOnly||initialChannel==='wholesale' ? "wholesale" : "retail"
   );
   const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -83,9 +86,11 @@ export function ProductDetailInteractive({
     onVariantChange?.(matchedVariant);
   }, [matchedVariant, onVariantChange]);
 
-  const price = matchedVariant
-    ? (channel === "wholesale" ? (matchedVariant.wholesalePrice ?? matchedVariant.retailPrice) : matchedVariant.retailPrice)
-    : (isVariantMode && product.minPrice ? product.minPrice : (channel === "wholesale" ? product.wholesalePrice : product.retailPrice));
+  const wholesale=wholesaleDisplay(product,matchedVariant,quantity);
+  const price=channel==='wholesale'?wholesale.price:matchedVariant?matchedVariant.retailPrice:(isVariantMode&&product.minPrice?product.minPrice:product.retailPrice);
+  const pending=channel==='wholesale'&&price===null;
+  const requestable=pending&&wholesale.offer?.status!=='unavailable';
+  const maxQuantity=requestable?MAX_ORDER_QUANTITY:purchasableQuantity(matchedVariant||product);
 
   const hasPriceRange = isVariantMode && !matchedVariant && product.minPrice && product.maxPrice && product.minPrice < product.maxPrice;
 
@@ -98,8 +103,8 @@ export function ProductDetailInteractive({
     trackAdsEvent("ViewContent", {
       content_name: matchedVariant ? `${product.title} (${matchedVariant.title})` : product.title,
       content_ids: [matchedVariant ? `${product.id}:${matchedVariant.id}` : product.id],
-      value: price,
-      items: [{ id: matchedVariant ? `${product.id}:${matchedVariant.id}` : product.id, title: matchedVariant ? `${product.title} (${matchedVariant.title})` : product.title, quantity: 1, price }],
+      value: price??undefined,
+      items: [{ id: matchedVariant ? `${product.id}:${matchedVariant.id}` : product.id, title: matchedVariant ? `${product.title} (${matchedVariant.title})` : product.title, quantity: 1, price:price??0 }],
     });
   }, [product.id, product.title, matchedVariant, price]);
 
@@ -123,13 +128,15 @@ export function ProductDetailInteractive({
   }, [matchedVariant, product]);
 
   const discount = useMemo(() => {
-    if (product.retailPrice <= 0 || product.wholesalePrice <= 0) return 0;
+    if (product.retailPrice <= 0 || wholesale.price===null) return 0;
     return Math.round(
-      ((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100
+      ((product.retailPrice - wholesale.price) / product.retailPrice) * 100
     );
-  }, [product]);
+  }, [product,wholesale.price]);
 
   const getCtaState = () => {
+    if(channel==='wholesale'&&wholesale.offer?.status==='unavailable')return{text:'No disponible para compra mayorista',disabled:true};
+    if(requestable&&(!isVariantMode||allDimensionsSelected&&matchedVariant))return{text:added?'Solicitud agregada':'Solicitar confirmación',disabled:false};
     if (!isVariantMode) {
       if (!isVerifiedStock(product)) return { text: "Disponibilidad a confirmar", disabled: true };
       return { text: added ? "¡Agregado al carrito!" : "Agregar al carrito", disabled: false };
@@ -150,7 +157,7 @@ export function ProductDetailInteractive({
   const ctaState = getCtaState();
 
   const handleAddToCart = () => {
-    if (isVariantMode && (!allDimensionsSelected || !matchedVariant)) return;
+    if (ctaState.disabled||isVariantMode && (!allDimensionsSelected || !matchedVariant)) return;
     addToCart(product, channel, quantity, matchedVariant);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -190,7 +197,7 @@ export function ProductDetailInteractive({
         </button>
         <button
           type="button"
-          onClick={() => { setChannel("wholesale"); setQuantity(product.wholesaleMinQuantity); }}
+          onClick={() => { setChannel("wholesale"); setQuantity(1); }}
           className={`flex-1 rounded-lg py-2 text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
             channel === "wholesale"
               ? "bg-amber-400 text-zinc-950 shadow-xs"
@@ -210,14 +217,14 @@ export function ProductDetailInteractive({
       {/* Price Section */}
       <div data-product-purchase className="space-y-5 rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-7">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-zinc-500">{channel === "wholesale" ? "Precio por bulto cerrado" : "Precio por unidad"}</p>
+          <p className="text-xs font-medium text-zinc-500">{channel === "wholesale" ? "Precio mayorista por unidad" : "Precio por unidad"}</p>
           <p className="mt-1 break-words text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-tight tracking-tight tabular-nums text-zinc-950">
-            {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{formatCurrency(price)}
+            {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{price===null?'Precio por confirmar':formatCurrency(price)}
           </p>
-          {channel === "retail" && price > 0 && (
+          {channel === "retail" && price!==null && price > 0 && (
             <p className="mt-2 text-xs leading-5 text-zinc-600">Beneficio por transferencia y opciones de pago a confirmar antes de comprar.</p>
           )}
-          {channel === "retail" && <ElectronicsPrice product={{ ...product, retailPrice: price }} detail />}
+          {channel === "retail" && <ElectronicsPrice product={{ ...product, retailPrice: price??product.retailPrice }} detail />}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className={`inline-flex items-center gap-1.5 font-medium ${inStock ? "text-emerald-800" : "text-amber-800"}`}><span className={`size-1.5 shrink-0 rounded-full ${inStock ? "bg-emerald-600" : "bg-amber-500"}`}/>{inStock ? "Disponible" : "Disponibilidad a confirmar"}</span>
             <span className="text-zinc-500">{isImmediate ? "Stock confirmado" : "Entrega a coordinar"}</span>
@@ -228,7 +235,7 @@ export function ProductDetailInteractive({
               </span>
             )}
           </div>
-          {channel === "wholesale" && <p className="mt-2 text-xs text-zinc-500">Mínimo {product.wholesaleMinQuantity} unidades</p>}
+          {channel === "wholesale" && <p className="mt-2 text-xs text-zinc-500">Desde una unidad por producto, combinable con otros rubros. El mínimo se aplica al pedido completo.</p>}
         </div>
 
         {/* Dimension & Options Selector */}
@@ -333,25 +340,26 @@ export function ProductDetailInteractive({
         </div>}
 
         {/* Wholesale Reseller Profit Demonstration */}
-        {channel === "wholesale" && product.retailPrice > product.wholesalePrice && (
+        {channel === "wholesale" && price!==null && product.retailPrice > price && (
           <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-1.5">
             <div className="flex items-center justify-between font-bold text-amber-950">
-              <span>PVP Sugerido de Reventa al Público:</span>
+              <span>Precio minorista actual en MYA:</span>
               <span className="font-black text-sm">{formatCurrency(product.retailPrice)}</span>
             </div>
             <div className="flex items-center justify-between text-emerald-800 font-extrabold text-[11px] pt-1 border-t border-amber-200/60">
               <span>Diferencia bruta antes de gastos:</span>
               <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md">
-                +{formatCurrency(product.retailPrice - product.wholesalePrice)} / un. ({Math.round(((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100)}% de margen)
+                +{formatCurrency(product.retailPrice - (price??0))} / un.
               </span>
             </div>
           </div>
         )}
 
+        {channel==='wholesale'&&<div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs leading-6 text-sky-950"><p>{wholesale.offer?.reason||(pending?'El precio de esta presentación necesita confirmación antes del pago.':'Precio mayorista confirmado por unidad.')}</p><p>Podés combinar productos de distintos rubros para alcanzar el mínimo del pedido.</p>{wholesale.offer?.status==='ready'&&wholesale.offer.tiers?.length>0&&<ul>{wholesale.offer.tiers.map(t=><li key={t.minQty}>{t.minQty}+ unidades: {formatCurrency(t.unitPrice)} por unidad</li>)}</ul>}</div>}
         <div ref={mainCtaRef} data-product-actions className="space-y-3 border-t border-zinc-100 pt-4">
           <div className="flex min-w-0 items-center justify-between gap-3 pb-1">
             <span className="text-sm font-medium text-zinc-800">Cantidad</span>
-            <QuantityStepper quantity={quantity} min={channel === "wholesale" ? product.wholesaleMinQuantity : 1} max={purchasableQuantity(targetItem)} onChange={setQuantity}/>
+            <QuantityStepper quantity={quantity} min={1} max={maxQuantity} onChange={setQuantity}/>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_3rem] gap-2">
             <button type="button" onClick={handleAddToCart} disabled={ctaState.disabled} className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-3 text-sm font-semibold leading-snug text-white transition-colors hover:bg-sky-800 active:scale-[0.98] disabled:bg-zinc-100 disabled:text-zinc-500">
@@ -374,7 +382,7 @@ export function ProductDetailInteractive({
 
       <ProductShippingCalculator
         product={{ ...product, stock: targetItem.stock, stockVerifiedAt: targetItem.stockVerifiedAt, supplierAvailable: targetItem.supplierAvailable }}
-        price={price}
+        price={price??0}
         quantity={quantity}
         isImmediate={isImmediate}
         fulfillmentMode={targetItem.fulfillmentMode}
@@ -384,8 +392,8 @@ export function ProductDetailInteractive({
       <div className="divide-y divide-zinc-200 border-y border-zinc-200">
         {channel === "retail" && <details className="group" aria-label="Consulta mayorista del producto">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-zinc-900">Compra mayorista para tu comercio<ChevronDown className="size-4 shrink-0 text-zinc-400 transition group-open:rotate-180"/></summary>
-          <div className="pb-5 text-sm text-zinc-600"><p className="leading-6">Mínimo: {WHOLESALE_MINIMUM_LABEL}. Podés combinar productos de distintos rubros. Consultá precio y disponibilidad de la cantidad que necesitás.</p>
-          <button type="button" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-sky-800 underline underline-offset-4" onClick={() => openWhatsApp(wholesaleProductInquiry(product, quantity, matchedVariant?.title), { type: "wholesale", source: "product_detail", category: product.categoryName })}>Cotizar este producto por mayor</button>
+          <div className="pb-5 text-sm text-zinc-600"><p className="leading-6">Mínimo: {WHOLESALE_MINIMUM_LABEL}. Podés combinar productos de distintos rubros. El precio mayorista confirmado y la disponibilidad se muestran al elegir ese canal.</p>
+<button type="button" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-sky-800 underline underline-offset-4" onClick={() => {setChannel('wholesale');setQuantity(1);}}>Ver precio mayorista de esta presentación</button>
           <Link href="/mayorista" className="mt-1 block w-fit py-2 text-xs text-zinc-600 underline underline-offset-4">Ver condiciones de venta mayorista</Link></div>
         </details>}
         <details className="group">
@@ -400,14 +408,14 @@ export function ProductDetailInteractive({
 
       {/* Modern Sticky Mobile Buy Bar */}
       <StickyMobileBuyBar
-        price={price}
+        price={price??0}
         quantity={quantity}
         added={added}
         onAddToCart={handleAddToCart}
         onOpenWhatsApp={() => openWhatsApp(whatsappMessage)}
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
-        visible={isStickyVisible}
+        visible={isStickyVisible&&!pending}
         disabled={ctaState.disabled}
         needsSelection={isVariantMode && (!allDimensionsSelected || !matchedVariant)}
         variantTitle={matchedVariant?.title || undefined}

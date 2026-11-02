@@ -9,13 +9,13 @@ export function reconcileCart<T extends CartLine>(lines: T[], products: Product[
 
     if (line.variantId) {
       const variant = product.variants?.find(v => v.id === line.variantId);
-      if (!variant || !variant.isActive || !isVerifiedStock(variant)) return [];
-      const unitPrice = line.channel === "wholesale" ? (variant.wholesalePrice ?? variant.retailPrice) : variant.retailPrice;
-      const maxQty = purchasableQuantity(variant);
+      if (!variant || !variant.isActive || line.channel==='retail'&&!isVerifiedStock(variant)) return [];
+      const unitPrice = line.channel === "wholesale" ? (variant.wholesaleOffer?.unitPrice ?? null) : variant.retailPrice;
+      const maxQty = line.channel==='wholesale' ? 100 : purchasableQuantity(variant);
       if (maxQty < 1) return [];
       return [{
         ...line,
-        product,
+        product:line.channel==='wholesale'?{...product,wholesaleOffer:product.wholesaleOffer??line.product.wholesaleOffer,variants:product.variants?.map(v=>({...v,wholesaleOffer:v.wholesaleOffer??line.product.variants?.find(old=>old.id===v.id)?.wholesaleOffer}))}:product,
         variantTitle: variant.title,
         variantPrice: unitPrice,
         variantImage: variant.imageUrl || null,
@@ -24,10 +24,10 @@ export function reconcileCart<T extends CartLine>(lines: T[], products: Product[
       }];
     }
 
-    if (!isVerifiedStock(product)) return [];
-    const maxQty = purchasableQuantity(product);
+    if (line.channel==='retail'&&!isVerifiedStock(product)) return [];
+    const maxQty = line.channel==='wholesale' ? 100 : purchasableQuantity(product);
     if (maxQty < 1) return [];
-    return [{ ...line, product, quantity: Math.min(line.quantity, maxQty) }];
+    return [{ ...line, product:line.channel==='wholesale'?{...product,wholesaleOffer:product.wholesaleOffer??line.product.wholesaleOffer}:product, quantity: Math.min(line.quantity, maxQty) }];
   });
 }
 

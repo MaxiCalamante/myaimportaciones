@@ -1,5 +1,5 @@
 /** Public channel switch. Keep the B2B implementation dormant until its launch review. */
-export const WHOLESALE_ENABLED = false;
+export const WHOLESALE_ENABLED = process.env.NEXT_PUBLIC_WHOLESALE_ENABLED !== "false";
 export const MAX_ORDER_QUANTITY = 100;
 export const MAX_ORDER_LINES = 50;
 

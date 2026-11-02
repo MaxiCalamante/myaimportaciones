@@ -1,5 +1,5 @@
 "use client";
-import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
+import { MAX_ORDER_QUANTITY, WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
@@ -9,6 +9,8 @@ import { useCommerce } from "@/components/commerce/commerce-provider";
 import { Button } from "@/components/ui/button";
 import { trackAdsEvent } from "@/lib/analytics";
 import { useModalFocus } from "@/components/ui/use-modal-focus";
+import {wholesaleDisplay} from "@/components/wholesale/public-price";
+import Link from "next/link";
 
 export function ProductDetailsModal() {
   const { selectedProduct } = useCommerce();
@@ -47,9 +49,10 @@ function ProductDetailsModalContent() {
 
   const discount = useMemo(() => {
     if (!selectedProduct) return 0;
-    if (selectedProduct.retailPrice <= 0 || selectedProduct.wholesalePrice <= 0) return 0;
+    const firm=wholesaleDisplay(selectedProduct).price;
+    if (selectedProduct.retailPrice <= 0 || firm===null) return 0;
     return Math.round(
-      ((selectedProduct.retailPrice - selectedProduct.wholesalePrice) /
+      ((selectedProduct.retailPrice - firm) /
         selectedProduct.retailPrice) *
         100
     );
@@ -58,7 +61,11 @@ function ProductDetailsModalContent() {
   if (!selectedProduct) return null;
 
   const imageSrc = selectedProduct.imageUrl || "/placeholder-product.svg";
-  const price = channel === "wholesale" ? selectedProduct.wholesalePrice : selectedProduct.retailPrice;
+  const wholesale=wholesaleDisplay(selectedProduct);
+  const price = channel === "wholesale" ? wholesale.price : selectedProduct.retailPrice;
+  const pending=channel==='wholesale'&&price===null;
+  const requestable=pending&&wholesale.offer?.status!=='unavailable';
+  const maxQuantity=requestable?MAX_ORDER_QUANTITY:purchasableQuantity(selectedProduct);
 
   // Zoom logic
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -79,20 +86,21 @@ function ProductDetailsModalContent() {
   };
 
   const handleAddToCart = () => {
+    if(selectedProduct.hasVariants)return;
     addToCart(selectedProduct, channel, quantity);
     setSelectedProduct(null); // Close modal
   };
 
   const handleIncrement = () => {
-    setQuantity((q) => Math.max(1, Math.min(q + 1, purchasableQuantity(selectedProduct))));
+    setQuantity((q) => Math.max(1, Math.min(q + 1, maxQuantity)));
   };
 
   const handleDecrement = () => {
-    const min = channel === "wholesale" ? selectedProduct.wholesaleMinQuantity : 1;
+    const min = 1;
     setQuantity((q) => Math.max(min, q - 1));
   };
 
-  const isWholesaleAllowed = WHOLESALE_ENABLED && selectedProduct.wholesalePrice > 0;
+  const isWholesaleAllowed = WHOLESALE_ENABLED;
 
   return (
     <div
@@ -180,7 +188,7 @@ function ProductDetailsModalContent() {
               {isWholesaleAllowed && (
                 <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-50/50">
                   <span className="text-emerald-900 font-medium">
-                    {selectedProduct.wholesaleMinQuantity}+ u. (Mayorista)
+                    Mayorista por unidad
                   </span>
                   <div className="flex items-center gap-2">
                     {discount > 0 && (
@@ -188,7 +196,7 @@ function ProductDetailsModalContent() {
                         -{discount}%
                       </span>
                     )}
-                    <span className="font-bold text-emerald-700">{formatCurrency(selectedProduct.wholesalePrice)}</span>
+                    <span className="font-bold text-emerald-700">{wholesale.price===null?'Precio por confirmar':formatCurrency(wholesale.price)}</span>
                   </div>
                 </div>
               )}
@@ -212,7 +220,7 @@ function ProductDetailsModalContent() {
                   className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     channel === "wholesale" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-600 hover:text-zinc-950"
                   }`}
-                  onClick={() => { setChannel("wholesale"); setQuantity(selectedProduct.wholesaleMinQuantity); }}
+                  onClick={() => { setChannel("wholesale"); setQuantity(1); }}
                 >
                   Mayorista
                 </button>
@@ -229,7 +237,7 @@ function ProductDetailsModalContent() {
             </div>
             {channel === "wholesale" && (
               <div>
-                Mínimo de compra: <span className="text-zinc-900">{selectedProduct.wholesaleMinQuantity} unidades</span>
+                Pedido combinable: <span className="text-zinc-900">desde 1 unidad por producto</span>
               </div>
             )}
           </div>
@@ -249,7 +257,7 @@ function ProductDetailsModalContent() {
               </span>
               <button
                 aria-label="Sumar unidad"
-                disabled={quantity >= purchasableQuantity(selectedProduct)}
+                disabled={quantity >= maxQuantity}
                 className="inline-flex h-11 w-11 items-center justify-center text-zinc-600 hover:bg-zinc-100 rounded-r-xl border-l border-zinc-200 cursor-pointer"
                 onClick={handleIncrement}
               >
@@ -257,14 +265,14 @@ function ProductDetailsModalContent() {
               </button>
             </div>
 
-            <Button
+            {selectedProduct.hasVariants?<Link onClick={()=>setSelectedProduct(null)} href={`/producto/${selectedProduct.slug}${channel==='wholesale'?'?canal=mayorista':''}`} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-sky-800 px-4 text-sm font-semibold text-white">Elegir la presentación exacta</Link>:<Button
               className="min-h-12 w-full cursor-pointer flex items-center justify-center gap-2"
               onClick={handleAddToCart}
-              disabled={!isVerifiedStock(selectedProduct)}
+              disabled={!requestable&&(!isVerifiedStock(selectedProduct)||channel==='wholesale'&&wholesale.offer?.status==='unavailable')}
               icon={<ShoppingCart className="h-4 w-4" />}
             >
-              Agregar ({formatCurrency(price * quantity)})
-            </Button>
+              {pending?'Solicitar confirmación':`Agregar (${formatCurrency((price??0) * quantity)})`}
+            </Button>}
           </div>
 
         </div>

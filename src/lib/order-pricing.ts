@@ -1,4 +1,5 @@
 export interface PricedItem {
+  channel?: "retail" | "wholesale";
   id: string;
   variant_id?: string | null;
   title: string;

@@ -60,6 +60,6 @@ test("card keeps channel pricing, verified currency equivalent and real promotio
   assert.doesNotMatch(retail, /<del\b|% OFF/);
   const wholesale = renderCard({ hasVariants: true, minPrice: 90000, maxPrice: 180000 }, "wholesale");
   assert.match(wholesale, /\$\s*110\.000/);
-  assert.match(wholesale, /Mínimo 4 unidades/);
+  assert.match(wholesale, /Por unidad · combinable/);
   assert.doesNotMatch(wholesale, /Desde|USD/);
 });

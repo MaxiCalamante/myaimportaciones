@@ -20,6 +20,7 @@ const eslintConfig = defineConfig([
     "scratch/suppliers-private/**",
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".next*/**",
     ".next-no-supabase/**",
     ".next-visual/**",
     ".next-giveaway-qa/**",
@@ -27,6 +28,7 @@ const eslintConfig = defineConfig([
     ".next-storefront-qa/**",
     ".next-opportunities-qa/**",
     ".next-opportunities-webpack-qa/**",
+    ".next-product-detail-qa/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ShoppingBag, ArrowRight, Building2, CreditCard, AlertCircle } from "lucide-react";
-import { validateWholesaleOrder } from "@/lib/wholesale-policy";
+import { validateWholesaleOrder, cartLineUnitPrice } from "@/lib/wholesale-policy";
 import type { Profile } from "@/lib/auth";
 import type { OrderQuote } from "@/lib/order-pricing";
 import { createOrderAction, quoteOrderAction, type CheckoutInput } from "@/app/checkout/actions";
@@ -29,6 +29,7 @@ export function CheckoutPanel({
     cart,
     cartReady,
     cartTotal,
+    wholesalePolicy,
     clearCart,
     postalCode,
     setPostalCode,
@@ -49,6 +50,7 @@ export function CheckoutPanel({
   const [coupon, setCoupon] = useState("");
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [quotedKey, setQuotedKey] = useState("");
+  const [confirmationRequired,setConfirmationRequired]=useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Awaited<ReturnType<typeof createOrderAction>> | null>(null);
   const [customerEmail, setCustomerEmail] = useState(profile?.email || "");
@@ -59,9 +61,9 @@ export function CheckoutPanel({
   const wholesaleValidation = validateWholesaleOrder(
     cart.map((l) => ({
       channel: l.channel,
-      price: l.variantPrice != null ? l.variantPrice : (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice),
+      price: cartLineUnitPrice(l),
       quantity: l.quantity,
-    }))
+    })),wholesalePolicy
   );
   const requestId = useRef("");
   const initiated = useRef(false);
@@ -83,6 +85,8 @@ export function CheckoutPanel({
   };
 
   const key = JSON.stringify(input);
+  const hasUnpriced=cart.some(line=>cartLineUnitPrice(line)===null);
+  const confirmationReady=confirmationRequired&&key===quotedKey;
   const validQuote = quote !== null && key === quotedKey;
   const pickup = selectedShippingOption?.type === "pickup";
 
@@ -105,6 +109,8 @@ export function CheckoutPanel({
         if (response.ok) {
           setError("");
           setQuote(response.quote);
+        setConfirmationRequired(response.confirmationRequired);
+          setConfirmationRequired(response.confirmationRequired);
           setQuotedKey(JSON.stringify(input));
           if (!requestId.current) requestId.current = crypto.randomUUID();
         } else {
@@ -126,6 +132,7 @@ export function CheckoutPanel({
       const response = await quoteOrderAction(input);
       if (response.ok) {
         setQuote(response.quote);
+        setConfirmationRequired(response.confirmationRequired);
         setQuotedKey(key);
         if (!requestId.current || quotedKey !== key) requestId.current = crypto.randomUUID();
       } else {
@@ -138,6 +145,7 @@ export function CheckoutPanel({
 
   const field = "mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-950 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600 text-base sm:text-sm";
 
+  if(result?.pendingConfirmation)return <section className="mx-auto max-w-2xl px-4 py-12"><div className="rounded-2xl border border-amber-200 bg-amber-50 p-6"><h1 className="text-2xl font-bold">Solicitud pendiente de confirmación</h1><p className="mt-3">Guardamos tu selección con el código <strong>{result.trackingCode}</strong>. Revisaremos disponibilidad, costos y entrega antes de habilitar una compra.</p><p className="mt-3 font-semibold">Todavía no hay un importe final para pagar. No realices transferencias por esta solicitud.</p><p className="mt-2 text-sm">Tu carrito sigue guardado en este dispositivo. Antes de comprar se vuelve a calcular el precio vigente.</p><Link className="mt-5 inline-block font-semibold text-sky-800 underline" href="/mayorista">Volver al catálogo</Link></div></section>;
   // Pantalla de confirmación y experiencia post-venta
   if (result) return (
     <section className="mx-auto max-w-3xl space-y-6 px-4 py-12 animate-in fade-in duration-300">
@@ -330,9 +338,9 @@ export function CheckoutPanel({
           <aside className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
             <h2 className="text-xl font-bold">Resumen del carrito</h2>
             <div className="mt-4 space-y-4">{cart.map(l => {
-              const unitPrice = l.variantPrice != null ? l.variantPrice : (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice);
+              const unitPrice = cartLineUnitPrice(l);
               const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
-              return <p key={lineKey} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}<strong className="mt-1 block text-zinc-950">{formatCurrency(l.quantity * unitPrice)}</strong></p>;
+              return <p key={lineKey} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}<strong className="mt-1 block text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(l.quantity * unitPrice)}</strong></p>;
             })}</div>
             <p className="mt-4 grid gap-1 border-t border-zinc-100 pt-4 [&>span:first-child]:text-xs [&>span:first-child]:font-medium [&>span:first-child]:text-zinc-500 [&>span:last-child]:text-2xl [&>span:last-child]:font-semibold [&>span:last-child]:tabular-nums"><span>Subtotal de referencia</span><span>{formatCurrency(cartTotal)}</span></p>
             <p className="mt-2 text-xs text-zinc-500">Entrega y precio final sujetos a confirmación.</p>
@@ -365,7 +373,7 @@ export function CheckoutPanel({
                   expectedTotal: quote?.total ?? (cartTotal + shippingCost),
                 });
                 setResult(response);
-                clearCart();
+                if(!response.pendingConfirmation)clearCart();
               } catch (err) {
                 setError(err instanceof Error ? err.message : "No pudimos registrar el pedido.");
               }
@@ -609,13 +617,13 @@ export function CheckoutPanel({
             <h2 className="text-xl font-bold">Resumen de compra</h2>
             <div className="divide-y divide-zinc-100 max-h-56 overflow-y-auto pr-1">
               {cart.map(l => {
-                const unitPrice = l.variantPrice != null ? l.variantPrice : (l.channel === "wholesale" ? l.product.wholesalePrice : l.product.retailPrice);
+                const unitPrice = cartLineUnitPrice(l);
                 const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
                 return (
                   <div key={lineKey} className="py-2 text-xs">
                     <div className="grid gap-1 font-medium text-zinc-800">
                       <span>{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}</span>
-                      <span className="shrink-0 tabular-nums font-bold text-zinc-950">{formatCurrency(l.quantity * unitPrice)}</span>
+                      <span className="shrink-0 tabular-nums font-bold text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(l.quantity * unitPrice)}</span>
                     </div>
                   </div>
                 );
@@ -636,11 +644,12 @@ export function CheckoutPanel({
               {pending ? "Calculando total…" : "Calcular total con envío Correo Argentino"}
             </button>
 
+            {confirmationReady&&<p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950">Esta selección requiere confirmar disponibilidad y precio. Podés enviar una solicitud sin efectuar ningún pago.</p>}
             {/* Desglose dinámico en tiempo real */}
             <div aria-live="polite" className="space-y-2 rounded-xl bg-zinc-50 p-4 text-sm border border-zinc-200">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-zinc-600 [&>span:last-child]:max-w-36 [&>span:last-child]:text-right">
                 <span>Productos:</span>
-                <span>{formatCurrency(validQuote ? quote.subtotal : cartTotal)}</span>
+                <span>{hasUnpriced&&!validQuote?"A confirmar":formatCurrency(validQuote ? quote.subtotal : cartTotal)}</span>
               </div>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-zinc-600 [&>span:last-child]:max-w-36 [&>span:last-child]:text-right">
                 <span>Envío ({selectedShippingOption?.name || "Correo Argentino"}):</span>
@@ -671,11 +680,11 @@ export function CheckoutPanel({
               )}
               <div className="grid gap-1 border-t border-zinc-200 pt-3 text-zinc-950 [&>span:first-child]:text-xs [&>span:first-child]:font-medium [&>span:first-child]:text-zinc-500 [&>span:last-child]:text-2xl [&>span:last-child]:font-semibold [&>span:last-child]:tabular-nums">
                 <span>{!validQuote ? "Subtotal de productos:" : quote.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
-                <span>{formatCurrency(validQuote ? quote.total : cartTotal)}</span>
+                <span>{confirmationReady||hasUnpriced&&!validQuote?"A confirmar":formatCurrency(validQuote ? quote.total : cartTotal)}</span>
               </div>
             </div>
 
-            {validQuote && quote.shippingQuotedSeparately && (
+            {(confirmationReady||validQuote && quote.shippingQuotedSeparately) && (
               <label className="flex items-start gap-2 rounded-xl bg-sky-50 p-3 text-xs text-sky-900 border border-sky-100">
                 <input className="mt-0.5" type="checkbox" name="separate_shipping" required />
                 <span>Entiendo que este pago corresponde a los productos y que el envío a domicilio se cotiza y abona por separado, coordinándolo con MYA.</span>
@@ -688,7 +697,7 @@ export function CheckoutPanel({
               Al confirmar aceptás las <Link href="/condiciones" className="underline">condiciones de compra</Link> y <Link href="/privacidad" className="underline">privacidad</Link>.
             </p>
 
-            {wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum && (
+            {!confirmationReady && !hasUnpriced && wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum && (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs sm:text-sm text-amber-950">
                 <div className="flex items-center gap-2 font-bold text-amber-900">
                   <AlertCircle className="size-4 shrink-0 text-amber-600" />
@@ -710,11 +719,12 @@ export function CheckoutPanel({
 
             <button
               type="submit"
-              disabled={pending || !checkoutEnabled || !validQuote || (wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum)}
+              disabled={pending || !checkoutEnabled || (!validQuote&&!confirmationReady) || (!confirmationReady&&wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum)}
               className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base cursor-pointer"
             >
               {pending
                 ? "Procesando pedido…"
+                : confirmationReady ? "Enviar solicitud sin pagar"
                 : wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum
                 ? "Mínimo mayorista no alcanzado"
                 : "Confirmar pedido"}

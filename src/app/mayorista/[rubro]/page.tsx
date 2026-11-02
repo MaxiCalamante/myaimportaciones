@@ -12,8 +12,8 @@ export async function generateMetadata({ params }: { params: Promise<{ rubro: st
   return wholesaleMetadata(category);
 }
 
-export default async function WholesaleCategoryPage({ params }: { params: Promise<{ rubro: string }> }) {
+export default async function WholesaleCategoryPage({ params,searchParams }: { params: Promise<{ rubro: string }>;searchParams:Promise<import("@/components/wholesale/wholesale-catalog-grid").WholesaleFilters> }) {
   const category = findWholesaleCategory((await params).rubro);
   if (!category) notFound();
-  return <WholesaleLanding category={category} />;
+  return <WholesaleLanding category={category} filters={await searchParams} />;
 }

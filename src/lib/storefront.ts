@@ -124,7 +124,7 @@ export const getProductBySlug = cache(async function getProductBySlug(slug: stri
 
   if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
 
-  return mapProduct(data as unknown as DbProduct);
+  return mapProduct(data as unknown as DbProduct, false, WHOLESALE_ENABLED);
 });
 
 // Share the same navigation read between metadata, layout and the catalog in one request.

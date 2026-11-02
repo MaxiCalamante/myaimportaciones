@@ -4,9 +4,12 @@ import * as nodeModule from 'node:module';
 // The runtime is Node24; the project still carries Node20 type definitions.
 const {registerHooks}=nodeModule as unknown as {registerHooks(hooks:{
  resolve(specifier:string,context:unknown,nextResolve:(s:string,c:unknown)=>unknown):unknown;
- load(url:string,context:unknown,nextLoad:(u:string,c:unknown)=>unknown):unknown;
+ load?(url:string,context:unknown,nextLoad:(u:string,c:unknown)=>unknown):unknown;
 }):unknown};
-registerHooks({load(url,context,nextLoad){return url==='data:text/javascript,export {}'?{format:'commonjs',source:'module.exports={};',shortCircuit:true}:nextLoad(url,context);},resolve(specifier,context,nextResolve){return specifier==='server-only'?{url:'data:text/javascript,export {}',shortCircuit:true}:nextResolve(specifier,context);}});
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+const emptyUrl=pathToFileURL(resolve('tests/empty.js')).href;
+registerHooks({resolve(specifier,context,nextResolve){return specifier==='server-only'?{url:emptyUrl,shortCircuit:true}:nextResolve(specifier,context);}});
 import {renderToStaticMarkup} from 'react-dom/server';
 
 test('private administrative pages are evaluated per request, never prerendered',async()=>{
