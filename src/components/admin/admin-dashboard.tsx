@@ -63,6 +63,7 @@ import {
   updateOrderStatusAction,
 } from "@/app/admin/actions";
 import { formatCurrency, formatDate, formatOrderStatus, formatPaymentMethod } from "@/lib/format";
+import { copyToClipboard } from "@/lib/clipboard";
 import { getWhatsAppUrl } from "@/lib/site";
 import type { AdminDashboardData, PaymentMethod, OrderStatus, Category, Product } from "@/lib/types";
 import { isProductImmediateStock } from "@/lib/shipping";
@@ -180,9 +181,9 @@ export function AdminDashboard({
   const [quickWholesaleEmail, setQuickWholesaleEmail] = useState("");
   const [copiedWholesaleLink, setCopiedWholesaleLink] = useState(false);
 
-  const handleCopyWholesaleLink = () => {
+  const handleCopyWholesaleLink = async () => {
     const url = `${window.location.origin}/mayorista`;
-    navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     setCopiedWholesaleLink(true);
     setTimeout(() => setCopiedWholesaleLink(false), 2500);
   };
@@ -214,7 +215,7 @@ export function AdminDashboard({
     alert(`¡Proveedor "${newSupplier.name}" registrado con éxito! Ahora podés seleccionarlo en el Ajustador Masivo de Precios y en el Panel B2B.`);
   };
 
-  const handleCopyCalcQuote = () => {
+  const handleCopyCalcQuote = async () => {
     const baseArs = calcCost * calcExchangeRate;
     const landedCost = baseArs * (1 + calcShippingPercent / 100);
     const wholesalePrice = Math.round((landedCost * (1 + calcWholesaleMarkup / 100)) / 100) * 100;
@@ -232,7 +233,7 @@ Logística / Despacho: +${calcShippingPercent}%
 💰 Contribución estimada Minorista: $${(retailPrice - landedCost).toLocaleString("es-AR")}
 💰 Contribución estimada Mayorista: $${(wholesalePrice - landedCost).toLocaleString("es-AR")}`;
 
-    navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     setCopiedCalcQuote(true);
     setTimeout(() => setCopiedCalcQuote(false), 2500);
   };
@@ -648,7 +649,7 @@ Logística / Despacho: +${calcShippingPercent}%
     return filteredSupplierProducts.slice(start, start + SUPPLIERS_PER_PAGE);
   }, [filteredSupplierProducts, supplierPage]);
 
-  const handleGenerateWhatsAppList = () => {
+  const handleGenerateWhatsAppList = async () => {
     const listToExport = filteredSupplierProducts.slice(0, 50);
     if (listToExport.length === 0) {
       alert("No hay productos filtrados para armar la lista.");
@@ -675,7 +676,7 @@ Logística / Despacho: +${calcShippingPercent}%
     text += `📸 Instagram: ${siteConfig.instagram}\n`;
     text += `🌐 Catálogo Completo Online: ${window.location.origin}/mayorista\n`;
 
-    navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     setCopiedWhatsAppList(true);
     setTimeout(() => setCopiedWhatsAppList(false), 3000);
   };

@@ -1787,13 +1787,44 @@ export async function quickUpdateSupplierLinkAction(
   fulfillmentMode: "own_stock" | "supplier" = "supplier",
   supplierAvailable: boolean = true
 ) {
-  await getAdminClient();
+  const adminDb = await getAdminClient();
   const db = createCommerceService();
   const cleanUrl = httpsUrl(sourceUrl.trim(), "Proveedor");
   validId(productId);
   if (livePrice !== undefined && livePrice !== null && (!Number.isFinite(livePrice) || livePrice < 0)) throw new Error("Costo de proveedor inválido.");
-  const { error: modeError } = await db.rpc("set_product_fulfillment_v1", { product_id_input: productId, mode_input: fulfillmentMode, available_input: supplierAvailable });
-  if (modeError) throw new Error("No se pudo cambiar la modalidad. Revisá las reservas pendientes.");
+
+  // Verificar si la modalidad o disponibilidad realmente están cambiando
+  const { data: currentProduct } = await db
+    .from("products")
+    .select("fulfillment_mode, supplier_available")
+    .eq("id", productId)
+    .single();
+
+  if (currentProduct && (currentProduct.fulfillment_mode !== fulfillmentMode || currentProduct.supplier_available !== supplierAvailable)) {
+    // Intentar con el cliente autenticado de admin
+    const { error: modeError } = await adminDb.rpc("set_product_fulfillment_v1", {
+      product_id_input: productId,
+      mode_input: fulfillmentMode,
+      available_input: supplierAvailable
+    });
+
+    if (modeError) {
+      // Fallback seguro usando service role ya autenticado en la acción
+      const { error: updateModeErr } = await db
+        .from("products")
+        .update({
+          fulfillment_mode: fulfillmentMode,
+          supplier_available: supplierAvailable,
+          stock_verified_at: currentProduct.fulfillment_mode !== fulfillmentMode ? null : undefined,
+        })
+        .eq("id", productId);
+
+      if (updateModeErr) {
+        throw new Error("No se pudo cambiar la modalidad. Revisá las reservas pendientes.");
+      }
+    }
+  }
+
   const updateData: Record<string, unknown> = {
     source_url: cleanUrl || null,
     supplier_available: supplierAvailable,

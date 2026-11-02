@@ -16,6 +16,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
+import { copyToClipboard } from "@/lib/clipboard";
 import { ElectronicsPrice } from "./electronics-price";
 import { useCommerce } from "@/components/commerce/commerce-provider";
 import { isProductImmediateStock } from "@/lib/shipping";
@@ -171,11 +172,11 @@ export function ProductDetailInteractive({
 
   const handleCopyLink = async () => {
     setCopyError(false);
-    try {
-      await navigator.clipboard.writeText(`${siteConfig.appUrl}/producto/${product.slug}`);
+    const ok = await copyToClipboard(`${siteConfig.appUrl}/producto/${product.slug}`);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopyError(true);
     }
   };

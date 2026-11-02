@@ -45,6 +45,7 @@ import { runSupplierTrackingAction } from "@/app/admin/proveedores/automation-ac
 import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { copyToClipboard } from "@/lib/clipboard";
 import type { Category, Product, StockLog } from "@/lib/types";
 import {
   toggleProductActiveAction,
@@ -475,16 +476,16 @@ export function ProductControlCenter({
     }
   };
 
-  // Copy SKU to clipboard helper
-  const handleCopySku = (sku: string) => {
-    navigator.clipboard.writeText(sku);
+  // Copy SKU to clipboard helper (with safe fallback for LAN/HTTP)
+  const handleCopySku = async (sku: string) => {
+    await copyToClipboard(sku);
     setCopiedSku(sku);
     setTimeout(() => setCopiedSku(null), 2000);
   };
 
-  // Copy supplier link helper
-  const handleCopySupplierLink = (url: string) => {
-    navigator.clipboard.writeText(url);
+  // Copy supplier link helper (with safe fallback for LAN/HTTP)
+  const handleCopySupplierLink = async (url: string) => {
+    await copyToClipboard(url);
     setCopiedSupplierLink(url);
     showToast("✓ Enlace de proveedor copiado al portapapeles", "info");
     setTimeout(() => setCopiedSupplierLink(null), 2500);
