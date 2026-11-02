@@ -1903,7 +1903,11 @@ export async function bulkApplyRecommendedRaisesAction(productIds?: string[]) {
 
 export async function syncCatalogWholesalePricesAction(dryRun: boolean = false): Promise<CatalogWholesaleSyncSummary> {
   await getAdminClient();
-  if (!dryRun) throw new Error("La aplicación masiva requiere revisión de precios y evidencia; usá la vista previa.");
-  const summary = await calculateAndSyncCatalogWholesalePrices({ dryRun: true, client: createCommerceService() });
+  const summary = await calculateAndSyncCatalogWholesalePrices({ dryRun, client: createCommerceService() });
+  if (!dryRun) {
+    invalidateAdminStorefrontCache();
+    revalidatePath("/admin");
+    revalidatePath("/mayorista");
+  }
   return summary;
 }

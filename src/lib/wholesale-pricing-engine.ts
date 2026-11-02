@@ -110,7 +110,8 @@ export function classifyWholesaleRubro(
     cat.includes("solar") ||
     cat.includes("corporal") ||
     cat.includes("cosmetica") ||
-    /medicube|anua|skin1004|beauty of joseon|cosrx|torriden|round lab|dr\.?\s*althea/i.test(t)
+    /medicube|anua|skin1004|beauty of joseon|cosrx|torriden|round lab|dr\.?\s*althea|celimax|some by mi|haruharu|axis-y|tocobo|mixsoon|numbuzin|d'?alba|tirtir|clio|rom&nd|romand|retinol|retinal|pdrn/i.test(t) ||
+    /medicube|anua|skin1004|beauty of joseon|cosrx|torriden|round lab|dr\.?\s*althea|celimax|some by mi|haruharu|axis-y|tocobo|mixsoon|numbuzin|d'?alba|tirtir|clio/i.test(b)
   ) {
     return { rubro: "cosmetica", isEligible: true };
   }
@@ -301,17 +302,17 @@ export function calculateProductWholesalePricing(
   // 2. Piso de rentabilidad de MYA (costo landed + markup de seguridad)
   const myaFloor = costLanded * myaSafetyMarkup;
 
-  let finalWholesalePriceRaw = wholesalePriceTarget;
+  // El precio mayorista busca otorgar el margen objetivo al comprador (ej. 20% a 28%),
+  // asegurando como piso innegociable el markup de seguridad para MYA (myaFloor).
+  let finalWholesalePriceRaw = Math.max(wholesalePriceTarget, myaFloor);
 
-  if (wholesalePriceTarget < myaFloor) {
-    // Si el descuento al revendedor perfora el piso de MYA, buscar punto de equilibrio
-    if (resaleCeiling > myaFloor * 1.08) {
-      // Reparto proporcional del margen disponible
-      finalWholesalePriceRaw = costLanded + (resaleCeiling - costLanded) * 0.50;
-    } else {
-      baseResult.ineligibilityReason = "El precio de mercado no permite garantizar ganancia a MYA y al revendedor simultáneamente.";
-      return baseResult;
-    }
+  // Control de viabilidad y atractivo mayorista:
+  // Si aún al piso de MYA el descuento para el comprador no llega al 12% frente al minorista,
+  // el producto NO califica para venta mayorista (evita diferencias irrisorias de $1.000 o $2.000).
+  const buyerDiscountPercent = (resaleCeiling - finalWholesalePriceRaw) / resaleCeiling;
+  if (buyerDiscountPercent < 0.12) {
+    baseResult.ineligibilityReason = `Diferencia con minorista insuficiente (${Math.round(buyerDiscountPercent * 100)}%) para ser atractivo por mayor.`;
+    return baseResult;
   }
 
   // 3. Aplicar redondeo comercial

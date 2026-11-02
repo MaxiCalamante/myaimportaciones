@@ -661,7 +661,7 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
   const [unlinkedRes, settingsRes, suppliersRes] = await Promise.all([
     supabase
       .from("products")
-      .select("id, title, brand, model, sku, category_id, retail_price, fulfillment_mode, is_active, specifications")
+      .select("id, title, brand, model, sku, category_id, retail_price, fulfillment_mode, is_active, specifications, categories(slug, name)")
       .is("deleted_at", null)
       .eq("fulfillment_mode", "supplier")
       .or("source_url.is.null,source_url.eq.''")
@@ -801,11 +801,12 @@ export async function huntSuppliersForUnlinkedProducts(options?: {
         : priceSuggestion.suggestedPrice;
 
       // Update product: link winner, set cost, evaluate wholesale, activate!
+      const catObj = (product as unknown as { categories?: { slug?: string; name?: string } }).categories;
       const wholesaleEval = calculateProductWholesalePricing({
         productId: product.id,
         title: product.title,
-        categorySlug: "",
-        categoryName: "",
+        categorySlug: catObj?.slug || "",
+        categoryName: catObj?.name || "",
         brand: product.brand,
         retailPrice: newRetailPrice,
         landedCostArs: winner.landedCostArs,
