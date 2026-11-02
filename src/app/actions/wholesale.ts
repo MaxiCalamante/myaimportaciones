@@ -266,3 +266,33 @@ export async function updateWholesalePriceAction(
     message: `Precio mayorista actualizado a $${Math.round(newWholesalePrice).toLocaleString("es-AR")}.`,
   };
 }
+
+/**
+ * Permite a un administrador revisar y confirmar o rechazar una solicitud de pedido mayorista (SOL-...).
+ */
+export async function reviewWholesaleCheckoutRequestAction(
+  requestId: string,
+  status: "confirmed" | "rejected",
+  notes = ""
+): Promise<WholesaleActionResult> {
+  const adminClient = await getAdminClient();
+  if (!adminClient) {
+    return { success: false, error: "Permiso denegado. Se requiere cuenta de administrador." };
+  }
+
+  const { error } = await adminClient.rpc("review_wholesale_request_v1", {
+    id_input: requestId,
+    status_input: status,
+    notes_input: notes,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/admin/mayoristas");
+  return {
+    success: true,
+    message: status === "confirmed" ? "Solicitud confirmada exitosamente." : "Solicitud rechazada.",
+  };
+}

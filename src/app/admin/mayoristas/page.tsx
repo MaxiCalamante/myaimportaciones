@@ -45,7 +45,14 @@ export default async function AdminWholesalePage() {
     .from("profiles")
     .select("id", { count: "exact", head: true });
 
-  // 4. Productos con precios mayoristas y costos para monitor de margen
+  // 4. Solicitudes de pedido mayorista bajo confirmación (SOL-...)
+  const { data: requestRows } = await serviceDb
+    .from("wholesale_checkout_requests")
+    .select("id, request_id, reference, contact, selection, status, reasons, review_notes, reviewed_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  // 5. Productos con precios mayoristas y costos para monitor de margen
   const { data: rawProductMargins } = await serviceDb
     .from("products")
     .select(`
@@ -121,18 +128,33 @@ export default async function AdminWholesalePage() {
 
   const lowMarginCount = productMargins.filter((p) => p.marginPct < 25).length;
 
+  const checkoutRequests = (requestRows || []).map((row) => ({
+    id: row.id,
+    requestId: row.request_id,
+    reference: row.reference,
+    contact: (row.contact && typeof row.contact === "object" ? row.contact : {}) as { name?: string; email?: string; phone?: string; address?: string },
+    selection: (Array.isArray(row.selection) ? row.selection : []) as Array<{ productId?: string; variantId?: string | null; quantity: number; title?: string; channel?: string }>,
+    status: row.status as "pending_confirmation" | "confirmed" | "rejected",
+    reasons: Array.isArray(row.reasons) ? row.reasons : [],
+    reviewNotes: row.review_notes || "",
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
+  }));
+
+  const pendingRequestsCount = checkoutRequests.filter((r) => r.status === "pending_confirmation").length;
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-amber-600">
-            Canal B2B · Revendedores y Comercios
+            Canal Mayorista · Catálogo Público & B2B
           </p>
           <h1 className="mt-1 text-3xl font-extrabold text-zinc-950">
             Aprobación y Gestión Mayorista
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-            Revisá las solicitudes de clientes que se postulan para comprar por bulto cerrado y monitoreá que ningún costo de reposición comprometa el margen mínimo del 25%.
+            Monitoreá los pedidos mayoristas bajo confirmación (SOL-...), revisá postulaciones de clientes y asegurá que ningún costo comprometa el margen mínimo garantizado.
           </p>
         </div>
         <CommerceRefresh />
@@ -141,10 +163,10 @@ export default async function AdminWholesalePage() {
       {/* Métricas KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AdminMetric
-          label="Solicitudes Pendientes"
+          label="Pedidos SOL Pendientes"
           value={
-            <span className={pendingApplications.length > 0 ? "text-amber-600" : "text-zinc-950"}>
-              {pendingApplications.length}
+            <span className={pendingRequestsCount > 0 ? "text-amber-600 font-black" : "text-zinc-950"}>
+              {pendingRequestsCount}
             </span>
           }
         />
@@ -168,6 +190,7 @@ export default async function AdminWholesalePage() {
         pendingApplications={pendingApplications}
         approvedWholesalers={approvedWholesalers}
         productMargins={productMargins}
+        checkoutRequests={checkoutRequests}
       />
     </div>
   );

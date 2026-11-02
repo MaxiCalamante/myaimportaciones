@@ -6,6 +6,7 @@ import {
   rejectWholesaleApplicationAction,
   setWholesaleByEmailAction,
   updateWholesalePriceAction,
+  reviewWholesaleCheckoutRequestAction,
   type WholesaleActionResult,
 } from "@/app/actions/wholesale";
 import {
@@ -60,24 +61,40 @@ export interface WholesaleProductMargin {
   suggestedWholesalePrice: number;
 }
 
+export interface WholesaleCheckoutRequest {
+  id: string;
+  requestId: string;
+  reference: string;
+  contact: { name?: string; email?: string; phone?: string; address?: string };
+  selection: Array<{ productId?: string; variantId?: string | null; quantity: number; title?: string; channel?: string }>;
+  status: "pending_confirmation" | "confirmed" | "rejected";
+  reasons: string[];
+  reviewNotes: string;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 interface Props {
   pendingApplications: WholesaleProfile[];
   approvedWholesalers: WholesaleProfile[];
   productMargins: WholesaleProductMargin[];
+  checkoutRequests?: WholesaleCheckoutRequest[];
 }
 
 export function WholesaleManager({
   pendingApplications: initialPending,
   approvedWholesalers: initialApproved,
   productMargins: initialMargins,
+  checkoutRequests: initialRequests = [],
 }: Props) {
   const [pendingList, setPendingList] = useState(initialPending);
   const [approvedList, setApprovedList] = useState(initialApproved);
   const [marginsList, setMarginsList] = useState(initialMargins);
+  const [requestsList, setRequestsList] = useState(initialRequests);
   const [manualEmail, setManualEmail] = useState("");
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<"pending" | "approved" | "margins">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "approved" | "margins" | "requests">("requests");
   const [filterSearch, setFilterSearch] = useState("");
   const [marginFilter, setMarginFilter] = useState<"all" | "low" | "critical" | "healthy">("low");
   const [customPriceEdits, setCustomPriceEdits] = useState<Record<string, number>>({});
@@ -168,6 +185,33 @@ export function WholesaleManager({
       }
     });
   };
+
+  const handleReviewRequest = (req: WholesaleCheckoutRequest, status: "confirmed" | "rejected") => {
+    const notes = prompt(`Nota de revisión para ${req.reference} (opcional):`, "") ?? "";
+    startTransition(async () => {
+      const res = await reviewWholesaleCheckoutRequestAction(req.id, status, notes);
+      if (res.success) {
+        setActionMessage({ type: "success", text: res.message || "Solicitud actualizada." });
+        setRequestsList((prev) =>
+          prev.map((r) => (r.id === req.id ? { ...r, status, reviewNotes: notes, reviewedAt: new Date().toISOString() } : r))
+        );
+      } else {
+        setActionMessage({ type: "error", text: res.error || "Error al revisar solicitud." });
+      }
+    });
+  };
+
+  const filteredRequests = requestsList.filter((r) => {
+    if (!filterSearch) return true;
+    const term = filterSearch.toLowerCase();
+    return (
+      r.reference?.toLowerCase().includes(term) ||
+      r.contact?.name?.toLowerCase().includes(term) ||
+      r.contact?.email?.toLowerCase().includes(term) ||
+      r.contact?.phone?.toLowerCase().includes(term) ||
+      r.status?.toLowerCase().includes(term)
+    );
+  });
 
   const filteredPending = pendingList.filter((p) => {
     if (!filterSearch) return true;
@@ -263,6 +307,22 @@ export function WholesaleManager({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={() => setActiveTab("requests")}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+              activeTab === "requests"
+                ? "bg-sky-800 text-white shadow-xs"
+                : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            <span>Pedidos Mayoristas (SOL)</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${activeTab === "requests" ? "bg-white/20 text-white" : "bg-zinc-950/10 text-zinc-900"}`}>
+              {requestsList.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("pending")}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
               activeTab === "pending"
@@ -323,6 +383,102 @@ export function WholesaleManager({
           />
         </div>
       </div>
+
+      {/* PESTAÑA 0: PEDIDOS MAYORISTAS (SOL-...) */}
+      {activeTab === "requests" && (
+        <div className="space-y-4">
+          {filteredRequests.length === 0 ? (
+            <div className={`${adminCard} py-12 text-center`}>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-800">
+                <FileText className="h-6 w-6" />
+              </div>
+              <h3 className="mt-3 text-base font-bold text-zinc-900">
+                {filterSearch ? "No hay solicitudes con ese filtro" : "No hay pedidos mayoristas pendientes de confirmación"}
+              </h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                Cuando un comprador arme un pedido mayorista con productos bajo cotización o disponibilidad a revisar, aparecerá aquí con referencia SOL-... para su confirmación.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredRequests.map((req) => (
+                <div key={req.id} className={`${adminCard} p-5 space-y-3`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                        {req.reference}
+                      </span>
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        req.status === "confirmed" ? "bg-emerald-100 text-emerald-800" :
+                        req.status === "rejected" ? "bg-rose-100 text-rose-800" :
+                        "bg-amber-100 text-amber-800"
+                      }`}>
+                        {req.status === "confirmed" ? "Confirmada" : req.status === "rejected" ? "Rechazada" : "Pendiente de Confirmación"}
+                      </span>
+                    </div>
+                    <span className="text-xs text-zinc-400">
+                      {new Date(req.createdAt).toLocaleString("es-AR")}
+                    </span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-3 text-xs">
+                    <div>
+                      <p className="font-semibold text-zinc-700">Contacto</p>
+                      <p className="text-zinc-900">{req.contact?.name || "Sin nombre"}</p>
+                      <p className="text-zinc-500">{req.contact?.email || "-"}</p>
+                      <p className="text-zinc-500">{req.contact?.phone || "-"}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="font-semibold text-zinc-700">Productos solicitados ({req.selection?.length || 0})</p>
+                      <ul className="mt-1 space-y-1 text-zinc-600">
+                        {(req.selection || []).map((item, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <span className="font-bold text-zinc-900">{item.quantity}x</span>
+                            <span>{item.title || item.productId}</span>
+                            {item.variantId && <span className="text-zinc-400">({item.variantId})</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  {req.reasons?.length > 0 && (
+                    <div className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                      <span className="font-bold">Motivos: </span>
+                      {req.reasons.join(", ")}
+                    </div>
+                  )}
+                  {req.reviewNotes && (
+                    <p className="text-xs text-zinc-500 italic">
+                      Nota de revisión: {req.reviewNotes}
+                    </p>
+                  )}
+                  {req.status === "pending_confirmation" && (
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-zinc-100">
+                      <button
+                        type="button"
+                        onClick={() => handleReviewRequest(req, "confirmed")}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Confirmar solicitud</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReviewRequest(req, "rejected")}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        <span>Rechazar</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* PESTAÑA 1: SOLICITUDES PENDIENTES */}
       {activeTab === "pending" && (
