@@ -514,7 +514,7 @@ export async function searchSupplierOpportunities(
 
 /** Only accept the primary structured product with an exact supplier ID. Variant listings need review. */
 export function imageFromOpportunityPage(html: string, offer: { external_id: string | null; variant_key: string | null; source_url: string }): string | null {
-  if (!offer.external_id || !["base", `listing:${offer.external_id}`].includes(offer.variant_key ?? "")) return null;
+  if (!offer.external_id || !["base", "attribute:0", `listing:${offer.external_id}`].includes(offer.variant_key ?? "")) return null;
   // Related-item lists may contain the same SKU. Only a top-level Product is accepted.
   const products: Record<string, unknown>[] = [];
   for (const match of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
