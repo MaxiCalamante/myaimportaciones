@@ -554,7 +554,7 @@ Logística / Despacho: +${calcShippingPercent}%
         name: "Atacado USA",
         categoryType: "Cosméticos & K-Beauty",
         badgeColor: "bg-pink-50 text-pink-700 border-pink-200",
-        url: "https://atacadousa.com.py/20-cosmeticos",
+        url: product.sourceUrl || "",
         costUsd,
         costArs,
       };
@@ -568,7 +568,7 @@ Logística / Despacho: +${calcShippingPercent}%
         name: "Total Tools Paraguay",
         categoryType: "Herramientas Industriales",
         badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
-        url: "https://www.totalherramientasoficial.com.py/home",
+        url: product.sourceUrl || "",
         costUsd,
         costArs,
       };
@@ -581,7 +581,7 @@ Logística / Despacho: +${calcShippingPercent}%
       name: "Total Tools / Wadfow",
       categoryType: "Herramientas & Equipamiento",
       badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
-      url: "https://www.totalherramientasoficial.com.py/home",
+      url: product.sourceUrl || "",
       costUsd,
       costArs,
     };
@@ -1347,7 +1347,7 @@ Logística / Despacho: +${calcShippingPercent}%
                                 {supplier.name}
                               </span>
                               <div>
-                                {supplier.url !== "#" ? (
+                                {supplier.url ? (
                                   <a
                                     href={supplier.url}
                                     target="_blank"
@@ -1357,7 +1357,7 @@ Logística / Despacho: +${calcShippingPercent}%
                                     <ExternalLink className="h-3 w-3" /> Ver proveedor
                                   </a>
                                 ) : (
-                                  <span className="text-[11px] text-zinc-400">Directo fábrica</span>
+                                  <span className="text-[11px] text-zinc-400">Sin enlace directo</span>
                                 )}
                               </div>
                             </div>

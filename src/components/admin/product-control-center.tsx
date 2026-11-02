@@ -61,6 +61,7 @@ import {
   exportProductAuditLogsCsvAction,
   updatePriceAlertThresholdAction,
   syncCatalogWholesalePricesAction,
+  runDirectCatalogSupplierSyncAction,
 } from "@/app/admin/actions";
 import {
   calculateLandedCostArs,
@@ -334,9 +335,18 @@ export function ProductControlCenter({
 
   const handleFullCatalogSync = async () => {
     setIsFullSyncRunning(true);
-    try { const result = await runSupplierTrackingAction(); showToast(result, "info"); router.refresh(); }
-    catch (err) { showToast(err instanceof Error ? err.message : "No se pudo ejecutar el seguimiento.", "error"); }
-    finally { setIsFullSyncRunning(false); }
+    try {
+      const res = await runDirectCatalogSupplierSyncAction(30);
+      showToast(
+        `Sincronización completada: ${res.checked} productos verificados (${res.inStock} disponibles, ${res.outOfStock} sin stock/bajas, ${res.errors} con error).`,
+        "info"
+      );
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "No se pudo sincronizar el catálogo.", "error");
+    } finally {
+      setIsFullSyncRunning(false);
+    }
   };
 
   const handleSyncWholesalePrices = () => {
@@ -737,18 +747,18 @@ export function ProductControlCenter({
 
         {/* Main Hero Actions: 2 balanced, responsive command cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Card 1: Procesar lote de seguimiento */}
+          {/* Card 1: Sincronizar Stock con Proveedores */}
           <div className="flex flex-col justify-between rounded-xl border border-sky-200/80 bg-white p-3.5 shadow-2xs hover:border-sky-300 transition-all">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 block">
-                  Revisión Global Multi-Proveedor
+                  Sincronización Total en Vivo
                 </span>
                 <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
-                  Seguimiento de proveedores
+                  Sincronizar Stock con Proveedores
                 </h4>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Procesa hasta seis consultas pendientes. El seguimiento conserva los datos cuando la evidencia no alcanza.
+                  Verifica disponibilidad en las webs de mayoristas (Atacado USA, Total, etc.). Si un producto está agotado o fue dado de baja (404), actualiza su estado.
                 </p>
               </div>
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
@@ -763,7 +773,7 @@ export function ProductControlCenter({
               className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isFullSyncRunning ? "animate-spin" : ""}`} />
-              <span>{isFullSyncRunning ? "Procesando lote..." : "Procesar lote de seguimiento"}</span>
+              <span>{isFullSyncRunning ? "Sincronizando lote..." : "Sincronizar Lote de Productos"}</span>
             </button>
           </div>
 
@@ -1543,6 +1553,12 @@ export function ProductControlCenter({
                                     >
                                       <Globe className="h-3 w-3 text-sky-600" /> Abrir proveedor <ExternalLink className="h-3 w-3" />
                                     </a>
+
+                                    {(!product.supplierAvailable || product.supplierStockStatus === "not_found" || product.supplierStockStatus === "out_of_stock") && (
+                                      <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200" title="El proveedor marcó agotado o dio de baja esta ficha">
+                                        Sin stock en mayorista
+                                      </span>
+                                    )}
 
                                     <button
                                       type="button"

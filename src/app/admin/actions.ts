@@ -20,6 +20,8 @@ import {
   type SupplierCheckResult,
   type CatalogSyncProgress,
   type AutoHuntResult,
+  runCatalogSyncChunk,
+  runBatchSupplierStockSync,
 } from "@/lib/supplier-sync";
 import {
   searchSupplierOpportunities,
@@ -450,8 +452,19 @@ export async function triggerBatchSupplierSyncAction(limit: number = 30) {
 }
 
 export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
-  await getAdminClient();
-  throw new Error("Usá el seguimiento de proveedores; el procesamiento está coordinado en la nube.");
+  const client = await getAdminClient();
+  const progress = await runCatalogSyncChunk({ offset, limit, client });
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  return progress;
+}
+
+export async function runDirectCatalogSupplierSyncAction(batchLimit: number = 25) {
+  const client = await getAdminClient();
+  const result = await runBatchSupplierStockSync({ limit: batchLimit, client, timeBudgetMs: 38000 });
+  invalidateAdminStorefrontCache();
+  revalidatePath("/admin");
+  return result;
 }
 
 export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promise<AutoHuntResult> {

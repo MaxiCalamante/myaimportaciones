@@ -179,12 +179,12 @@ export async function checkAndUpdateProductSupplierStock(productId: string, clie
       if (o.source_url && (!o.availability_checked_at || Date.now() - Date.parse(o.availability_checked_at) > 6 * 3600000)) {
         try {
           const liveCheck = await checkSupplierProductAvailability(o.source_url, product.sku, product.brand);
-          if (liveCheck.status === "in_stock" || liveCheck.status === "out_of_stock") {
-            checkStatus = liveCheck.status;
+          if (liveCheck.status === "in_stock" || liveCheck.status === "out_of_stock" || liveCheck.status === "not_found") {
+            checkStatus = liveCheck.status === "in_stock" ? "in_stock" : "out_of_stock";
             await supabase.from("supplier_offers").update({
               availability: checkStatus,
               availability_checked_at: new Date().toISOString(),
-              last_error: null,
+              last_error: liveCheck.status === "not_found" ? liveCheck.message : null,
             }).eq("id", o.id);
           }
         } catch {
@@ -263,9 +263,10 @@ export async function checkAndUpdateProductSupplierStock(productId: string, clie
 
   // Case 2: No multi-supplier offers linked yet, fallback to product.source_url
   const check = await checkSupplierProductAvailability(product.source_url, product.sku, product.brand);
-  const newAvailable = check.status === "in_stock" ? true : check.status === "out_of_stock" ? false : Boolean(product.supplier_available);
+  const isOutOfStock = check.status === "out_of_stock" || check.status === "not_found";
+  const newAvailable = check.status === "in_stock" ? true : isOutOfStock ? false : Boolean(product.supplier_available);
   const newActive = autoPause
-    ? (check.status === "out_of_stock" ? false : check.status === "in_stock" ? true : product.is_active)
+    ? (isOutOfStock ? false : check.status === "in_stock" ? true : product.is_active)
     : product.is_active;
 
   const { error: updateError } = await supabase.rpc("update_product_supplier_sync_v1", {
@@ -353,10 +354,11 @@ export async function runBatchSupplierStockSync(options?: {
     const chunk = products.slice(i, i + concurrency);
     const chunkPromises = chunk.map(async (p) => {
       const check = await checkSupplierProductAvailability(p.source_url, p.sku, p.brand);
+      const isOutOfStock = check.status === "out_of_stock" || check.status === "not_found";
       const newAvailable =
         check.status === "in_stock"
           ? true
-          : check.status === "out_of_stock"
+          : isOutOfStock
           ? false
           : Boolean(p.supplier_available);
 

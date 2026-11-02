@@ -41,6 +41,29 @@ export function parseRegisteredOffer(html: string, offer: SupplierOffer, supplie
     return { ok: true, values: { availability: result.status, origin_cost: null, currency: null } };
   }
   if (!["star-company", "atacado-usa"].includes(supplier.official_key ?? "")) return { ok: false, message: "Proveedor sin adaptador validado." };
+  
+  if (supplier.official_key === "atacado-usa" && html.includes("av-product-detail")) {
+    const refMatch = html.match(/Ref\.:\s*(\d+)/i) || html.match(/name=["']av_id_product["']\s+value=["'](\d+)["']/i);
+    const externalId = refMatch?.[1];
+    if (externalId && offer.external_id && externalId !== offer.external_id) {
+      return { ok: false, message: "Identificador diferente en Atacado USA; revisar ficha manualmente." };
+    }
+    const priceMatch = html.match(/class=["'][^"']*av-detail-price[^"']*["']>([^<]+)</i);
+    let price: number | null = null;
+    if (priceMatch) {
+      const raw = priceMatch[1].replace(/[^\d.,]/g, "").replace(",", ".");
+      const parsed = parseFloat(raw);
+      if (Number.isFinite(parsed) && parsed > 0) price = parsed;
+    }
+    const hasAddForm = /av-detail-add-form|Adicionar ao orçamento/i.test(html);
+    const isOutOfStock = /esgotado|indispon[íi]vel|sem estoque|sin stock/i.test(html);
+    const isAvail = hasAddForm && !isOutOfStock;
+    return { ok: true, values: { availability: isAvail ? "in_stock" : "out_of_stock", origin_cost: price, currency: price ? "USD" : null } };
+  }
+  if (supplier.official_key === "atacado-usa" && (html.includes("av-hero-slider") || html.includes("av-hero-layout"))) {
+    return { ok: false, missing: true, message: "Ficha desaparecida en Atacado USA (redirige a la portada)." };
+  }
+
   const tag = [...html.matchAll(/<[^>]+>/g)].map(m => m[0]).find(t => /\bid\s*=\s*["']product-details["']/i.test(t));
   const attr = tag?.match(/\bdata-product\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];
   if (!attr) return { ok: false, message: "No se encontró evidencia del producto principal." };
@@ -58,6 +81,37 @@ export function parseRegisteredOffer(html: string, offer: SupplierOffer, supplie
 /** Discover identity only from the primary product of a curated source URL. */
 export function inspectSupplierProduct(html:string,url:string,supplier:IntelligenceSupplier,sku?:string):PublicProduct|null {
   if (supplier.official_key === 'atlantico') return atlanticoPublicProduct(html, url);
+  if (supplier.official_key === 'atacado-usa' && html.includes("av-product-detail")) {
+    const refMatch = html.match(/Ref\.:\s*(\d+)/i) || html.match(/name=["']av_id_product["']\s+value=["'](\d+)["']/i);
+    const titleMatch = html.match(/<section[^>]*class=["'][^"']*av-product-detail[^"']*["'][\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/i) || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const id = refMatch?.[1];
+    const title = titleMatch?.[1]?.replace(/\s+/g, ' ').trim();
+    if (id && title) {
+      const priceMatch = html.match(/class=["'][^"']*av-detail-price[^"']*["']>([^<]+)</i);
+      let price: number | null = null;
+      if (priceMatch) {
+        const raw = priceMatch[1].replace(/[^\d.,]/g, "").replace(",", ".");
+        const parsed = parseFloat(raw);
+        if (Number.isFinite(parsed) && parsed > 0) price = parsed;
+      }
+      const hasAddForm = /av-detail-add-form|Adicionar ao orçamento/i.test(html);
+      const isOutOfStock = /esgotado|indispon[íi]vel|sem estoque|sin stock/i.test(html);
+      return {
+        external_id: id,
+        variant_key: 'base',
+        title,
+        brand: '',
+        model: id,
+        source_url: url,
+        origin_cost: price,
+        currency: price ? 'USD' : null,
+        availability: hasAddForm && !isOutOfStock ? 'in_stock' : 'out_of_stock'
+      };
+    }
+  }
+  if (supplier.official_key === 'atacado-usa' && (html.includes("av-hero-slider") || html.includes("av-hero-layout"))) {
+    return null;
+  }
   if(['star-company','atacado-usa'].includes(supplier.official_key??'')){
     const tag=[...html.matchAll(/<[^>]+>/g)].map(m=>m[0]).find(t=>/\bid\s*=\s*["']product-details["']/i.test(t));
     const attr=tag?.match(/\bdata-product\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];if(!attr)return null;

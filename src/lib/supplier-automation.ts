@@ -46,7 +46,19 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
   try{
     await publicReadRules(job.source_url);
     const response=await fetchSupplierPage(job.source_url,'MYA-CatalogMonitor/1.0');
-    if(response.status===404)throw new Error('HTTP 404: ficha desaparecida; no confirma agotamiento.');
+    if(response.status===404){
+      if(job.offer_id){
+        await db.from('supplier_offers').update({availability:'out_of_stock',last_error:'HTTP 404: ficha no encontrada en proveedor.',availability_checked_at:stamp,updated_at:stamp}).eq('id',job.offer_id);
+      }
+      if(job.product_id){
+        await db.from('products').update({supplier_available:false,supplier_stock_status:'out_of_stock',supplier_last_checked_at:stamp,updated_at:stamp}).eq('id',job.product_id);
+        if(config.autoPauseWhenOutOfStock!==false){
+          await db.from('products').update({is_active:false,updated_at:stamp}).eq('id',job.product_id).eq('fulfillment_mode','supplier').eq('is_active',true);
+        }
+      }
+      await db.from('supplier_sync_queue').update({state:'ready',attempts:0,last_error:'HTTP 404: producto no encontrado en proveedor (marcado sin stock).',last_success_at:stamp,leased_until:null,next_run_at:new Date(Date.now()+24*3600000).toISOString(),updated_at:stamp}).eq('id',job.id);
+      return {ok:false,message:'HTTP 404: producto no encontrado en proveedor; disponibilidad pausada.'};
+    }
     if(!response.ok)throw new Error(`HTTP ${response.status}; se conserva evidencia anterior.`);
     const html=await readSupplierHtml(response);
     let product:{id:string;title:string;sku:string;brand:string;model:string}|null=null;
