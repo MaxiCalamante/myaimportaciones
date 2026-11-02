@@ -2,6 +2,7 @@ import { createCommerceService, hasCommerceService } from "@/lib/supabase/servic
 import { NextRequest, NextResponse } from "next/server";
 import { runCatalogImportJobs } from "@/lib/catalog-import-worker";
 import { runSupplierAutomation } from "@/lib/supplier-automation";
+import { runWholesalePriceRefresh } from "@/lib/wholesale-v2-worker";
 import { invalidateAdminStorefrontCache } from "@/lib/storefront";
 import { revalidatePath } from "next/cache";
 
@@ -18,14 +19,18 @@ export async function GET(req: NextRequest) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) return NextResponse.json({ error: "Límite inválido" }, { status: 400 });
 
   try {
-    const catalogImports = await runCatalogImportJobs(createCommerceService(),8000);
-    const report = await runSupplierAutomation(createCommerceService(),{worker:'vercel-daily',limit:Math.min(limit,9),timeBudgetMs:40000});
-    invalidateAdminStorefrontCache();revalidatePath('/', 'layout');
+    const serviceClient = createCommerceService();
+    const catalogImports = await runCatalogImportJobs(serviceClient, 8000);
+    const report = await runSupplierAutomation(serviceClient, { worker: "vercel-daily", limit: Math.min(limit, 9), timeBudgetMs: 35000 });
+    const wholesalePrices = await runWholesalePriceRefresh(serviceClient, Math.min(limit, 100));
+    invalidateAdminStorefrontCache();
+    revalidatePath("/", "layout");
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       report,
       catalogImports,
+      wholesalePrices,
     });
   } catch {
     return NextResponse.json(
