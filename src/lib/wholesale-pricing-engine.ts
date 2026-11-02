@@ -452,11 +452,11 @@ export async function calculateAndSyncCatalogWholesalePrices(options?: {
       });
     } else {
       excludedCount++;
-      // Si el producto no es apto (iPhone, etc.), asegurar que wholesale_price quede null
-      if (product.wholesale_price !== null && product.wholesale_price !== undefined) {
+      // Si el producto no es apto (iPhone, margen insuficiente, etc.), desactivar en canal mayorista (precio 0)
+      if (product.wholesale_price !== 0) {
         updates.push({
           id: product.id,
-          wholesale_price: null,
+          wholesale_price: 0,
           wholesale_min_qty: 1,
         });
       }
