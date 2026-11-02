@@ -69,7 +69,6 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
         </p>
         {channel === "wholesale" && <p className="text-[10px] leading-4 text-zinc-600">{pending?'Solicitud sin cobro previo':'Por unidad · combinable con otros productos'}</p>}
         {channel==='wholesale'&&price!==null&&product.retailPrice>price&&!product.hasVariants&&<p className="text-[10px] leading-4 text-zinc-500">Minorista: {formatCurrency(product.retailPrice)}</p>}
-        {channel==='wholesale'&&wholesale.offer?.status==='ready'&&wholesale.offer.tiers?.length>0&&<p className="text-[10px] leading-4 text-sky-800">{wholesale.offer.tiers.map(t=>`${t.minQty}+ un.: ${formatCurrency(t.unitPrice)}`).join(' · ')}</p>}
         {channel === "retail" && <ElectronicsPrice product={product} />}
       </div>
       <div className="mt-0.5 h-4 min-w-0">{product.hasVariants && <ProductVariantPreview slug={product.slug} variants={product.variants} />}</div>

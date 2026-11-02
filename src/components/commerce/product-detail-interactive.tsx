@@ -360,7 +360,7 @@ export function ProductDetailInteractive({
           </div>
         )}
 
-        {channel==='wholesale'&&<div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs leading-6 text-sky-950"><p>{wholesale.offer?.reason||(pending?'El precio de esta presentación necesita confirmación antes del pago.':'Precio mayorista confirmado por unidad.')}</p><p>Podés combinar productos de distintos rubros para alcanzar el mínimo del pedido.</p>{wholesale.offer?.status==='ready'&&wholesale.offer.tiers?.length>0&&<ul>{wholesale.offer.tiers.map(t=><li key={t.minQty}>{t.minQty}+ unidades: {formatCurrency(t.unitPrice)} por unidad</li>)}</ul>}</div>}
+        {channel==='wholesale'&&<div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs leading-6 text-sky-950"><p>{wholesale.offer?.reason||(pending?'El precio de esta presentación necesita confirmación antes del pago.':'Precio mayorista confirmado por unidad.')}</p><p>Podés combinar productos de distintos rubros para alcanzar el mínimo del pedido.</p></div>}
         <div ref={mainCtaRef} data-product-actions className="space-y-3 border-t border-zinc-100 pt-4">
           <div className="flex min-w-0 items-center justify-between gap-3 pb-1">
             <span className="text-sm font-medium text-zinc-800">Cantidad</span>
