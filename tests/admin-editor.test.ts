@@ -41,6 +41,8 @@ test("admin save results preserve safe auth errors but do not expose unexpected 
   assert.equal(unexpected.success, false);
   if (!unexpected.success) assert.doesNotMatch(unexpected.error, /private|database/);
   assert.equal(log.mock.callCount(), 1);
+  const readFailure = await runAdminFormAction(async () => { throw new Error("private database connection details"); }, "No se pudieron actualizar las oportunidades.");
+  assert.deepEqual(readFailure, {success:false,error:"No se pudieron actualizar las oportunidades."});
   assert.deepEqual(await runAdminFormAction(async () => ({ id: "saved-id" })), { success: true, data: { id: "saved-id" } });
 });
 

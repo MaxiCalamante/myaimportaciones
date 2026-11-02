@@ -29,3 +29,7 @@ La descripción y las fotos no se importan automáticamente. El alta crea un bor
 ## Validación
 
 Pruebas sobre PostgreSQL aislado: permisos, transacciones completas, reintentos, duplicados, enlace de origen, entrada en seguimiento después de verificar y rechazo de una ficha general. También se comprobaron los requisitos de publicación y la conservación del stock físico. Pruebas del radar cubren errores, vigencia, proveedor inactivo y presentaciones distintas del mismo modelo. Evidencia privada y registros de ejecución en `scratch/suppliers-private/`.
+
+## Verificación final — 02/11/2026
+
+La prueba real de filtros encontró una lectura directa de `products.source_url`, columna privada que el rol autenticado no puede consultar. Se eliminó del radar porque no necesita ese dato para comparar identidades. La vista previa de importación obtiene el catálogo mediante `admin_catalog_page`, el acceso administrativo ya existente. No se ampliaron permisos de columnas ni de funciones. La regresión de PostgreSQL ahora restringe explícitamente `source_url` y comprueba el alta completa bajo el rol autenticado; antes el fixture concedía lectura de toda la tabla y ocultaba esa incompatibilidad. Los errores de búsqueda cruzan la acción como un resultado controlado con mensaje legible.

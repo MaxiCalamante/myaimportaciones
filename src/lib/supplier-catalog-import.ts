@@ -6,6 +6,7 @@ import { offerEvidence, supplierSourceUrl, type SupplierOffer, type Intelligence
 import { acquisitionFxFresh } from './supplier-usdt';
 import type { TrackingConfig } from './supplier-automation';
 import { readAllPages } from './read-all-pages';
+import { readAdminProducts } from './admin-catalog-read';
 import { matchTargets, type MatchProduct, type MatchVariant } from './supplier-matching';
 import { linkPayload, type CrosslinkCatalog } from './supplier-crosslinks';
 import { planCatalogImport, validateCatalogFilters } from './catalog-import-plan';
@@ -115,7 +116,7 @@ export async function previewCatalogImport(db:SupabaseClient,s:CatalogPreviewSel
  }
  if(!selected.length)throw new Error('No hay ofertas para importar con estos filtros.');
  const [products,variants]=await Promise.all([
-  readAllPages<MatchProduct>((from,to)=>db.from('products').select('id,title,brand,model,sku,source_url,has_variants,specifications,deleted_at').order('id').range(from,to)),
+  readAllPages<Record<string,unknown>>((from,to)=>readAdminProducts(db,{from,size:to-from+1})).then(rows=>rows as unknown as MatchProduct[]),
   readAllPages<MatchVariant>((from,to)=>db.from('product_variants').select('id,product_id,title,sku,options').order('id').range(from,to))
  ]);
  const targets=matchTargets(products,variants),catalog={products,variants,targets,offers:selected,suppliers:ctx.suppliers} as CrosslinkCatalog;

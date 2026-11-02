@@ -288,7 +288,7 @@ export async function searchSupplierOpportunities(
     db.from("suppliers").select("id, name, official_key, is_active, freshness_hours").eq("is_active", true),
     db.from("categories").select("id, name, slug, parent_id, image_url").order("name"),
     db.from("supplier_market_references").select("product_id, price_ars, source_url, checked_at").eq("identity_verified", true).is("variant_id", null).is("last_error", null).gte("checked_at", new Date(Date.now()-48*3600000).toISOString()).not("price_ars", "is", null),
-    db.from("products").select("id,title,brand,model,sku,specifications,source_url,has_variants").eq("has_variants",false).is("deleted_at",null),
+    db.from("products").select("id,title,brand,model,sku,specifications,has_variants").eq("has_variants",false).is("deleted_at",null),
     db.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
     db.from("import_cost_policies").select("config").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);

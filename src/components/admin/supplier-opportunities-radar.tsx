@@ -105,7 +105,9 @@ export function SupplierOpportunitiesRadar({
           page: newPage,
           pageSize: 24,
         });
-        setData(res);
+        if (!res.success) { setImportError(res.error); return; }
+        setImportError(null);
+        setData(res.data);
       } catch (err) {
         setImportError(err instanceof Error ? err.message : "No se pudieron actualizar las oportunidades.");
       }

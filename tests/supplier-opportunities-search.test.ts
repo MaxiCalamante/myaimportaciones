@@ -18,7 +18,7 @@ function fixture(failTable?:string){
    {...offer,id:'inactive',supplier_id:'inactive'},
    {...offer,id:'expired',availability_checked_at:'2020-01-01T00:00:00Z'}],
  };
- return{from(table:string){const q={select(){return q;},eq(){return q;},is(){return q;},gte(){return q;},not(){return q;},gt(){return q;},order(){return q;},range(){return q;},limit(){return q;},maybeSingle(){return q;},
+ return{from(table:string){const q={select(columns:string){assert.ok(table!=='products'||!columns.split(',').includes('source_url'),'Radar must not request the protected provider URL');return q;},eq(){return q;},is(){return q;},gte(){return q;},not(){return q;},gt(){return q;},order(){return q;},range(){return q;},limit(){return q;},maybeSingle(){return q;},
   then(resolve:(v:unknown)=>unknown){return Promise.resolve(resolve({data:tables[table],error:table===failTable?{message:'read failed'}:null}));}};return q;}} as unknown as SupabaseClient;
 }
 test('radar excludes inactive suppliers and treats failed, listing-only or expired stock as unknown',async()=>{

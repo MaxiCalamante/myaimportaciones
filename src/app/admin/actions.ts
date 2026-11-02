@@ -1810,8 +1810,10 @@ export async function quickUpdateSupplierLinkAction(
 
 
 export async function searchSupplierOpportunitiesAction(params: OpportunitySearchParams = {}) {
-  const db = await getAdminClient();
-  return searchSupplierOpportunities(params, { client: db });
+  return runAdminFormAction(async () => {
+    const db = await getAdminClient();
+    return searchSupplierOpportunities(params, { client: db });
+  }, 'No se pudieron actualizar las oportunidades. Revisá tu conexión e intentá nuevamente.');
 }
 
 export async function importSupplierOpportunityAction(input: ImportOpportunityInput) {
