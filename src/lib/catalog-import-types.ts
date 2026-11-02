@@ -19,6 +19,6 @@ export interface CatalogImportWorkspace {
  suppliers:{id:string;name:string}[];categories:{id:string;name:string}[];
  jobs:CatalogImportJob[];pricing:CatalogPricingRule|null;
 }
-export interface CatalogPreviewSelection { filters:CatalogImportFilters;offerIds?:string[];allMatching:boolean;categoryId:string;limit:number }
+export interface CatalogPreviewSelection { filters:CatalogImportFilters;offerIds?:string[];allMatching:boolean;categoryId:string;limit:number;forceNew?:boolean }
 export interface CatalogPreviewResult {jobId:string;total:number;counts:Record<string,number>;items:CatalogImportItem[]}
 export interface CatalogReview {product_id:string;state:string;identity_confirmed:boolean;costs_confirmed:boolean;media_authorized:boolean;compliance_confirmed:boolean;evidence:string;title?:string;slug?:string}

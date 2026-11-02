@@ -69,6 +69,8 @@ export function SupplierOpportunitiesRadar({
   // Import Modal State
   const [activeOpportunity, setActiveOpportunity] = useState<SupplierOpportunity | null>(null);
   const [editCategoryId, setEditCategoryId] = useState("");
+  const [importActionChoice, setImportActionChoice] = useState<"link" | "new">("link");
+  const [publishImmediately, setPublishImmediately] = useState<boolean>(true);
   const [isImporting, setIsImporting] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{
     productId: string;
@@ -117,7 +119,7 @@ export function SupplierOpportunitiesRadar({
   const handleQuickImport = async (opp: SupplierOpportunity) => {
     if (opp.pricingNeedsReview || !opp.categoryId) {
       handleOpenImport(opp);
-      setImportError("La cotización o tarifa requiere revisión. Podés guardar el borrador y completar sus costos antes de publicar.");
+      setImportError("La cotización o tarifa requiere revisión. Podés guardar el producto y completar sus costos antes de publicar.");
       return;
     }
     setQuickImportingOfferId(opp.offerId);
@@ -126,7 +128,8 @@ export function SupplierOpportunitiesRadar({
       const res = await importSupplierOpportunityAction({
         offerId: opp.offerId,
         categoryId: opp.categoryId,
-        isActive: false,
+        isActive: true,
+        linkToProductId: opp.matchedProductId || undefined,
       });
 
       if (res.success) {
@@ -169,7 +172,9 @@ export function SupplierOpportunitiesRadar({
       const res = await importSupplierOpportunityAction({
         offerId: activeOpportunity.offerId,
         categoryId: editCategoryId,
-        isActive: false,
+        isActive: publishImmediately,
+        linkToProductId: importActionChoice === "link" ? (activeOpportunity.matchedProductId || undefined) : undefined,
+        forceNew: importActionChoice === "new",
       });
 
       if (res.success) {
@@ -185,7 +190,7 @@ export function SupplierOpportunitiesRadar({
         setImportError(res.error);
       }
     } catch (err: unknown) {
-      setImportError(err instanceof Error ? err.message : "Error al importar oportunidad.");
+      setImportError(err instanceof Error ? err.message : "Error al incorporar producto.");
     } finally {
       setIsImporting(false);
     }
@@ -720,6 +725,13 @@ export function SupplierOpportunitiesRadar({
                   </div>
                 </div>
 
+                {opp.matchedProductId && opp.matchedProductTitle && (
+                  <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50/80 px-2.5 py-1.5 text-[11px] font-medium text-sky-950">
+                    <Check className="h-3.5 w-3.5 shrink-0 text-sky-600" />
+                    <span className="truncate">Coincide con: <strong>{opp.matchedProductTitle}</strong></span>
+                  </div>
+                )}
+
                 {/* Card Actions */}
                 <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center gap-1.5">
                   <a
@@ -767,14 +779,14 @@ export function SupplierOpportunitiesRadar({
                         disabled={quickImportingOfferId === opp.offerId}
                         onClick={() => handleQuickImport(opp)}
                         className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-xs font-bold text-white shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                        title="Crear borrador para revisar antes de publicar"
+                        title={opp.matchedProductId ? "Vincular a producto existente en catálogo" : "Incorporar producto con fotos y precios"}
                       >
                         {quickImportingOfferId === opp.offerId ? (
                           <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Zap className="h-3.5 w-3.5" />
                         )}
-                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : "Crear borrador"}</span>
+                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : (opp.matchedProductId ? "Vincular oferta" : "Incorporar")}</span>
                       </button>
 
                       <button
@@ -836,7 +848,7 @@ export function SupplierOpportunitiesRadar({
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-zinc-900">
-                    Crear borrador desde proveedor
+                    Incorporar producto desde proveedor
                   </h3>
                   <p className="text-xs text-zinc-500">
                     Proveedor: <strong>{activeOpportunity.supplierName}</strong>
@@ -899,19 +911,79 @@ export function SupplierOpportunitiesRadar({
                   <p className="mt-1 break-words">{activeOpportunity.title}</p>
                   <a href={activeOpportunity.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sky-800 underline">Ver publicación del proveedor</a>
                 </div>
-                <label className="block text-xs font-bold text-zinc-700">
-                  Categoría en MYA
-                  <select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm">
-                    <option value="">Elegí una categoría</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+
+                {activeOpportunity.matchedProductId && activeOpportunity.matchedProductTitle && (
+                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <Sparkles className="h-5 w-5 shrink-0 text-indigo-600 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-indigo-900">
+                          Producto coincidente detectado en MYA
+                        </p>
+                        <p className="text-sm font-black text-zinc-950 mt-0.5">
+                          {activeOpportunity.matchedProductTitle}
+                        </p>
+                        <p className="text-xs text-zinc-600 mt-1">
+                          Esta oferta coincide con un producto existente. Podés vincularla para comparar costos de proveedores o crear una ficha independiente.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setImportActionChoice("link")}
+                        className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-bold transition-all border cursor-pointer ${
+                          importActionChoice === "link"
+                            ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
+                            : "border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-100/50"
+                        }`}
+                      >
+                        <Check className="h-4 w-4" />
+                        Vincular (Recomendado)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImportActionChoice("new")}
+                        className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-bold transition-all border cursor-pointer ${
+                          importActionChoice === "new"
+                            ? "border-zinc-900 bg-zinc-900 text-white shadow-xs"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
+                        }`}
+                      >
+                        Crear como nuevo
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {(!activeOpportunity.matchedProductId || importActionChoice === "new") && (
+                  <label className="block text-xs font-bold text-zinc-700">
+                    Categoría en MYA
+                    <select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm">
+                      <option value="">Elegí una categoría</option>
+                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </label>
+                )}
+
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-200 bg-zinc-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={publishImmediately}
+                    onChange={(e) => setPublishImmediately(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-300 text-sky-600 focus:ring-sky-500"
+                  />
+                  <span className="text-xs font-bold text-zinc-800">
+                    Publicar inmediatamente en la tienda (Activo)
+                  </span>
                 </label>
+
                 <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950">
-                  Se guarda un borrador con la oferta y su enlace de proveedor. El servidor calcula el precio con las reglas vigentes; si faltan datos, queda pendiente.
-                  Completá título comercial, descripción, fotos autorizadas, costos y precio desde el editor. Confirmá la identidad del vínculo en Proveedores para habilitar su seguimiento.
+                  {importActionChoice === "link" && activeOpportunity.matchedProductId
+                    ? "Se vinculará la oferta al producto existente conservando su título, fotos autorizadas y precios vigentes. El proveedor se sumará para seguimiento de stock y costos."
+                    : "Se cargará el producto completo con fotos del proveedor, título comercial, descripción rica y precios calculados automáticamente con las reglas vigentes."}
                 </div>
-                <p className="text-xs text-zinc-600">La publicación se aprueba después en <Link href="/admin/oportunidades/importacion" className="text-sky-800 underline">Importación masiva y revisión</Link>. Si ya existe el producto exacto, se vincula la oferta conservando su ficha y precios.</p>
-                {/* Modal Buttons */}
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button
                     type="button"
@@ -924,13 +996,23 @@ export function SupplierOpportunitiesRadar({
                   <button
                     type="button"
                     onClick={handleConfirmImport}
-                    disabled={isImporting || !editCategoryId}
+                    disabled={isImporting || (importActionChoice === "new" && !editCategoryId)}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 px-5 text-xs font-extrabold text-white shadow-xs cursor-pointer disabled:opacity-50"
                   >
                     {isImporting ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        Guardando...
+                        Procesando...
+                      </>
+                    ) : importActionChoice === "link" && activeOpportunity.matchedProductId ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Vincular oferta
+                      </>
+                    ) : publishImmediately ? (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Incorporar y publicar
                       </>
                     ) : (
                       <>

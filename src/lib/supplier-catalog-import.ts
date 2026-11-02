@@ -16,6 +16,7 @@ export function catalogMessage(message:string):string {
  if(/ficha HTTPS exacta/.test(message))return 'Falta la ficha HTTPS exacta del producto en el sitio del proveedor.';
  if(/source.*changed|source offer missing/i.test(message))return 'La oferta cambió después de la vista previa. Generá una nueva revisión.';
  if(/commercial policy changed/i.test(message))return 'Las reglas comerciales o el cambio se modificaron. Generá una nueva vista previa.';
+ if(/coincidencia parcial|identidad completa/i.test(message))return 'Ya existe un producto similar o equivalente en el catálogo; revisá la coincidencia o vinculá la oferta.';
  if(/variant|identity|existing title|slug/i.test(message))return 'Revisá la identidad y la variante: hay una coincidencia o un enlace que necesita confirmación.';
  if(/documentary|confirmation/i.test(message))return 'Completá las confirmaciones y la evidencia documental antes de publicar.';
  if(/description|image|positive price/i.test(message))return 'Completá una descripción útil, una imagen autorizada y un precio válido.';
@@ -121,6 +122,11 @@ export async function previewCatalogImport(db:SupabaseClient,s:CatalogPreviewSel
  ]);
  const targets=matchTargets(products,variants),catalog={products,variants,targets,offers:selected,suppliers:ctx.suppliers} as CrosslinkCatalog;
  const planned=planCatalogImport(selected,targets,s.categoryId,o=>estimate(o,ctx,s.categoryId));
+ if(s.forceNew&&planned.length===1&&planned[0].payload.action==='review'){
+  const o=selected[0],q=estimate(o,ctx,s.categoryId),id=randomUUID(),title=o.title.trim();
+  const slug=title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,180);
+  planned[0].payload={action:'new',reason:'Importación forzada como nuevo producto desde radar.',identity_key:JSON.stringify([o.brand.trim().toLowerCase(),[title.toLowerCase()],o.gtin??null,o.model.trim().toLowerCase()]),offer:planned[0].payload.offer,product:{id,title,slug:`${slug}-${id.slice(0,6)}`,category_id:s.categoryId,retail_price:q?.price??0,brand:o.brand,model:o.model,description:''},cost:q?.cost};
+ }
  for(const row of planned){
   const o=selected.find(o=>o.id===row.offer_id)!;
   const supplier=ctx.suppliers.find(s=>s.id===o.supplier_id);

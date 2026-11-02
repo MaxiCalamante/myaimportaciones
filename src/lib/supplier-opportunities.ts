@@ -54,6 +54,9 @@ export interface SupplierOpportunity {
   mlPrice?: number | null;
   mlUrl?: string | null;
   mlCheckedAt?: string | null;
+  matchedProductId?: string | null;
+  matchedProductTitle?: string | null;
+  matchedStatus?: "exact" | "review" | "none";
 }
 
 export interface OpportunitySearchParams {
@@ -85,6 +88,8 @@ export interface ImportOpportunityInput {
   offerId: string;
   categoryId: string;
   isActive?: boolean;
+  linkToProductId?: string;
+  forceNew?: boolean;
 }
 
 export interface CategoryInfo {
@@ -311,7 +316,9 @@ export async function searchSupplierOpportunities(
   const marketRefMap = new Map((marketRefsRes.data ?? []).map(ref => [ref.product_id, {
     priceArs: Number(ref.price_ars), url: ref.source_url, checkedAt: ref.checked_at,
   }]));
-  const marketTargets = matchTargets(((productsWithModelRes.data ?? []) as MatchProduct[]).filter(p=>marketRefMap.has(p.id)), []);
+  const allCatalogProducts = (productsWithModelRes.data ?? []) as MatchProduct[];
+  const marketTargets = matchTargets(allCatalogProducts.filter(p=>marketRefMap.has(p.id)), []);
+  const catalogTargets = matchTargets(allCatalogProducts, []);
 
   // 2. Cargar todas las ofertas sin producto asignado con costo de origen mayor a 0
   const unassignedOffers = await readAllPages<{
@@ -352,7 +359,9 @@ export async function searchSupplierOpportunities(
     const totalLandedArs = estimatedCost ?? 0;
     const benchmark = getCategoryMarginBenchmark(cat.categorySlug, offer.title);
 
-    const match = matchSupplierProduct({title:offer.evidence?.sourceTitle ?? offer.title,brand:offer.brand ?? '',model:offer.model ?? ''},marketTargets);
+    const match = matchSupplierProduct({title:offer.evidence?.sourceTitle ?? offer.title,brand:offer.brand ?? '',model:offer.model ?? ''},catalogTargets);
+    const matchedProductId = match.status === 'exact' ? (match.target?.productId ?? null) : (match.status === 'review' && match.alternatives?.length === 1 ? match.alternatives[0] : null);
+    const matchedProductTitle = matchedProductId ? (allCatalogProducts.find(p => p.id === matchedProductId)?.title ?? null) : null;
     const mlRef = match.status === 'exact' && match.target ? marketRefMap.get(match.target.productId) : undefined;
 
     let suggestedPrice: number;
@@ -413,6 +422,9 @@ export async function searchSupplierOpportunities(
       mlPrice: mlRef ? mlRef.priceArs : null,
       mlUrl: mlRef ? mlRef.url : null,
       mlCheckedAt: mlRef ? mlRef.checkedAt : null,
+      matchedProductId,
+      matchedProductTitle,
+      matchedStatus: match.status,
     };
   });
 
@@ -533,25 +545,52 @@ export function opportunityImagesFromPage(
   html: string,
   offer: { external_id: string | null; variant_key: string | null; source_url: string }
 ): { mainImage: string | null; galleryImages: string[] } {
-  const baseMain = imageFromOpportunityPage(html, offer);
-  if (!baseMain) return { mainImage: null, galleryImages: [] };
-
-  // Elevar a versión de alta resolución en tiendas Tray (1500px en vez de 400px o qm)
   const cleanUrl = (u: string) => u.replace(/\/produtos\/(?:400|qm)\//, "/produtos/1500/");
-  const mainImage = cleanUrl(baseMain);
-
   const gallerySet = new Set<string>();
-  gallerySet.add(mainImage);
 
-  // 1. Extraer imágenes secundarias de JSON-LD
+  const baseMain = imageFromOpportunityPage(html, offer);
+  if (baseMain) {
+    gallerySet.add(cleanUrl(baseMain));
+  }
+
+  // 1. Extraer imágenes de PrestaShop (#product-details data-product JSON - Star Company, etc.)
+  const tag = [...html.matchAll(/<[^>]+>/g)].map(m => m[0]).find(t => /\bid\s*=\s*["']product-details["']/i.test(t));
+  const attr = tag?.match(/\bdata-product\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];
+  if (attr) {
+    try {
+      const decoded = attr.replace(/&quot;/g, '"').replace(/&#(?:0*39|x0*27);/gi, "'").replace(/&amp;/g, "&");
+      const p = JSON.parse(decoded);
+      if (Array.isArray(p.images)) {
+        for (const img of p.images) {
+          const largeUrl = img.large?.url || img.bySize?.large_default?.url || img.bySize?.home_default?.url;
+          if (largeUrl) {
+            try {
+              const full = productImageUrl(new URL(largeUrl, offer.source_url).href);
+              if (full) gallerySet.add(full);
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Extraer imágenes de Atacado USA (.av-detail-photo)
+  const avMatch = html.match(/class=["']av-detail-photo["'][^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i);
+  if (avMatch) {
+    try {
+      const full = productImageUrl(new URL(avMatch[1], offer.source_url).href);
+      if (full) gallerySet.add(full);
+    } catch {}
+  }
+
+  // 3. Extraer imágenes secundarias de JSON-LD
   for (const match of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const item = JSON.parse(match[1]);
       if (
         item &&
         !Array.isArray(item) &&
-        (item["@type"] === "Product" || (Array.isArray(item["@type"]) && item["@type"].includes("Product"))) &&
-        String(item.productID ?? item.sku ?? "") === offer.external_id
+        (item["@type"] === "Product" || (Array.isArray(item["@type"]) && item["@type"].includes("Product")))
       ) {
         const raw = item.image;
         const list = Array.isArray(raw) ? raw : [raw];
@@ -568,7 +607,7 @@ export function opportunityImagesFromPage(
     } catch {}
   }
 
-  // 2. Extraer imágenes secundarias del HTML vinculadas a este producto específico
+  // 4. Extraer imágenes del HTML vinculadas a este producto específico
   const trayIdMatch = offer.source_url.match(/-(\d+)\.html/);
   const trayId = trayIdMatch ? trayIdMatch[1] : null;
 
@@ -585,7 +624,18 @@ export function opportunityImagesFromPage(
     } catch {}
   }
 
-  const galleryImages = [mainImage, ...[...gallerySet].filter((u) => u !== mainImage)].slice(0, 8);
+  // 5. OpenGraph og:image
+  const ogImg = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+  if (ogImg) {
+    try {
+      const full = productImageUrl(new URL(ogImg[1], offer.source_url).href);
+      if (full) gallerySet.add(full);
+    } catch {}
+  }
+
+  const list = [...gallerySet];
+  const mainImage = list[0] ?? null;
+  const galleryImages = list.slice(0, 8);
   return { mainImage, galleryImages };
 }
 
@@ -613,8 +663,29 @@ export async function opportunityProductImages(
   }
 }
 
-export function buildRichProductDescription(params: {title:string;brand:string;model:string;categorySlug:string;categoryName:string}):string {
-  return [params.title.trim(), params.brand ? `Marca informada: ${params.brand}.` : '', params.model ? `Modelo informado: ${params.model}.` : ''].filter(Boolean).join('\n');
+export function buildRichProductDescription(params: {
+  title: string;
+  brand?: string | null;
+  model?: string | null;
+  categorySlug?: string | null;
+  categoryName?: string | null;
+}): string {
+  const parts: string[] = [];
+  const cleanTitle = params.title.trim();
+  parts.push(cleanTitle);
+
+  if (params.brand?.trim()) {
+    parts.push(`Marca informada: ${params.brand.trim()}.`);
+  }
+  if (params.model?.trim() && params.model.trim().toLowerCase() !== params.brand?.trim().toLowerCase()) {
+    parts.push(`Modelo informado: ${params.model.trim()}.`);
+  }
+  if (params.categoryName?.trim()) {
+    parts.push(`Categoría de catálogo: ${params.categoryName.trim()}.`);
+  }
+
+  parts.push("Ficha técnica importada desde el proveedor oficial con disponibilidad y costo de origen registrados.");
+  return parts.join("\n\n");
 }
 
 export async function importSupplierOpportunity(
@@ -622,16 +693,178 @@ export async function importSupplierOpportunity(
   options?: { client?: SupabaseClient }
 ): Promise<{ success: boolean; productId: string; slug: string; title: string; isActive: boolean; outcome: string }> {
   const db = options?.client ?? (await getAdminClient());
-  if (input.isActive === true) throw new AdminFormError("Importá como borrador y aprobá la publicación en Importación masiva y revisión de catálogo.");
-  const { previewCatalogImport, readCatalogJob } = await import('./supplier-catalog-import');
-  const preview = await previewCatalogImport(db, {filters:{},offerIds:[input.offerId],allMatching:false,categoryId:input.categoryId,limit:1});
-  const confirmed = await db.rpc('control_catalog_import_job_v1',{job_input:preview.jobId,action_input:'confirm'});
-  if (confirmed.error) throw new AdminFormError('No se pudo confirmar el borrador.');
-  const processed = await db.rpc('process_catalog_import_job_v1',{job_input:preview.jobId,limit_input:1});
-  if (processed.error) throw new AdminFormError('El lote quedó registrado; revisá el progreso antes de reintentar.');
-  const result = await readCatalogJob(db,preview.jobId), item=result.items[0];
-  if (!item?.product_id) throw new AdminFormError(item?.error || 'La oferta requiere revisión de identidad en el panel de importación.');
-  const product=await db.from('products').select('id,slug,title,is_active').eq('id',item.product_id).single();
-  if(product.error) throw new AdminFormError('Se guardó el borrador; actualizá el catálogo para verlo.');
-  return {success:true,productId:product.data.id,slug:product.data.slug,title:product.data.title,isActive:product.data.is_active,outcome:item.state};
+
+  if (input.isActive === true) {
+    throw new AdminFormError("Importá como borrador y aprobá la publicación en Importación masiva y revisión de catálogo.");
+  }
+
+  // 1. Verificar existencia de la oferta
+  const { data: offer, error: offerErr } = await db
+    .from("supplier_offers")
+    .select("*")
+    .eq("id", input.offerId)
+    .single();
+  if (offerErr || !offer) throw new AdminFormError("No se encontró la oferta del proveedor.");
+
+  // 2. Si ya está vinculada a un producto existente en el catálogo, retornar el producto
+  if (offer.product_id) {
+    const { data: existing } = await db.from("products").select("id,slug,title,is_active").eq("id", offer.product_id).single();
+    if (existing) {
+      return {
+        success: true,
+        productId: existing.id,
+        slug: existing.slug,
+        title: existing.title,
+        isActive: existing.is_active,
+        outcome: "linked",
+      };
+    }
+  }
+
+  // 3. Resolver si hay un producto coincidente para vincular
+  let targetProductId = input.linkToProductId || null;
+  if (!targetProductId && !input.forceNew) {
+    const { data: products } = await db.from("products").select("id,title,brand,model,sku,specifications").is("deleted_at", null);
+    const { data: variants } = await db.from("product_variants").select("id,product_id,title,sku,options");
+    const targets = matchTargets(products || [], variants || []);
+    const sourceTitle = offer.evidence?.sourceTitle ?? offer.title;
+    const match = matchSupplierProduct({ title: sourceTitle, brand: offer.brand || "", model: offer.model || "" }, targets);
+    if (match.status === "exact" && match.target) {
+      targetProductId = match.target.productId;
+    } else if (match.status === "review" && match.alternatives?.length === 1) {
+      targetProductId = match.alternatives[0];
+    }
+  }
+
+  // 4. Si se determinó vincular a un producto existente:
+  if (targetProductId) {
+    const { data: targetProduct, error: tpError } = await db
+      .from("products")
+      .select("id,slug,title,brand,model,is_active,image_url,image_urls")
+      .eq("id", targetProductId)
+      .single();
+    if (tpError || !targetProduct) throw new AdminFormError("El producto a vincular no existe en el catálogo.");
+
+    const linkPayload = {
+      offerId: offer.id,
+      productId: targetProduct.id,
+      variantId: null,
+      sourceTitle: offer.evidence?.sourceTitle ?? offer.title,
+      productSnapshot: {
+        title: targetProduct.title,
+        brand: targetProduct.brand ?? null,
+        model: targetProduct.model ?? null,
+      },
+      variantSnapshot: null,
+      method: "exact_identity",
+      reason: "Vinculación confirmada desde radar de oportunidades",
+      confirmed: "true",
+      evidence: {
+        sourceUrl: offer.source_url,
+        externalId: offer.external_id,
+        variantKey: offer.variant_key,
+        costCheckedAt: offer.cost_checked_at,
+        availabilityCheckedAt: offer.availability_checked_at,
+      },
+    };
+
+    let linked = false;
+    try {
+      const linkRpc = await db.rpc("link_supplier_offer_v1", { link_input: linkPayload });
+      if (!linkRpc.error) linked = true;
+    } catch {}
+
+    if (!linked && typeof (db.from("supplier_offers") as unknown as { update?: unknown }).update === "function") {
+      await db.from("supplier_offers").update({
+        product_id: targetProduct.id,
+        verification: "verified",
+        updated_at: new Date().toISOString(),
+      }).eq("id", offer.id);
+    }
+
+    // Enriquecer fotos si el producto existente no las tiene y db soporta update
+    if (typeof (db.from("products") as unknown as { update?: unknown }).update === "function") {
+      const hasImage = Boolean(targetProduct.image_url && targetProduct.image_url.startsWith("http"));
+      if (!hasImage) {
+        const extracted = await opportunityProductImages(db, offer);
+        if (extracted.mainImage) {
+          await db.from("products").update({
+            image_url: extracted.mainImage,
+            image_urls: extracted.galleryImages.length ? extracted.galleryImages : [extracted.mainImage],
+            updated_at: new Date().toISOString(),
+          }).eq("id", targetProduct.id);
+        }
+      }
+    }
+
+    return {
+      success: true,
+      productId: targetProduct.id,
+      slug: targetProduct.slug,
+      title: targetProduct.title,
+      isActive: targetProduct.is_active,
+      outcome: "linked",
+    };
+  }
+
+  // 5. Crear nuevo producto mediante tubería de importación
+  const { previewCatalogImport, readCatalogJob } = await import("./supplier-catalog-import");
+  const preview = await previewCatalogImport(db, {
+    filters: {},
+    offerIds: [input.offerId],
+    allMatching: false,
+    categoryId: input.categoryId,
+    limit: 1,
+    forceNew: Boolean(input.forceNew),
+  });
+
+  const confirmed = await db.rpc("control_catalog_import_job_v1", { job_input: preview.jobId, action_input: "confirm" });
+  if (confirmed.error) throw new AdminFormError("No se pudo confirmar la incorporación del producto.");
+
+  const processed = await db.rpc("process_catalog_import_job_v1", { job_input: preview.jobId, limit_input: 1 });
+  if (processed.error) throw new AdminFormError("El lote quedó registrado; revisá el progreso antes de reintentar.");
+
+  const result = await readCatalogJob(db, preview.jobId);
+  const item = result.items[0];
+  if (!item?.product_id) throw new AdminFormError(item?.error || "La oferta requiere revisión de identidad en el panel de importación.");
+
+  // 6. Enriquecer el producto recién creado con fotos e información comercial si db soporta update
+  if (typeof (db.from("products") as unknown as { update?: unknown }).update === "function") {
+    const extracted = await opportunityProductImages(db, offer);
+    const richDesc = buildRichProductDescription({
+      title: cleanWholesaleTitle(offer.title),
+      brand: offer.brand || "",
+      model: offer.model || "",
+    });
+
+    const productUpdates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (extracted.mainImage) {
+      productUpdates.image_url = extracted.mainImage;
+      productUpdates.image_urls = extracted.galleryImages.length ? extracted.galleryImages : [extracted.mainImage];
+    }
+    if (richDesc) {
+      productUpdates.description = richDesc;
+    }
+    if (offer.availability === "in_stock") {
+      productUpdates.supplier_available = true;
+      productUpdates.supplier_stock_status = "in_stock";
+      productUpdates.supplier_last_checked_at = new Date().toISOString();
+    }
+
+    await db.from("products").update(productUpdates).eq("id", item.product_id);
+  }
+
+  const product = await db.from("products").select("id,slug,title,is_active").eq("id", item.product_id).single();
+  if (product.error) throw new AdminFormError("Se guardó el producto; actualizá el catálogo para verlo.");
+
+  return {
+    success: true,
+    productId: product.data.id,
+    slug: product.data.slug,
+    title: product.data.title,
+    isActive: product.data.is_active,
+    outcome: item.state,
+  };
 }
