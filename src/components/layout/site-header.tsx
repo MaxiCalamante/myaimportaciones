@@ -32,7 +32,7 @@ export function SiteHeader({ initialCategories = [], profile = null }: {
   const categories = initialCategories.filter(category => isWholesale || !category.wholesaleOnly);
   const catalogPath = isWholesale ? "/mayorista" : "/catalogo";
   const brandName = "MYA";
-  const isWholesaleAllowed = WHOLESALE_ENABLED && Boolean(profile?.isApprovedWholesale || profile?.customerTier === "wholesale" || profile?.role === "admin");
+  const isWholesaleAllowed = WHOLESALE_ENABLED;
   const [menuState, setMenuState] = useState<{ pathname: string | null; focusSearch: boolean } | null>(null);
   // Layouts persist between routes; a navigation always dismisses the current drawer.
   if (menuState && menuState.pathname !== pathname) setMenuState(null);
@@ -166,7 +166,7 @@ export function SiteHeader({ initialCategories = [], profile = null }: {
           <Link aria-current={isWholesalePage ? "page" : undefined} className={`${linkClass} ${isWholesalePage ? "bg-sky-50 text-sky-800" : ""}`} href="/mayorista">Mayoristas</Link>
           <Link className={linkClass} href="/#ofertas">Novedades</Link>
           <Link className={linkClass} href={profile ? "/cuenta" : "/seguimiento"}>Mis pedidos</Link>
-          {isWholesale ? <Link className={linkClass} href="/">Tienda</Link> : isWholesaleAllowed && <Link className="ml-auto rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800" href="/mayorista">Canal B2B</Link>}
+          {isWholesale ? <Link className={linkClass} href="/">Tienda</Link> : isWholesaleAllowed && <Link className="ml-auto rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800" href="/mayorista">Mayorista</Link>}
         </nav>
       </div>
     </header>

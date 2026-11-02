@@ -3,18 +3,20 @@
 import { useState, useMemo } from "react";
 import { ProductGallery } from "./product-gallery";
 import { ProductDetailInteractive } from "./product-detail-interactive";
-import type { Product, ProductVariant } from "@/lib/types";
+import type { Product, ProductVariant, ProductChannel } from "@/lib/types";
 
 export function ProductShowcase({
   product,
   beforeInteractive,
   afterInteractive,
   initialVariantId,
+  initialChannel,
 }: {
   product: Product;
   beforeInteractive: React.ReactNode;
   afterInteractive?: React.ReactNode;
   initialVariantId?: string;
+  initialChannel?:ProductChannel;
 }) {
   const [activeVariant, setActiveVariant] = useState<ProductVariant | null>(() => product.variants?.find(variant => variant.isActive && variant.id === initialVariantId) || null);
 
@@ -52,6 +54,7 @@ export function ProductShowcase({
         <ProductDetailInteractive
           product={product}
           initialVariantId={initialVariantId}
+          initialChannel={initialChannel}
           onVariantChange={setActiveVariant}
         />
       </div>

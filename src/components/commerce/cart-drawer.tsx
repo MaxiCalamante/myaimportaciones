@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { ArrowRight, ShoppingBag, Trash2, X, ShieldCheck, Truck, Check, Smartphone, Sparkles, Gem, Wrench, AlertCircle, Lock, Printer, FileText } from "lucide-react";
-import { validateWholesaleOrder, calculateTieredWholesalePrice } from "@/lib/wholesale-policy";
+import { validateWholesaleOrder, cartLineUnitPrice } from "@/lib/wholesale-policy";
 import { purchasableQuantity } from "@/lib/commerce-policy";
 import { trackAdsEvent } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
@@ -12,15 +12,16 @@ import { QuantityStepper } from "./quantity-stepper";
 import { useCommerce } from "./commerce-provider";
 
 export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
-  const { cart, cartReady, cartOpen, cartCount, cartTotal, setCartOpen, updateQuantity, removeFromCart, openWhatsApp } = useCommerce();
+  const { cart, cartReady, cartOpen, cartCount, cartTotal, wholesalePolicy, setCartOpen, updateQuantity, removeFromCart, openWhatsApp } = useCommerce();
 
   const wholesaleValidation = validateWholesaleOrder(
     cart.map((line) => ({
       channel: line.channel,
-      price: line.variantPrice != null ? line.variantPrice : (line.channel === "wholesale" ? line.product.wholesalePrice : line.product.retailPrice),
+      price: cartLineUnitPrice(line),
       quantity: line.quantity,
-    }))
+    })),wholesalePolicy
   );
+  const hasUnpriced=cart.some(line=>cartLineUnitPrice(line)===null);
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!cartOpen) return;
@@ -140,24 +141,24 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
               </div>
             )
           )}{cart.map(line => {
-          const basePrice = line.variantPrice != null ? line.variantPrice : (line.channel === "wholesale" ? line.product.wholesalePrice : line.product.retailPrice);
-          const tiered = line.channel === "wholesale" ? calculateTieredWholesalePrice(basePrice, line.quantity) : { unitPrice: basePrice, discountPct: 0, tierLabel: null, total: basePrice * line.quantity };
+          const basePrice = cartLineUnitPrice(line);
+          const tiered = {unitPrice:basePrice,discountPct:0,tierLabel:null,total:basePrice===null?null:basePrice*line.quantity};
           const unitPrice = tiered.unitPrice;
           const lineKey = `${line.product.id}-${line.channel}-${line.variantId || "base"}`;
           const imageSrc = line.variantImage || line.product.imageUrl || "/placeholder-product.svg";
           const targetItem = line.variantId ? line.product.variants?.find(v => v.id === line.variantId) || line.product : line.product;
-          const maxQty = purchasableQuantity(targetItem);
+          const maxQty = line.channel==='wholesale'?100:purchasableQuantity(targetItem);
           return <article key={lineKey} className="flex gap-3 rounded-2xl border border-zinc-200 p-3"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="relative size-16 shrink-0 sm:size-20 overflow-hidden rounded-xl bg-slate-50"><Image src={imageSrc} alt={line.variantTitle ? `${line.product.title} (${line.variantTitle})` : line.product.title} fill sizes="80px" className="object-contain p-2" /></Link><div className="min-w-0 flex-1"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="line-clamp-2 text-sm font-bold leading-5 text-zinc-950 hover:text-sky-700">{line.product.title}</Link>{line.variantTitle && <div className="mt-1 flex flex-wrap items-center gap-1.5"><span className="inline-flex items-center gap-1 rounded-md max-w-full break-words bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 border border-sky-200/80"><span className="size-1.5 rounded-full bg-sky-600"></span>{line.variantTitle}</span>{line.variantSku && <span className="break-all text-[10px] text-zinc-400">{line.variantSku}</span>}</div>}<div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <p className="text-xs text-zinc-500">{formatCurrency(unitPrice)} por unidad</p>
+            <p className="text-xs text-zinc-500">{unitPrice===null?"Precio a confirmar":`${formatCurrency(unitPrice)} por unidad`}</p>
             {tiered.discountPct > 0 && (
               <span className="inline-flex items-center rounded-md bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
                 {tiered.tierLabel}
               </span>
             )}
-          </div><p className="mt-1 text-base font-bold tabular-nums text-zinc-950">{formatCurrency(unitPrice * line.quantity)}</p><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><QuantityStepper quantity={line.quantity} min={line.channel === "wholesale" ? line.product.wholesaleMinQuantity : 1} max={maxQty} onChange={value => updateQuantity(line.product.id, line.channel, value, line.variantId)} label={`Cantidad de ${line.product.title}`}/><button type="button" aria-label={`Quitar ${line.product.title} del carrito`} onClick={() => removeFromCart(line.product.id, line.channel, line.variantId)} className="grid size-11 place-items-center rounded-xl text-zinc-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="size-4" /></button></div></div></article>;
+          </div><p className="mt-1 text-base font-bold tabular-nums text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(unitPrice * line.quantity)}</p><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><QuantityStepper quantity={line.quantity} min={1} max={maxQty} onChange={value => updateQuantity(line.product.id, line.channel, value, line.variantId)} label={`Cantidad de ${line.product.title}`}/><button type="button" aria-label={`Quitar ${line.product.title} del carrito`} onClick={() => removeFromCart(line.product.id, line.channel, line.variantId)} className="grid size-11 place-items-center rounded-xl text-zinc-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="size-4" /></button></div></div></article>;
         })}</div>}
       </div>
-      {cart.length > 0 && <footer className="shrink-0 border-t border-zinc-200 bg-white px-4 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.04)] sm:px-6" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-zinc-700">Subtotal</span><strong className="text-xl tabular-nums text-zinc-950 font-black">{formatCurrency(cartTotal)}</strong></div><div className="mt-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-950"><p className="font-bold">Beneficio por transferencia</p><p className="mt-1 leading-5">El descuento disponible y el total se confirman en el resumen de compra.</p></div><p className="mt-2 text-xs leading-5 text-zinc-500">Envíos a todo el país por Correo Argentino y retiros en Tandil.</p>{wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum ? (
+      {cart.length > 0 && <footer className="shrink-0 border-t border-zinc-200 bg-white px-4 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.04)] sm:px-6" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-zinc-700">Subtotal</span><strong className="text-xl tabular-nums text-zinc-950 font-black">{hasUnpriced?"A confirmar":formatCurrency(cartTotal)}</strong></div><div className="mt-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-950"><p className="font-bold">Beneficio por transferencia</p><p className="mt-1 leading-5">El descuento disponible y el total se confirman en el resumen de compra.</p></div><p className="mt-2 text-xs leading-5 text-zinc-500">Envíos a todo el país por Correo Argentino y retiros en Tandil.</p>{wholesaleValidation.hasWholesale && !hasUnpriced && !wholesaleValidation.meetsMinimum ? (
           <div className="mt-4 flex flex-col gap-2">
             <div className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-zinc-100 border border-zinc-300 px-4 text-xs sm:text-sm font-bold text-zinc-500 cursor-not-allowed">
               <Lock className="size-4 text-zinc-400" />

@@ -17,33 +17,6 @@ import type { Product, ProductChannel } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 import { ProductCard } from "@/components/commerce/product-card";
 
-interface BrandDefinition {
-  id: string;
-  name: string;
-  match: string[];
-}
-
-const KNOWN_BRANDS: BrandDefinition[] = [
-  { id: "total", name: "Total Tools", match: ["TOTAL"] },
-  { id: "wadfow", name: "Wadfow", match: ["WADFOW"] },
-  { id: "medicube", name: "Medicube", match: ["MEDICUBE"] },
-  { id: "skin1004", name: "Skin1004", match: ["SKIN1004", "SKIN 1004"] },
-  { id: "celimax", name: "Celimax", match: ["CELIMAX"] },
-  { id: "dr_althea", name: "Dr. Althea", match: ["DR. ALTHEA", "DR ALTHEA"] },
-  { id: "karseell", name: "Karseell", match: ["KARSEELL"] },
-];
-
-function getProductBrand(product: Product): BrandDefinition | null {
-  const titleUpper = product.title.toUpperCase();
-  const tagsUpper = (product.tags || []).map((t) => t.toUpperCase());
-  for (const b of KNOWN_BRANDS) {
-    if (b.match.some((m) => titleUpper.includes(m) || tagsUpper.some((t) => t.includes(m)))) {
-      return b;
-    }
-  }
-  return null;
-}
-
 export function CatalogWithFilters({
   products,
   channel = "retail",
@@ -63,18 +36,10 @@ export function CatalogWithFilters({
 
   // Dynamic brand extraction from current products
   const availableBrands = useMemo(() => {
-    const counts: Record<string, { id: string; name: string; count: number }> = {};
-    products.forEach((p) => {
-      const b = getProductBrand(p);
-      if (b) {
-        if (!counts[b.id]) {
-          counts[b.id] = { id: b.id, name: b.name, count: 0 };
-        }
-        counts[b.id].count++;
-      }
-    });
-    return Object.values(counts).sort((a, b) => b.count - a.count);
-  }, [products]);
+    const counts = new Map<string,number>();
+    products.forEach(p=>{const brand=p.brand?.trim();if(brand)counts.set(brand,(counts.get(brand)??0)+1);});
+    return [...counts].map(([name,count])=>({id:name,name,count})).sort((a,b)=>a.name.localeCompare(b.name,'es'));
+  },[products]);
 
   // Subcategories present in the current products
   const availableSubcategories = useMemo(() => {
@@ -137,6 +102,9 @@ export function CatalogWithFilters({
         (p) =>
           p.title.toLowerCase().includes(q) ||
           p.slug.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q) ||
+          p.model?.toLowerCase().includes(q) ||
+          p.sku?.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q)) ||
           p.description?.toLowerCase().includes(q) ||
           p.variants?.some((v) =>
@@ -147,19 +115,7 @@ export function CatalogWithFilters({
       );
     }
 
-    // Dynamic brand filter
-    if (selectedBrand !== "all") {
-      const brandDef = KNOWN_BRANDS.find((b) => b.id === selectedBrand);
-      if (brandDef) {
-        result = result.filter((p) => {
-          const titleUpper = p.title.toUpperCase();
-          const tagsUpper = (p.tags || []).map((t) => t.toUpperCase());
-          return brandDef.match.some(
-            (m) => titleUpper.includes(m) || tagsUpper.some((t) => t.includes(m))
-          );
-        });
-      }
-    }
+    if(selectedBrand!=="all")result=result.filter(p=>p.brand?.trim()===selectedBrand);
 
     // Subcategory filter
     if (selectedSubcategory) {
@@ -457,7 +413,7 @@ export function CatalogWithFilters({
             ) : (
               <Square className="h-4 w-4 text-zinc-400" />
             )}
-            Solo con stock inmediato
+            Disponibilidad verificada
           </span>
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
         </button>

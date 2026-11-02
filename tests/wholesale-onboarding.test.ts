@@ -122,26 +122,30 @@ test("validateWholesaleOrder: valida compra mínima combinable ($100.000 o 5 uni
 
 test("calculateTieredWholesalePrice: aplica descuentos escalonados por volumen", () => {
   const basePrice = 20000;
+  const tiers = [
+    { minQty: 12, unitPrice: 19000 },
+    { minQty: 24, unitPrice: 18000 },
+  ];
 
   // 1. Menos de 12 unidades -> Sin descuento extra
-  const tier0 = calculateTieredWholesalePrice(basePrice, 5);
+  const tier0 = calculateTieredWholesalePrice(basePrice, 5, tiers);
   assert.equal(tier0.discountPct, 0);
   assert.equal(tier0.unitPrice, 20000);
   assert.equal(tier0.total, 100000);
 
-  // 2. Entre 12 y 23 unidades -> -5% extra (Caja Cerrada)
-  const tier1 = calculateTieredWholesalePrice(basePrice, 12);
+  // 2. Entre 12 y 23 unidades -> -5% extra
+  const tier1 = calculateTieredWholesalePrice(basePrice, 12, tiers);
   assert.equal(tier1.discountPct, 5);
   assert.equal(tier1.unitPrice, 19000); // 20000 * 0.95
   assert.equal(tier1.total, 19000 * 12);
-  assert.match(tier1.tierLabel || "", /Caja Cerrada/);
+  assert.match(tier1.tierLabel || "", /12\+ unidades/);
 
-  // 3. 24 o más unidades -> -10% extra (Master Box)
-  const tier2 = calculateTieredWholesalePrice(basePrice, 24);
+  // 3. 24 o más unidades -> -10% extra
+  const tier2 = calculateTieredWholesalePrice(basePrice, 24, tiers);
   assert.equal(tier2.discountPct, 10);
   assert.equal(tier2.unitPrice, 18000); // 20000 * 0.90
   assert.equal(tier2.total, 18000 * 24);
-  assert.match(tier2.tierLabel || "", /Master Box/);
+  assert.match(tier2.tierLabel || "", /24\+ unidades/);
 });
 
 test("email-templates: wholesale_approved incluye bienvenida personalizada, mínimo combinable y enlace", () => {

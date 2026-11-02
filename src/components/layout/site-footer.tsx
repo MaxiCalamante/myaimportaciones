@@ -52,7 +52,7 @@ export function SiteFooter() {
           </div>
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
-              ? "Cotizamos productos importados por cantidad para comercios, ferreterías, peluquerías y revendedores. Revisamos modelos, presentaciones y destino antes de confirmar condiciones de compra y entrega desde Tandil."
+              ? "Explorá productos importados y precios mayoristas confirmados para tu negocio. Combiná rubros y armá tu pedido; las presentaciones o importes pendientes se confirman antes del pago."
               : "Tu tienda de confianza en importaciones. Electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas. Atención de Máximo y Agustina desde Tandil con envíos a toda la Argentina."}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-2">

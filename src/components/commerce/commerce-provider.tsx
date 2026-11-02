@@ -23,11 +23,22 @@ import { trackAdsEvent } from "@/lib/analytics";
 import { reconcileCart } from "@/lib/cart-reconcile";
 import { accountCartStorageKey, mergeGuestCart } from "@/lib/account-cart";
 
+import {cartLineUnitPrice} from '@/lib/wholesale-policy';
+import {INITIAL_PUBLIC_WHOLESALE_POLICY,type PublicWholesaleOffer,type PublicWholesalePolicy} from '@/lib/wholesale-v2';
+async function fetchWholesaleCart(items:Array<{productId:string;variantId:string|null;quantity:number}>):Promise<{ok:true;policy:PublicWholesalePolicy;offers:PublicWholesaleOffer[]}|{ok:false;error:string}>{
+  try{
+    const res=await fetch('/api/wholesale/cart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+    return await res.json();
+  }catch{
+    return{ok:false,error:'No se pudieron verificar los precios mayoristas. El pedido requiere confirmación.'};
+  }
+}
 export type { CartLine } from "@/lib/types";
 
 export interface WhatsAppInquiryContext { type: "retail" | "wholesale"; source: string; category?: string }
 
 interface CommerceContextValue {
+  wholesalePolicy:PublicWholesalePolicy;
   cart: CartLine[];
   cartReady: boolean;
   favoriteIds: string[];
@@ -82,6 +93,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
   const accountCartKnown = useRef(false);
   const accountSyncQueue = useRef(Promise.resolve());
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [wholesalePolicy,setWholesalePolicy]=useState(INITIAL_PUBLIC_WHOLESALE_POLICY);
   const [cartReady, setCartReady] = useState(false);
   const cartRef = useRef(cart);
   const [cartNotice, setCartNotice] = useState("");
@@ -164,7 +176,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
           const parse = (raw: string | null): CartLine[] => { const parsed: unknown = JSON.parse(raw || "[]");
           return Array.isArray(parsed) ? parsed.filter((l: CartLine) => {
             const effectivePrice = l?.variantPrice ?? l?.product?.retailPrice;
-            return l?.product?.id && typeof l.product.title === "string" && Number.isFinite(effectivePrice) && effectivePrice > 0 && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail");
+            return l?.product?.id && typeof l.product.title === "string" && (l.channel === "wholesale" || Number.isFinite(effectivePrice) && effectivePrice > 0) && Number.isInteger(l.quantity) && l.quantity > 0 && l.quantity <= 100 && (WHOLESALE_ENABLED || l.channel === "retail");
           }) : []; };
           const restored = mergeGuestCart(parse(storedCart), parse(guestCart));
           setCart(restored);
@@ -279,11 +291,11 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
       accountCartKnown.current = true;
       if ((!WHOLESALE_ENABLED && channel === "wholesale") || !Number.isInteger(quantity) || quantity < 1) return;
       const targetItem = variant || product;
-      if (!isVerifiedStock(targetItem)) return;
+      if (channel === "retail" && !isVerifiedStock(targetItem)) return;
 
       const variantId = variant?.id || null;
       const variantTitle = variant?.title || null;
-      const variantPrice = variant ? (channel === "wholesale" ? (variant.wholesalePrice ?? variant.retailPrice) : variant.retailPrice) : null;
+      const variantPrice = variant ? (channel === "wholesale" ? (variant.wholesaleOffer?.unitPrice ?? null) : variant.retailPrice) : null;
       const variantImage = variant?.imageUrl || null;
       const variantSku = variant?.sku || null;
       const selectedOptions = variant?.options || undefined;
@@ -293,7 +305,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
           (line) => line.product.id === product.id && line.channel === channel && (line.variantId || null) === variantId,
         );
 
-        const maxQty = purchasableQuantity(targetItem);
+        const maxQty = channel === "wholesale" && targetItem.fulfillmentMode === "supplier" ? 100 : channel === "wholesale" && !isVerifiedStock(targetItem) ? 100 : purchasableQuantity(targetItem);
 
         if (existingIndex >= 0) {
           return current.map((line, idx) =>
@@ -346,7 +358,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
 
             const variant = line.variantId ? line.product.variants?.find((v) => v.id === line.variantId) : null;
             const targetItem = variant || line.product;
-            const maxQty = purchasableQuantity(targetItem);
+            const maxQty = channel === "wholesale" && targetItem.fulfillmentMode === "supplier" ? 100 : channel === "wholesale" && !isVerifiedStock(targetItem) ? 100 : purchasableQuantity(targetItem);
 
             return {
               ...line,
@@ -380,15 +392,28 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
 
   const cartCount = cart.reduce((count, line) => count + line.quantity, 0);
   const favoritesCount = favoriteIds.length;
-  const cartTotal = cart.reduce((sum, line) => {
-    const price =
-      line.variantPrice != null
-        ? line.variantPrice
-        : line.channel === "wholesale"
-        ? line.product.wholesalePrice
-        : line.product.retailPrice;
-    return sum + price * line.quantity;
-  }, 0);
+  const cartTotal = cart.reduce((sum,line)=>sum+(cartLineUnitPrice(line)??0)*line.quantity,0);
+  const wholesaleSelectionKey=JSON.stringify(cart.filter(l=>l.channel==='wholesale').map(l=>({productId:l.product.id,variantId:l.variantId??null,quantity:l.quantity})));
+  useEffect(()=>{
+    if(!cartReady||!WHOLESALE_ENABLED)return;
+    let cancelled=false;
+    const items=JSON.parse(wholesaleSelectionKey) as Array<{productId:string;variantId:string|null;quantity:number}>;
+    fetchWholesaleCart(items).then(result=>{
+      if(cancelled)return;
+      if(!result.ok){setCartNotice(result.error);return;}
+      setWholesalePolicy(result.policy);
+      if(!items.length)return;
+      setCart(current=>current.map(line=>{
+        if(line.channel!=='wholesale')return line;
+        const selected=items.find(i=>i.productId===line.product.id&&i.variantId===(line.variantId??null)&&i.quantity===line.quantity);
+        const offer=selected&&result.offers.find(o=>o.productId===line.product.id&&o.variantId===(line.variantId??null));
+        if(!offer)return line;
+        const product={...line.product,...(!line.variantId?{wholesaleOffer:offer}:{}),variants:line.product.variants?.map(v=>v.id===line.variantId?{...v,wholesaleOffer:offer}:v)};
+        return{...line,product,variantPrice:line.variantId?offer.unitPrice:line.variantPrice};
+      }));
+    });
+    return()=>{cancelled=true;};
+  },[cartReady,wholesaleSelectionKey]);
 
   // Check if all items in cart are in physical immediate stock in Tandil
   const isAllImmediateStock = useMemo(() => {
@@ -442,6 +467,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
 
   const value = useMemo(
     () => ({
+      wholesalePolicy,
       cart,
       cartReady,
       favoriteIds,
@@ -483,6 +509,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
       closeWhatsApp,
     }),
     [
+      wholesalePolicy,
       addToCart,
       cart,
       cartReady,

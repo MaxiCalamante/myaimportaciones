@@ -1,3 +1,5 @@
+import type { CartLine } from './types';
+import { INITIAL_PUBLIC_WHOLESALE_POLICY, type PublicWholesalePolicy, type WholesaleTier } from './wholesale-v2';
 /** Owner-confirmed terms, reconfirmed 28/10/2026. The two minimums are alternatives. */
 export const WHOLESALE_MIN_AMOUNT = 100_000;
 export const WHOLESALE_MIN_UNITS = 5;
@@ -10,36 +12,20 @@ export interface VolumeTier {
   label: string;
 }
 
-export const WHOLESALE_VOLUME_TIERS: VolumeTier[] = [
-  { minQty: 24, discountPct: 10, label: "Master Box (24+ un.): -10% extra" },
-  { minQty: 12, discountPct: 5, label: "Caja Cerrada (12+ un.): -5% extra" },
-];
-
-export function getVolumeDiscount(quantity: number): { discountPct: number; tierLabel: string | null } {
-  for (const tier of WHOLESALE_VOLUME_TIERS) {
-    if (quantity >= tier.minQty) {
-      return { discountPct: tier.discountPct, tierLabel: tier.label };
-    }
-  }
-  return { discountPct: 0, tierLabel: null };
+/** Extra quantity reductions only exist when a reviewed cost-based quote provides them. */
+export const WHOLESALE_VOLUME_TIERS: VolumeTier[] = [];
+export function getVolumeDiscount(_quantity:number){return{discountPct:0,tierLabel:null};}
+export function calculateTieredWholesalePrice(baseWholesalePrice:number,quantity:number,tiers:WholesaleTier[]=[]){
+ const selected=tiers.filter(t=>t.minQty<=quantity&&Number.isFinite(t.unitPrice)&&t.unitPrice>0).sort((a,b)=>b.minQty-a.minQty)[0];
+ const unitPrice=selected?.unitPrice??baseWholesalePrice;
+ return{unitPrice,discountPct:baseWholesalePrice>0?Math.round(Math.max(0,(1-unitPrice/baseWholesalePrice)*100)*100)/100:0,tierLabel:selected?`${selected.minQty}+ unidades`:null,total:unitPrice*quantity};
 }
-
-export function calculateTieredWholesalePrice(baseWholesalePrice: number, quantity: number): {
-  unitPrice: number;
-  discountPct: number;
-  tierLabel: string | null;
-  total: number;
-} {
-  const { discountPct, tierLabel } = getVolumeDiscount(quantity);
-  const unitPrice = discountPct > 0
-    ? Math.round(baseWholesalePrice * (1 - discountPct / 100))
-    : baseWholesalePrice;
-  return {
-    unitPrice,
-    discountPct,
-    tierLabel,
-    total: unitPrice * quantity,
-  };
+export function cartLineUnitPrice(line:CartLine):number|null{
+ if(line.channel==='retail')return line.variantPrice??line.product.retailPrice;
+ const variant=line.variantId?line.product.variants?.find(v=>v.id===line.variantId):null;
+ const offer=variant?.wholesaleOffer??(!line.variantId?line.product.wholesaleOffer:null);
+ if(offer?.status!=='ready'||offer.unitPrice===null)return null;
+ return calculateTieredWholesalePrice(offer.unitPrice,line.quantity,offer.tiers).unitPrice;
 }
 
 export interface WholesaleValidationResult {
@@ -53,7 +39,8 @@ export interface WholesaleValidationResult {
 }
 
 export function validateWholesaleOrder(
-  lines: { channel?: string; price: number; quantity: number }[]
+  lines: { channel?: string; price: number | null; quantity: number }[],
+  policy:PublicWholesalePolicy=INITIAL_PUBLIC_WHOLESALE_POLICY
 ): WholesaleValidationResult {
   const wholesaleLines = lines.filter((l) => l.channel === "wholesale");
   if (!wholesaleLines.length) {
@@ -68,13 +55,12 @@ export function validateWholesaleOrder(
   }
 
   const totalAmount = wholesaleLines.reduce((sum, l) => {
-    const tiered = calculateTieredWholesalePrice(l.price, l.quantity);
-    return sum + tiered.total;
+    return sum + (l.price===null?0:l.price*l.quantity);
   }, 0);
   const totalUnits = wholesaleLines.reduce((sum, l) => sum + l.quantity, 0);
-  const meetsMinimum = totalAmount >= WHOLESALE_MIN_AMOUNT || totalUnits >= WHOLESALE_MIN_UNITS;
-  const missingAmount = Math.max(0, WHOLESALE_MIN_AMOUNT - totalAmount);
-  const missingUnits = Math.max(0, WHOLESALE_MIN_UNITS - totalUnits);
+  const meetsMinimum = totalAmount >= policy.minAmountArs || totalUnits >= policy.minUnits;
+  const missingAmount = Math.max(0, policy.minAmountArs - totalAmount);
+  const missingUnits = Math.max(0, policy.minUnits - totalUnits);
 
   return {
     hasWholesale: true,
@@ -85,7 +71,7 @@ export function validateWholesaleOrder(
     missingUnits,
     errorMessage: meetsMinimum
       ? undefined
-      : `El pedido mayorista requiere alcanzar $100.000 o sumar al menos 5 unidades combinadas. Te faltan $${missingAmount.toLocaleString("es-AR")} o ${missingUnits} ${missingUnits === 1 ? "unidad" : "unidades"} para continuar.`,
+      : `El pedido mayorista requiere alcanzar $${policy.minAmountArs.toLocaleString("es-AR")} o sumar al menos ${policy.minUnits} unidades combinadas. Te faltan $${missingAmount.toLocaleString("es-AR")} o ${missingUnits} ${missingUnits === 1 ? "unidad" : "unidades"} para continuar.`,
   };
 }
 
