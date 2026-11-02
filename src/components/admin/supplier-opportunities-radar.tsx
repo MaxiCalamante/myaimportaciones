@@ -153,6 +153,7 @@ export function SupplierOpportunitiesRadar({
   const handleOpenImport = (opp: SupplierOpportunity) => {
     setActiveOpportunity(opp);
     setEditCategoryId(opp.categoryId);
+    setImportActionChoice(opp.matchedProductId ? "link" : "new");
     setImportSuccess(null);
     setImportError(null);
   };

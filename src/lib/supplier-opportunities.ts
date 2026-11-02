@@ -815,7 +815,7 @@ export async function importSupplierOpportunity(
     allMatching: false,
     categoryId: input.categoryId,
     limit: 1,
-    forceNew: Boolean(input.forceNew),
+    forceNew: true,
   });
 
   const confirmed = await db.rpc("control_catalog_import_job_v1", { job_input: preview.jobId, action_input: "confirm" });
@@ -847,13 +847,18 @@ export async function importSupplierOpportunity(
     if (richDesc) {
       productUpdates.description = richDesc;
     }
-    if (offer.availability === "in_stock") {
-      productUpdates.supplier_available = true;
-      productUpdates.supplier_stock_status = "in_stock";
-      productUpdates.supplier_last_checked_at = new Date().toISOString();
-    }
-
     await db.from("products").update(productUpdates).eq("id", item.product_id);
+
+    if (offer.availability === "in_stock") {
+      try {
+        await db.rpc("update_product_supplier_sync_v1", {
+          product_id_input: item.product_id,
+          available_input: true,
+          status_input: "in_stock",
+          live_price_input: null,
+        });
+      } catch {}
+    }
   }
 
   const product = await db.from("products").select("id,slug,title,is_active").eq("id", item.product_id).single();

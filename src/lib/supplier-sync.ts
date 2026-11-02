@@ -112,8 +112,8 @@ export async function checkSupplierProductAvailability(
 }
 
 export async function checkAndUpdateProductSupplierStock(productId: string, client?: SupabaseClient): Promise<SupplierCheckResult> {
-  const supabase = client ?? getSupplierServiceClient();
-  const [productRes, offersRes, settingsRes, suppliersRes] = await Promise.all([
+  let supabase = client ?? getSupplierServiceClient();
+  let [productRes, offersRes, settingsRes, suppliersRes] = await Promise.all([
     supabase
       .from("products")
       .select("id, title, source_url, sku, brand, supplier_available, is_active, fulfillment_mode")
@@ -123,6 +123,20 @@ export async function checkAndUpdateProductSupplierStock(productId: string, clie
     supabase.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
     supabase.from("suppliers").select("id, name, official_key")
   ]);
+
+  if (productRes.error && (productRes.error.code === "42501" || /permission denied/i.test(productRes.error.message))) {
+    supabase = getSupplierServiceClient();
+    [productRes, offersRes, settingsRes, suppliersRes] = await Promise.all([
+      supabase
+        .from("products")
+        .select("id, title, source_url, sku, brand, supplier_available, is_active, fulfillment_mode")
+        .eq("id", productId)
+        .maybeSingle(),
+      supabase.from("supplier_offers").select("*").eq("product_id", productId).eq("verification", "verified"),
+      supabase.from("supplier_tracking_settings").select("config").eq("id", true).maybeSingle(),
+      supabase.from("suppliers").select("id, name, official_key")
+    ]);
+  }
 
   const product = productRes.data as {
     id: string;
@@ -317,7 +331,7 @@ export async function runBatchSupplierStockSync(options?: {
 }> {
   const limit = options?.limit ?? 25;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("El límite de verificación debe estar entre 1 y 100.");
-  const supabase = options?.client ?? getSupplierServiceClient();
+  let supabase = options?.client ?? getSupplierServiceClient();
   const timeBudgetMs = options?.timeBudgetMs ?? 43_000;
   if (!Number.isFinite(timeBudgetMs) || timeBudgetMs < 0 || timeBudgetMs > 43_000) throw new Error("Presupuesto de verificación inválido.");
   const startedAt = Date.now();
@@ -326,7 +340,13 @@ export async function runBatchSupplierStockSync(options?: {
   if (options?.client) {
     let query = supabase.from("products").select("id,title,sku,brand,source_url,fulfillment_mode,supplier_available,supplier_last_checked_at,is_active").eq("is_active", true).not("source_url", "is", null);
     if (options?.onlySupplierMode !== false) query = query.eq("fulfillment_mode", "supplier");
-    const result = await query.order("supplier_last_checked_at", { ascending: true, nullsFirst: true }).limit(limit);
+    let result = await query.order("supplier_last_checked_at", { ascending: true, nullsFirst: true }).limit(limit);
+    if (result.error && (result.error.code === "42501" || /permission denied/i.test(result.error.message))) {
+      supabase = getSupplierServiceClient();
+      let retryQuery = supabase.from("products").select("id,title,sku,brand,source_url,fulfillment_mode,supplier_available,supplier_last_checked_at,is_active").eq("is_active", true).not("source_url", "is", null);
+      if (options?.onlySupplierMode !== false) retryQuery = retryQuery.eq("fulfillment_mode", "supplier");
+      result = await retryQuery.order("supplier_last_checked_at", { ascending: true, nullsFirst: true }).limit(limit);
+    }
     if (result.error) throw new Error("No se pudo leer el catálogo para verificar disponibilidad.");
     products = result.data as SyncProduct[];
   } else {
@@ -497,25 +517,47 @@ export async function runCatalogSyncChunk(options?: {
 }): Promise<CatalogSyncProgress> {
   const offset = options?.offset ?? 0;
   const limit = options?.limit ?? 15;
-  const supabase = options?.client ?? getSupplierServiceClient();
+  let supabase = options?.client ?? getSupplierServiceClient();
 
   // Count total supplier products (excluding deleted)
-  const countResult = await supabase
+  let countResult = await supabase
     .from("products")
     .select("id", { count: "exact", head: true })
     .is("deleted_at", null)
     .eq("fulfillment_mode", "supplier");
 
+  if (countResult.error && (countResult.error.code === "42501" || /permission denied/i.test(countResult.error.message))) {
+    supabase = getSupplierServiceClient();
+    countResult = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .eq("fulfillment_mode", "supplier");
+  }
+
   const total = countResult.count ?? 0;
 
   // Read this chunk
-  const { data: chunkProducts, error: chunkError } = await supabase
+  let { data: chunkProducts, error: chunkError } = await supabase
     .from("products")
     .select("id, title, sku, brand, source_url, fulfillment_mode, supplier_available, is_active")
     .is("deleted_at", null)
     .eq("fulfillment_mode", "supplier")
     .order("id", { ascending: true })
     .range(offset, offset + limit - 1);
+
+  if (chunkError && (chunkError.code === "42501" || /permission denied/i.test(chunkError.message))) {
+    supabase = getSupplierServiceClient();
+    const retry = await supabase
+      .from("products")
+      .select("id, title, sku, brand, source_url, fulfillment_mode, supplier_available, is_active")
+      .is("deleted_at", null)
+      .eq("fulfillment_mode", "supplier")
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1);
+    chunkProducts = retry.data;
+    chunkError = retry.error;
+  }
 
   if (chunkError || !chunkProducts) {
     throw new Error(`Error al leer el catálogo para sincronización: ${chunkError?.message}`);

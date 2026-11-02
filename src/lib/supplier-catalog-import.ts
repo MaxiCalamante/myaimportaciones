@@ -134,7 +134,7 @@ export async function previewCatalogImport(db:SupabaseClient,s:CatalogPreviewSel
   else if(row.payload.action==='new'){
    try{
     const source=new URL(supplierSourceUrl(o.source_url,supplier));
-    if(!o.external_id||o.variant_key.startsWith('listing:')||['/','/home','/index.php'].includes(source.pathname.replace(/\/$/,'')||'/')&&!(source.searchParams.get('route')==='product/product'&&source.searchParams.has('product_id')))throw new Error('Ficha general');
+    const isGeneric = ['/','/home','/index.php'].includes(source.pathname.replace(/\/$/,'')||'/')&&!(source.searchParams.get('route')==='product/product'&&source.searchParams.has('product_id')); const isCategoryPage = source.pathname.includes('/categoria/') || source.pathname.includes('/categoria-premium/'); if(!o.external_id || isGeneric || isCategoryPage) throw new Error('Ficha general');
    }catch{row.payload.action='review';row.payload.reason='Falta la ficha HTTPS exacta del producto en el sitio del proveedor.';}
   }
   if(row.payload.action==='link'&&row.payload.target){

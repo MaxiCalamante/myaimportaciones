@@ -452,7 +452,8 @@ export async function triggerBatchSupplierSyncAction(limit: number = 30) {
 }
 
 export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
-  const client = await getAdminClient();
+  await getAdminClient();
+  const client = createCommerceService();
   const progress = await runCatalogSyncChunk({ offset, limit, client });
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
@@ -460,7 +461,8 @@ export async function syncCatalogChunkAction(offset: number = 0, limit: number =
 }
 
 export async function runDirectCatalogSupplierSyncAction(batchLimit: number = 25) {
-  const client = await getAdminClient();
+  await getAdminClient();
+  const client = createCommerceService();
   const result = await runBatchSupplierStockSync({ limit: batchLimit, client, timeBudgetMs: 38000 });
   invalidateAdminStorefrontCache();
   revalidatePath("/admin");
@@ -1855,7 +1857,8 @@ export async function quickUpdateSupplierLinkAction(
 
 export async function searchSupplierOpportunitiesAction(params: OpportunitySearchParams = {}) {
   return runAdminFormAction(async () => {
-    const db = await getAdminClient();
+    await getAdminClient();
+    const db = createCommerceService();
     return searchSupplierOpportunities(params, { client: db });
   }, 'No se pudieron actualizar las oportunidades. Revisá tu conexión e intentá nuevamente.');
 }
