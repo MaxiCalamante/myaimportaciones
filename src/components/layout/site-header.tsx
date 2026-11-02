@@ -31,7 +31,7 @@ export function SiteHeader({ initialCategories = [], profile = null }: {
   const { cartCount, favoritesCount, cartOpen, setCartOpen, openWhatsApp } = useCommerce();
   const categories = initialCategories.filter(category => isWholesale || !category.wholesaleOnly);
   const catalogPath = isWholesale ? "/mayorista" : "/catalogo";
-  const brandName = isWholesale ? "MyA Mayorista" : "MyA importaciones";
+  const brandName = "MYA";
   const isWholesaleAllowed = WHOLESALE_ENABLED && Boolean(profile?.isApprovedWholesale || profile?.customerTier === "wholesale" || profile?.role === "admin");
   const [menuState, setMenuState] = useState<{ pathname: string | null; focusSearch: boolean } | null>(null);
   // Layouts persist between routes; a navigation always dismisses the current drawer.
@@ -126,8 +126,6 @@ export function SiteHeader({ initialCategories = [], profile = null }: {
       <div className="mx-auto flex h-15 w-full max-w-7xl items-center gap-2 px-4 sm:h-19 sm:gap-4 sm:px-6 lg:px-8">
         <Link className="flex min-h-11 shrink-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600" href={isWholesale ? "/mayorista" : "/"} aria-label={brandName}>
           <BrandMark />
-          <span className="hidden border-l border-zinc-200 pl-3 sm:block"><span className="block text-sm font-semibold tracking-tight">importaciones</span><span className="mt-0.5 block text-[10px] text-zinc-500">Tandil · Argentina</span></span>
-          {isWholesale && <span className="hidden rounded-full bg-sky-50 px-2 py-1 text-[10px] font-semibold text-sky-800 xl:block">Mayorista</span>}
         </Link>
         <div className="relative ml-auto hidden w-full min-w-40 max-w-xl md:block"><ProductSearch catalogPath={catalogPath} /></div>
         <div className="ml-auto flex items-center gap-0 sm:gap-1 md:ml-2">
