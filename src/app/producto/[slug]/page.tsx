@@ -10,10 +10,13 @@ import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-produ
 import { getProductReviews } from "@/lib/product-reviews";
 import { ProductReviewsSection } from "@/components/commerce/product-reviews-section";
 import { productDescriptionParagraphs, productDetailSummary } from "@/lib/product-detail-content";
+import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
+import { getPublicWholesaleOffers } from "@/lib/wholesale-v2-read";
+import type { ProductChannel } from "@/lib/types";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ variant?: string }>;
+  searchParams: Promise<{ variant?: string; canal?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -36,8 +39,33 @@ export default async function ProductPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  const requestedVariant = (await searchParams).variant;
+  const sp = await searchParams;
+  const requestedVariant = sp.variant;
   const initialVariantId = typeof requestedVariant === "string" ? product.variants?.find(variant => variant.isActive && variant.id === requestedVariant)?.id : undefined;
+  const isWholesale = sp.canal === "mayorista";
+  const initialChannel: ProductChannel | undefined = isWholesale ? "wholesale" : undefined;
+
+  let enrichedProduct = product;
+  if (WHOLESALE_ENABLED) {
+    const items = [
+      { productId: product.id, variantId: null },
+      ...(product.variants ?? []).filter(v => v.isActive).map(v => ({ productId: product.id, variantId: v.id }))
+    ];
+    try {
+      const offers = await getPublicWholesaleOffers(items);
+      const offerMap = new Map(offers.map(o => [`${o.productId}:${o.variantId ?? "base"}`, o]));
+      enrichedProduct = {
+        ...product,
+        wholesaleOffer: product.wholesaleOffer ?? offerMap.get(`${product.id}:base`),
+        variants: product.variants?.map(v => ({
+          ...v,
+          wholesaleOffer: v.wholesaleOffer ?? offerMap.get(`${product.id}:${v.id}`)
+        }))
+      };
+    } catch {
+      // Fallback to base product without dynamic offers
+    }
+  }
 
   const { categories, products } = await getStorefrontData({ categoryId: product.categoryId });
   const category = categories.find((c) => c.id === product.categoryId);
@@ -58,10 +86,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const productJsonLd = productStructuredData(product);
 
   const breadcrumbJsonLd = breadcrumbData([
-    { name: "Inicio", path: "/" },
-    ...(parent ? [{ name: parent.name, path: "/catalogo?category=" + encodeURIComponent(parent.slug) }] : []),
-    { name: product.categoryName, path: "/catalogo?category=" + (category?.slug || "") },
-    { name: product.title, path: "/producto/" + product.slug },
+    { name: isWholesale ? "Mayorista" : "Inicio", path: isWholesale ? "/mayorista" : "/" },
+    ...(parent && !isWholesale ? [{ name: parent.name, path: "/catalogo?category=" + encodeURIComponent(parent.slug) }] : []),
+    { name: product.categoryName, path: isWholesale ? "/mayorista" : "/catalogo?category=" + (category?.slug || "") },
+    { name: product.title, path: "/producto/" + product.slug + (isWholesale ? "?canal=mayorista" : "") },
   ]);
 
   return (
@@ -78,13 +106,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
       <div data-product-page className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
         {/* Breadcrumb */}
         <nav aria-label="Ubicación del producto" className="mb-4 flex min-w-0 items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap no-scrollbar [&>svg]:shrink-0">
-          <Link href="/" className="hover:text-zinc-900 transition flex items-center gap-1">
-            <ArrowLeft className="h-3.5 w-3.5" /> Inicio
+          <Link href={isWholesale ? "/mayorista" : "/"} className={`hover:text-zinc-900 transition flex items-center gap-1 ${isWholesale ? "font-medium text-sky-800" : ""}`}>
+            <ArrowLeft className="h-3.5 w-3.5" /> {isWholesale ? "Catálogo mayorista" : "Inicio"}
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
-          {parent && <><Link href={"/catalogo?category=" + encodeURIComponent(parent.slug)} className="hover:text-zinc-900 transition">{parent.name}</Link><ChevronRight className="h-3.5 w-3.5 text-zinc-300"/></>}
+          {parent && !isWholesale && <><Link href={"/catalogo?category=" + encodeURIComponent(parent.slug)} className="hover:text-zinc-900 transition">{parent.name}</Link><ChevronRight className="h-3.5 w-3.5 text-zinc-300"/></>}
           <Link
-            href={`/catalogo?category=${category?.slug || ""}`}
+            href={isWholesale ? "/mayorista" : `/catalogo?category=${category?.slug || ""}`}
             className="hover:text-zinc-900 transition"
           >
             {product.categoryName}
@@ -95,9 +123,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
         {/* Product Showcase (Gallery + Interactive Info) */}
         <ProductShowcase
-          key={`${product.id}:${initialVariantId || "default"}`}
-          product={product}
+          key={`${product.id}:${initialVariantId || "default"}:${initialChannel || "retail"}`}
+          product={enrichedProduct}
           initialVariantId={initialVariantId}
+          initialChannel={initialChannel}
           beforeInteractive={
             <>
               <div>

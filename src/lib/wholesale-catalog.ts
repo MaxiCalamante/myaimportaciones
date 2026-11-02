@@ -5,6 +5,7 @@ import type { Category, Product } from "./types";
 import { hasSupabaseConfig } from "./supabase/env";
 import { INITIAL_PUBLIC_WHOLESALE_POLICY } from "./wholesale-v2";
 import type { PublicWholesaleOffer } from "./wholesale-v2";
+import { classifyWholesaleRubro } from "./wholesale-pricing-engine";
 
 export function wholesaleCategoryIds(categories: Category[], slug?: string): Set<string> {
   const root=categories.find(c=>c.slug===slug);
@@ -18,7 +19,13 @@ export function wholesaleCategoryIds(categories: Category[], slug?: string): Set
 /** Published products and a deliberately limited public quote, never acquisition costs. */
 export const getWholesaleCatalog=cache(async()=>{
   const [data,policy]=await Promise.all([getStorefrontData({wholesale:true,all:true}),hasSupabaseConfig()?getPublicWholesalePolicy():Promise.resolve(INITIAL_PUBLIC_WHOLESALE_POLICY)]);
-  const items=data.products.flatMap(p=>[
+  const categoryMap = new Map(data.categories.map(c => [c.id, c.slug]));
+  const eligibleProducts = data.products.filter(p => {
+    const catSlug = categoryMap.get(p.categoryId) ?? "";
+    const classification = classifyWholesaleRubro(p.title, catSlug, p.brand, p.retailPrice);
+    return classification.isEligible || (p.wholesalePrice && p.wholesalePrice > 0);
+  });
+  const items=eligibleProducts.flatMap(p=>[
     ...(!p.wholesaleOffer?[{productId:p.id,variantId:null as string|null}]:[]),
     ...(p.variants??[]).filter(v=>v.isActive&&!v.wholesaleOffer).map(v=>({productId:p.id,variantId:v.id})),
   ]);
@@ -26,7 +33,7 @@ export const getWholesaleCatalog=cache(async()=>{
   for(let i=0;i<items.length;i+=500)offers.push(...await getPublicWholesaleOffers(items.slice(i,i+500)));
   const key=(p:string,v:string|null)=>`${p}:${v??'base'}`;
   const byIdentity=new Map(offers.map(o=>[key(o.productId,o.variantId),o]));
-  const products:Product[]=data.products.map(p=>({...p,
+  const products:Product[]=eligibleProducts.map(p=>({...p,
     wholesaleOffer:p.wholesaleOffer??byIdentity.get(key(p.id,null)),
     variants:p.variants?.map(v=>({...v,wholesaleOffer:v.wholesaleOffer??byIdentity.get(key(p.id,v.id))})),
   }));

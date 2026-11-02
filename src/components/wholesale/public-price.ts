@@ -6,7 +6,14 @@ export const publicWholesalePrice = publicWholesaleUnitPrice;
 export function wholesaleDisplay(product: Product, variant?: ProductVariant | null, quantity = 1) {
   if (variant) {
     const p = publicWholesalePrice(variant.wholesaleOffer, quantity);
-    return { price: p ?? (variant.wholesalePrice || null), from: false, offer: variant.wholesaleOffer };
+    const fallbackPrice = (variant.wholesalePrice && variant.wholesalePrice > 0)
+      ? variant.wholesalePrice
+      : (!variant || variant.retailPrice === product.retailPrice) && product.wholesalePrice && product.wholesalePrice > 0
+        ? product.wholesalePrice
+        : (variant && variant.retailPrice && product.retailPrice && product.wholesalePrice && product.wholesalePrice > 0)
+          ? Math.round((product.wholesalePrice / product.retailPrice) * variant.retailPrice / 100) * 100
+          : null;
+    return { price: p ?? fallbackPrice, from: false, offer: variant.wholesaleOffer };
   }
   if (product.hasVariants) {
     const offers = (product.variants ?? []).filter(v => v.isActive).map(v => v.wholesaleOffer);

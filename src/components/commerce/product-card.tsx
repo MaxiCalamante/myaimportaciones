@@ -41,7 +41,8 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
     ? ownStockChoices.length === stockChoices.length ? "Stock en Tandil" : "Stock según opción"
     : supplierChoices.length > 0 ? "Bajo pedido" : "Disponibilidad a confirmar";
   const shipping = getProductShippingTimeInfo(stockChoices.find(isVerifiedStock) || product);
-  const href = productVariantHref(product.slug)+(channel==='wholesale'?'?canal=mayorista':'');
+  const baseHref = productVariantHref(product.slug);
+  const href = channel === "wholesale" ? `${baseHref}${baseHref.includes("?") ? "&" : "?"}canal=mayorista` : baseHref;
   const badge = product.tags.includes("oferta") ? "Oferta" : product.featured ? "Destacado" : null;
   const actionClassName = "flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-sky-700 px-2 py-2 text-center text-xs font-semibold text-white transition-colors hover:bg-sky-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 sm:text-sm";
 

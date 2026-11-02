@@ -24,8 +24,20 @@ export function cartLineUnitPrice(line:CartLine):number|null{
  if(line.channel==='retail')return line.variantPrice??line.product.retailPrice;
  const variant=line.variantId?line.product.variants?.find(v=>v.id===line.variantId):null;
  const offer=variant?.wholesaleOffer??(!line.variantId?line.product.wholesaleOffer:null);
- if(offer?.status!=='ready'||offer.unitPrice===null)return null;
- return calculateTieredWholesalePrice(offer.unitPrice,line.quantity,offer.tiers).unitPrice;
+ if(offer?.status==='ready'&&offer.unitPrice!==null){
+  return calculateTieredWholesalePrice(offer.unitPrice,line.quantity,offer.tiers).unitPrice;
+ }
+ const fallback=(variant?.wholesalePrice&&variant.wholesalePrice>0)
+  ?variant.wholesalePrice
+  :(!variant||variant.retailPrice===line.product.retailPrice)&&line.product.wholesalePrice&&line.product.wholesalePrice>0
+   ?line.product.wholesalePrice
+   :(variant&&variant.retailPrice&&line.product.retailPrice&&line.product.wholesalePrice&&line.product.wholesalePrice>0)
+    ?Math.round((line.product.wholesalePrice/line.product.retailPrice)*variant.retailPrice/100)*100
+    :null;
+ if(fallback!==null){
+  return calculateTieredWholesalePrice(fallback,line.quantity).unitPrice;
+ }
+ return null;
 }
 
 export interface WholesaleValidationResult {
