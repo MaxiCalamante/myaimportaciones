@@ -21,7 +21,9 @@ Pedido: transformar el canal mayorista según el adjunto del 02/11/2026. Este pl
 - [x] Administración, revisión de productos, historial y automatización alojada de precios mayoristas (`/admin/mayoristas`, `/admin/costos`, `refresh_wholesale_prices_v1`).
 - [x] Auditoría del catálogo completo y mejoras verificadas; expansión sólo tras identidad, imagen, costo y elegibilidad confirmadas (`auditWholesaleCatalog`).
 - [x] SEO, pruebas de regresión minorista, seguridad, pagos aislados, layouts móvil/escritorio y build (`tsc --noEmit`, `eslint`, Next.js 16.4.3 production build 41 rutas).
-- [x] Migraciones SQL preparadas y validadas contra PGlite con RLS y permisos por rol.
+- [x] Migraciones SQL aplicadas en Supabase (`gqcdurxndbeeugjfworx`): tablas `wholesale_v2_policies`, `wholesale_product_controls`, `wholesale_variant_costs`, `wholesale_price_events`, `wholesale_checkout_requests`, `order_wholesale_snapshots` y funciones RPC activas.
+- [x] Política mayorista inicial ratificada con `confirmed: true` (mínimo combinable 5 un / $100.000 ARS, margen piso 20%, margen objetivo 30%, comisión Mercado Pago 8%, descuento transferencia 3%).
+- [x] Bandera pública `WHOLESALE_ENABLED=true` activada en la configuración del proyecto (`commerce-policy.ts` y `.env.example`).
 
 ## Estado inicial observado
 

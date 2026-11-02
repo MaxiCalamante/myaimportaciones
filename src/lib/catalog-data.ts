@@ -158,7 +158,7 @@ export function mapProduct(product: DbProduct, admin = false, wholesale = false)
     categoryName: category?.name ?? "Catalogo",
     imageUrl: product.image_url ?? "",
     retailPrice: effectiveRetailPrice,
-    wholesalePrice: (WHOLESALE_ENABLED || admin || wholesale) ? Number(product.wholesale_price ?? 0) : 0,
+    wholesalePrice: (admin || (WHOLESALE_ENABLED && wholesale)) ? Number(product.wholesale_price ?? 0) : 0,
     wholesaleMinQuantity: Number(product.wholesale_min_qty ?? 1),
     stock: effectiveStock,
     paymentMethods: product.payment_methods ?? ["transferencia"],
