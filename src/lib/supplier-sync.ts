@@ -353,8 +353,51 @@ export async function runBatchSupplierStockSync(options?: {
     if (Date.now() - startedAt >= timeBudgetMs) break;
     const chunk = products.slice(i, i + concurrency);
     const chunkPromises = chunk.map(async (p) => {
-      const check = await checkSupplierProductAvailability(p.source_url, p.sku, p.brand);
-      const isOutOfStock = check.status === "out_of_stock" || check.status === "not_found";
+      let check = await checkSupplierProductAvailability(p.source_url, p.sku, p.brand);
+      let isOutOfStock = check.status === "out_of_stock" || check.status === "not_found";
+
+      // Respaldo multi-proveedor: si la fuente principal cayó o está sin stock, buscar alternativa en supplier_offers
+      if (isOutOfStock && p.id && typeof supabase.from === "function") {
+        try {
+          const { data: altOffers } = await supabase
+            .from("supplier_offers")
+            .select("id, source_url, origin_cost, availability, verification")
+            .eq("product_id", p.id)
+            .eq("verification", "verified")
+            .neq("source_url", p.source_url)
+            .limit(2);
+
+          if (altOffers && altOffers.length > 0) {
+            for (const alt of altOffers) {
+              if (!alt.source_url) continue;
+              const altCheck = await checkSupplierProductAvailability(alt.source_url, p.sku, p.brand);
+              if (altCheck.status === "in_stock") {
+                check = {
+                  ...altCheck,
+                  message: `Rescate activado: proveedor alternativo tomó el relevo (${altCheck.message}).`,
+                };
+                isOutOfStock = false;
+                const landedCost = alt.origin_cost ? Math.round(Number(alt.origin_cost) * 1550 * 1.20) : null;
+                await supabase
+                  .from("products")
+                  .update({
+                    source_url: alt.source_url,
+                    supplier_available: true,
+                    supplier_stock_status: "in_stock",
+                    supplier_live_price: landedCost,
+                    supplier_last_checked_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", p.id);
+                break;
+              }
+            }
+          }
+        } catch {
+          // Si falla la verificación de alternativa se preserva el estado primario
+        }
+      }
+
       const newAvailable =
         check.status === "in_stock"
           ? true
@@ -362,11 +405,16 @@ export async function runBatchSupplierStockSync(options?: {
           ? false
           : Boolean(p.supplier_available);
 
+      const calculatedLivePrice =
+        check.livePrice && check.livePrice > 0
+          ? Math.round(check.livePrice * 1550 * 1.20)
+          : null;
+
       const { error: updateError } = await supabase.rpc("update_product_supplier_sync_v1", {
         product_id_input: p.id,
         available_input: newAvailable,
         status_input: check.status,
-        live_price_input: null,
+        live_price_input: calculatedLivePrice,
       });
 
       if (updateError) {
