@@ -27,7 +27,7 @@ export async function WholesaleLanding({category,filters={}}:{category?:Wholesal
   {question:'¿Necesito una cuenta mayorista aprobada?',answer:'No. El catálogo y sus precios confirmados son públicos. Podés armar tu pedido sin aprobación comercial ni CUIT. Una cuenta normal sirve para consultar tu historial.'},
   {question:'¿Cuál es el mínimo y puedo combinar productos?',answer:`El mínimo es ${minimum}. Basta cumplir una de las dos condiciones; podés combinar marcas y rubros. El envío se calcula aparte.`},
   {question:'¿Qué significa precio por confirmar?',answer:'La ficha está disponible para armar tu selección, pero necesita una confirmación de precio o disponibilidad. La solicitud se revisa antes de habilitar el pago; no se realiza un cobro definitivo por un importe pendiente.'},
-  {question:'¿Los productos están físicamente en Argentina?',answer:'Cada ficha diferencia el stock propio verificado de los productos bajo pedido con disponibilidad del proveedor. Los plazos y el envío se confirman según tu selección y destino.'},
+  {question:'¿Los productos están físicamente en Argentina?',answer:'Cada ficha diferencia el stock con entrega inmediata en Tandil de los productos disponibles en catálogo. Los plazos y el envío se confirman según tu selección y destino.'},
  ];
  return <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 text-zinc-950 sm:px-6 lg:px-8">
   <script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(wholesaleServiceData(category))}}/>

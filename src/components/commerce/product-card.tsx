@@ -39,7 +39,7 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
   const available = ownStockChoices.length > 0 || supplierChoices.length > 0;
   const availabilityText = ownStockChoices.length > 0
     ? ownStockChoices.length === stockChoices.length ? "Stock en Tandil" : "Stock según opción"
-    : supplierChoices.length > 0 ? "Bajo pedido" : "Disponibilidad a confirmar";
+    : supplierChoices.length > 0 ? "Disponible" : "Disponibilidad a confirmar";
   const shipping = getProductShippingTimeInfo(stockChoices.find(isVerifiedStock) || product);
   const baseHref = productVariantHref(product.slug);
   const href = channel === "wholesale" ? `${baseHref}${baseHref.includes("?") ? "&" : "?"}canal=mayorista` : baseHref;

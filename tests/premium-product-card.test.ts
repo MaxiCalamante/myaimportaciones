@@ -34,7 +34,8 @@ test("variant card leads to product selection and never adds an arbitrary varian
 test("own stock and supplier availability remain visibly distinct", () => {
   assert.match(renderCard(), /Stock en Tandil/);
   const supplier = renderCard({ fulfillmentMode: "supplier", supplierAvailable: true });
-  assert.match(supplier, /Bajo pedido/);
+  assert.match(supplier, /Disponible/);
+  assert.doesNotMatch(supplier, /Bajo pedido/);
   assert.match(supplier, /Agregar al carrito/);
   assert.doesNotMatch(supplier, /Stock en Tandil/);
   const unavailable = renderCard({ stock: 100, stockVerifiedAt: null });
@@ -45,7 +46,8 @@ test("own stock and supplier availability remain visibly distinct", () => {
 
 test("variant availability comes from active rows and never turns supplier units into own stock", () => {
   const underOrder = renderCard({ hasVariants: true, variants: [variant("Azul"), variant("Negro", { fulfillmentMode: "own_stock", stock: 5, stockVerifiedAt: "2026-11-01", isActive: false })] });
-  assert.match(underOrder, /Bajo pedido/);
+  assert.match(underOrder, /Disponible/);
+  assert.doesNotMatch(underOrder, /Bajo pedido/);
   assert.doesNotMatch(underOrder, /Stock en Tandil/);
   const noAvailableOptions = renderCard({ hasVariants: true, variants: [variant("Azul", { supplierAvailable: false })] });
   assert.match(noAvailableOptions, /Disponibilidad a confirmar/);

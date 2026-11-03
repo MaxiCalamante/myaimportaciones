@@ -317,7 +317,7 @@ export function WholesaleCatalogGrid({
               <option value="">Todas</option>
               <option value="available">Disponibilidad verificada</option>
               <option value="own">Stock propio verificado</option>
-              <option value="supplier">Bajo pedido verificado</option>
+              <option value="supplier">Disponibilidad en catálogo</option>
               <option value="review">Precio por confirmar</option>
             </select>
           </label>
@@ -417,7 +417,7 @@ export function WholesaleCatalogGrid({
                   : availability === "own"
                   ? "Stock propio"
                   : availability === "supplier"
-                  ? "Bajo pedido"
+                  ? "En catálogo"
                   : "Por confirmar"}
                 <button
                   type="button"
@@ -583,7 +583,7 @@ export function WholesaleCatalogGrid({
                   <option value="">Todas</option>
                   <option value="available">Disponibilidad verificada</option>
                   <option value="own">Stock propio verificado</option>
-                  <option value="supplier">Bajo pedido verificado</option>
+                  <option value="supplier">Disponibilidad en catálogo</option>
                   <option value="review">Precio por confirmar</option>
                 </select>
               </label>
