@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, PackageCheck, Star } from "lucide-react";
 import { getStorefrontData, getProductBySlug } from "@/lib/storefront";
 import { ProductCard } from "@/components/commerce/product-card";
-import { breadcrumbData, productMetadata, productStructuredData } from "@/lib/seo";
+import { breadcrumbData, jsonLd, productMetadata, productStructuredData } from "@/lib/seo";
 import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "@/lib/seo-product-aliases";
 import { getProductReviews } from "@/lib/product-reviews";
 import { ProductReviewsSection } from "@/components/commerce/product-reviews-section";
@@ -13,6 +13,9 @@ import { productDescriptionParagraphs, productDetailSummary } from "@/lib/produc
 import { WHOLESALE_ENABLED } from "@/lib/commerce-policy";
 import { getPublicWholesaleOffers } from "@/lib/wholesale-v2-read";
 import { classifyWholesaleRubro } from "@/lib/wholesale-pricing-engine";
+import { WHOLESALE_CATEGORIES } from "@/lib/wholesale-content";
+import { wholesaleCategoryIds } from "@/lib/wholesale-catalog";
+import { catalogBrandKey } from "@/lib/catalog-facets";
 import type { ProductChannel } from "@/lib/types";
 
 interface Props {
@@ -20,7 +23,7 @@ interface Props {
   searchParams: Promise<{ variant?: string; canal?: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
 
@@ -30,7 +33,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const alias = PRODUCT_CANONICAL_ALIASES[product.slug];
   const target = alias ? await getProductBySlug(alias) : undefined;
-  return productMetadata(product, canonicalProductSlug(product, target || undefined));
+  const metadata = productMetadata(product, canonicalProductSlug(product, target || undefined));
+  if ((await searchParams).canal === "mayorista" && metadata.other) {
+    delete metadata.other["product:price:amount"];
+    delete metadata.other["product:price:currency"];
+  }
+  return metadata;
 }
 
 export default async function ProductPage({ params, searchParams }: Props) {
@@ -88,42 +96,44 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const descriptionParagraphs = productDescriptionParagraphs(product.description);
   const specifications = Object.entries(product.specifications ?? {}).filter(([key,value]) => value && !key.startsWith("_seo_"));
 
-  const productJsonLd = productStructuredData(product);
-
+  const wholesaleCategories = isWholesale
+    ? WHOLESALE_CATEGORIES.filter(item => wholesaleCategoryIds(categories, item.categorySlug).has(product.categoryId))
+    : [];
+  const wholesaleCategory = wholesaleCategories.find(item => item.brand && catalogBrandKey(item.brand) === catalogBrandKey(product.brand))
+    ?? wholesaleCategories.find(item => !item.brand);
+  const breadcrumbs = [
+    { name: isWholesale ? "Catálogo mayorista" : "Inicio", path: isWholesale ? "/mayorista" : "/" },
+    ...(isWholesale
+      ? wholesaleCategory ? [{ name: wholesaleCategory.name, path: `/mayorista/${wholesaleCategory.slug}` }] : []
+      : [
+        ...(parent ? [{ name: parent.name, path: "/catalogo?category=" + encodeURIComponent(parent.slug) }] : []),
+        { name: product.categoryName, path: category ? "/catalogo?category=" + encodeURIComponent(category.slug) : "/catalogo" },
+      ]),
+  ];
   const breadcrumbJsonLd = breadcrumbData([
-    { name: isWholesale ? "Mayorista" : "Inicio", path: isWholesale ? "/mayorista" : "/" },
-    ...(parent && !isWholesale ? [{ name: parent.name, path: "/catalogo?category=" + encodeURIComponent(parent.slug) }] : []),
-    { name: product.categoryName, path: isWholesale ? "/mayorista" : "/catalogo?category=" + (category?.slug || "") },
+    ...breadcrumbs,
     { name: product.title, path: "/producto/" + product.slug + (isWholesale ? "?canal=mayorista" : "") },
   ]);
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
-      />
+      {!isWholesale && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(productStructuredData(product)) }} />
+      )}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbJsonLd) }} />
 
       <div data-product-page className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
-        {/* Breadcrumb */}
         <nav aria-label="Ubicación del producto" className="mb-4 flex min-w-0 items-center gap-2 text-xs sm:text-sm text-zinc-500 overflow-x-auto whitespace-nowrap no-scrollbar [&>svg]:shrink-0">
-          <Link href={isWholesale ? "/mayorista" : "/"} className={`hover:text-zinc-900 transition flex items-center gap-1 ${isWholesale ? "font-medium text-sky-800" : ""}`}>
-            <ArrowLeft className="h-3.5 w-3.5" /> {isWholesale ? "Catálogo mayorista" : "Inicio"}
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
-          {parent && !isWholesale && <><Link href={"/catalogo?category=" + encodeURIComponent(parent.slug)} className="hover:text-zinc-900 transition">{parent.name}</Link><ChevronRight className="h-3.5 w-3.5 text-zinc-300"/></>}
-          <Link
-            href={isWholesale ? "/mayorista" : `/catalogo?category=${category?.slug || ""}`}
-            className="hover:text-zinc-900 transition"
-          >
-            {product.categoryName}
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
-          <span className="min-w-0 truncate font-medium text-zinc-900">{product.title}</span>
+          {breadcrumbs.map(({ name, path }, index) => (
+            <span key={path} className="flex shrink-0 items-center gap-2">
+              <Link href={path} className="inline-flex items-center gap-1 transition hover:text-zinc-900">
+                {index === 0 && <ArrowLeft className="size-3.5" aria-hidden="true" />}
+                {name}
+              </Link>
+              <ChevronRight className="size-3.5 text-zinc-300" aria-hidden="true" />
+            </span>
+          ))}
+          <span className="min-w-0 truncate font-medium text-zinc-900" aria-current="page">{product.title}</span>
         </nav>
 
         {showIneligibleWholesaleNotice && (

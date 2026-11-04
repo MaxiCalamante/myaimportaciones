@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import {ArrowRight,Boxes,Check,Layers3,Truck} from "lucide-react";
-import {WHOLESALE_CATEGORIES,wholesaleServiceData,type WholesaleCategory} from "@/lib/wholesale-content";
+import {WHOLESALE_CATEGORIES,wholesaleServiceData,type WholesaleCategory,type WholesaleFilters} from "@/lib/wholesale-content";
 import {getWholesaleCatalog,wholesaleCategoryIds} from "@/lib/wholesale-catalog";
 import {formatCurrency} from "@/lib/format";
-import {breadcrumbData,jsonLd} from "@/lib/seo";
+import {breadcrumbData,jsonLd,publicUrl} from "@/lib/seo";
 import {ProductCard} from "@/components/commerce/product-card";
-import {WholesaleCatalogGrid,type WholesaleFilters} from "./wholesale-catalog-grid";
+import {WholesaleCatalogGrid} from "./wholesale-catalog-grid";
+import { productVariantHref } from "@/lib/variant-preview";
 import type {Product} from "@/lib/types";
 
 function ProductSelection({title,products,href}:{title:string;products:Product[];href:string}){
@@ -15,26 +16,48 @@ function ProductSelection({title,products,href}:{title:string;products:Product[]
 }
 
 export async function WholesaleLanding({category,filters={}}:{category?:WholesaleCategory;filters?:WholesaleFilters}){
- const data=await getWholesaleCatalog();
+ const data=await getWholesaleCatalog(category?.categorySlug, category?.brand);
  const departments=WHOLESALE_CATEGORIES.filter(d=>!d.brand);
- const selectedIds=category?wholesaleCategoryIds(data.categories,category.categorySlug):null;
- const products=data.products.filter(p=>(!selectedIds||selectedIds.has(p.categoryId))&&(!category?.brand||p.brand?.toLocaleLowerCase('es')===category.brand.toLocaleLowerCase('es')));
+ const products=data.products.map(product => ({
+   ...product,
+   // The grid and the cart only need card data. The detail page reads the full ficha.
+   description: "",
+   specifications: undefined,
+   imageUrls: undefined,
+   warrantyTerms: undefined,
+ }));
  const categoryProducts=(slug:string)=>{const ids=wholesaleCategoryIds(data.categories,slug);return products.filter(p=>ids.has(p.categoryId));};
- const visibleDepartments=departments.map(d=>({department:d,products:data.products.filter(p=>wholesaleCategoryIds(data.categories,d.categorySlug).has(p.categoryId))})).filter(d=>d.products.length);
+ const visibleDepartments=departments.map(department=>{
+   const ids=wholesaleCategoryIds(data.categories,department.categorySlug);
+   return {department,products:data.eligibleProducts.filter(p=>ids.has(p.categoryId))};
+ }).filter(d=>d.products.length);
  const crumbs=[{name:'Inicio',path:'/'},{name:'Mayorista',path:'/mayorista'},...(category?[{name:category.name,path:`/mayorista/${category.slug}`}]:[])];
  const minimum=`${data.policy.minUnits} unidades combinables o ${formatCurrency(data.policy.minAmountArs)} en productos`;
  const faq=[
-  {question:'¿Necesito una cuenta mayorista aprobada?',answer:'No. El catálogo y sus precios confirmados son públicos. Podés armar tu pedido sin aprobación comercial ni CUIT. Una cuenta normal sirve para consultar tu historial.'},
+  category?.faq[0] ?? {question:'¿Necesito una cuenta mayorista aprobada?',answer:'No. El catálogo y sus precios confirmados son públicos. Podés armar tu pedido sin aprobación comercial ni CUIT. Una cuenta normal sirve para consultar tu historial.'},
   {question:'¿Cuál es el mínimo y puedo combinar productos?',answer:`El mínimo es ${minimum}. Basta cumplir una de las dos condiciones; podés combinar marcas y rubros. El envío se calcula aparte.`},
   {question:'¿Qué significa precio por confirmar?',answer:'La ficha está disponible para armar tu selección, pero necesita una confirmación de precio o disponibilidad. La solicitud se revisa antes de habilitar el pago; no se realiza un cobro definitivo por un importe pendiente.'},
   {question:'¿Los productos están físicamente en Argentina?',answer:'Cada ficha diferencia el stock con entrega inmediata en Tandil de los productos disponibles en catálogo. Los plazos y el envío se confirman según tu selección y destino.'},
  ];
+ const listedProducts = !Object.keys(filters).length
+   ? products.slice().sort((a,b) => Number(b.featured) - Number(a.featured)).slice(0,24)
+   : [];
+ const itemList = {
+   "@context": "https://schema.org",
+   "@type": "ItemList",
+   name: category?.title ?? "Catálogo mayorista de MYA Importaciones",
+   itemListElement: listedProducts.map((product, index) => ({
+     "@type": "ListItem", position: index + 1, name: product.title,
+     url: publicUrl(productVariantHref(product.slug) + "?canal=mayorista"),
+   })),
+ };
  return <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 text-zinc-950 sm:px-6 lg:px-8">
   <script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(wholesaleServiceData(category))}}/>
   <script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(breadcrumbData(crumbs))}}/>
+  {listedProducts.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(itemList)}}/>}
   <nav aria-label="Ubicación mayorista" className="flex flex-wrap gap-2 text-xs text-zinc-500">{crumbs.map((c,i)=><span key={c.path}>{i>0&&<span aria-hidden="true" className="mr-2">/</span>}<Link href={c.path} aria-current={i===crumbs.length-1?'page':undefined}>{c.name}</Link></span>)}</nav>
   <header className="grid gap-7 py-9 sm:py-12 lg:grid-cols-[1.15fr_.85fr] lg:items-center lg:gap-12">
-   <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-sky-800">MYA · Catálogo mayorista público</p><h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-[-.04em] sm:text-5xl">{category?category.title:<>Comprá por mayor.<br/><span className="text-sky-800">Vendé más. Ganá más.</span></>}</h1>
+   <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-sky-800">MYA · Catálogo mayorista público</p><h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-[-.04em] sm:text-5xl">{category?category.title:<>Catálogo mayorista<br/><span className="text-sky-800">para comercios y revendedores</span></>}</h1>
     <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-600 sm:text-base">{category?category.introduction:'Cosmética, perfumes, herramientas, tecnología y mucho más a precios mayoristas. Explorá nuestro catálogo, compará precios y armá tu pedido desde cualquier lugar de Argentina.'}</p>
     <div className="mt-6 flex flex-wrap gap-2"><a href="#catalogo" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-sky-800 px-5 text-sm font-semibold text-white hover:bg-sky-900">Explorar catálogo mayorista<ArrowRight className="size-4"/></a>{!category&&<><Link href="/mayorista/cosmetica-coreana#catalogo" className="inline-flex min-h-12 items-center rounded-xl border border-zinc-300 px-4 text-sm font-semibold">Ver cosmética</Link><Link href="/mayorista/herramientas#catalogo" className="inline-flex min-h-12 items-center rounded-xl border border-zinc-300 px-4 text-sm font-semibold">Ver herramientas</Link></>}</div>
     <p className="mt-4 text-xs leading-6 text-zinc-500">Mínimo: <strong className="font-medium text-zinc-800">{minimum}</strong>. Envío aparte.</p>

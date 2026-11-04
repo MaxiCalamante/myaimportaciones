@@ -18,15 +18,7 @@ import { ProductCard } from "@/components/commerce/product-card";
 import { wholesaleDisplay } from "./public-price";
 import { formatCurrency } from "@/lib/format";
 
-export interface WholesaleFilters {
-  q?: string;
-  category?: string;
-  brand?: string;
-  availability?: string;
-  min?: string;
-  max?: string;
-  sort?: string;
-}
+import type { WholesaleFilters } from "@/lib/wholesale-content";
 
 const QUICK_PILLS = [
   { label: "Todo el catálogo", slug: "" },

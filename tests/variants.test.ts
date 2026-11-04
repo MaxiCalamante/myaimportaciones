@@ -261,7 +261,7 @@ test("cart-reconcile: manages separate lines per variant and updates current pri
   assert.equal(reconciled[0].variantPrice, 52000);
 });
 
-test("seo: productStructuredData outputs AggregateOffer with variant price ranges", () => {
+test("seo: productStructuredData outputs individual priced variants in a ProductGroup", () => {
   const variantProduct: Product = {
     id: "p-vs",
     slug: "body-mist-vs",
@@ -319,22 +319,11 @@ test("seo: productStructuredData outputs AggregateOffer with variant price range
   };
 
   const schema = productStructuredData(variantProduct);
-  assert.equal(schema["@type"], "Product");
+  assert.equal(schema["@type"], "ProductGroup");
   assert.equal(schema.name, "Victoria's Secret Mist");
-  const offers = schema.offers as {
-    "@type": string;
-    lowPrice: number;
-    highPrice: number;
-    offerCount: number;
-    offers: Array<{ sku?: string }>;
-  };
-  assert.equal(offers?.["@type"], "AggregateOffer");
-  assert.equal(offers?.lowPrice, 40000);
-  assert.equal(offers?.highPrice, 46000);
-  assert.equal(offers?.offerCount, 2);
-  assert.equal(offers?.offers?.length, 2);
-  assert.equal(offers?.offers[0].sku, "VS-BV");
-  assert.equal(offers?.offers[1].sku, "VS-PS");
+  assert.deepEqual(schema.hasVariant.map(v => [v.sku, v.offers.price]), [
+    ["VS-BV", 40000], ["VS-PS", 46000],
+  ]);
 });
 
 test("variant-swatches: getColorSwatch resolves accurate color swatches for devices and cosmetics", () => {

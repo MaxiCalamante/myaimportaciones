@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { WHOLESALE_CATEGORIES, WHOLESALE_PATHS, findWholesaleCategory, wholesaleMetadata, wholesaleServiceData } from "../src/lib/wholesale-content";
+import { WHOLESALE_CATEGORIES, WHOLESALE_PATHS, findWholesaleCategory, normalizeWholesaleFilters, wholesaleMetadata, wholesaleServiceData } from "../src/lib/wholesale-content";
 
 test("wholesale pages have distinct topics, self canonicals and no invented commercial prices", () => {
   assert.equal(WHOLESALE_PATHS.length, 7);
@@ -36,4 +36,18 @@ test("Medicube has a wholesale landing without replacing any wholesale category"
   assert.equal(findWholesaleCategory("medicube")?.brand, "Medicube");
   // The existing category redirect still points to the general skincare page.
   assert.equal(WHOLESALE_CATEGORIES.find(item => item.categorySlug === "cosmetica-coreana")?.slug, "cosmetica-coreana");
+});
+
+
+test("wholesale filter URLs stay out of the index without excluding campaign links", () => {
+  const category = findWholesaleCategory("cosmetica-coreana")!;
+  const campaign = normalizeWholesaleFilters({ utm_source: "email", gclid: "test", q: " " });
+  assert.deepEqual(campaign, {});
+  assert.deepEqual(wholesaleMetadata(undefined, campaign).robots, { index: true, follow: true });
+  for (const target of [undefined, category]) {
+    const metadata = wholesaleMetadata(target, normalizeWholesaleFilters({ brand: " Medicube " }));
+    assert.deepEqual(metadata.robots, { index: false, follow: true });
+    assert.equal(metadata.alternates?.canonical, wholesaleMetadata(target).alternates?.canonical);
+  }
+  assert.deepEqual(normalizeWholesaleFilters({ brand: ["Medicube", "Anua"] }), {});
 });

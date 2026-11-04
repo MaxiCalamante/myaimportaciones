@@ -1,10 +1,12 @@
-import {WholesaleLanding} from "@/components/wholesale/wholesale-experience";
-import {wholesaleMetadata} from "@/lib/wholesale-content";
-import type {WholesaleFilters} from "@/components/wholesale/wholesale-catalog-grid";
-export async function generateMetadata({searchParams}:{searchParams:Promise<WholesaleFilters>}){
- const params=await searchParams;
- return{...wholesaleMetadata(),robots:{index:!Object.values(params).some(Boolean),follow:true}};
+import { WholesaleLanding } from "@/components/wholesale/wholesale-experience";
+import { normalizeWholesaleFilters, wholesaleMetadata } from "@/lib/wholesale-content";
+
+type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export async function generateMetadata({ searchParams }: Props) {
+  return wholesaleMetadata(undefined, normalizeWholesaleFilters(await searchParams));
 }
-export default async function WholesalePage({searchParams}:{searchParams:Promise<WholesaleFilters>}){
- return <WholesaleLanding filters={await searchParams}/>;
+
+export default async function WholesalePage({ searchParams }: Props) {
+  return <WholesaleLanding filters={normalizeWholesaleFilters(await searchParams)} />;
 }

@@ -34,7 +34,7 @@ try{
       if(!route.includes('q=')&&!route.includes('&brand=')){assert.ok(!titles.has(title),'duplicate title '+title);titles.add(title);}
       if(route.includes('q=')||route.includes('&brand='))assert.match(r.body,/<meta name="robots" content="noindex, follow"/);
       const ld=[...r.body.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(x=>JSON.parse(x[1]));assert.ok(ld.some(x=>x['@type']==='Organization'));
-      if(route.startsWith('/producto/')){const product=ld.find(x=>x['@type']==='Product');assert.ok(product?.offers?.price>0);assert.ok(!product.offers.shippingDetails);assert.ok(!product.offers.hasMerchantReturnPolicy);assert.ok(r.body.includes(product.name.replaceAll('&','&amp;')));}
+      if(route.startsWith('/producto/')){const product=ld.find(x=>['Product','ProductGroup'].includes(x['@type']));const offers=product?.hasVariant?.map(v=>v.offers)??[product?.offers];assert.ok(offers.length&&offers.every(o=>o?.price>0));assert.ok(offers.every(o=>!o.shippingDetails&&!o.hasMerchantReturnPolicy));assert.ok(r.body.includes(product.name.replaceAll('&','&amp;')));}
       report.requests.push({route,status:r.status,ms:r.ms,bytes:r.bytes,canonical,title});
     }
     for(const route of ['/producto/producto-inexistente-seo-qa','/catalogo?category=no-existe','/catalogo?brand=MarcaInexistente','/catalogo?page=199']){const r=await get(route);assert.equal(r.status,404,route);}

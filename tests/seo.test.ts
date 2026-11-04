@@ -48,19 +48,30 @@ test("product schema shares real price and supplier availability and never inven
   assert.equal(schema.offers?.price, 12300); assert.equal(schema.offers?.availability, "https://schema.org/InStock");
   assert.equal(productStructuredData({ ...product, supplierAvailable: false }).offers?.availability, "https://schema.org/OutOfStock");
   for (const key of ["shippingDetails", "hasMerchantReturnPolicy", "priceValidUntil", "aggregateRating", "mpn"]) assert.ok(!JSON.stringify(schema).includes(key));
-  assert.equal(schema.image[0], "https://myaimportaciones.com/foto.webp");
+  assert.equal(schema.image?.[0], "https://myaimportaciones.com/foto.webp");
 });
 test("variant offers link to the exact selection and preserve real prices and availability", () => {
   const variant: ProductVariant = { id: "rouge", productId: product.id, title: "Rouge 60 ml", retailPrice: 25000, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: { Versión: "Rouge" }, displayOrder: 0 };
-  const schema = productStructuredData({ ...product, hasVariants: true, variants: [variant, { ...variant, id: "leather", title: "Leather 60 ml", retailPrice: 28000, supplierAvailable: false }] });
-  assert.equal(schema.offers?.lowPrice, 25000);
-  assert.equal(schema.offers?.highPrice, 28000);
-  assert.equal(schema.offers?.offerCount, 2);
-  const offers = schema.offers?.offers as Record<string, unknown>[];
-  assert.equal(offers[0].url, "https://myaimportaciones.com/producto/producto-50-ml?variant=rouge");
-  assert.equal(offers[1].url, "https://myaimportaciones.com/producto/producto-50-ml?variant=leather");
-  assert.equal(offers[0].availability, "https://schema.org/InStock");
-  assert.equal(offers[1].availability, "https://schema.org/OutOfStock");
+  const schema = productStructuredData({
+    ...product,
+    hasVariants: true,
+    specifications: { EAN: "4006381333931" },
+    variants: [
+      { ...variant, sku: "WAD-1", options: { Color: "Rojo" }, imageUrl: "/rojo.webp" },
+      { ...variant, id: "leather", sku: "WAD-1", title: "Leather 60 ml", retailPrice: 28000, supplierAvailable: false, options: { Color: "Negro" } },
+    ],
+  });
+  assert.equal(schema["@type"], "ProductGroup");
+  assert.equal(schema.productGroupID, product.id);
+  assert.deepEqual(schema.variesBy, ["https://schema.org/color"]);
+  assert.deepEqual(schema.hasVariant.map(v => [v.sku, v.offers.price, v.offers.availability]), [
+    ["rouge", 25000, "https://schema.org/InStock"],
+    ["leather", 28000, "https://schema.org/OutOfStock"],
+  ]);
+  assert.equal(schema.hasVariant[0].offers.url, "https://myaimportaciones.com/producto/producto-50-ml?variant=rouge");
+  assert.equal(schema.hasVariant[1].offers.url, "https://myaimportaciones.com/producto/producto-50-ml?variant=leather");
+  assert.deepEqual(schema.hasVariant[0].image, ["https://myaimportaciones.com/rojo.webp"]);
+  assert.ok(!JSON.stringify(schema).includes("4006381333931"));
   assert.equal(productMetadata({ ...product, hasVariants: true }).alternates?.canonical, "https://myaimportaciones.com/producto/producto-50-ml");
 });
 
@@ -70,9 +81,9 @@ test("schema excludes inactive or unpriced variants without substituting a paren
   const variants = [...invalid, { ...variant, id: "inactive", isActive: false }];
   assert.equal(productStructuredData({ ...product, hasVariants: true, variants }).offers, undefined);
   const mixed = productStructuredData({ ...product, hasVariants: true, variants: [variant, ...variants] });
-  assert.equal(mixed.offers?.offerCount, 1);
-  assert.equal(mixed.offers?.lowPrice, 25000);
-  assert.equal(mixed.offers?.highPrice, 25000);
+  assert.equal(mixed["@type"], "ProductGroup");
+  assert.equal(mixed.hasVariant.length, 1);
+  assert.equal(mixed.hasVariant[0].offers.price, 25000);
   assert.equal(productStructuredData({ ...product, hasVariants: true, variants: [] }).offers, undefined);
   assert.equal(productStructuredData({ ...product, retailPrice: Infinity }).offers, undefined);
 });
@@ -90,7 +101,9 @@ test("canonical duplicates fall back to their own URL if the preferred variant i
   assert.equal(canonicalProductSlug(product, { ...target, active: false }), product.slug);
   assert.equal(canonicalProductSlug(product, { ...target, model: "otra presentación" }), product.slug);
   assert.equal(canonicalProductSlug(product, { ...target, specifications: { "Condición": "Reacondicionado" } }), product.slug);
-  assert.equal(productStructuredData({ ...product, specifications: { EAN: "4006381333931" } }).gtin13, "4006381333931");
+  const schema = productStructuredData({ ...product, specifications: { EAN: "4006381333931" } });
+  assert.equal(schema["@type"], "Product");
+  assert.equal(schema.gtin13, "4006381333931");
 });
 test("feed is gated by checkout and never fabricates identifiers, manufacturer brand or stock", () => {
   const xml = merchantFeed([product, { ...product, id: "other", brand: undefined, supplierAvailable: false }], true);

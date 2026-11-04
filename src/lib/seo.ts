@@ -1,6 +1,6 @@
 import { catalogBrandKey } from "./catalog-facets";
 import type { Metadata } from "next";
-import type { Category, Product } from "./types";
+import type { Category, Product, ProductVariant } from "./types";
 import { OFFICIAL_ORIGIN } from "./site-origin";
 import { isVerifiedStock } from "./commerce-policy";
 import { verifiedGtin } from "./product-identifiers";
@@ -49,7 +49,7 @@ export function pageMetadata({ title, description, path, image = "/compartir", i
   };
 }
 export function productDescription(product: Product) {
-  const facts = Object.entries(product.specifications || {}).filter(([key, value]) => value && !/url|proveedor|costo|seo/i.test(key)).slice(0, 3).map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`).join(". ");
+  const facts = Object.entries(product.specifications || {}).filter(([key, value]) => value && !/url|proveedor|costo|cotizaci[oó]n|pasador|margen|seo/i.test(key)).slice(0, 3).map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`).join(". ");
   const raw = product.description && !/^Consultá la presentación/.test(product.description) ? product.description : facts;
   const text = raw.toLocaleLowerCase("es-AR").startsWith(product.title.toLocaleLowerCase("es-AR")) ? raw.slice(product.title.length).replace(/^[\s.,:;]+/, "") : raw;
   return concise(`${product.title}. ${text ? text + " " : ""}Consultá disponibilidad y comprá con envíos a Argentina.`);
@@ -129,8 +129,8 @@ export function productMetadata(product: Product, canonicalSlug = product.slug):
       ],
     },
     other: {
-      "product:price:amount": String(product.retailPrice),
-      "product:price:currency": "ARS",
+      ...(!product.hasVariants && Number.isFinite(product.retailPrice) && product.retailPrice > 0
+        ? { "product:price:amount": String(product.retailPrice), "product:price:currency": "ARS" } : {}),
       ...(product.brand ? { "product:brand": product.brand } : {}),
       ...(product.categoryName ? { "product:category": product.categoryName } : {}),
     },
@@ -142,63 +142,81 @@ export function productCondition(product: Product) {
   if (/activado|usado|used|segunda mano/i.test(condition)) return "used";
   return "new";
 }
+const variantProperties = new Map([
+  ["color", "color"], ["talle", "size"], ["tamano", "size"], ["size", "size"],
+  ["material", "material"], ["patron", "pattern"], ["pattern", "pattern"],
+]);
+
+function variantAttributes(variant: ProductVariant) {
+  return Object.fromEntries(Object.entries(variant.options ?? {}).flatMap(([label, value]) => {
+    const property = variantProperties.get(label.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
+    return property && typeof value === "string" && value.trim() ? [[property, value.trim()]] : [];
+  }));
+}
+
 export function productStructuredData(product: Product) {
   const condition = { new: "NewCondition", used: "UsedCondition", refurbished: "RefurbishedCondition" }[productCondition(product)];
-  const mpn = product.specifications?.MPN;
-  const gtin = verifiedGtin(product.specifications?.GTIN || product.specifications?.EAN || product.specifications?.UPC);
-  const gtinData: Partial<Record<`gtin${8 | 12 | 13 | 14}`, string>> = gtin ? { [`gtin${gtin.length}`]: gtin } : {};
-
-  const activeVariants = product.variants?.filter(v => v.isActive && Number.isFinite(v.retailPrice) && v.retailPrice > 0) || [];
-
-  let offers: Record<string, unknown> | undefined = undefined;
-
-  if (product.hasVariants && activeVariants.length > 0) {
-    const prices = activeVariants.map(v => v.retailPrice);
-    const lowPrice = Math.min(...prices);
-    const highPrice = Math.max(...prices);
-    offers = {
-      "@type": "AggregateOffer",
-      url: publicUrl(`/producto/${product.slug}`),
-      priceCurrency: "ARS",
-      lowPrice,
-      highPrice,
-      offerCount: activeVariants.length,
-      offers: activeVariants.map(v => ({
-        "@type": "Offer",
-        name: `${product.title} - ${v.title}`,
-        price: v.retailPrice,
-        priceCurrency: "ARS",
-        availability: `https://schema.org/${isVerifiedStock(v) ? "InStock" : "OutOfStock"}`,
-        itemCondition: `https://schema.org/${condition}`,
-        ...(v.sku ? { sku: v.sku } : {}),
-        url: publicUrl(productVariantHref(product.slug, v.id)),
-        seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" }
-      }))
-    };
-  } else if (!product.hasVariants && Number.isFinite(product.retailPrice) && product.retailPrice > 0) {
-    offers = {
-      "@type": "Offer",
-      url: publicUrl(`/producto/${product.slug}`),
-      price: product.retailPrice,
-      priceCurrency: "ARS",
-      availability: `https://schema.org/${isVerifiedStock(product) ? "InStock" : "OutOfStock"}`,
-      itemCondition: `https://schema.org/${condition}`,
-      seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" }
+  const url = publicUrl(productVariantHref(product.slug));
+  const images = [...new Set([product.imageUrl, ...(product.imageUrls ?? [])].filter(Boolean))].map(publicUrl);
+  const description = productDescription(product);
+  const common = {
+    "@context": "https://schema.org",
+    "@id": `${url}#product`,
+    name: product.title,
+    description,
+    url,
+    ...(images.length ? { image: images } : {}),
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
+  };
+  const offer = (item: Product | ProductVariant, targetUrl: string) => ({
+    "@type": "Offer",
+    url: targetUrl,
+    price: item.retailPrice,
+    priceCurrency: "ARS",
+    availability: `https://schema.org/${isVerifiedStock(item) ? "InStock" : "OutOfStock"}`,
+    itemCondition: `https://schema.org/${condition}`,
+    seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" },
+  });
+  const variants = product.hasVariants
+    ? (product.variants ?? []).filter(v => v.isActive && Number.isFinite(v.retailPrice) && v.retailPrice > 0)
+    : [];
+  if (variants.length) {
+    const attributes = variants.map(variantAttributes);
+    const varied = Object.keys(attributes[0]).filter(key => attributes.every(a => a[key]) && new Set(attributes.map(a => a[key])).size > 1);
+    const skuCounts = new Map<string, number>();
+    for (const v of variants) if (v.sku) skuCounts.set(v.sku, (skuCounts.get(v.sku) ?? 0) + 1);
+    return {
+      ...common,
+      "@type": "ProductGroup" as const,
+      offers: undefined,
+      productGroupID: product.id,
+      ...(varied.length ? { variesBy: varied.map(key => `https://schema.org/${key}`) } : {}),
+      hasVariant: variants.map((variant, index) => {
+        const variantUrl = publicUrl(productVariantHref(product.slug, variant.id));
+        return {
+          "@type": "Product",
+          "@id": `${variantUrl}#product`,
+          url: variantUrl,
+          name: `${product.title} - ${variant.title}`,
+          sku: variant.sku && skuCounts.get(variant.sku) === 1 ? variant.sku : variant.id,
+          ...(variant.imageUrl ? { image: [publicUrl(variant.imageUrl)] } : images.length ? { image: images } : {}),
+          ...attributes[index],
+          offers: offer(variant, variantUrl),
+        };
+      }),
     };
   }
 
+  const mpn = product.specifications?.MPN;
+  const gtin = verifiedGtin(product.specifications?.GTIN || product.specifications?.EAN || product.specifications?.UPC);
+  const gtinData: Partial<Record<`gtin${8 | 12 | 13 | 14}`, string>> = gtin ? { [`gtin${gtin.length}`]: gtin } : {};
   return {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "@id": publicUrl(`/producto/${product.slug}#product`),
-    name: product.title,
-    description: productDescription(product),
-    image: [...new Set([product.imageUrl, ...(product.imageUrls || [])].filter(Boolean))].map(publicUrl),
+    ...common,
+    "@type": "Product" as const,
     ...(product.sku ? { sku: product.sku } : {}),
     ...(mpn ? { mpn } : {}),
     ...gtinData,
-    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
-    ...(offers ? { offers } : {})
+    ...(!product.hasVariants && Number.isFinite(product.retailPrice) && product.retailPrice > 0 ? { offers: offer(product, url) } : {}),
   };
 }
 export type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };

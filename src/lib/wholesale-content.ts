@@ -33,7 +33,18 @@ export const WHOLESALE_CATEGORIES:WholesaleCategory[]=entries.map(([slug,categor
 }));
 export const WHOLESALE_PATHS=['/mayorista',...WHOLESALE_CATEGORIES.map(c=>`/mayorista/${c.slug}`)];
 export const findWholesaleCategory=(slug:string)=>WHOLESALE_CATEGORIES.find(c=>c.slug===slug);
-export function wholesaleMetadata(category?:WholesaleCategory){
- return pageMetadata({title:category?.title||'Catálogo mayorista público: cosmética, perfumes y herramientas',description:category?.description||'Explorá productos importados, precios mayoristas confirmados y presentaciones exactas. Combiná marcas y rubros, armá tu pedido y recibí en toda Argentina.',path:category?`/mayorista/${category.slug}`:'/mayorista',image:`/compartir?${new URLSearchParams({tipo:'categoria',cat:category?`${category.name} por mayor`:'Catálogo mayorista MYA',desc:'Precios confirmados visibles, pedidos combinables y Envíos a toda Argentina.'})}`});
+export const wholesaleFilterKeys = ["q", "category", "brand", "availability", "min", "max", "sort"] as const;
+export type WholesaleFilters = Partial<Record<(typeof wholesaleFilterKeys)[number], string>>;
+
+export function normalizeWholesaleFilters(params: Record<string, string | string[] | undefined>): WholesaleFilters {
+  return Object.fromEntries(wholesaleFilterKeys.flatMap(key => {
+    const value = params[key];
+    return typeof value === "string" && value.trim() ? [[key, value.trim().slice(0, 100)]] : [];
+  }));
+}
+
+export function wholesaleMetadata(category?:WholesaleCategory, filters: WholesaleFilters = {}){
+
+ return pageMetadata({index: !wholesaleFilterKeys.some(key => Boolean(filters[key])), title:category?.title||'Catálogo mayorista público: cosmética, perfumes y herramientas',description:category?.description||'Explorá productos importados, precios mayoristas confirmados y presentaciones exactas. Combiná marcas y rubros, armá tu pedido y recibí en toda Argentina.',path:category?`/mayorista/${category.slug}`:'/mayorista',image:`/compartir?${new URLSearchParams({tipo:'categoria',cat:category?`${category.name} por mayor`:'Catálogo mayorista MYA',desc:'Precios confirmados visibles, pedidos combinables y Envíos a toda Argentina.'})}`});
 }
 export function wholesaleServiceData(category?:WholesaleCategory){return{'@context':'https://schema.org','@type':'Service',name:category?.title||'Catálogo mayorista público de MYA',serviceType:'Venta mayorista con catálogo público',description:category?.description||'Productos por mayor, precios confirmados visibles y pedidos combinables. Envíos a toda Argentina.',url:publicUrl(category?`/mayorista/${category.slug}`:'/mayorista'),provider:{'@id':publicUrl('/#organization')},areaServed:{'@type':'Country',name:'Argentina'}};}
