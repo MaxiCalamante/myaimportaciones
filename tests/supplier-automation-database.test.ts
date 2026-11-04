@@ -14,12 +14,25 @@ test('automatización: permisos, lease, evidencia alternativa, stock físico y p
   await db.exec(readFileSync('supabase/migrations/20261020180000_supplier_automation_guards.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261020190000_supplier_worker_coordination.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261020200000_supplier_manual_references.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261104190152_claim_supplier_jobs_in_priority_order.sql','utf8'));
   const id='11111111-1111-4111-8111-111111111111';
   await db.query("insert into products(id,title,retail_price,stock,fulfillment_mode,supplier_available)values($1,'Producto',200000,7,'supplier',true)",[id]);
   const supplier=(await db.query<{id:string}>("select id from suppliers where official_key='star-company'")).rows[0].id;
   await db.exec("set role authenticated;select set_config('test.admin','false',false)");
   assert.equal((await db.query('select * from supplier_tracking_settings')).rows.length,0);await assert.rejects(db.query('select claim_supplier_jobs_v1(1)'),/Forbidden|permission denied/);await assert.rejects(db.query('select refresh_supplier_availability_v1($1)',[id]),/permission denied/);
   await db.exec("reset role;grant select,update on products,product_variants,suppliers to service_role;set role service_role");
+  await db.query("update suppliers set automation_authorized=true,query_mode='product_page' where id=$1",[supplier]);
+  await db.query(`insert into supplier_sync_queue(supplier_id,source_url,next_run_at,state,leased_until) values
+   ($1,'https://www.starcompany-py.com/newer',now()-interval '1 hour','ready',null),
+   ($1,'https://www.starcompany-py.com/older',now()-interval '2 hours','ready',null),
+   ($1,'https://www.starcompany-py.com/blocked',now()-interval '3 hours','blocked',null),
+   ($1,'https://www.starcompany-py.com/leased',now()-interval '4 hours','running',now()+interval '15 minutes')`,[supplier]);
+  const claimed=await db.query<{source_url:string;state:string}>('select source_url,state from claim_supplier_jobs_v1(2)');
+  assert.deepEqual(claimed.rows,[
+   {source_url:'https://www.starcompany-py.com/older',state:'running'},
+   {source_url:'https://www.starcompany-py.com/newer',state:'running'}
+  ]);
+  assert.equal((await db.query('select id from claim_supplier_jobs_v1(2)')).rows.length,0);
   const record=async(availability:string,external='a')=>(await db.query<{id:string}>('select record_supplier_observation_v1($1) id',[{supplier_id:supplier,product_id:id,external_id:external,variant_key:'base',title:'Producto',source_url:'https://www.starcompany-py.com/p',origin_cost:50,currency:'USD',availability,verification:'verified',observed_at:new Date().toISOString(),method:'product_page',evidence:{sourceTitle:'Producto'}}])).rows[0].id;
   const offer=await record('out_of_stock');await db.query('select refresh_supplier_availability_v1($1)',[id]);
   assert.equal((await db.query<{supplier_available:boolean;stock:number}>('select supplier_available,stock from products where id=$1',[id])).rows[0].supplier_available,false);
