@@ -1,3 +1,4 @@
+import { catalogBrandKey } from "./catalog-facets";
 import type { Metadata } from "next";
 import type { Category, Product } from "./types";
 import { OFFICIAL_ORIGIN } from "./site-origin";
@@ -205,10 +206,10 @@ export function normalizeCatalogParams(input: Record<string, string | string[] |
   return Object.fromEntries(["q", "category", "page", "sort", "brand", "family", "min", "max"].filter(key => typeof input[key] === "string").map(key => [key, (input[key] as string).trim().slice(0, 200)]));
 }
 export function catalogSeo(params: CatalogParams, categories: Category[], brands: string[]) {
-  const category = categories.find(c => c.slug === params.category), brand = brands.find(b => b === params.brand);
+  const category = categories.find(c => c.slug === params.category), brand = brands.find(b => catalogBrandKey(b) === catalogBrandKey(params.brand));
   const page = Math.min(200, Math.max(1, Number.parseInt(params.page || "1") || 1));
   const query = new URLSearchParams();
-  for (const key of ["category", "brand", "q", "family", "min", "max"] as const) if (params[key]?.trim()) query.set(key, params[key]!.trim().slice(0, 100));
+  for (const key of ["category", "brand", "q", "family", "min", "max"] as const) if (params[key]?.trim()) query.set(key, (key === "brand" && brand ? brand : params[key]!).trim().slice(0, 100));
   if (page > 1) query.set("page", String(page));
   const path = `/catalogo${query.size ? `?${query}` : ""}`;
   const filtered = Boolean(params.q || params.family || params.min || params.max || params.sort || (params.category && params.brand));

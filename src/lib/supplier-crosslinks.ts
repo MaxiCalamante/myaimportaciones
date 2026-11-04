@@ -4,7 +4,7 @@ import{matchTargets,matchSupplierProduct,discoveryPlan,identityTokens,type Match
 import{parseObservation,supplierSourceUrl,type IntelligenceSupplier,type SupplierOffer}from'./supplier-intelligence';
 import{observationFromPublic,parsePublicAmount,titleIdentity,type PublicProduct}from'./supplier-public-data';
 import{fetchSupplierPage,readSupplierHtml}from'./supplier-url';
-import{inspectSupplierProduct}from'./supplier-offer-adapters';
+import{inspectSupplierProduct,supplierEvidenceGap}from'./supplier-offer-adapters';
 import{publicReadRules}from'./supplier-automation';
 
 export interface TrackedOffer extends SupplierOffer{evidence?:{sourceTitle?:string;availabilityBasis?:string;costScope?:string;linkedBy?:string}}
@@ -28,7 +28,7 @@ export async function seedSupplierDiscovery(db:SupabaseClient,catalog:CrosslinkC
  const existing=await readAllPages<{id:string;supplier_id:string;query:string;product_ids:string[]}>((from,to)=>db.from('supplier_discovery_jobs').select('id,supplier_id,query,product_ids').eq('kind','search').eq('source_url','').order('id').range(from,to));
  for(const job of plan){const saved=existing.find(j=>j.supplier_id===job.supplier_id&&j.query===job.query);if(saved&&JSON.stringify([...saved.product_ids].sort())!==JSON.stringify([...job.product_ids].sort())){const update=await db.from('supplier_discovery_jobs').update({product_ids:job.product_ids,next_run_at:new Date().toISOString()}).eq('id',saved.id);if(update.error)throw new Error('No se pudo actualizar la cobertura del catálogo.');}}
  for(const p of catalog.products){if(!p.source_url)continue;const supplier=catalog.suppliers.find(s=>{try{return new URL(s.website!).hostname.replace(/^www\./,'')===new URL(p.source_url!).hostname.replace(/^www\./,'');}catch{return false;}});
-  if(supplier&&!catalog.offers.some(o=>o.product_id===p.id&&o.supplier_id===supplier.id&&o.verification==='verified'))await queueDetail(db,supplier,p.source_url,[p.id],true);
+  if(supplier&&!catalog.offers.some(o=>o.product_id===p.id&&o.supplier_id===supplier.id&&o.verification==='verified'&&!o.variant_key.startsWith('listing:')))await queueDetail(db,supplier,p.source_url,[p.id],true);
  }
  return plan.length;
 }
@@ -91,7 +91,8 @@ export async function persistSupplierCard(db:SupabaseClient,supplier:Intelligenc
 }
 async function inspectDetail(db:SupabaseClient,job:DiscoveryJob,supplier:IntelligenceSupplier,catalog:CrosslinkCatalog){
  await reserve(db,supplier,job.source_url);const response=await fetchSupplierPage(job.source_url,'MYA-CatalogMonitor/1.0');if(!response.ok)throw new Error(`HTTP ${response.status}: no confirma falta de stock.`);
- const found=inspectSupplierProduct(await readSupplierHtml(response),job.source_url,supplier);if(!found?.external_id)throw new Error('La ficha no expone identidad primaria suficiente.');
+ const html=await readSupplierHtml(response);
+ const found=inspectSupplierProduct(html,job.source_url,supplier);if(!found?.external_id)throw new Error(supplierEvidenceGap(html,supplier)??'La ficha no expone identidad primaria suficiente.');
  const prior=catalog.offers.find(o=>o.supplier_id===supplier.id&&o.external_id===found.external_id&&o.variant_key===found.variant_key);
  if(prior?.verification==='verified'&&titleIdentity(prior.evidence?.sourceTitle??prior.title)!==titleIdentity(found.title))throw new Error('Cambió la identidad primaria; se conserva el vínculo anterior.');
  const observation=observationFromPublic(found,supplier,prior?.product_id??null);

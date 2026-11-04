@@ -15,8 +15,14 @@ export function supplierLinkCounts(offers:Array<{product_id:string|null;variant_
 }
 
 export function matchTargets(products:MatchProduct[],variants:MatchVariant[]):MatchTarget[]{
+ const variantsByProduct = new Map<string, MatchVariant[]>();
+ for (const variant of variants) {
+  const group = variantsByProduct.get(variant.product_id) ?? [];
+  group.push(variant);
+  variantsByProduct.set(variant.product_id, group);
+ }
  return products.flatMap<MatchTarget>(p=>{
-  const children=variants.filter(v=>v.product_id===p.id);
+  const children=variantsByProduct.get(p.id) ?? [];
   const base={productId:p.id,brand:p.brand??'',model:p.model??'',specifications:p.specifications??{},sourceUrl:p.source_url??null};
   if(children.length)return children.map(v=>({...base,variantId:v.id,title:`${p.title} ${v.title} ${Object.values(v.options??{}).join(' ')}`,sku:v.sku??''}));
   if(p.has_variants)return [];
@@ -74,7 +80,7 @@ function formulation(text:string){
 }
 function networks(text:string){return [...new Set(titleIdentity(text).replace(/\blte\b/g,'4g').match(/\b[2345]g\b/g)??[])].sort();}
 const colors=['black','white','gray','blue','green','pink','purple','silver','gold','titanium','natural','desert','cosmic','orange','yellow','starlight','midnight','graphite','burgundy','glacier','citrus','blush','lavender','sage'];
-function colorValues(text:string){return colors.filter(c=>normalized(text).split(' ').includes(c));}
+function colorValues(text:string){const words=new Set(normalized(text).split(' '));return colors.filter(c=>words.has(c));}
 function codes(text:string){
  const preprocessed = text
   .replace(/\b([A-Z]{1,2})\/([A-Z]\d{4})\b/g, '$1/A $2')
@@ -91,7 +97,31 @@ function codes(text:string){
 }
 export function validGtin(value:string){if(!/^(\d{8}|\d{12,14})$/.test(value))return false;const digits=value.split('').map(Number),check=digits.pop()!;return(10-digits.reverse().reduce((n,d,i)=>n+d*(i%2?1:3),0)%10)%10===check;}
 function targetGtins(t:MatchTarget){return Object.entries(t.specifications).filter(([k])=>/ean|gtin|barcode|barras/i.test(k)).flatMap(([,v])=>v.match(/\b\d{8,14}\b/g)??[]).filter(validGtin);}
-function evaluate(source:MatchSource,target:MatchTarget){
+function cacheText<T>(parse: (value: string) => T) {
+ const values = new Map<string, T>();
+ return (value: string): T => {
+  const cached = values.get(value);
+  if (cached !== undefined) return cached;
+  const result = parse(value);
+  values.set(value, result);
+  return result;
+ };
+}
+
+function comparisonCache() {
+ return {
+  normalized: cacheText(normalized),
+  identityTokens: cacheText(identityTokens),
+  measures: cacheText(measures),
+  networks: cacheText(networks),
+  formulation: cacheText(formulation),
+  colorValues: cacheText(colorValues),
+  codes: cacheText(codes),
+ };
+}
+
+function evaluate(source:MatchSource,target:MatchTarget,cache:ReturnType<typeof comparisonCache>){
+ const { normalized, identityTokens, measures, networks, formulation, colorValues, codes } = cache;
  const raw=[source.title,source.model??''].join(' '),own=target.title;
  if(/\.\.\.|…/.test(source.title))return {exact:false,score:0,reason:'Título del proveedor truncado'};
  const brand=normalized(target.brand),sourceBrand=normalized(source.brand??'');
@@ -138,15 +168,24 @@ function evaluate(source:MatchSource,target:MatchTarget){
  if(a.length>=3&&JSON.stringify(a)===JSON.stringify(b))return{exact:true,score:1,method:'exact_identity' as const,reason:'Marca, fórmula/modelo y presentación coinciden exactamente'};
  return{exact:false,score,reason:'Coincidencia parcial; requiere verificar identidad completa'};
 }
-export function matchSupplierProduct(source:MatchSource,targets:MatchTarget[]):MatchResult{
- const raw=normalized(source.title).replace(/\s/g,'');
- const known=[...new Set(targets.map(t=>t.brand))].filter(b=>b&&raw.includes(normalized(b).replace(/\s/g,'')));
- const candidates=known.length?targets.filter(t=>known.includes(t.brand)):targets;
- const ranked=candidates.map(target=>({target,...evaluate(source,target)}));const exact=ranked.filter(r=>r.exact);
+export function createSupplierMatcher(targets: MatchTarget[]) {
+ const cache = comparisonCache();
+ const brands = [...new Set(targets.map(t => t.brand).filter(Boolean))]
+  .map(brand => ({ brand, key: cache.normalized(brand).replace(/\s/g, '') }));
+ return (source: MatchSource): MatchResult => {
+  const raw = cache.normalized(source.title).replace(/\s/g, '');
+  const known = new Set(brands.filter(({ key }) => raw.includes(key)).map(({ brand }) => brand));
+  const candidates = known.size ? targets.filter(t => known.has(t.brand)) : targets;
+ const ranked=candidates.map(target=>({target,...evaluate(source,target,cache)}));const exact=ranked.filter(r=>r.exact);
  if(exact.length===1)return{status:'exact',target:exact[0].target,method:exact[0].method!,reason:exact[0].reason,alternatives:[]};
  if(exact.length>1)return{status:'review',target:null,method:null,reason:'Más de una identidad MYA coincide; no se vincula automáticamente',alternatives:exact.map(r=>r.target.productId)};
  const possible=ranked.filter(r=>r.score>=.6).sort((a,b)=>b.score-a.score).slice(0,5);
  return {status:possible.length?'review':'none',target:null,method:null,reason:possible[0]?.reason??'Sin identidad exacta en el catálogo MYA',alternatives:possible.map(r=>r.target.productId)};
+ };
+}
+
+export function matchSupplierProduct(source: MatchSource, targets: MatchTarget[]) {
+ return createSupplierMatcher(targets)(source);
 }
 
 /** Full catalog scope; brands group independent products into reusable supplier searches. */

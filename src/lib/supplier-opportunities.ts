@@ -16,7 +16,7 @@ import { inspectSupplierProduct } from "./supplier-offer-adapters";
 import { primaryJsonLd } from "./supplier-public-data";
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
 import { acquisitionFxFresh } from "./supplier-usdt";
-import { matchSupplierProduct, matchTargets, type MatchProduct } from './supplier-matching';
+import { createSupplierMatcher, matchTargets, type MatchProduct } from './supplier-matching';
 
 function estimateOpportunityCost(offer: { id: string; title: string; brand: string | null; origin_cost: number; source_url: string; cost_checked_at: string | null }, config: { acquisitionArsPerUsd: number; shippingPaidByMya: boolean; shippingArs: number }, policy: ImportPolicy): number | null {
   try {
@@ -319,8 +319,8 @@ export async function searchSupplierOpportunities(
     priceArs: Number(ref.price_ars), url: ref.source_url, checkedAt: ref.checked_at,
   }]));
   const allCatalogProducts = (productsWithModelRes.data ?? []) as MatchProduct[];
-  const marketTargets = matchTargets(allCatalogProducts.filter(p=>marketRefMap.has(p.id)), []);
-  const catalogTargets = matchTargets(allCatalogProducts, []);
+  const matchProduct = createSupplierMatcher(matchTargets(allCatalogProducts, []));
+  const catalogTitles = new Map(allCatalogProducts.map(product => [product.id, product.title]));
 
   // 2. Cargar todas las ofertas sin producto asignado con costo de origen mayor a 0
   const unassignedOffers = await readAllPages<{
@@ -351,7 +351,13 @@ export async function searchSupplierOpportunities(
   );
 
   // 3. Procesar y enriquecer cada oportunidad con el motor financiero comercial
-  const allOpportunities: SupplierOpportunity[] = unassignedOffers.filter(offer => supplierMap.has(offer.supplier_id)).map((offer) => {
+  const q = (params.query || "").toLowerCase().trim();
+  const matchingOffers = unassignedOffers.filter(offer => {
+    const supplier = supplierMap.get(offer.supplier_id);
+    if (!supplier || (params.supplierId && offer.supplier_id !== params.supplierId)) return false;
+    return !q || `${offer.title} ${cleanWholesaleTitle(offer.title)} ${offer.brand || ""} ${offer.model || ""} ${supplier.name}`.toLowerCase().includes(q);
+  });
+  const allOpportunities: SupplierOpportunity[] = matchingOffers.map((offer) => {
     const sup = supplierMap.get(offer.supplier_id);
     const cleanTitle = cleanWholesaleTitle(offer.title);
     const cat = detectStoreCategory(offer.title, categories, offer.brand);
@@ -361,9 +367,9 @@ export async function searchSupplierOpportunities(
     const totalLandedArs = estimatedCost ?? 0;
     const benchmark = getCategoryMarginBenchmark(cat.categorySlug, offer.title);
 
-    const match = matchSupplierProduct({title:offer.evidence?.sourceTitle ?? offer.title,brand:offer.brand ?? '',model:offer.model ?? ''},catalogTargets);
+    const match = matchProduct({title:offer.evidence?.sourceTitle ?? offer.title,brand:offer.brand ?? '',model:offer.model ?? ''});
     const matchedProductId = match.status === 'exact' ? (match.target?.productId ?? null) : null;
-    const matchedProductTitle = matchedProductId ? (allCatalogProducts.find(p => p.id === matchedProductId)?.title ?? null) : null;
+    const matchedProductTitle = matchedProductId ? (catalogTitles.get(matchedProductId) ?? null) : null;
     const mlRef = match.status === 'exact' && match.target ? marketRefMap.get(match.target.productId) : undefined;
 
     let suggestedPrice: number;
@@ -431,11 +437,7 @@ export async function searchSupplierOpportunities(
   });
 
   // 4. Aplicar filtros de búsqueda
-  const q = (params.query || "").toLowerCase().trim();
   const filtered = allOpportunities.filter((opp) => {
-    // Proveedor
-    if (params.supplierId && opp.supplierId !== params.supplierId) return false;
-
     // Categoría
     if (params.categorySlug && opp.categorySlug !== params.categorySlug) {
       // Si la categoría buscada es padre, permitir subcategorías
@@ -454,12 +456,6 @@ export async function searchSupplierOpportunities(
 
     // Margen mínimo
     if (params.minMargin && opp.marginPercent < params.minMargin) return false;
-
-    // Texto de búsqueda
-    if (q) {
-      const matchText = `${opp.title} ${opp.cleanTitle} ${opp.brand || ""} ${opp.model || ""} ${opp.supplierName}`.toLowerCase();
-      if (!matchText.includes(q)) return false;
-    }
 
     return true;
   });

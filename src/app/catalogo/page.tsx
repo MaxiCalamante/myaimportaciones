@@ -7,7 +7,7 @@ import { CatalogSearchControls } from "@/components/commerce/catalog-search-cont
 import { ProductCard } from "@/components/commerce/product-card";
 import { CatalogBuyingGuide } from "@/components/commerce/catalog-buying-guide";
 import { getPublicNavigation, getPublicFacetProducts, mapProduct } from "@/lib/storefront";
-import { deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "@/lib/catalog-facets";
+import { catalogBrandKey, deriveCatalogFacets, type BrandFacet, type CatalogFacetProduct } from "@/lib/catalog-facets";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { searchPublicProductIds } from "@/lib/public-product-search";
 import { rankProductSearch } from "@/lib/product-search";
@@ -30,7 +30,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if ((params.category && !seo.category) || (params.brand && !seo.brand)) notFound();
   if (seo.page > 1 && !params.q && !params.min && !params.max) {
     const ids = new Set(seo.category ? facets.publicCategories.filter(c => c.id === seo.category!.id || c.parentId === seo.category!.id).map(c => c.id) : facets.publicCategories.map(c => c.id));
-    const total = products.filter(p => ids.has(p.category_id) && (!seo.brand || p.brand === seo.brand) && (!params.family || p.model === params.family)).length;
+    const total = products.filter(p => ids.has(p.category_id) && (!seo.brand || catalogBrandKey(p.brand) === catalogBrandKey(seo.brand)) && (!params.family || p.model === params.family)).length;
     if ((seo.page - 1) * pageSize >= total) notFound();
   }
   return pageMetadata({ ...seo });
@@ -44,7 +44,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     permanentRedirect(`/catalogo?${query}`);
   }
   const q = (params.q ?? "").replace(/[^\p{L}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " ").slice(0, 100);
-  const brand = (params.brand ?? "").trim().slice(0, 80);
+  const requestedBrand = (params.brand ?? "").trim().slice(0, 80);
+  const brandKey = catalogBrandKey(requestedBrand);
   const family = (params.family ?? "").trim().slice(0, 100);
   const sort = ["price_asc", "price_desc", "name_asc"].includes(params.sort ?? "") ? params.sort! : "";
   const minPrice = /^\d{1,12}$/.test(params.min ?? "") ? params.min! : "";
@@ -75,7 +76,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       : visibleCategories.map(c => c.id);
     if (ids.length) {
       let query = db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`, { count: "exact" }).eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null).in("category_id", ids);
-      if (brand) query = query.eq("brand", brand);
+      if (brandKey) {
+        const aliases = [...new Set(facetProducts.map(p => p.brand).filter((value): value is string => value !== null && catalogBrandKey(value) === brandKey))];
+        query = aliases.length ? query.in("brand", aliases) : query.eq("brand", requestedBrand);
+      }
       if (family) query = query.eq("model", family);
       let searchIds: string[] = [];
       if (q) {
@@ -89,7 +93,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       if (q && !sort) {
         try {
           const rows = await readAllPages((from, to) => query.order("id").range(from, to));
-          rows.sort((a, b) => searchIds.indexOf(a.id) - searchIds.indexOf(b.id));
+          const rankById = new Map(searchIds.map((id, rank) => [id, rank]));
+          rows.sort((a, b) => (rankById.get(a.id) ?? Infinity) - (rankById.get(b.id) ?? Infinity));
           count = rows.length;
           products = (rows.slice((page - 1) * pageSize, page * pageSize) as unknown as DbProduct[]).map(p => mapProduct(p));
         } catch { failed = true; }
@@ -103,7 +108,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   } else {
     const matching = fallback.filter(product => {
       if (category && product.categoryId !== category.id && !visibleCategories.some(c => c.id === product.categoryId && c.parentId === category.id)) return false;
-      if (brand && product.brand !== brand) return false;
+      if (brandKey && catalogBrandKey(product.brand) !== brandKey) return false;
       if (family && product.model !== family) return false;
       if (q && !rankProductSearch([product], q).length) return false;
       if (minPrice && product.retailPrice < Number(minPrice)) return false;
@@ -122,12 +127,13 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   }
 
   const seo = catalogSeo(params, visibleCategories, brands.map(b => b.brand));
-  if (!failed && ((params.category && !visibleCategories.some(c => c.slug === params.category)) || (brand && !brands.some(b => b.brand === brand)) || (page > 1 && (page - 1) * pageSize >= count))) notFound();
+  const brand = seo.brand ?? requestedBrand;
+  if (!failed && ((params.category && !visibleCategories.some(c => c.slug === params.category)) || (requestedBrand && !seo.brand) || (page > 1 && (page - 1) * pageSize >= count))) notFound();
   const pages = Math.ceil(count / pageSize);
   const subcategories = root ? visibleCategories.filter(c => c.parentId === root.id) : [];
   const electronics = root?.slug === "electronica";
   const familyIds = new Set(category ? visibleCategories.filter(c => c.id === category.id || c.parentId === category.id).map(c => c.id) : []);
-  const families = electronics ? [...new Set(facetProducts.filter(p => familyIds.has(p.category_id) && (!brand || p.brand === brand)).map(p => p.model).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })) : [];
+  const families = electronics ? [...new Set(facetProducts.filter(p => familyIds.has(p.category_id) && (!brand || catalogBrandKey(p.brand) === brandKey)).map(p => p.model).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })) : [];
   function catalogUrl(next: { category?: string; page?: number; family?: string; brand?: string }) {
     const query = new URLSearchParams();
     if (q) query.set("q", q);
@@ -151,7 +157,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     ...(category?.parentId ? [{ name: category.name, path: "/catalogo?category=" + encodeURIComponent(category.slug) }] : []),
     ...(brand && !category ? [{ name: brand, path: "/catalogo?brand=" + encodeURIComponent(brand) }] : []),
   ]);
-  const brandCategoryIds = new Set(facetProducts.filter(p => p.brand === brand).map(p => p.category_id));
+  const brandCategoryIds = new Set(facetProducts.filter(p => catalogBrandKey(p.brand) === brandKey).map(p => p.category_id));
   const brandCategories = visibleCategories.filter(c => brandCategoryIds.has(c.id));
 
   const itemListJsonLd = {
@@ -306,7 +312,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {brands.length > 0 && !q && !brand && <nav aria-label="Explorar marcas del catálogo" className="mb-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:flex-wrap">{(category ? brandsByCategory[category.id] || [] : brands).slice(0, 16).map(({ brand: value }) => <Link key={value} href={"/catalogo?brand=" + encodeURIComponent(value)} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-sky-400">{value}</Link>)}</nav>}
+      {brands.length > 0 && !q && !brand && <nav aria-label="Explorar marcas del catálogo" className="mb-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:flex-wrap">{(category ? brandsByCategory[category.id] || [] : brands).slice(0, 16).map(({ brand: value }) => <Link key={value} href={catalogUrl({ category: category?.slug, brand: value, family: "" })} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-sky-400">{value}</Link>)}</nav>}
       {/* Search and Filters Controls */}
       {electronics && (
         <div className="mb-4 space-y-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-3 sm:p-4">

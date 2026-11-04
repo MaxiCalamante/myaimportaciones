@@ -22,6 +22,17 @@ export function pageCurrency(html: string): string | undefined {
     }
   }
 }
+export function supplierEvidenceGap(html: string, supplier: IntelligenceSupplier): string | null {
+  if (supplier.official_key !== "atacado-usa") return null;
+  if (/<section\b[^>]*class=["'][^"']*\bav-product-detail\b/i.test(html) && !/\bid\s*=\s*["']product-details["']/i.test(html)) {
+    return "Atacado USA: la ficha resumida no confirma cantidad, moneda ni variante; se conserva la última evidencia.";
+  }
+  if (html.includes("av-hero-slider") || html.includes("av-hero-layout")) {
+    return "Atacado USA: el enlace lleva al catálogo general; no confirma el producto ni su disponibilidad.";
+  }
+  return null;
+}
+
 /** Strict identity gate. Related cards, parser failures and 404s never mean no physical MYA stock. */
 export function parseRegisteredOffer(html: string, offer: SupplierOffer, supplier: IntelligenceSupplier): Outcome {
   if (supplier.official_key === 'atlantico') {
@@ -42,27 +53,8 @@ export function parseRegisteredOffer(html: string, offer: SupplierOffer, supplie
   }
   if (!["star-company", "atacado-usa"].includes(supplier.official_key ?? "")) return { ok: false, message: "Proveedor sin adaptador validado." };
   
-  if (supplier.official_key === "atacado-usa" && html.includes("av-product-detail")) {
-    const refMatch = html.match(/Ref\.:\s*(\d+)/i) || html.match(/name=["']av_id_product["']\s+value=["'](\d+)["']/i);
-    const externalId = refMatch?.[1];
-    if (externalId && offer.external_id && externalId !== offer.external_id) {
-      return { ok: false, message: "Identificador diferente en Atacado USA; revisar ficha manualmente." };
-    }
-    const priceMatch = html.match(/class=["'][^"']*av-detail-price[^"']*["']>([^<]+)</i);
-    let price: number | null = null;
-    if (priceMatch) {
-      const raw = priceMatch[1].replace(/[^\d.,]/g, "").replace(",", ".");
-      const parsed = parseFloat(raw);
-      if (Number.isFinite(parsed) && parsed > 0) price = parsed;
-    }
-    const hasAddForm = /av-detail-add-form|Adicionar ao orçamento/i.test(html);
-    const isOutOfStock = /esgotado|indispon[íi]vel|sem estoque|sin stock/i.test(html);
-    const isAvail = hasAddForm && !isOutOfStock;
-    return { ok: true, values: { availability: isAvail ? "in_stock" : "out_of_stock", origin_cost: price, currency: price ? "USD" : null } };
-  }
-  if (supplier.official_key === "atacado-usa" && (html.includes("av-hero-slider") || html.includes("av-hero-layout"))) {
-    return { ok: false, missing: true, message: "Ficha desaparecida en Atacado USA (redirige a la portada)." };
-  }
+  const evidenceGap = supplierEvidenceGap(html, supplier);
+  if (evidenceGap) return { ok: false, message: evidenceGap };
 
   const tag = [...html.matchAll(/<[^>]+>/g)].map(m => m[0]).find(t => /\bid\s*=\s*["']product-details["']/i.test(t));
   const attr = tag?.match(/\bdata-product\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];

@@ -24,6 +24,7 @@ test("domain migration preserves public paths and queries without redirecting PO
 test("brand, category and pagination have distinct self canonicals; search and combinations are noindex", () => {
   for (const params of [{}, { category: "cuidado" }, { brand: "Marca" }, { brand: "Marca", page: "2" }]) assert.equal(catalogSeo(params, [category], ["Marca"]).index, true);
   assert.equal(catalogSeo({ brand: "Marca", page: "2" }, [category], ["Marca"]).path, "/catalogo?brand=Marca&page=2");
+  assert.equal(catalogSeo({ brand: "MARCA" }, [category], ["Marca"]).path, "/catalogo?brand=Marca");
   for (const params of [{ q: "serum" }, { category: "cuidado", brand: "Marca" }, { sort: "price_asc" }, { min: "200" }, { family: "Familia" }, { brand: "Inventada" }, { category: "vacía" }]) assert.equal(catalogSeo(params, [category], ["Marca"]).index, false);
 });
 

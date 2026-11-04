@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { Category, Product } from "@/lib/types";
 import { isVerifiedStock } from "@/lib/commerce-policy";
+import { catalogBrandKey, catalogBrandLabels } from "@/lib/catalog-facets";
 import { rankProductSearch } from "@/lib/product-search";
 import { ProductCard } from "@/components/commerce/product-card";
 import { wholesaleDisplay } from "./public-price";
@@ -53,7 +54,7 @@ export function WholesaleCatalogGrid({
 }) {
   const [query, setQuery] = useState(initial.q ?? "");
   const [category, setCategory] = useState(initial.category ?? "");
-  const [brand, setBrand] = useState(initial.brand ?? "");
+  const [brand, setBrand] = useState(() => catalogBrandLabels(products.map(p => p.brand)).get(catalogBrandKey(initial.brand)) ?? initial.brand ?? "");
   const [availability, setAvailability] = useState(initial.availability ?? "");
   const [min, setMin] = useState(initial.min ?? "");
   const [max, setMax] = useState(initial.max ?? "");
@@ -102,7 +103,7 @@ export function WholesaleCatalogGrid({
 
   const brands = useMemo(
     () =>
-      [...new Set(products.map((p) => p.brand).filter((b): b is string => Boolean(b)))].sort((a, b) =>
+      [...catalogBrandLabels(products.map((p) => p.brand)).values()].sort((a, b) =>
         a.localeCompare(b, "es")
       ),
     [products]
@@ -118,7 +119,7 @@ export function WholesaleCatalogGrid({
       }
     }
 
-    let rows = products.filter((p) => !category || ids.has(p.categoryId)).filter((p) => !brand || p.brand === brand);
+    let rows = products.filter((p) => !category || ids.has(p.categoryId)).filter((p) => !brand || catalogBrandKey(p.brand) === catalogBrandKey(brand));
     if (query.trim()) rows = rankProductSearch(rows, query);
 
     rows = rows.filter((p) => {

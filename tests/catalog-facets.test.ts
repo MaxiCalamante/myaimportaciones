@@ -28,3 +28,12 @@ test("an unbranded public product still makes its category navigable", () => {
   assert.deepEqual(facets.categories.map(c => c.id), ["tools"]);
   assert.deepEqual(facets.brands, []);
 });
+
+test("brands differing only in capitalization share the same filter and counts", () => {
+  const facets = deriveCatalogFacets(categories, [
+    { category_id: "drills", brand: " Total " },
+    { category_id: "saws", brand: "TOTAL" },
+  ]);
+  assert.deepEqual(facets.brands, [{ brand: "Total", count: 2 }]);
+  assert.deepEqual(facets.brandsByCategory.saws, [{ brand: "Total", count: 1 }]);
+});
