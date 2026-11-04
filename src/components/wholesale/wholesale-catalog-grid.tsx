@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   Search,
   SlidersHorizontal,
@@ -61,12 +61,28 @@ export function WholesaleCatalogGrid({
   const [limit, setLimit] = useState(24);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  const filterDialog = useRef<HTMLDialogElement>(null);
+  const filterButton = useRef<HTMLButtonElement>(null);
+
+  const closeFilters = () => {
+    filterDialog.current?.close();
+    setMobileDrawerOpen(false);
+    filterButton.current?.focus({ preventScroll: true });
+  };
+
   // Lock background scroll when mobile filter drawer is open
   useEffect(() => {
-    if (mobileDrawerOpen) {
+    const dialog = filterDialog.current;
+    if (mobileDrawerOpen && dialog) {
+      dialog.showModal();
+      const desktop = window.matchMedia("(min-width: 768px)");
+      const closeOnDesktop = () => { if (desktop.matches) setMobileDrawerOpen(false); };
+      desktop.addEventListener("change", closeOnDesktop);
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
+        dialog.close();
+        desktop.removeEventListener("change", closeOnDesktop);
         document.body.style.overflow = original;
       };
     }
@@ -174,7 +190,7 @@ export function WholesaleCatalogGrid({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
             <span className="size-2 rounded-full bg-emerald-500" />
-            <strong className="font-semibold text-zinc-950">{visible.length}</strong> productos disponibles
+            <strong className="font-semibold text-zinc-950">{visible.length}</strong> productos encontrados
           </span>
         </div>
       </div>
@@ -234,6 +250,9 @@ export function WholesaleCatalogGrid({
         <div className="grid grid-cols-2 gap-2 md:hidden">
           <button
             type="button"
+            ref={filterButton}
+            aria-haspopup="dialog"
+            aria-expanded={mobileDrawerOpen}
             onClick={() => setMobileDrawerOpen(true)}
             className={`flex min-h-11 items-center justify-between rounded-xl border px-3.5 text-xs font-semibold shadow-2xs transition cursor-pointer active:scale-[0.98] ${
               activeFiltersCount > 0
@@ -317,7 +336,7 @@ export function WholesaleCatalogGrid({
               <option value="">Todas</option>
               <option value="available">Disponibilidad verificada</option>
               <option value="own">Stock propio verificado</option>
-              <option value="supplier">Disponibilidad en catálogo</option>
+              <option value="supplier">Disponibilidad verificada de proveedor</option>
               <option value="review">Precio por confirmar</option>
             </select>
           </label>
@@ -352,7 +371,7 @@ export function WholesaleCatalogGrid({
 
           <label className="space-y-1 text-xs font-medium text-zinc-600">
             Ordenar
-            <select className={field} value={sort} onChange={(e) => setSort(e.target.value)}>
+            <select className={field} aria-label="Ordenar productos mayoristas" value={sort} onChange={(e) => setSort(e.target.value)}>
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -509,16 +528,15 @@ export function WholesaleCatalogGrid({
 
       {/* Mobile Filters Slide-over / Modal Drawer */}
       {mobileDrawerOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <dialog
+          ref={filterDialog}
           aria-label="Filtros del catálogo mayorista"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
-          onClick={() => setMobileDrawerOpen(false)}
+          className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent open:flex items-end justify-center backdrop:bg-black/50 backdrop:backdrop-blur-xs sm:items-center"
+          onCancel={(event) => { event.preventDefault(); closeFilters(); }}
+          onClick={(event) => { if (event.target === event.currentTarget) closeFilters(); }}
         >
           <div
             className="w-full max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-2xl sm:max-w-md bg-white p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
@@ -528,8 +546,8 @@ export function WholesaleCatalogGrid({
               </div>
               <button
                 type="button"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
+                onClick={closeFilters}
+                className="grid size-11 place-items-center rounded-full text-zinc-600 hover:bg-zinc-100 cursor-pointer"
                 aria-label="Cerrar filtros"
               >
                 <X className="size-5" />
@@ -583,7 +601,7 @@ export function WholesaleCatalogGrid({
                   <option value="">Todas</option>
                   <option value="available">Disponibilidad verificada</option>
                   <option value="own">Stock propio verificado</option>
-                  <option value="supplier">Disponibilidad en catálogo</option>
+                  <option value="supplier">Disponibilidad verificada de proveedor</option>
                   <option value="review">Precio por confirmar</option>
                 </select>
               </label>
@@ -617,7 +635,7 @@ export function WholesaleCatalogGrid({
 
               <label className="block space-y-1.5 text-xs font-semibold text-zinc-700">
                 Ordenar por
-                <select className={field} value={sort} onChange={(e) => setSort(e.target.value)}>
+                <select className={field} aria-label="Ordenar productos mayoristas" value={sort} onChange={(e) => setSort(e.target.value)}>
                   {SORT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -638,14 +656,14 @@ export function WholesaleCatalogGrid({
               </button>
               <button
                 type="button"
-                onClick={() => setMobileDrawerOpen(false)}
+                onClick={closeFilters}
                 className="min-h-11 flex-2 rounded-xl bg-sky-800 text-xs font-semibold text-white hover:bg-sky-900 shadow-xs cursor-pointer"
               >
                 Ver {visible.length} productos
               </button>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </section>
   );

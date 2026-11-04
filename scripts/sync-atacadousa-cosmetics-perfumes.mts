@@ -480,7 +480,6 @@ async function main() {
           specifications: {
             "Marca": brand,
             "Presentación": cleanTitle,
-            "Proveedor": "Atacado USA",
             "Referencia": item.externalId
           },
           has_variants: false,
@@ -497,7 +496,7 @@ async function main() {
         }
 
         // Add to local cache so subsequent items don't duplicate
-        productsById.set(newProductId, newProduct as any);
+        productsById.set(newProductId, newProduct);
         stats.newProductsCreated++;
 
         // Insert supplier offer
@@ -547,8 +546,8 @@ async function main() {
         stats.offersUpserted++;
         console.log(`[CREATED] "${cleanTitle}" ($${item.priceUsd} USD -> Retail: $${retailPrice} ARS | Mayorista: $${wholesalePrice} ARS)`);
       }
-    } catch (err: any) {
-      console.error(`[EXCEPTION on item ${item.externalId}]:`, err.message);
+    } catch (err) {
+      console.error(`[EXCEPTION on item ${item.externalId}]:`, err instanceof Error ? err.message : String(err));
       stats.errors++;
     }
   }

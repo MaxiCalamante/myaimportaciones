@@ -62,7 +62,6 @@ import {
   exportProductAuditLogsCsvAction,
   updatePriceAlertThresholdAction,
   syncCatalogWholesalePricesAction,
-  runDirectCatalogSupplierSyncAction,
 } from "@/app/admin/actions";
 import {
   calculateLandedCostArs,
@@ -337,11 +336,7 @@ export function ProductControlCenter({
   const handleFullCatalogSync = async () => {
     setIsFullSyncRunning(true);
     try {
-      const res = await runDirectCatalogSupplierSyncAction(30);
-      showToast(
-        `Sincronización completada: ${res.checked} productos verificados (${res.inStock} disponibles, ${res.outOfStock} sin stock/bajas, ${res.errors} con error).`,
-        "info"
-      );
+      showToast(await runSupplierTrackingAction(), "info");
       router.refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "No se pudo sincronizar el catálogo.", "error");
@@ -664,7 +659,7 @@ export function ProductControlCenter({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-black text-zinc-950 tracking-tight">
-                  Sincronización Total & Abastecimiento Mayorista
+                  Seguimiento y abastecimiento mayorista
                 </h3>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -753,13 +748,13 @@ export function ProductControlCenter({
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 block">
-                  Sincronización Total en Vivo
+                  Cola de seguimiento en la nube
                 </span>
                 <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
                   Sincronizar Stock con Proveedores
                 </h4>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Verifica disponibilidad en las webs de mayoristas (Atacado USA, Total, etc.). Si un producto está agotado o fue dado de baja (404), actualiza su estado.
+                  Procesa un lote de consultas pendientes de stock y costo. La nube continúa con la misma cola. Un enlace caído se registra como incidencia.
                 </p>
               </div>
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">

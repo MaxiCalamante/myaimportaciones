@@ -225,7 +225,7 @@ test('managed products publish only after explicit documentary approval, complet
  }finally{await db.close();}
 });
 
-test('single opportunity uses the real preview, confirmation and processing RPCs and retains its provider link',async()=>{
+test('single opportunity uses the real preview, confirmation and processing RPCs and retains its provider link',async(t)=>{
  const f=await fixture(),{db}=f;
  try{
   await db.exec(`alter table categories add name text default 'Herramientas';
@@ -239,27 +239,42 @@ test('single opportunity uses the real preview, confirmation and processing RPCs
    grant execute on function admin_catalog_page(integer,integer,uuid[],text[]) to authenticated;
    revoke select on products from authenticated;
    grant select(id,title,slug,description,image_url,image_urls,brand,model,sku,category_id,retail_price,stock,fulfillment_mode,supplier_available,is_active,is_featured,has_variants,specifications,deleted_at,updated_at) on products to authenticated`);
-  const oid=await f.offer('Bosch Taladro QA 220V');
-  const supplier=(await db.query<{website:string}>('select website from suppliers where id=$1',[f.suppliers[0]])).rows[0];
+  const supplier=(await db.query<{id:string;website:string}>("update suppliers set automation_authorized=true,query_mode='product_page' where official_key='total' returning id,website")).rows[0];
+  const oid=await f.offer('Bosch Taladro QA 220V','base',supplier.id);
   const source=new URL('/producto/qa-220v',supplier.website).href;
   await db.query('update supplier_offers set source_url=$1 where id=$2',[source,oid]);
+  const image = new URL('/img/qa-220v.jpg',source).href;
+  const description = 'Taladro Bosch QA con cable de alimentación de 220 V para perforación.';
+  t.mock.method(globalThis,'fetch',async(url:string)=>{
+   if(url.endsWith('/robots.txt'))return new Response('User-agent: *');
+   assert.equal(url,source);
+   const product={'@type':'Product',productID:oid,name:'Bosch Taladro QA 220V',description,image};
+   const response=new Response(`<script type="application/ld+json">${JSON.stringify(product)}</script>`);
+   Object.defineProperty(response,'url',{value:source});
+   return response;
+  });
   // PostgREST-shaped transport backed by PostgreSQL, with real role grants and row transactions.
   const client={from(table:string){
-   assert.match(table,/^[a-z_]+$/);const filters:string[]=[],args:unknown[]=[];let take:number|undefined,single=false,projection='*';const orders:string[]=[];
+   assert.match(table,/^[a-z_]+$/);const filters:string[]=[],args:unknown[]=[];let take:number|undefined,single=false,projection='*',changes:Record<string,unknown>|undefined;const orders:string[]=[];
    const column=(c:string)=>{assert.match(c,/^[a-z_]+$/);return `t.${c}`;};
-   const query={select(columns:string){projection=columns;assert.match(columns,/^[a-z_,*]+$/);return query;},eq(c:string,v:unknown){args.push(v);filters.push(`${column(c)}=$${args.length}`);return query;},
+   const query={update(values:Record<string,unknown>){changes=values;return query;},select(columns:string){projection=columns;assert.match(columns,/^[a-z_,*]+$/);return query;},eq(c:string,v:unknown){args.push(v);filters.push(`${column(c)}=$${args.length}`);return query;},
     is(c:string,v:unknown){assert.equal(v,null);filters.push(`${column(c)} is null`);return query;},
     in(c:string,v:unknown[]){args.push(v);filters.push(`${column(c)}=any($${args.length}::uuid[])`);return query;},
     order(c:string,opts?:{ascending?:boolean}){orders.push(`${column(c)} ${opts?.ascending===false?'desc':'asc'}`);return query;},
     limit(n:number){take=n;return query;},range(from:number,to:number){assert.equal(from,0);take=to+1;return query;},
     single(){single=true;return query;},maybeSingle(){single=true;return query;},
     async then(resolve:(v:unknown)=>unknown){try{
+     if(changes){
+      const fields=Object.entries(changes).map(([key,value])=>{assert.match(key,/^[a-z_]+$/);args.push(value);return `${key}=$${args.length}`;});
+      const r=await db.query(`update ${table} t set ${fields.join(',')} where ${filters.join(' and ')} returning ${projection}`,args);
+      return resolve({data:r.rows[0]??null,error:null});
+     }
      const r=await db.query<{value:Record<string,unknown>}>(`select to_jsonb(row_value) value from (select ${projection} from ${table} t${filters.length?' where '+filters.join(' and '):''}${orders.length?' order by '+orders.join(','):''}${take===undefined?'':' limit '+take}) row_value`,args);
      return resolve({data:single?r.rows[0]?.value??null:r.rows.map(r=>r.value),error:null});
     }catch(e){return resolve({data:null,error:{message:(e as Error).message}});}}
    };return query;
   },async rpc(name:string,p:Record<string,unknown>){
-   const parameters:Record<string,string[]>={admin_catalog_page:['offset_input','limit_input','ids_input','slugs_input'],create_catalog_import_job_v1:['request_input','config_input','rows_input'],control_catalog_import_job_v1:['job_input','action_input'],process_catalog_import_job_v1:['job_input','limit_input'],catalog_import_job_counts_v1:['job_inputs']};
+   const parameters:Record<string,string[]>={admin_catalog_page:['offset_input','limit_input','ids_input','slugs_input'],create_catalog_import_job_v1:['request_input','config_input','rows_input'],control_catalog_import_job_v1:['job_input','action_input'],process_catalog_import_job_v1:['job_input','limit_input'],catalog_import_job_counts_v1:['job_inputs'],reserve_supplier_source_slot_v1:['supplier_input','delay_input']};
    assert.ok(parameters[name]);const values=parameters[name].map(k=>p[k]);
    try{const r=await db.query<{value:unknown}>(`select ${name}(${values.map((_,i)=>'$'+(i+1)).join(',')}) value`,values);
     // SETOF table functions are JSON objects per result row.
@@ -274,7 +289,7 @@ test('single opportunity uses the real preview, confirmation and processing RPCs
   const privateRows=(await db.query<{data:Array<Record<string,unknown>>}>('select admin_catalog_page(0,1000,null,null) data')).rows[0].data;
   const saved=privateRows.find(p=>p.id===result.productId)!;
   const product=Object.fromEntries(['title','source_url','is_active','stock','description','image_url'].map(k=>[k,saved[k]]));
-  assert.deepEqual(product,{title:'Bosch Taladro QA 220V',source_url:source,is_active:false,stock:0,description:'',image_url:null});
+  assert.deepEqual(product,{title:'Bosch Taladro QA 220V',source_url:source,is_active:false,stock:0,description,image_url:image});
   const linked=(await db.query('select product_id,verification from supplier_offers where id=$1',[oid])).rows[0];
   assert.deepEqual(linked,{product_id:result.productId,verification:'pending'});
   const repeated=await importSupplierOpportunity({offerId:oid,categoryId:category},{client});

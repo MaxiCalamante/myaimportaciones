@@ -70,7 +70,6 @@ export function SupplierOpportunitiesRadar({
   const [activeOpportunity, setActiveOpportunity] = useState<SupplierOpportunity | null>(null);
   const [editCategoryId, setEditCategoryId] = useState("");
   const [importActionChoice, setImportActionChoice] = useState<"link" | "new">("link");
-  const [publishImmediately, setPublishImmediately] = useState<boolean>(true);
   const [isImporting, setIsImporting] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{
     productId: string;
@@ -78,13 +77,14 @@ export function SupplierOpportunitiesRadar({
     title: string;
     isActive: boolean;
     outcome: string;
+    warning?: string;
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
   // Set of imported offer IDs in the current session
   const [importedOfferIds, setImportedOfferIds] = useState<Set<string>>(new Set());
   const [quickImportingOfferId, setQuickImportingOfferId] = useState<string | null>(null);
-  const [quickImportSuccessMap, setQuickImportSuccessMap] = useState<Map<string, { slug: string; title: string }>>(new Map());
+  const [quickImportSuccessMap, setQuickImportSuccessMap] = useState<Map<string, { productId: string; isActive: boolean; slug: string; outcome: string; warning?: string }>>(new Map());
 
   // Trigger search with current filters or overrides
   const applySearch = (newPage: number = 1, overrides: Partial<OpportunitySearchParams> = {}) => {
@@ -117,9 +117,9 @@ export function SupplierOpportunitiesRadar({
   };
 
   const handleQuickImport = async (opp: SupplierOpportunity) => {
-    if (opp.pricingNeedsReview || !opp.categoryId) {
+    if (!opp.matchedProductId && (opp.pricingNeedsReview || !opp.categoryId || opp.matchedStatus === "review")) {
       handleOpenImport(opp);
-      setImportError("La cotización o tarifa requiere revisión. Podés guardar el producto y completar sus costos antes de publicar.");
+
       return;
     }
     setQuickImportingOfferId(opp.offerId);
@@ -128,7 +128,6 @@ export function SupplierOpportunitiesRadar({
       const res = await importSupplierOpportunityAction({
         offerId: opp.offerId,
         categoryId: opp.categoryId,
-        isActive: true,
         linkToProductId: opp.matchedProductId || undefined,
       });
 
@@ -137,7 +136,7 @@ export function SupplierOpportunitiesRadar({
         setImportedOfferIds((prev) => new Set(prev).add(opp.offerId));
         setQuickImportSuccessMap((prev) => {
           const next = new Map(prev);
-          next.set(opp.offerId, { slug: product.slug, title: product.title });
+          next.set(opp.offerId, product);
           return next;
         });
       } else {
@@ -173,7 +172,6 @@ export function SupplierOpportunitiesRadar({
       const res = await importSupplierOpportunityAction({
         offerId: activeOpportunity.offerId,
         categoryId: editCategoryId,
-        isActive: publishImmediately,
         linkToProductId: importActionChoice === "link" ? (activeOpportunity.matchedProductId || undefined) : undefined,
         forceNew: importActionChoice === "new",
       });
@@ -185,6 +183,7 @@ export function SupplierOpportunitiesRadar({
           title: res.data.title,
           isActive: res.data.isActive,
           outcome: res.data.outcome,
+          warning: res.data.warning,
         });
         setImportedOfferIds((prev) => new Set(prev).add(activeOpportunity.offerId));
       } else {
@@ -597,7 +596,8 @@ export function SupplierOpportunitiesRadar({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {data.items.map((opp) => {
-            const isImported = importedOfferIds.has(opp.offerId);
+            const quickResult = quickImportSuccessMap.get(opp.offerId);
+          const isImported = importedOfferIds.has(opp.offerId);
 
             return (
               <div
@@ -763,13 +763,12 @@ export function SupplierOpportunitiesRadar({
                         <Check className="h-3.5 w-3.5 text-emerald-700" />
                         Procesado
                       </span>
-                      {quickImportSuccessMap.get(opp.offerId) && (
+                      {quickResult && (
                         <Link
-                          href="/admin/oportunidades/importacion"
-                          target="_blank"
+                          href={quickResult.isActive ? `/producto/${quickResult.slug}` : quickResult.outcome === "linked" ? `/admin?editProduct=${quickResult.productId}` : `/admin/oportunidades/importacion?producto=${quickResult.productId}#revisar-publicacion`}
                           className="text-[10px] underline text-emerald-800 hover:text-emerald-950"
                         >
-                          Ver ↗
+                          {quickResult.isActive ? "Ver ficha" : "Revisar"}
                         </Link>
                       )}
                     </div>
@@ -780,14 +779,14 @@ export function SupplierOpportunitiesRadar({
                         disabled={quickImportingOfferId === opp.offerId}
                         onClick={() => handleQuickImport(opp)}
                         className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-xs font-bold text-white shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                        title={opp.matchedProductId ? "Vincular a producto existente en catálogo" : "Incorporar producto con fotos y precios"}
+                        title={opp.matchedProductId ? "Vincular a producto existente en catálogo" : "Crear borrador a partir de la oferta"}
                       >
                         {quickImportingOfferId === opp.offerId ? (
                           <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Zap className="h-3.5 w-3.5" />
                         )}
-                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : (opp.matchedProductId ? "Vincular oferta" : "Incorporar")}</span>
+                        <span>{quickImportingOfferId === opp.offerId ? "Sumando…" : (opp.matchedProductId ? "Vincular oferta" : "Crear borrador")}</span>
                       </button>
 
                       <button
@@ -801,6 +800,7 @@ export function SupplierOpportunitiesRadar({
                     </>
                   )}
                 </div>
+                {quickResult?.warning && <p className="mt-2 text-xs text-amber-800" role="status">{quickResult.warning}</p>}
               </div>
             );
           })}
@@ -889,6 +889,11 @@ export function SupplierOpportunitiesRadar({
                     <ShoppingBag className="h-4 w-4" />
                     Completar ficha
                   </Link>
+                  {!importSuccess.isActive && importSuccess.outcome !== "linked" && (
+                    <Link href={`/admin/oportunidades/importacion?producto=${importSuccess.productId}#revisar-publicacion`} className="inline-flex min-h-10 items-center rounded-xl border border-sky-200 px-3 text-xs font-bold text-sky-800">
+                      Revisar y publicar
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={handleCloseModal}
@@ -897,6 +902,7 @@ export function SupplierOpportunitiesRadar({
                     Cerrar
                   </button>
                 </div>
+                {importSuccess.warning && <p className="text-xs text-amber-800" role="status">{importSuccess.warning}</p>}
               </div>
             ) : (
               <div className="space-y-4">
@@ -968,22 +974,10 @@ export function SupplierOpportunitiesRadar({
                   </label>
                 )}
 
-                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-200 bg-zinc-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={publishImmediately}
-                    onChange={(e) => setPublishImmediately(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-300 text-sky-600 focus:ring-sky-500"
-                  />
-                  <span className="text-xs font-bold text-zinc-800">
-                    Publicar inmediatamente en la tienda (Activo)
-                  </span>
-                </label>
-
                 <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950">
                   {importActionChoice === "link" && activeOpportunity.matchedProductId
                     ? "Se vinculará la oferta al producto existente conservando su título, fotos autorizadas y precios vigentes. El proveedor se sumará para seguimiento de stock y costos."
-                    : "Se cargará el producto completo con fotos del proveedor, título comercial, descripción rica y precios calculados automáticamente con las reglas vigentes."}
+                    : "Se guarda el título, el enlace y los datos comprobables de la oferta. Revisá las fotos, la descripción, el costo y la disponibilidad antes de publicar."}
                 </div>
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button
@@ -1009,11 +1003,6 @@ export function SupplierOpportunitiesRadar({
                       <>
                         <Check className="h-4 w-4" />
                         Vincular oferta
-                      </>
-                    ) : publishImmediately ? (
-                      <>
-                        <Sparkles className="h-4 w-4" />
-                        Incorporar y publicar
                       </>
                     ) : (
                       <>

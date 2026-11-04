@@ -151,7 +151,9 @@ export function mapProduct(product: DbProduct, admin = false, wholesale = false)
     sku: product.sku ?? undefined,
     imageUrls: product.image_urls ?? [],
     stockVerifiedAt: effectiveStockVerifiedAt,
-    specifications: product.specifications ?? {},
+    specifications: admin
+      ? product.specifications ?? {}
+      : Object.fromEntries(Object.entries(product.specifications ?? {}).filter(([key]) => key.trim().toLowerCase() !== "proveedor")),
     warrantyTerms: product.warranty_terms ?? null,
     description: !admin && /Catálogo Oficial 2026|Formulación: Tratamiento dermatológico|100% Original Garantizado|Factura A o B/i.test(product.description ?? "") ? "Consultá la presentación, especificaciones y condiciones de este producto antes de comprar." : (product.description ?? ""),
     categoryId: product.category_id,

@@ -31,7 +31,7 @@ export function StoreHero({ slides = defaultCarouselSlides, preview = false }: {
       {slides.map((slide,index)=><div key={slide.id} hidden={index!==current} aria-hidden={index!==current} inert={index!==current} className={index===current?'relative isolate min-h-56 sm:min-h-80 lg:min-h-100':'hidden'}>
         {(index===0||index===current)&&<Image src={slide.image} alt="" fill sizes="(min-width:1280px) 1216px, 100vw" quality={75} preload={index===0} className="-z-20 object-cover object-[65%_center]"/>}
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-linear-to-r from-black/75 via-black/35 to-transparent"/>
-        <div className="w-full max-w-2xl px-4 pt-4 pb-11 sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+        <div className="w-full max-w-2xl px-4 pt-4 pb-16 sm:px-8 sm:pt-10 sm:pb-16 lg:px-12 lg:pt-14 lg:pb-16">
           <p className="mb-2 truncate text-[10px] font-medium tracking-wide text-white/90 sm:mb-3 sm:text-xs">{slide.eyebrow}</p>
           <h2 className="max-w-[78%] text-balance sm:max-w-md text-[clamp(1.5rem,6.5vw,2rem)] font-bold leading-[1.12] tracking-tight text-white sm:text-4xl lg:text-5xl">{slide.title}</h2>
           <p className="mt-3 max-w-[78%] line-clamp-2 text-pretty sm:max-w-sm text-xs leading-5 text-white/95 sm:text-sm sm:leading-6">{slide.description}</p>
@@ -41,9 +41,9 @@ export function StoreHero({ slides = defaultCarouselSlides, preview = false }: {
           </div>
         </div>
       </div>)}
-      {slides.length>1&&<div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-0.5">
-        {slides.map((slide,index)=><button key={slide.id} type="button" onClick={()=>setCurrentSlide(index)} aria-label={`Ver diapositiva ${index+1}`} aria-pressed={index===current} className="grid size-11 place-items-center rounded-full focus-visible:outline-white"><span className={`h-1.5 rounded-full transition-[width] ${index===current?'w-5 bg-white':'w-1.5 bg-white/60'}`}/></button>)}
-        <button type="button" onClick={()=>setPaused(v=>!v)} aria-label={paused?'Reanudar carrusel':'Pausar carrusel'} className="ml-1 grid size-11 place-items-center rounded-full bg-black/25 text-white hover:bg-black/50">{paused?<Play className="size-3.5"/>:<Pause className="size-3.5"/>}</button>
+      {slides.length>1&&<div className="pointer-events-none absolute inset-x-0 bottom-2 flex items-center justify-center gap-0.5">
+        {slides.map((slide,index)=><button key={slide.id} type="button" onClick={()=>setCurrentSlide(index)} aria-label={`Ver diapositiva ${index+1}`} aria-pressed={index===current} className="pointer-events-auto grid size-11 place-items-center rounded-full focus-visible:outline-white"><span className={`h-1.5 rounded-full transition-[width] ${index===current?'w-5 bg-white':'w-1.5 bg-white/60'}`}/></button>)}
+        <button type="button" onClick={()=>setPaused(v=>!v)} aria-label={paused?'Reanudar carrusel':'Pausar carrusel'} className="pointer-events-auto ml-1 grid size-11 place-items-center rounded-full bg-black/25 text-white hover:bg-black/50">{paused?<Play className="size-3.5"/>:<Pause className="size-3.5"/>}</button>
       </div>}
       </div>
     </div>

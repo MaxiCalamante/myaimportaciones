@@ -18,10 +18,7 @@ import { prepareProductImages, cleanupOrphanProductImages } from "@/lib/admin-me
 import { checkAndAlertSuddenPriceChange, getPriceAlertThreshold } from "@/lib/price-alert";
 import {
   type SupplierCheckResult,
-  type CatalogSyncProgress,
   type AutoHuntResult,
-  runCatalogSyncChunk,
-  runBatchSupplierStockSync,
 } from "@/lib/supplier-sync";
 import {
   searchSupplierOpportunities,
@@ -449,24 +446,6 @@ export async function checkSingleProductSupplierStockAction(productId: string): 
 export async function triggerBatchSupplierSyncAction(limit: number = 30) {
   await getAdminClient();
   throw new Error("Usá el seguimiento de proveedores para ejecutar un lote coordinado.");
-}
-
-export async function syncCatalogChunkAction(offset: number = 0, limit: number = 15): Promise<CatalogSyncProgress> {
-  await getAdminClient();
-  const client = createCommerceService();
-  const progress = await runCatalogSyncChunk({ offset, limit, client });
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  return progress;
-}
-
-export async function runDirectCatalogSupplierSyncAction(batchLimit: number = 25) {
-  await getAdminClient();
-  const client = createCommerceService();
-  const result = await runBatchSupplierStockSync({ limit: batchLimit, client, timeBudgetMs: 38000 });
-  invalidateAdminStorefrontCache();
-  revalidatePath("/admin");
-  return result;
 }
 
 export async function autoHuntUnlinkedProductsAction(limit: number = 25): Promise<AutoHuntResult> {

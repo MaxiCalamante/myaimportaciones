@@ -122,11 +122,6 @@ export async function previewCatalogImport(db:SupabaseClient,s:CatalogPreviewSel
  ]);
  const targets=matchTargets(products,variants),catalog={products,variants,targets,offers:selected,suppliers:ctx.suppliers} as CrosslinkCatalog;
  const planned=planCatalogImport(selected,targets,s.categoryId,o=>estimate(o,ctx,s.categoryId));
- if(s.forceNew&&planned.length===1&&planned[0].payload.action==='review'){
-  const o=selected[0],q=estimate(o,ctx,s.categoryId),id=randomUUID(),title=o.title.trim();
-  const slug=title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,180);
-  planned[0].payload={action:'new',reason:'Importación forzada como nuevo producto desde radar.',identity_key:JSON.stringify([o.brand.trim().toLowerCase(),[title.toLowerCase()],o.gtin??null,o.model.trim().toLowerCase()]),offer:planned[0].payload.offer,product:{id,title,slug:`${slug}-${id.slice(0,6)}`,category_id:s.categoryId,retail_price:q?.price??0,brand:o.brand,model:o.model,description:''},cost:q?.cost};
- }
  for(const row of planned){
   const o=selected.find(o=>o.id===row.offer_id)!;
   const supplier=ctx.suppliers.find(s=>s.id===o.supplier_id);

@@ -45,6 +45,7 @@ test('seguimiento conserva borradores y solo pausa agotamiento confirmado sin co
  globalThis.fetch=async()=>new Response('<div id="product-details" data-product=\'{"id_product":123,"id_product_attribute":0,"name":"Anua Serum 50ml","quantity":0,"manufacturer_name":"Anua","price_amount":10,"price_currency_code":"USD"}\'></div>');
  try{
   for(const scenario of [
+   {name:'ficha desaparecida',active:true,available:true,status:'in_stock',applied:false,variants:false,want:true,missing:true},
    {name:'borrador disponible',active:false,available:true,status:'in_stock',applied:true,variants:false,want:false},
    {name:'agotamiento aplicado',active:true,available:false,status:'out_of_stock',applied:true,variants:false,want:false},
    {name:'sin evidencia',active:true,available:false,status:'out_of_stock',applied:false,variants:false,want:true},
@@ -57,10 +58,13 @@ test('seguimiento conserva borradores y solo pausa agotamiento confirmado sin co
     const execute=()=>{if(table==='products'&&patch&&filters.every(([key,value])=>product[key]===value))Object.assign(product,patch);return{data:table==='products'?product:null,error:null};};
     const q={select(){return q;},eq(key:string,value:unknown){filters.push([key,value]);return q;},is(key:string,value:unknown){filters.push([key,value]);return q;},update(value:Record<string,unknown>){patch=value;return q;},upsert(){return q;},single:async()=>execute(),then(resolve:(value:ReturnType<typeof execute>)=>unknown){return Promise.resolve(execute()).then(resolve);}};return q;
    }}as unknown as SupabaseClient;
+   const fetchEvidence=globalThis.fetch;
+   if(scenario.missing)globalThis.fetch=async(url)=>String(url).endsWith('/robots.txt')?new Response('User-agent: *'):new Response(null,{status:404});
    const result=await processSupplierJob(db,{id:'job',supplier_id:supplier.id,product_id:String(product.id),variant_id:null,offer_id:null,source_url:'https://www.starcompany-py.com/product/123',attempts:0},supplier,config);
-   assert.equal(result.ok,true,scenario.name);
+   assert.equal(result.ok,!scenario.missing,scenario.name);
    assert.equal(product.is_active,scenario.want,scenario.name);
    assert.equal(product.stock,7,scenario.name);
+   globalThis.fetch=fetchEvidence;
   }
  }finally{globalThis.fetch=original;}
 });

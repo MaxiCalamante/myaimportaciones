@@ -181,8 +181,8 @@ async function fetchPageWithRetry(url: string, retries = 3): Promise<string> {
       }
       console.warn(`[SCRAPER] HTTP ${res.status} on ${url} (attempt ${attempt}/${retries})`);
       if (res.status === 404) return "";
-    } catch (err: any) {
-      console.warn(`[SCRAPER] Fetch error on ${url}: ${err.message} (attempt ${attempt}/${retries})`);
+    } catch (err) {
+      console.warn(`[SCRAPER] Fetch error on ${url}: ${err instanceof Error ? err.message : String(err)} (attempt ${attempt}/${retries})`);
     }
     await new Promise((r) => setTimeout(r, 1000 * attempt));
   }
@@ -343,7 +343,7 @@ async function main() {
   };
 
   const now = new Date().toISOString();
-  const offersToUpsert: any[] = [];
+  const offersToUpsert: Record<string, unknown>[] = [];
   const productUpdateQueue: Array<{ id: string; updates: Record<string, unknown> }> = [];
 
   for (const item of scrapedCards) {
@@ -491,9 +491,9 @@ async function main() {
         }
       });
 
-    } catch (err: any) {
+    } catch (err) {
       stats.errors++;
-      console.error(`[ERROR PROCESANDO ${item.externalId}]:`, err.message);
+      console.error(`[ERROR PROCESANDO ${item.externalId}]:`, err instanceof Error ? err.message : String(err));
     }
   }
 

@@ -304,7 +304,7 @@ export function calculateProductWholesalePricing(
 
   // El precio mayorista busca otorgar el margen objetivo al comprador (ej. 20% a 28%),
   // asegurando como piso innegociable el markup de seguridad para MYA (myaFloor).
-  let finalWholesalePriceRaw = Math.max(wholesalePriceTarget, myaFloor);
+  const finalWholesalePriceRaw = Math.max(wholesalePriceTarget, myaFloor);
 
   // Control de viabilidad y atractivo mayorista:
   // Si aún al piso de MYA el descuento para el comprador no llega al 12% frente al minorista,

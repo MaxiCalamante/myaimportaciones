@@ -24,8 +24,10 @@ export async function saveCatalogPricingAction(rule:CatalogPricingRule){
  const r=await db.from('catalog_pricing_rules').insert({config});if(r.error)throw new Error('No se guardó la nueva versión de reglas.');
  revalidatePath('/admin/oportunidades/importacion');
 }
-export async function readCatalogReviewsAction():Promise<CatalogReview[]>{
- const db=await getAdminClient();const r=await db.from('catalog_product_reviews').select('*, products(title,slug)').order('updated_at',{ascending:false}).limit(200);
+export async function readCatalogReviewsAction(productId?:string):Promise<CatalogReview[]>{
+ const db=await getAdminClient();
+ const query=db.from('catalog_product_reviews').select('*, products(title,slug)');
+ const r=productId ? await query.eq('product_id',catalogId(productId)) : await query.order('updated_at',{ascending:false}).limit(200);
  if(r.error){if(['42P01','PGRST205'].includes(r.error.code))return[];throw new Error('No se pudieron leer las revisiones.');}
  return(r.data??[]).map(r=>({...r,title:r.products?.title,slug:r.products?.slug}));
 }
