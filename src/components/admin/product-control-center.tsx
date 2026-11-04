@@ -41,7 +41,7 @@ import {
   Zap,
 
 } from "lucide-react";
-import { runSupplierTrackingAction } from "@/app/admin/proveedores/automation-actions";
+import { SupplierCatalogSync } from "@/components/admin/supplier-catalog-sync";
 import { buildMercadoLibreSearchUrl } from "@/lib/mercadolibre-url";
 import { ProductAuditModal } from "./product-audit-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -123,7 +123,6 @@ export function ProductControlCenter({
   const [isExportingGlobalAudit, setIsExportingGlobalAudit] = useState(false);
   const [priceAlertThreshold, setPriceAlertThreshold] = useState<number>(30);
 
-  const [isFullSyncRunning, setIsFullSyncRunning] = useState(false);
   const [isSyncingWholesale, setIsSyncingWholesale] = useState(false);
 
   // UI feedback notifications
@@ -331,18 +330,6 @@ export function ProductControlCenter({
         showToast(err instanceof Error ? err.message : "Error al cambiar disponibilidad.", "error");
       }
     });
-  };
-
-  const handleFullCatalogSync = async () => {
-    setIsFullSyncRunning(true);
-    try {
-      showToast(await runSupplierTrackingAction(), "info");
-      router.refresh();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "No se pudo sincronizar el catálogo.", "error");
-    } finally {
-      setIsFullSyncRunning(false);
-    }
   };
 
   const handleSyncWholesalePrices = () => {
@@ -654,7 +641,7 @@ export function ProductControlCenter({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-sky-100/80 pb-3.5">
           <div className="flex items-start sm:items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-sky-700 text-white shadow-xs">
-              <RefreshCw className={`h-4.5 w-4.5 ${isFullSyncRunning ? "animate-spin" : ""}`} />
+              <RefreshCw className="h-4.5 w-4.5" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -743,35 +730,7 @@ export function ProductControlCenter({
 
         {/* Main Hero Actions: 2 balanced, responsive command cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Card 1: Sincronizar Stock con Proveedores */}
-          <div className="flex flex-col justify-between rounded-xl border border-sky-200/80 bg-white p-3.5 shadow-2xs hover:border-sky-300 transition-all">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 block">
-                  Cola de seguimiento en la nube
-                </span>
-                <h4 className="text-sm font-extrabold text-zinc-900 mt-0.5">
-                  Sincronizar Stock con Proveedores
-                </h4>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Procesa un lote de consultas pendientes de stock y costo. La nube continúa con la misma cola. Un enlace caído se registra como incidencia.
-                </p>
-              </div>
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-                <RefreshCw className={`h-4 w-4 ${isFullSyncRunning ? "animate-spin" : ""}`} />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              disabled={isFullSyncRunning || isPending}
-              onClick={handleFullCatalogSync}
-              className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-xs font-extrabold text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isFullSyncRunning ? "animate-spin" : ""}`} />
-              <span>{isFullSyncRunning ? "Sincronizando lote..." : "Sincronizar Lote de Productos"}</span>
-            </button>
-          </div>
+          <SupplierCatalogSync />
 
           {/* Card 2: Cazador de Proveedores (Auto-Hunter) */}
           <div className="flex flex-col justify-between rounded-xl border border-emerald-200/80 bg-white p-3.5 shadow-2xs hover:border-emerald-300 transition-all">
