@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import LoadingWholesale from "@/components/wholesale/wholesale-loading";
 import { WholesaleLanding } from "@/components/wholesale/wholesale-experience";
 import { normalizeWholesaleFilters, wholesaleMetadata } from "@/lib/wholesale-content";
 
@@ -8,5 +10,10 @@ export async function generateMetadata({ searchParams }: Props) {
 }
 
 export default async function WholesalePage({ searchParams }: Props) {
-  return <WholesaleLanding filters={normalizeWholesaleFilters(await searchParams)} />;
+  const filters = normalizeWholesaleFilters(await searchParams);
+  return (
+    <Suspense fallback={<LoadingWholesale />}>
+      <WholesaleLanding filters={filters} />
+    </Suspense>
+  );
 }
