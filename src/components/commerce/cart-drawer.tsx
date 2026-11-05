@@ -3,9 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { ArrowRight, ShoppingBag, Trash2, X, ShieldCheck, Truck, Check, Smartphone, Sparkles, Gem, Wrench, AlertCircle, Lock, Printer, FileText } from "lucide-react";
+import { ArrowRight, ShoppingBag, Trash2, X, ShieldCheck, Truck, Check, Smartphone, Sparkles, Gem, Wrench, AlertCircle, Printer } from "lucide-react";
 import { validateWholesaleOrder, cartLineUnitPrice } from "@/lib/wholesale-policy";
-import { purchasableQuantity } from "@/lib/commerce-policy";
+import { cartLineQuantityLimit } from "@/lib/cart-mutations";
 import { trackAdsEvent } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
 import { QuantityStepper } from "./quantity-stepper";
@@ -146,8 +146,7 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
           const unitPrice = tiered.unitPrice;
           const lineKey = `${line.product.id}-${line.channel}-${line.variantId || "base"}`;
           const imageSrc = line.variantImage || line.product.imageUrl || "/placeholder-product.svg";
-          const targetItem = line.variantId ? line.product.variants?.find(v => v.id === line.variantId) || line.product : line.product;
-          const maxQty = line.channel==='wholesale'?100:purchasableQuantity(targetItem);
+          const maxQty = cartLineQuantityLimit(line);
           return <article key={lineKey} className="flex gap-3 rounded-2xl border border-zinc-200 p-3"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="relative size-16 shrink-0 sm:size-20 overflow-hidden rounded-xl bg-slate-50"><Image src={imageSrc} alt={line.variantTitle ? `${line.product.title} (${line.variantTitle})` : line.product.title} fill sizes="80px" className="object-contain p-2" /></Link><div className="min-w-0 flex-1"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="line-clamp-2 text-sm font-bold leading-5 text-zinc-950 hover:text-sky-700">{line.product.title}</Link>{line.variantTitle && <div className="mt-1 flex flex-wrap items-center gap-1.5"><span className="inline-flex items-center gap-1 rounded-md max-w-full break-words bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 border border-sky-200/80"><span className="size-1.5 rounded-full bg-sky-600"></span>{line.variantTitle}</span>{line.variantSku && <span className="break-all text-[10px] text-zinc-400">{line.variantSku}</span>}</div>}<div className="mt-1 flex flex-wrap items-center gap-1.5">
             <p className="text-xs text-zinc-500">{unitPrice===null?"Precio a confirmar":`${formatCurrency(unitPrice)} por unidad`}</p>
             {tiered.discountPct > 0 && (
@@ -160,10 +159,10 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
       </div>
       {cart.length > 0 && <footer className="shrink-0 border-t border-zinc-200 bg-white px-4 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.04)] sm:px-6" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-zinc-700">Subtotal</span><strong className="text-xl tabular-nums text-zinc-950 font-black">{hasUnpriced?"A confirmar":formatCurrency(cartTotal)}</strong></div><div className="mt-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-950"><p className="font-bold">Beneficio por transferencia</p><p className="mt-1 leading-5">El descuento disponible y el total se confirman en el resumen de compra.</p></div><p className="mt-2 text-xs leading-5 text-zinc-500">Envíos a todo el país por Correo Argentino y retiros en Tandil.</p>{wholesaleValidation.hasWholesale && !hasUnpriced && !wholesaleValidation.meetsMinimum ? (
           <div className="mt-4 flex flex-col gap-2">
-            <div className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-zinc-100 border border-zinc-300 px-4 text-xs sm:text-sm font-bold text-zinc-500 cursor-not-allowed">
-              <Lock className="size-4 text-zinc-400" />
-              <span>Mínimo Mayorista no alcanzado</span>
-            </div>
+            <Link href="/checkout" onClick={() => setCartOpen(false)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 text-xs sm:text-sm font-bold text-white hover:bg-sky-800">
+              <ShieldCheck className="size-4" />
+              <span>Revisar pedido y mínimo mayorista</span>
+            </Link>
             <Link
               href="/mayorista#lista"
               onClick={() => setCartOpen(false)}

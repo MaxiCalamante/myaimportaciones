@@ -1,6 +1,6 @@
 "use client";
 import { useFavorites } from "./use-favorites";
-import { WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
+import { WHOLESALE_ENABLED, isVerifiedStock } from "@/lib/commerce-policy";
 
 import {
   createContext,
@@ -20,6 +20,7 @@ import {
   type ShippingOption,
 } from "@/lib/shipping";
 import { trackAdsEvent } from "@/lib/analytics";
+import { cartLineQuantityLimit, incrementCartLine } from "@/lib/cart-mutations";
 import { reconcileCart } from "@/lib/cart-reconcile";
 import { accountCartStorageKey, mergeGuestCart } from "@/lib/account-cart";
 
@@ -134,7 +135,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
       try {
         const products: Product[] = [];
         for (let i = 0; i < ids.length; i += 50) {
-          const response = await fetch(`/api/favorites/products?ids=${ids.slice(i, i + 50).join(",")}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+          const response = await fetch(`/api/cart/products?ids=${ids.slice(i, i + 50).join(",")}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
           if (!response.ok) throw new Error("No disponible");
           const batch: unknown = await response.json();
           if (!Array.isArray(batch)) throw new Error("Respuesta inválida");
@@ -305,12 +306,12 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
           (line) => line.product.id === product.id && line.channel === channel && (line.variantId || null) === variantId,
         );
 
-        const maxQty = channel === "wholesale" && targetItem.fulfillmentMode === "supplier" ? 100 : channel === "wholesale" && !isVerifiedStock(targetItem) ? 100 : purchasableQuantity(targetItem);
+        const maxQty = cartLineQuantityLimit({ product, channel, variantId });
 
         if (existingIndex >= 0) {
           return current.map((line, idx) =>
             idx === existingIndex
-              ? { ...line, quantity: Math.min(maxQty, line.quantity + quantity) }
+              ? incrementCartLine(line, quantity)
               : line,
           );
         }
@@ -356,9 +357,7 @@ export function CommerceProvider({ children, accountId }: { children: ReactNode;
               (variantId === undefined || (line.variantId || null) === (variantId || null));
             if (!match) return line;
 
-            const variant = line.variantId ? line.product.variants?.find((v) => v.id === line.variantId) : null;
-            const targetItem = variant || line.product;
-            const maxQty = channel === "wholesale" && targetItem.fulfillmentMode === "supplier" ? 100 : channel === "wholesale" && !isVerifiedStock(targetItem) ? 100 : purchasableQuantity(targetItem);
+            const maxQty = cartLineQuantityLimit(line);
 
             return {
               ...line,

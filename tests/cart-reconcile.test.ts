@@ -11,3 +11,19 @@ test("saved carts use current prices, remove unavailable products, and respect v
   assert.deepEqual(reconcileCart(lines, [{ ...product, supplierAvailable: false }]), []);
   assert.equal(lines[0].product.retailPrice, 100);
 });
+
+test("wholesale refresh preserves the published base price when a retail response omits it", () => {
+  const saved = { ...product, wholesalePrice: 50000 };
+  const [line] = reconcileCart([{ product: saved, channel: "wholesale" as const, quantity: 2 }], [{ ...product, retailPrice: 80000 }]);
+  assert.equal(line.product.wholesalePrice, 50000);
+  assert.equal(line.quantity, 2);
+});
+
+test("wholesale variant refresh preserves its published price and exact selection", () => {
+  const variant = { id: "v", productId: product.id, title: "Azul", retailPrice: 80000, wholesalePrice: 50000, stock: 0, fulfillmentMode: "supplier" as const, supplierAvailable: true, isActive: true, options: { Color: "Azul" }, displayOrder: 0 };
+  const saved = { ...product, hasVariants: true, variants: [variant] };
+  const [line] = reconcileCart([{ product: saved, channel: "wholesale" as const, variantId: "v", variantPrice: 50000, quantity: 3 }], [{ ...saved, variants: [{ ...variant, wholesalePrice: 0 }] }]);
+  assert.equal(line.product.variants?.[0].wholesalePrice, 50000);
+  assert.equal(line.variantPrice, 50000);
+  assert.equal(line.quantity, 3);
+});

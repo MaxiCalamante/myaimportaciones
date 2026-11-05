@@ -1,21 +1,34 @@
-import { isVerifiedStock, purchasableQuantity } from "./commerce-policy";
+import { isVerifiedStock } from "./commerce-policy";
+import { cartLineQuantityLimit } from "./cart-mutations";
+import { cartLineUnitPrice } from "./wholesale-policy";
 import type { CartLine, Product } from "./types";
 
 export function reconcileCart<T extends CartLine>(lines: T[], products: Product[]): T[] {
   const current = new Map(products.map(product => [product.id, product]));
   return lines.flatMap(line => {
-    const product = current.get(line.product.id);
-    if (!product) return [];
+    const refreshed = current.get(line.product.id);
+    if (!refreshed) return [];
+    // Public retail responses can omit wholesale prices and offers. Keep the
+    // cart estimate until the dedicated wholesale quote replaces it.
+    const product = line.channel === "wholesale" ? {
+      ...refreshed,
+      wholesalePrice: refreshed.wholesalePrice || line.product.wholesalePrice,
+      wholesaleOffer: refreshed.wholesaleOffer ?? line.product.wholesaleOffer,
+      variants: refreshed.variants?.map(variant => {
+        const previous = line.product.variants?.find(v => v.id === variant.id);
+        return { ...variant, wholesalePrice: variant.wholesalePrice || previous?.wholesalePrice || 0, wholesaleOffer: variant.wholesaleOffer ?? previous?.wholesaleOffer };
+      }),
+    } : refreshed;
 
     if (line.variantId) {
       const variant = product.variants?.find(v => v.id === line.variantId);
       if (!variant || !variant.isActive || line.channel==='retail'&&!isVerifiedStock(variant)) return [];
-      const unitPrice = line.channel === "wholesale" ? (variant.wholesaleOffer?.unitPrice ?? null) : variant.retailPrice;
-      const maxQty = line.channel==='wholesale' ? 100 : purchasableQuantity(variant);
+      const unitPrice = line.channel === "wholesale" ? (cartLineUnitPrice({ ...line, product }) ?? null) : variant.retailPrice;
+      const maxQty = cartLineQuantityLimit({ ...line, product });
       if (maxQty < 1) return [];
       return [{
         ...line,
-        product:line.channel==='wholesale'?{...product,wholesaleOffer:product.wholesaleOffer??line.product.wholesaleOffer,variants:product.variants?.map(v=>({...v,wholesaleOffer:v.wholesaleOffer??line.product.variants?.find(old=>old.id===v.id)?.wholesaleOffer}))}:product,
+        product,
         variantTitle: variant.title,
         variantPrice: unitPrice,
         variantImage: variant.imageUrl || null,
@@ -25,9 +38,9 @@ export function reconcileCart<T extends CartLine>(lines: T[], products: Product[
     }
 
     if (line.channel==='retail'&&!isVerifiedStock(product)) return [];
-    const maxQty = line.channel==='wholesale' ? 100 : purchasableQuantity(product);
+    const maxQty = cartLineQuantityLimit({ ...line, product });
     if (maxQty < 1) return [];
-    return [{ ...line, product:line.channel==='wholesale'?{...product,wholesaleOffer:product.wholesaleOffer??line.product.wholesaleOffer}:product, quantity: Math.min(line.quantity, maxQty) }];
+    return [{ ...line, product, quantity: Math.min(line.quantity, maxQty) }];
   });
 }
 

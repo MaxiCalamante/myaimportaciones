@@ -109,16 +109,19 @@ export function CheckoutPanel({
         if (response.ok) {
           setError("");
           setQuote(response.quote);
-        setConfirmationRequired(response.confirmationRequired);
           setConfirmationRequired(response.confirmationRequired);
           setQuotedKey(JSON.stringify(input));
           if (!requestId.current) requestId.current = crypto.randomUUID();
         } else {
           setQuote(null);
+          setConfirmationRequired(false);
           setError(response.error);
         }
       } catch {
-        // En segundo plano no bloqueamos la UI con errores temporales
+        if (cancelled) return;
+        setQuote(null);
+        setConfirmationRequired(false);
+        setError("No pudimos actualizar el total. Revisá tu conexión y volvé a calcularlo.");
       }
     }, 350);
 
@@ -136,9 +139,13 @@ export function CheckoutPanel({
         setQuotedKey(key);
         if (!requestId.current || quotedKey !== key) requestId.current = crypto.randomUUID();
       } else {
+        setQuote(null);
+        setConfirmationRequired(false);
         setError(response.error);
       }
     } catch {
+      setQuote(null);
+      setConfirmationRequired(false);
       setError("No pudimos calcular el total. Revisá tu conexión e intentá nuevamente.");
     }
   });
@@ -351,7 +358,7 @@ export function CheckoutPanel({
           className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]"
           onSubmit={e => {
             e.preventDefault();
-            if (!checkoutEnabled || pending) return;
+            if (!checkoutEnabled || pending || (!validQuote && !confirmationReady)) return;
             const form = new FormData(e.currentTarget);
             const emailInput = String(form.get("email") ?? "").trim();
             setCustomerEmail(emailInput);
@@ -697,7 +704,7 @@ export function CheckoutPanel({
               Al confirmar aceptás las <Link href="/condiciones" className="underline">condiciones de compra</Link> y <Link href="/privacidad" className="underline">privacidad</Link>.
             </p>
 
-            {!confirmationReady && !hasUnpriced && wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum && (
+            {!validQuote && !confirmationReady && !hasUnpriced && wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum && (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs sm:text-sm text-amber-950">
                 <div className="flex items-center gap-2 font-bold text-amber-900">
                   <AlertCircle className="size-4 shrink-0 text-amber-600" />
@@ -719,13 +726,13 @@ export function CheckoutPanel({
 
             <button
               type="submit"
-              disabled={pending || !checkoutEnabled || (!validQuote&&!confirmationReady) || (!confirmationReady&&wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum)}
+              disabled={pending || !checkoutEnabled || (!validQuote&&!confirmationReady)}
               className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base cursor-pointer"
             >
               {pending
                 ? "Procesando pedido…"
                 : confirmationReady ? "Enviar solicitud sin pagar"
-                : wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum
+                : !validQuote && wholesaleValidation.hasWholesale && !wholesaleValidation.meetsMinimum
                 ? "Mínimo mayorista no alcanzado"
                 : "Confirmar pedido"}
             </button>
