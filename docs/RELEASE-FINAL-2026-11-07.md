@@ -61,3 +61,26 @@ La visualización y el total dual USD/ARS se probaron con datos controlados a lo
 El release está en producción con Supabase, Git y Vercel verificados. Falta certificar Moneda y Rastreador de punta a punta con una sesión administrativa productiva autorizada. También queda pendiente el pago externo en Mercado Pago sandbox y el webhook asociado. La revisión comercial debe completar los costos y condiciones de los productos rechazados por el checkout antes de aprobar precios USD.
 
 No se programó el apagado de Windows porque quedó pendiente la verificación administrativa real. Los procesos iniciados para las pruebas se cerraron al terminar.
+
+## Revisión operativa posterior del 07/11/2026
+
+Se verificaron en Supabase los cuatro proveedores operativos, cinco archivados y cero fuentes con importación automática. El rol público ve 130 productos y 3 variantes. Los costos y las ofertas privadas quedan fuera de su acceso efectivo, al igual que las RPC administrativas y de cotización interna. Se conservaron el esquema y las cinco versiones del release en el historial remoto.
+
+El barrido de checkout minorista de una unidad encontró 70 identidades cotizables y 60 bloqueadas. Siete fichas de Total Herramientas Oficial conservaban modelo, SKU, número de publicación, moneda e importe de origen, pero el costo apuntaba a una URL anterior del mismo listado. Se confirmó cada ficha vigente mediante el adaptador y se ensayó el cambio en una transacción revertida. En producción se corrigieron sólo esas siete referencias, con la evidencia anterior y nueva registrada en el historial privado. Los modelos fueron TR111216, TGT11226, TACSDL25106, TPSLI2014, TMT570268, TS1001201 y TIDLI20668.
+
+La comprobación posterior devolvió 77 identidades cotizables por cada medio en el cálculo interno y 53 bloqueadas. De las 53, 39 tienen gastos sin confirmar, 2 carecen de ficha de costo, 9 tienen cambios en la cotización del proveedor, 1 requiere recalcular el costo porque la oferta vigente es de otro proveedor y 2 quedan por debajo de la contribución mínima confirmada. Cinco de las que tienen gastos sin confirmar ya cuentan con una oferta vigente que coincide en fuente e importe. La revisión por identidad quedó guardada en un registro privado fuera de Git. Los valores, las fechas de validación de los costos, los pedidos, sus ítems y el stock físico se conservaron.
+
+La política sigue en `preview`, con 30% minorista, 18% mayorista y 10% mínimo sobre el precio de venta, descontando el costo directo total y los gastos y comisiones atribuibles. Producción sigue sin perfiles de costo USD validados ni precios base USD publicados.
+
+### Evidencia de verificación
+
+- Navegación pública real a 375, 390 y 1280 px con búsqueda, imagen, carrito, cambio de cantidad y selección mayorista imprimible. La ficha archivada de prueba devolvió 404, quedó fuera del sitemap y de las APIs públicas y fue rechazada por el checkout.
+- Pasaron 419 pruebas, TypeScript y el build aislado. Lint quedó en cero errores y 134 advertencias preexistentes. La auditoría de dependencias de producción devolvió cero vulnerabilidades reportadas.
+- Sin sesión, Moneda, Rastreador y las dos vistas del archivo redirigen al inicio de sesión. El build aislado comprobó las rutas con roles de visitante, cliente y administrador. Supabase denegó las RPC de lectura administrativa desde un contexto sin identidad administrativa.
+- Las pruebas aisladas cubrieron precios, cotizaciones y estados de pago. El barrido de Supabase ejercitó el cálculo interno para transferencia y Mercado Pago sin crear pedidos ni emitir cobros.
+
+### Bloqueos y pasos para levantarlo
+
+1. **Panel productivo.** Abrir una sesión de administrador autorizada y entrar desde el menú a Moneda, Proveedores, Rastreador y Archivo. Probar guardado con un ajuste reversible, confirmar que reaparece tras recargar y devolverlo a su valor original. La revisión actual acreditó protección y pruebas aisladas, pero quedó pendiente la persistencia desde una sesión real.
+2. **Mercado Pago.** Habilitar un entorno aislado con las credenciales de prueba de la aplicación y una cuenta compradora de prueba. Confirmar pago sandbox, firma de la notificación y entrega duplicada del webhook. Las variables de Mercado Pago encontradas están configuradas en producción y no se usaron para la prueba externa. [Cuentas de prueba de Checkout Pro](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro-preferences/test-accounts)
+3. **Checkout.** Revisar las 53 identidades pendientes. Empezar por las cinco con oferta vigente y gastos atribuibles por confirmar. Mantener el bloqueo hasta documentar los costos y verificar el piso de contribución.
