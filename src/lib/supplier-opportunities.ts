@@ -138,6 +138,26 @@ export function cleanWholesaleTitle(title: string): string {
   return clean.replace(/\s{2,}/g, " ").trim();
 }
 
+export function titleForMya(value: string, supplierKey?: string): string {
+  let title = cleanWholesaleTitle(value);
+  if (supplierKey !== 'atacado-connect' && supplierKey !== 'total') return title;
+  title = title
+    .replace(/\bgeraç(?:ão|ao)\b/gi, 'generación')
+    .replace(/\btela\b/gi, 'pantalla')
+    .replace(/\bchave de fenda\b/gi, 'destornillador')
+    .replace(/\bparafusadeira\b/gi, 'atornillador')
+    .replace(/\bfuradeira\b/gi, 'taladro')
+    .replace(/\s-\sPrata$/i, ' - Plata')
+    .replace(/\s-\sPreto$/i, ' - Negro')
+    .replace(/\s-\sBranco$/i, ' - Blanco')
+    .replace(/^iphone\b/i, 'iPhone')
+    .replace(/^ipad\b/i, 'iPad');
+  if (title.length > 0 && !/^i(phone|pad)\b/i.test(title)) {
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+  }
+  return title;
+}
+
 /**
  * Detecta la categoría y subcategoría de la tienda más adecuada según el título y palabras clave.
  */

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
-import { previewOpportunity, publishOpportunity } from '@/app/admin/oportunidades/catalog-actions';
+import { previewOpportunity, publishOpportunity, quickPublishOpportunity } from '@/app/admin/oportunidades/catalog-actions';
 
 export type PublicationInput = {
   title:string; description:string; categoryId:string; evidence:string; conditionEvidence:string; sourceConflictEvidence?:string;
@@ -13,11 +13,11 @@ const field = 'min-h-10 w-full rounded-lg border border-zinc-300 px-3 py-2 text-
 const button = 'min-h-11 rounded-lg bg-sky-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
 const number = new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
 
-export function OpportunityPublication({ itemId, initial, categories, listingConflict }: {
-  itemId:string; initial:PublicationInput; categories:{id:string;name:string;parent_id:string|null}[]; listingConflict?:string;
+export function OpportunityPublication({ itemId, initial, categories, listingConflict, initialPreview }: {
+  itemId:string; initial:PublicationInput; categories:{id:string;name:string;parent_id:string|null}[]; listingConflict?:string; initialPreview?:Preview|null;
 }) {
   const [pending, start] = useTransition();
-  const [preview, setPreview] = useState<Preview|null>(null);
+  const [preview, setPreview] = useState<Preview|null>(initialPreview ?? null);
   const [title, setTitle] = useState(initial.title);
   const [message, setMessage] = useState('');
   const [published, setPublished] = useState<{id:string;slug:string;active:boolean;existing:boolean}|null>(null);
@@ -29,8 +29,29 @@ export function OpportunityPublication({ itemId, initial, categories, listingCon
     </div>
   </section>;
   return <section className="space-y-5 rounded-xl border p-4 sm:p-6">
-    <div><h2 className="text-lg font-semibold">Preparar publicación</h2>
-      <p className="text-sm text-zinc-600">Revisá la presentación, los permisos y los costos. La vista previa queda guardada en esta oportunidad.</p>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 className="text-lg font-semibold">Preparar publicación</h2>
+        <p className="text-sm text-zinc-600">Revisá la presentación, los permisos y los costos. Podés publicar directamente o personalizar los datos.</p>
+      </div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          start(async () => {
+            setMessage('');
+            const res = await quickPublishOpportunity(itemId);
+            if (res.success) {
+              setPublished(res.data);
+            } else {
+              setMessage(res.error || 'No se pudo publicar la oportunidad');
+            }
+          });
+        }}
+        className="min-h-10 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 disabled:opacity-50 flex items-center gap-2 transition-colors"
+      >
+        {pending ? 'Publicando…' : '⚡ Publicar directamente en MYA'}
+      </button>
     </div>
     <form className="space-y-4" onChange={() => { setPreview(null); setMessage(''); }} onSubmit={event => {
       event.preventDefault();

@@ -18,13 +18,22 @@ export function CurrencyProvider({snapshot,children}:{snapshot:ExchangeSnapshot|
  useEffect(()=>{if(previousRate.current!==snapshot?.id){previousRate.current=snapshot?.id;window.dispatchEvent(new Event('focus'));}},[snapshot?.id]);
  return <CurrencyContext.Provider value={snapshot}>{children}</CurrencyContext.Provider>;
 }
-export function ExchangeTicker(){
+export function ExchangeTicker({compact=false}:{compact?:boolean}){
  const rate=useContext(CurrencyContext);
- const label=rate?`Dólar ${DOLLAR_TYPES[rate.kind]} venta`: 'Cotización';
- const update=rate?.sourceAt?new Date(rate.sourceAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}):'sin datos';
- const tooltip=`${rate?.source==='manual'?'Cotización manual':'DolarAPI'} · Fuente: ${update}${rate&&Number(rate.adjustment)!==0?` · Ajuste ${rate.adjustment}%`:''} · ${rate?.status==='valid'?'vigente':'requiere actualización'}`;
- return <span className="inline-block max-w-full whitespace-normal tabular-nums" title={tooltip} aria-label={`${label}. ${tooltip}`}>
-  💵 {label}: {rate?.rate?`${formatCurrency(Number(rate.rate))} ARS`:'a confirmar'}{rate?.status==='stale'?' · vencida':''}{rate?.source==='manual'?' · manual':''}{rate&&Number(rate.adjustment)!==0?` · ajuste ${rate.adjustment}%`:''}<span className="ml-1 opacity-80">· {update}</span>
+ const dollarKind=rate?`Dólar ${DOLLAR_TYPES[rate.kind]} venta`:'Cotización';
+ const formattedRate=rate?.rate?formatCurrency(Number(rate.rate)):'a confirmar';
+ const formattedTime=rate?.sourceAt
+  ?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(rate.sourceAt))
+  :null;
+ const fullUpdate=rate?.sourceAt?new Date(rate.sourceAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}):'sin datos';
+ const tooltip=`Cotización informativa: ${dollarKind} · 1 USD = ${formattedRate} ARS · Fuente: ${rate?.source==='manual'?'Manual interna':'DolarAPI'} (${fullUpdate})${rate&&Number(rate.adjustment)!==0?` · Ajuste ${rate.adjustment}%`:''} · ${rate?.status==='valid'?'vigente':'requiere actualización'}`;
+ return <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums text-[10px] sm:text-[11px]" title={tooltip} aria-label={`${dollarKind}: 1 USD = ${formattedRate} ARS. Actualizado ${formattedTime||fullUpdate}`}>
+  <span className="font-bold text-emerald-400">USD 1</span>
+  <span className="text-zinc-500">=</span>
+  <span className="font-extrabold text-white">{formattedRate} ARS</span>
+  {!compact&&<span className="hidden text-zinc-400 sm:inline text-[10px]">({dollarKind})</span>}
+  {formattedTime&&<span className="text-zinc-500 text-[9px] sm:text-[10px]">· {formattedTime}</span>}
+  {rate?.status==='stale'&&<span className="rounded bg-amber-400/20 px-1 text-[9px] font-semibold text-amber-300">a revalidar</span>}
  </span>;
 }
 export function DualPrice({ars,usd,context=false}:{ars:number|null;usd?:string|null;context?:boolean}){

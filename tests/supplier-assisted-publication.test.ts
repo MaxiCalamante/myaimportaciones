@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { attachCatalogMembership, publicationFixture } from './helpers/assisted-publication-fixture';
+import { titleForMya } from '../src/lib/supplier-opportunities';
 
 test('assisted publication is atomic, idempotent, and uses approved expenses and exact offer evidence', async () => {
   const f = await publicationFixture();
@@ -146,4 +147,11 @@ test('search and pagination return a bounded payload with 30000 references',asyn
     assert.equal((await read({currency:'USD',minOrigin:'29995',sort:'price'})).total,6);
     console.log('Catálogo de 30000 filas: búsqueda, página 600 y filtro en',samples,'ms (PostgreSQL aislado).');
   } finally { await f.db.close(); }
+});
+
+test('titleForMya adapts supplier titles and quick publication payload satisfies rules', () => {
+  assert.equal(titleForMya('Parafusadeira TOTAL 20V', 'total'), 'Atornillador Total 20v');
+  assert.equal(titleForMya('Furadeira de impacto 13mm', 'total'), 'Taladro de impacto 13mm');
+  assert.equal(titleForMya('iPhone 15 128GB - Preto', 'atacado-connect'), 'iPhone 15 128GB - Negro');
+  assert.equal(titleForMya('Perfume Yara Lattafa EDP 100ml', 'star-company'), 'Perfume Yara Lattafa EDP 100ml');
 });

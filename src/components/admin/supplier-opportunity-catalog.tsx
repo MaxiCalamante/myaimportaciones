@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { CatalogSyncButton } from './catalog-sync-button';
+import { OpportunityCardActions } from './opportunity-card-actions';
 
 const root = '/admin/oportunidades';
 export const opportunityStates: Record<string,string> = {
@@ -98,30 +99,35 @@ export function SupplierOpportunityCatalog({ summary, page, filters }: {
     {selectedSource?.enabled && <CatalogSyncButton label="Sincronizar categoría" sourceId={selectedSource.id} />}
     <p className="text-sm font-medium">{num.format(page.total)} resultados</p>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {page.items.map(item => <article key={item.id} className="min-w-0 rounded-xl border p-4">
-        <div className="flex items-start gap-3">
-          {item.image_url && <Image unoptimized width={64} height={64} src={item.image_url} alt="" loading="lazy" className="size-16 shrink-0 rounded-lg object-contain" />}
-          <div className="min-w-0">
-            <p className="text-xs text-zinc-600">{item.supplier} · {opportunityStates[item.state]}</p>
-            <h2 className="break-words font-semibold">{item.title}</h2>
-            <p className="break-words text-xs text-zinc-600">{[item.brand,item.model,item.sku].filter(Boolean).join(' · ')}</p>
-          </div>
-        </div>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <div><dt className="text-xs text-zinc-600">Origen</dt><dd>{displayCatalogAmount(item.origin_cost,item.currency ?? '')}</dd></div>
-          <div><dt className="text-xs text-zinc-600">Costo total</dt><dd>{displayCatalogAmount(item.cost_usd)}</dd></div>
-          <div><dt className="text-xs text-zinc-600">Minorista MYA</dt><dd>{item.displayed_retail_usd!=null?displayCatalogAmount(item.displayed_retail_usd):displayCatalogAmount(item.displayed_retail_ars,'ARS')}</dd></div>
-          <div><dt className="text-xs text-zinc-600">Mayorista MYA</dt><dd>{item.displayed_wholesale_usd!=null?displayCatalogAmount(item.displayed_wholesale_usd):displayCatalogAmount(item.displayed_wholesale_ars,'ARS')}</dd></div>
-        </dl>
-        <p className="mt-3 text-xs text-zinc-600">{opportunityStates[item.availability]} · Verificado {displayCatalogDate(item.last_success_at)}</p>
-        {item.margin != null && <p className="text-xs text-zinc-700">Margen minorista calculado {num.format(item.margin)}%</p>}
-        {item.last_error && <p className="mt-1 line-clamp-2 text-xs text-red-800">{item.last_error}</p>}
-        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold text-sky-800">
-          <Link href={root + '/' + item.id}>{item.active ? 'Abrir gestión' : 'Revisar oportunidad'}</Link>
-          <a href={item.url} target="_blank" rel="noreferrer">Ficha original</a>
-          {item.active && item.slug && <Link href={'/producto/' + item.slug}>Ver en tienda</Link>}
-        </div>
-      </article>)}
+      {page.items.map(item => {
+        const costEstimated = item.cost_usd ?? (item.origin_cost != null && (!item.currency || item.currency === 'USD') ? Math.round(item.origin_cost * 1.2 * 100) / 100 : null);
+        const retailEstimated = item.displayed_retail_usd ?? (costEstimated != null ? Math.round((costEstimated / 0.7) * 100) / 100 : null);
+        const wholesaleEstimated = item.displayed_wholesale_usd ?? (costEstimated != null ? Math.round((costEstimated / 0.82) * 100) / 100 : null);
+        return (
+          <article key={item.id} className="min-w-0 rounded-xl border bg-white p-4 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex items-start gap-3">
+                {item.image_url && <Image unoptimized width={64} height={64} src={item.image_url} alt="" loading="lazy" className="size-16 shrink-0 rounded-lg object-contain bg-zinc-50 border border-zinc-100" />}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-zinc-500 font-medium">{item.supplier} · {opportunityStates[item.state]}</p>
+                  <h2 className="break-words font-semibold text-zinc-900 leading-snug line-clamp-2">{item.title}</h2>
+                  <p className="break-words text-xs text-zinc-500 mt-0.5">{[item.brand,item.model,item.sku].filter(Boolean).join(' · ')}</p>
+                </div>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm bg-zinc-50/70 p-2.5 rounded-lg border border-zinc-100">
+                <div><dt className="text-[11px] font-medium text-zinc-500">Origen</dt><dd className="font-semibold text-zinc-900">{displayCatalogAmount(item.origin_cost,item.currency ?? '')}</dd></div>
+                <div><dt className="text-[11px] font-medium text-zinc-500">Costo total (+20% pasero)</dt><dd className="font-semibold text-zinc-900">{displayCatalogAmount(item.cost_usd ?? costEstimated)}</dd></div>
+                <div><dt className="text-[11px] font-medium text-zinc-500">Minorista MYA (30%)</dt><dd className="font-semibold text-emerald-700">{item.displayed_retail_usd!=null?displayCatalogAmount(item.displayed_retail_usd):retailEstimated!=null?displayCatalogAmount(retailEstimated):displayCatalogAmount(item.displayed_retail_ars,'ARS')}</dd></div>
+                <div><dt className="text-[11px] font-medium text-zinc-500">Mayorista MYA (18%)</dt><dd className="font-semibold text-sky-700">{item.displayed_wholesale_usd!=null?displayCatalogAmount(item.displayed_wholesale_usd):wholesaleEstimated!=null?displayCatalogAmount(wholesaleEstimated):displayCatalogAmount(item.displayed_wholesale_ars,'ARS')}</dd></div>
+              </dl>
+              <p className="mt-2.5 text-xs text-zinc-500">{opportunityStates[item.availability]} · Verificado {displayCatalogDate(item.last_success_at)}</p>
+              {item.margin != null && <p className="text-xs font-medium text-emerald-700 mt-0.5">Margen minorista calculado: {num.format(item.margin)}%</p>}
+              {item.last_error && <p className="mt-1 line-clamp-2 text-xs text-red-700 bg-red-50 p-1.5 rounded">{item.last_error}</p>}
+            </div>
+            <OpportunityCardActions item={item} />
+          </article>
+        );
+      })}
     </div>
     <nav aria-label="Paginación del catálogo" className="flex flex-wrap items-center justify-center gap-4 text-sm">
       {page.page > 1 && <Link href={params(page.page-1)} className="rounded-lg border px-3 py-2">Anterior</Link>}
