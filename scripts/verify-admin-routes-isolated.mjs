@@ -14,11 +14,29 @@ const backend=createServer((req,res)=>{let role='';try{role=JSON.parse(Buffer.fr
  if(req.url.includes('store_exchange_public_v1'))return res.end('null');
  if(req.url.includes('store_profitability_workspace_v2'))return res.end(JSON.stringify({policy:{retail_target:'30',wholesale_target:'18',minimum_margin:'10',usd_step:'0.01',cost_max_age_seconds:86400,enforcement:'preview',methods:{mercado_pago:{confirmed:false},transferencia:{confirmed:false}}},profiles:[]}));
  if(req.url.includes('tracker_workspace_v1'))return res.end(JSON.stringify({total:0,page:1,size:30,items:[],suppliers:[],sources:[],runs:[],events:[],categories:[],counts:{}}));
+ if(req.url.includes('supplier_archived_at=not.is.null')&&req.headers.authorization==='Bearer isolated-service-test-key'){
+  const row={id:uid,title:'Producto retirado QA',supplier_archived_at:'2026-11-07T04:00:00Z',supplier_archive_reason:'Sin proveedor autorizado'};
+  const isVariant=req.url.startsWith('/rest/v1/product_variants');
+  res.setHeader('content-range','0-0/26');
+  return res.end(JSON.stringify([isVariant?{...row,title:'Variante QA',sku:'VAR-QA',product:{title:row.title}}:row]));
+ }
  if(req.url.startsWith('/rest/v1/store_money_settings'))return res.end(JSON.stringify({id:true,kind:'blue',refresh_seconds:900,max_age_seconds:86400,quote_seconds:900,adjustment:0,round_ars:1,max_change:20,retail_margin:30,wholesale_margin:18,minimum_margin:10}));
  res.end('[]');}).listen(backendPort,'127.0.0.1');await new Promise(r=>backend.once('listening',r));
 const temporary=createServer().listen(0,'127.0.0.1');await new Promise(r=>temporary.once('listening',r));const appPort=temporary.address().port;await new Promise(r=>temporary.close(r));
 const child=spawn(process.execPath,[resolve(target,'node_modules/next/dist/bin/next'),'start','-p',String(appPort)],{cwd:target,env:{...process.env,NEXT_PUBLIC_SUPABASE_URL:`http://127.0.0.1:${backendPort}`,NEXT_PUBLIC_SUPABASE_ANON_KEY:'isolated-public-test-key',SUPABASE_SERVICE_ROLE_KEY:'isolated-service-test-key',NEXT_TELEMETRY_DISABLED:'1',COMMERCE_CHECKOUT_ENABLED:'false'},windowsHide:true,stdio:['ignore','pipe','pipe']});let logs='';child.stdout.on('data',v=>logs+=v);child.stderr.on('data',v=>logs+=v);
 const results=[];try{for(let i=0;i<60;i++){try{await fetch(`http://127.0.0.1:${appPort}/robots.txt`);break;}catch{await new Promise(r=>setTimeout(r,250));}}
  for(const route of['/admin/moneda','/admin/proveedores/rastreador'])for(const role of['anonymous','customer','admin']){const r=await fetch(`http://127.0.0.1:${appPort}${route}`,{redirect:'manual',headers:role==='anonymous'?{}:{cookie:cookie(role)}});const html=await r.text(),location=r.headers.get('location');if(role==='anonymous'){assert.equal(r.status,307);assert.ok(location?.startsWith('/login'));}else if(role==='customer'){assert.equal(r.status,307);assert.equal(location,'/cuenta');}else{assert.equal(r.status,200);assert.ok(html.includes(route.endsWith('moneda')?'Monedas y precios USD':'Proveedores y rastreador'));assert.ok(!html.includes('error-boundary'))}results.push({route,role,status:r.status,location});}
+ for(const archive of ['productos','variantes'])for(const role of ['anonymous','customer','admin']){
+  const route=`/admin/proveedores/rastreador?archivo=${archive}`;
+  const r=await fetch(`http://127.0.0.1:${appPort}${route}`,{redirect:'manual',headers:role==='anonymous'?{}:{cookie:cookie(role)}});
+  const html=await r.text();
+  assert.equal(r.status,role==='admin'?200:307);
+  if(role==='admin'){
+   assert.match(html,/Producto retirado QA/);
+   assert.match(html,archive==='productos'?/Sin proveedor autorizado/:/VAR-QA/);
+   assert.match(html,/Siguiente/);
+  }else assert.doesNotMatch(html,/Producto retirado QA/);
+  results.push({route,role,status:r.status,location:r.headers.get('location')});
+ }
  console.log(JSON.stringify({environment:'real Next local routes; controlled local auth backend',results},null,2));
 }finally{child.kill();backend.close();await writeFile(resolve(target,'admin-route-proof.json'),JSON.stringify({results,requests,logs},null,2));}
