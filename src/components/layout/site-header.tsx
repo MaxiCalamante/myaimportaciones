@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Boxes,
   ChevronDown,
+  ChevronRight,
   Heart,
   Menu,
   MessageCircle,
