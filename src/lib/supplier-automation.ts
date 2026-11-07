@@ -6,7 +6,7 @@ import {parseObservation,type IntelligenceSupplier,type SupplierOffer} from "./s
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
 import { acquisitionFxFresh, type UsdtSettings } from "./supplier-usdt";
 
-export interface TrackingConfig extends UsdtSettings {enabled:boolean;autoStock:boolean;autoPrices:boolean;autoPauseWhenOutOfStock?:boolean;acquisitionArsPerUsd:number;fxConfirmedOn:string;shippingPaidByMya:boolean;shippingArs:number;targetMarginPercent:number;marketDiscountPercent:number;productDiscountPercent?:Record<string,number>;roundArs:number;maxPriceChangePercent:number;freshnessHours:number;marketFreshnessHours:number;fxValidityHours:number;notes:string}
+export interface TrackingConfig extends UsdtSettings {enabled:boolean;autoStock:boolean;autoPrices:boolean;localMarginPrices?:boolean;localMarginCarrier?:'goods_20pct_usdt';autoPauseWhenOutOfStock?:boolean;acquisitionArsPerUsd:number;fxConfirmedOn:string;shippingPaidByMya:boolean;shippingArs:number;targetMarginPercent:number;marketDiscountPercent:number;productDiscountPercent?:Record<string,number>;roundArs:number;maxPriceChangePercent:number;freshnessHours:number;marketFreshnessHours:number;fxValidityHours:number;notes:string}
 export interface SyncJob {id:string;supplier_id:string;product_id:string|null;variant_id:string|null;offer_id:string|null;source_url:string;attempts:number}
 const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const robotCache=new Map<string,Promise<{disallow:string[];delay:number}>>();
@@ -32,6 +32,8 @@ export async function publicReadRules(url:string){
 export function validateTrackingConfig(c:TrackingConfig){
   if(c.acquisitionFxMode!==undefined&&!['manual','usdt'].includes(c.acquisitionFxMode))throw new Error('Modo de cotización inválido.');
   if(c.usdtAutoPrices!==undefined&&typeof c.usdtAutoPrices!=='boolean')throw new Error('Revisá el ajuste automático por USDT.');
+  if(c.localMarginPrices!==undefined&&typeof c.localMarginPrices!=='boolean')throw new Error('Revisá el ajuste de margen desde la PC.');
+  if(c.localMarginCarrier!==undefined&&c.localMarginCarrier!=='goods_20pct_usdt')throw new Error('Regla del pasador local inválida.');
   if(!c||[c.enabled,c.autoStock,c.autoPrices,c.shippingPaidByMya].some(v=>typeof v!=='boolean'))throw new Error('Configuración de seguimiento inválida.');
   if(c.autoPauseWhenOutOfStock!==undefined&&typeof c.autoPauseWhenOutOfStock!=='boolean')throw new Error('Configuración de pausa automática inválida.');
   for(const key of ['acquisitionArsPerUsd','shippingArs','targetMarginPercent','marketDiscountPercent','roundArs','maxPriceChangePercent','freshnessHours','marketFreshnessHours','fxValidityHours']as const)if(!Number.isFinite(c[key])||c[key]<0)throw new Error(`Revisá ${key}.`);
@@ -65,6 +67,8 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
     const payload={...parseObservation({...observation,variant_id:job.variant_id},supplier,'product_page'),evidence:{sourceTitle:found.title,availabilityBasis:'explicit',matchedBy:'curated_source_url'}};
     const result=await db.rpc('record_supplier_observation_v1',{p:payload});if(result.error)throw new Error(result.error.message);
     const offerId=String(result.data);
+    const usdRefresh=await db.rpc('tracker_reprice_offer_v1',{offer_input:offerId});
+    if(usdRefresh.error&&!usdRefresh.error.message.includes('Could not find the function'))throw Error('La evidencia se guardó; el ajuste USD requiere revisión.');
     const saved=await db.from('supplier_sync_queue').update({offer_id:offerId,state:'ready',attempts:0,last_error:null,last_success_at:stamp,leased_until:null,next_run_at:new Date(Date.now()+6*3600000).toISOString(),updated_at:stamp}).eq('id',job.id);
     if(saved.error)throw new Error('La evidencia se guardó pero no se actualizó la cola.');
     if(config.autoStock&&job.product_id){
@@ -83,6 +87,7 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
     return {ok:true,offerId};
   }catch(error){
     const message=error instanceof Error?error.message:'Error de consulta';
+    if(/tracking paused|monitoring paused|source disabled/i.test(message)){await db.from('supplier_sync_queue').update({state:'ready',leased_until:null}).eq('id',job.id);return{ok:false,paused:true,message:'Seguimiento pausado; no se modificó la evidencia comercial.'};}
     if(prior){const recorded=await db.rpc('record_supplier_observation_v1',{p:{supplier_id:supplier.id,external_id:prior.external_id,variant_key:prior.variant_key,method:message.includes('404')?'not_found':'error',observed_at:stamp,message}});if(recorded.error)throw new Error(`Error de consulta y de registro: ${recorded.error.message}`);}
     const attempts=job.attempts+1;
     await db.from('supplier_sync_queue').update({state:attempts>=5?'blocked':'retry',attempts,last_error:message,leased_until:null,next_run_at:new Date(Date.now()+Math.min(24,2**attempts)*3600000).toISOString(),updated_at:stamp}).eq('id',job.id);
@@ -100,7 +105,7 @@ export async function runSupplierAutomation(db:SupabaseClient,options:{worker:st
   try{
     const {data:jobs,error}=await db.rpc('claim_supplier_jobs_v1',{limit_input:options.limit??20});if(error)throw new Error(error.message);
     claimedJobs=(jobs??[])as SyncJob[];
-    const suppliers=await db.from('suppliers').select('*').eq('is_active',true);if(suppliers.error)throw new Error('No se pudo leer proveedores.');
+    const suppliers=await db.from('suppliers').select('*').eq('is_active',true).eq('monitor_enabled',true).is('archived_at',null);if(suppliers.error)throw new Error('No se pudo leer proveedores.');
     const started=Date.now();
     for(const job of (jobs??[])as SyncJob[]){
       if(Date.now()-started>(options.timeBudgetMs??42000)){await db.from('supplier_sync_queue').update({state:'ready',leased_until:null}).in('id',(jobs as SyncJob[]).filter(j=>j.id===job.id||(jobs as SyncJob[]).indexOf(j)>(jobs as SyncJob[]).indexOf(job)).map(j=>j.id));break;}

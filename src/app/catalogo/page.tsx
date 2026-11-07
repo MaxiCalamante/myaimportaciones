@@ -1,3 +1,4 @@
+import {projectUsdProducts} from '@/lib/monetary';
 import { PUBLIC_PRODUCT_COLUMNS, type DbProduct } from "@/lib/catalog-data";
 import { EmptyCatalog } from "@/components/commerce/empty-catalog";
 import Link from "next/link";
@@ -87,20 +88,21 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         catch { failed = true; }
         query = query.in("id", searchIds);
       }
-      if (minPrice) query = query.gte("retail_price", Number(minPrice));
-      if (maxPrice) query = query.lte("retail_price", Number(maxPrice));
       query = sort === "price_asc" ? query.order("retail_price") : sort === "price_desc" ? query.order("retail_price", { ascending: false }) : sort === "name_asc" ? query.order("title") : query.order("is_featured", { ascending: false }).order("title");
-      if (q && !sort) {
+      if (minPrice || maxPrice || sort.startsWith("price_") || (q && !sort)) {
         try {
           const rows = await readAllPages((from, to) => query.order("id").range(from, to));
           const rankById = new Map(searchIds.map((id, rank) => [id, rank]));
           rows.sort((a, b) => (rankById.get(a.id) ?? Infinity) - (rankById.get(b.id) ?? Infinity));
-          count = rows.length;
-          products = (rows.slice((page - 1) * pageSize, page * pageSize) as unknown as DbProduct[]).map(p => mapProduct(p));
+          let projected=await projectUsdProducts((rows as unknown as DbProduct[]).map(p=>mapProduct(p)), db);
+          projected=projected.filter(p=>(!minPrice||p.retailPrice>=Number(minPrice))&&(!maxPrice||p.retailPrice<=Number(maxPrice)));
+          if(sort==='price_asc')projected.sort((a,b)=>a.retailPrice-b.retailPrice);
+          if(sort==='price_desc')projected.sort((a,b)=>b.retailPrice-a.retailPrice);
+          count=projected.length;products=projected.slice((page-1)*pageSize,page*pageSize);
         } catch { failed = true; }
       } else {
         const result = await query.order("id").range((page - 1) * pageSize, page * pageSize - 1);
-        products = ((result.data ?? []) as unknown as DbProduct[]).map(p => mapProduct(p));
+        try {products = await projectUsdProducts(((result.data ?? []) as unknown as DbProduct[]).map(p => mapProduct(p)),db);}catch{failed=true;}
         count = result.count ?? 0;
         failed = failed || Boolean(result.error);
       }

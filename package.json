@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "suppliers:local": "node --import tsx scripts/local-suppliers/server.mts --open",
+    "test:suppliers:browser": "node --import tsx --test scripts/verify-local-supplier-browser.mts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -14,6 +16,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
+    "cheerio": "1.2.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.20.0",
     "next": "^16.4.3",

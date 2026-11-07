@@ -1,3 +1,4 @@
+import {projectUsdProducts} from '@/lib/monetary';
 import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -9,5 +10,5 @@ export async function GET(request: Request) {
   const db = await createServerSupabaseClient();
   const { data, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(*)`).in("id", ids).eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null);
   if (error) return NextResponse.json({ error: "No disponible" }, { status: 503 });
-  return NextResponse.json(data.map(p => mapProduct(p)), { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json(await projectUsdProducts(data.map(p => mapProduct(p)), db), { headers: { "Cache-Control": "private, no-store" } });
 }

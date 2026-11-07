@@ -44,6 +44,7 @@ export function ProductEditor({
 
   const sourceData = isCloning ? initialData : product;
   const isEditing = Boolean(product?.id && !isCloning);
+  const [priceCurrency,setPriceCurrency]=useState(isCloning||isEditing?"ARS":"USD");
 
   const [mode, setMode] = useState<"supplier" | "own_stock">(sourceData?.fulfillmentMode ?? "supplier");
   const category = categories.find(c => c.id === sourceData?.categoryId);
@@ -394,7 +395,7 @@ export function ProductEditor({
               />
             </label>
             <label className="text-sm font-semibold">
-              {hasVariants ? "Precio minorista de referencia (ARS)" : "Precio minorista (ARS) *"}
+              {hasVariants ? `Precio minorista de referencia (${priceCurrency})` : `Precio minorista (${priceCurrency}) *`}
               <input
                 name="retail_price"
                 type="number"
@@ -411,7 +412,8 @@ export function ProductEditor({
                   : "Podés dejarlo vacío en un borrador. Para publicar debe ser mayor a cero."}
               </span>
             </label>
-            <input type="hidden" name="wholesale_price" value={sourceData?.wholesalePrice ?? 0} />
+            {!isEditing&&<><label className="text-sm font-semibold">Moneda base<select name="price_currency" value={priceCurrency} onChange={e=>setPriceCurrency(e.target.value)} className={fieldClass}><option value="USD">USD · conversión automática a ARS</option><option value="ARS">ARS · requiere migración posterior</option></select></label><label className="text-sm font-semibold">Precio mayorista ({priceCurrency})<input type="number" min="0" step=".01" name="wholesale_price" defaultValue={sourceData?.wholesalePrice??''} className={fieldClass}/></label><p className="text-xs text-zinc-600 sm:col-span-2">Las variantes usan la misma moneda base. La habilitación mayorista conserva su revisión comercial independiente.</p></>}
+            {isEditing&&<input type="hidden" name="wholesale_price" value={sourceData?.wholesalePrice ?? 0} />}
             <input type="hidden" name="wholesale_min_qty" value={sourceData?.wholesaleMinQuantity ?? 1} />
             <label className="text-sm font-semibold sm:col-span-2">
               Descripción
@@ -428,6 +430,7 @@ export function ProductEditor({
 
           {/* Sistema Universal de Variantes (Fase 4) */}
           <VariantManager
+            currency={priceCurrency}
             hasVariants={hasVariants}
             setHasVariants={setHasVariants}
             optionsConfig={optionsConfig}
@@ -553,7 +556,7 @@ export function ProductEditor({
             <input type="hidden" name="supplier_live_price" value={sourceData?.supplierLivePrice ?? ""} />
             <p className="text-xs text-zinc-600">
               Cargá costos, moneda, cambio y gastos reales en{" "}
-              <Link href="/admin/costos" className="underline">
+              <Link href="/admin/moneda" className="mr-3 underline">Editar precios USD</Link><Link href="/admin/costos" className="underline">
                 Stock y costos
               </Link>.
             </p>

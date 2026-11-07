@@ -1,8 +1,15 @@
 // Public UI only: no keys, private endpoints, authentication or purchase actions are inspected.
-/** @param {string|null} startUrl @param {null|(()=>Promise<unknown>)} beforeSearch */
-export async function collectPublicCatalog(browser,supplier,query='',cadence=10000,startUrl=null,beforeSearch=null){
+/** @param {string|null} startUrl @param {null|(()=>Promise<unknown>)} beforeSearch
+ * @param {null|((url:string)=>Promise<unknown>)} beforeNavigation */
+export async function collectPublicCatalog(browser,supplier,query='',cadence=10000,startUrl=null,beforeSearch=null,beforeNavigation=null){
  const context=await browser.newContext({locale:'es-AR'});
- await context.route('**/*',route=>['GET','HEAD','OPTIONS'].includes(route.request().method())&&!/google-analytics|googletagmanager|doubleclick|facebook.net/.test(route.request().url())?route.continue():route.abort());
+ await context.route('**/*',async route=>{
+  if(!['GET','HEAD','OPTIONS'].includes(route.request().method())||/google-analytics|googletagmanager|doubleclick|facebook.net/.test(route.request().url()))return route.abort();
+  if(beforeNavigation&&route.request().isNavigationRequest()&&!route.request().frame().parentFrame()){
+   try{await beforeNavigation(route.request().url());}catch{return route.abort('blockedbyclient');}
+  }
+  return route.continue();
+ });
  const page=await context.newPage();
  const publicStocks=new Map();let dollarBaseVerified=false;
  // Mobile Zone's own public UI requests these credential-free endpoints. Use stock only;
@@ -22,10 +29,19 @@ export async function collectPublicCatalog(browser,supplier,query='',cadence=100
    const search=page.locator('input[type="search"],input[placeholder*="busc" i],input[placeholder*="pesquis" i],input[name="search"],input[name="s"]').filter({visible:true}).first();
    if(await search.count()){searched=true;await search.click();await search.fill(query);await search.press('Enter');await page.waitForTimeout(3000);}
   }
-  const records=await page.evaluate(({key,source})=>{
+  // Keep this browser-side program raw: tsx/esbuild can otherwise inject __name
+  // helpers into nested functions that do not exist in the supplier's page.
+  const records=await page.evaluate(String.raw`(({key,source})=>{
    const visible=e=>e.getClientRects().length>0;
    const text=e=>(e?.innerText??'').replace(/\u00a0/g,' ').trim();
    const available=(t,button)=>/agotado|sin stock|out of stock|indispon[ií]vel|n[aã]o dispon[ií]vel/i.test(t)?'out_of_stock':button&&!button.disabled?'in_stock':'unknown';
+   if(key==='atacado-usa'&&document.querySelector('article.av-product-card'))return [...document.querySelectorAll('article.av-product-card')].filter(visible).map(e=>{
+    const a=e.querySelector('h3 a[href],a[href*="/produto/"],a[href*="/producto/"]'),url=a?.href;
+    // The source product ID must come from the actual link, not an unrelated reference number.
+    const id=url?.match(/\/(?:produto|producto)\/(\d+)(?:[/?#]|$)/)?.[1]??e.getAttribute('data-av-id');
+    const title=e.getAttribute('data-av-name')||text(e.querySelector('h3,h2')),price=text(e.querySelector('.av-price'));
+    return {id,title,price,currency:/\bUSD\b|US\$|U\$/.test(price)?'USD':null,url,availability:'unknown',basis:'listing_only',brand:e.getAttribute('data-av-brand')||'',scope:'origin'};
+   }).filter(p=>p.id&&p.title&&p.url);
    if(key==='star-company'||key==='atacado-usa')return [...document.querySelectorAll('article.product-miniature,.js-product-miniature')].filter(visible).map(e=>{
     const a=e.querySelector('.product-title a,h2 a,h3 a'),url=a?.href,id=e.getAttribute('data-id-product')??url?.match(/\/(\d+)-/)?.[1],price=text(e.querySelector('.price'));
     return {id,title:a?.getAttribute('title')?.trim()||text(a),price,currency:/US\$|U\$|USD/.test(price)||/\bUSD\b|U\$/.test(document.querySelector('.currency-selector')?.innerText??'')?'USD':null,url,availability:available(text(e),e.querySelector('.add-to-cart')),basis:'listing_only',brand:'',scope:'origin'};
@@ -57,7 +73,7 @@ export async function collectPublicCatalog(browser,supplier,query='',cadence=100
     }).filter(p=>p.id&&p.title&&p.price);
    }
    return [];
-  },{key:supplier.official_key,source:supplier.website});
+  })(${JSON.stringify({key:supplier.official_key,source:supplier.website})})`);
   // Detail links are returned only if present in the provider DOM. Missing cards never imply no stock.
   if(supplier.official_key==='mobile-zone')for(const record of records){const stock=publicStocks.get(record.id);if(stock!==undefined){record.availability=stock>0?'in_stock':'out_of_stock';record.basis='explicit';record.stock=stock;}if(dollarBaseVerified)record.currency='USD';}
   const searchKey=s=>s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');

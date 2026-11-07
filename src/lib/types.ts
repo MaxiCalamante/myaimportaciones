@@ -40,6 +40,8 @@ export interface ProductOptionDimension {
 }
 
 export interface ProductVariant {
+  retailUsd?: string;
+  wholesaleUsd?: string | null;
   wholesaleOffer?: PublicWholesaleOffer;
   id: string;
   productId: string;
@@ -60,6 +62,8 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  retailUsd?: string;
+  wholesaleUsd?: string | null;
   wholesaleOffer?: PublicWholesaleOffer;
   sourceUrl?: string | null;
   supplierLastCheckedAt?: string | null;

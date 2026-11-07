@@ -1,4 +1,5 @@
 "use client";
+import {ProductPrice} from './currency-provider';
 import { MAX_ORDER_QUANTITY, WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
@@ -225,7 +226,7 @@ export function ProductDetailInteractive({
         <div className="min-w-0">
           <p className="text-xs font-medium text-zinc-500">{channel === "wholesale" ? "Precio mayorista por unidad" : "Precio por unidad"}</p>
           <p className="mt-1 break-words text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-tight tracking-tight tabular-nums text-zinc-950">
-            {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{price===null?'Precio por confirmar':formatCurrency(price)}
+            {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{<ProductPrice product={product} channel={channel} variant={matchedVariant} ars={price} context/>}
           </p>
           {channel === "retail" && price!==null && price > 0 && (
             <p className="mt-2 text-xs leading-5 text-zinc-600">Beneficio por transferencia y opciones de pago a confirmar antes de comprar.</p>
@@ -317,7 +318,7 @@ export function ProductDetailInteractive({
                           <span className="min-w-0 break-words">{val}</span>
                           {hasCustomPrice && variantForVal && (
                             <span className={`text-[11px] font-mono font-bold ${isSelected ? "text-sky-800" : "text-zinc-500"}`}>
-                              {formatCurrency(variantForVal.retailPrice)}
+                              {<ProductPrice product={product} variant={variantForVal} ars={variantForVal.retailPrice}/>}
                             </span>
                           )}
                           {!hasStock && exists && (
@@ -414,6 +415,7 @@ export function ProductDetailInteractive({
 
       {/* Modern Sticky Mobile Buy Bar */}
       <StickyMobileBuyBar
+        usd={channel==='wholesale'?(matchedVariant??product).wholesaleUsd:(matchedVariant??product).retailUsd}
         price={price??0}
         quantity={quantity}
         added={added}

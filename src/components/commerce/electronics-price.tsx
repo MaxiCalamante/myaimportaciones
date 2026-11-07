@@ -2,6 +2,7 @@ import { electronicsDollarPrice, formatDollarPrice } from "@/lib/electronics-pri
 import type { Product } from "@/lib/types";
 
 export function ElectronicsPrice({ product, detail = false }: { product: Product; detail?: boolean }) {
+  if (product.retailUsd) return null;
   const usd = electronicsDollarPrice(product);
   if (usd === null) return null;
   return <div className="mt-1 text-sky-800">

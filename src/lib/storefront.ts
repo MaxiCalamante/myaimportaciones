@@ -1,3 +1,6 @@
+async function projectUsdProducts(...args: Parameters<typeof import('./monetary').projectUsdProducts>) {
+ const monetary=await import('./monetary');return monetary.projectUsdProducts(...args);
+}
 import { readAllPages, readAllPagesParallel } from "@/lib/read-all-pages";
 import { cache } from "react";
 import { WHOLESALE_ENABLED, isExcludedCategory } from "@/lib/commerce-policy";
@@ -95,8 +98,9 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(c => mapCategory(c, options?.admin));
   const excluded = new Set(categories.filter(c => isExcludedCategory(c.slug)).map(c => c.id));
   categories.forEach(c => { if (c.parentId && excluded.has(c.parentId)) excluded.add(c.id); });
-  const products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin, options?.wholesale)).filter(p => options?.admin || !excluded.has(p.categoryId));
+  let products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin, options?.wholesale)).filter(p => options?.admin || !excluded.has(p.categoryId));
 
+  if (!options?.admin) products = await projectUsdProducts(products, supabase);
   const result: StorefrontData = {
     categories: options?.admin || options?.wholesale ? categories : categories.filter(c => !c.wholesaleOnly && !excluded.has(c.id)),
     products,
@@ -124,7 +128,7 @@ export const getProductBySlug = cache(async function getProductBySlug(slug: stri
 
   if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
 
-  return mapProduct(data as unknown as DbProduct, false, WHOLESALE_ENABLED);
+  return (await projectUsdProducts([mapProduct(data as unknown as DbProduct, false, WHOLESALE_ENABLED)], supabase))[0];
 });
 
 // Share the same navigation read between metadata, layout and the catalog in one request.

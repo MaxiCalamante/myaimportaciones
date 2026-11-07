@@ -15,7 +15,7 @@ export async function findOrderReceipt(
     await consumeAttempt();
     const key = identifier.trim();
     const { data, error } = await db.from("orders")
-      .select("id,tracking_code,status,created_at,payment_method,payment_url,subtotal_amount,discount_amount,shipping_amount,shipping_option,total_amount,shipping_name,shipping_phone,shipping_address,carrier_tracking_code,order_items(id,product_title,variant_title,quantity,unit_price)")
+      .select("id,tracking_code,status,created_at,payment_method,payment_url,subtotal_amount,discount_amount,shipping_amount,shipping_option,charge_currency,exchange_snapshot,total_amount,shipping_name,shipping_phone,shipping_address,carrier_tracking_code,order_items(id,product_title,variant_title,quantity,unit_price,base_unit_usd)")
       .eq(uuid.test(key) ? "id" : "tracking_code", uuid.test(key) ? key : key.toUpperCase())
       .eq("customer_email", email.trim().toLowerCase())
       .maybeSingle();

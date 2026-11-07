@@ -1,11 +1,11 @@
 "use client";
 
+import {ProductPrice} from './currency-provider';
 import { defaultCarouselSlides, type CarouselSlide } from "@/lib/carousel";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Boxes, Truck, ShieldCheck, Headphones, Pause, Play, Store } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
 import { ButtonLink } from "@/components/ui/button";
@@ -110,13 +110,13 @@ export function WholesaleTeaser({
                 <div className="rounded-xl bg-zinc-900/80 border border-zinc-750 p-3.5 text-white">
                   <p className="text-xs font-medium uppercase text-zinc-400">PVP Minorista</p>
                   <p className="mt-1 text-base sm:text-lg font-bold">
-                    {formatCurrency(bestPrice.retailPrice)}
+                    {<ProductPrice product={bestPrice} ars={bestPrice.retailPrice}/>}
                   </p>
                 </div>
                 <div className="rounded-xl bg-emerald-600/90 border border-emerald-500 p-3.5 text-white">
                   <p className="text-xs font-medium uppercase text-emerald-100">Costo Mayorista</p>
                   <p className="mt-1 text-base sm:text-lg font-bold">
-                    {formatCurrency(bestPrice.wholesalePrice)}
+                    {<ProductPrice product={bestPrice} channel="wholesale" ars={bestPrice.wholesalePrice}/>}
                   </p>
                 </div>
               </div>

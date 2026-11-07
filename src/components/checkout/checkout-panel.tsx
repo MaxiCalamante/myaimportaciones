@@ -1,4 +1,5 @@
 "use client";
+import {CartUsd} from '@/components/commerce/currency-provider';
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ShoppingBag, ArrowRight, Building2, CreditCard, AlertCircle } from "lucide-react";
@@ -87,7 +88,9 @@ export function CheckoutPanel({
   const key = JSON.stringify(input);
   const hasUnpriced=cart.some(line=>cartLineUnitPrice(line)===null);
   const confirmationReady=confirmationRequired&&key===quotedKey;
-  const validQuote = quote !== null && key === quotedKey;
+  const [clock,setClock]=useState(()=>Date.now());
+  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer);},[]);
+  const validQuote = quote !== null && key === quotedKey && (!quote.expiresAt||Date.parse(quote.expiresAt)>clock);
   const pickup = selectedShippingOption?.type === "pickup";
 
   useEffect(() => {
@@ -347,7 +350,7 @@ export function CheckoutPanel({
             <div className="mt-4 space-y-4">{cart.map(l => {
               const unitPrice = cartLineUnitPrice(l);
               const lineKey = `${l.product.id}-${l.channel}-${l.variantId || 'base'}`;
-              return <p key={lineKey} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}<strong className="mt-1 block text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(l.quantity * unitPrice)}</strong></p>;
+              return <p key={lineKey} className="border-b border-zinc-100 pb-3 text-sm text-zinc-700">{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}<strong className="mt-1 block text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(l.quantity * unitPrice)}<CartUsd line={l}/></strong></p>;
             })}</div>
             <p className="mt-4 grid gap-1 border-t border-zinc-100 pt-4 [&>span:first-child]:text-xs [&>span:first-child]:font-medium [&>span:first-child]:text-zinc-500 [&>span:last-child]:text-2xl [&>span:last-child]:font-semibold [&>span:last-child]:tabular-nums"><span>Subtotal de referencia</span><span>{formatCurrency(cartTotal)}</span></p>
             <p className="mt-2 text-xs text-zinc-500">Entrega y precio final sujetos a confirmación.</p>
@@ -378,6 +381,7 @@ export function CheckoutPanel({
                   acceptSeparateShipping: form.get("separate_shipping") === "on",
                   requestId: requestId.current || crypto.randomUUID(),
                   expectedTotal: quote?.total ?? (cartTotal + shippingCost),
+                  quoteId: quote?.quoteId,
                 });
                 setResult(response);
                 if(!response.pendingConfirmation)clearCart();
@@ -630,7 +634,7 @@ export function CheckoutPanel({
                   <div key={lineKey} className="py-2 text-xs">
                     <div className="grid gap-1 font-medium text-zinc-800">
                       <span>{l.quantity} × {l.product.title}{l.variantTitle ? ` (${l.variantTitle})` : ""}</span>
-                      <span className="shrink-0 tabular-nums font-bold text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(l.quantity * unitPrice)}</span>
+                      <span className="shrink-0 tabular-nums font-bold text-zinc-950">{unitPrice===null?"A confirmar":formatCurrency(l.quantity * unitPrice)}<CartUsd line={l}/></span>
                     </div>
                   </div>
                 );
@@ -687,9 +691,11 @@ export function CheckoutPanel({
               )}
               <div className="grid gap-1 border-t border-zinc-200 pt-3 text-zinc-950 [&>span:first-child]:text-xs [&>span:first-child]:font-medium [&>span:first-child]:text-zinc-500 [&>span:last-child]:text-2xl [&>span:last-child]:font-semibold [&>span:last-child]:tabular-nums">
                 <span>{!validQuote ? "Subtotal de productos:" : quote.shippingQuotedSeparately ? "Total de productos:" : "Total final:"}</span>
-                <span>{confirmationReady||hasUnpriced&&!validQuote?"A confirmar":formatCurrency(validQuote ? quote.total : cartTotal)}</span>
+                <span>{confirmationReady||hasUnpriced&&!validQuote?"A confirmar":formatCurrency(validQuote ? quote.total : cartTotal)} ARS</span>
               </div>
             </div>
+
+            {quote?.expiresAt&&<p className="text-xs text-zinc-600" role="status">{validQuote?`Cotización válida hasta ${new Date(quote.expiresAt).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})}`:'Cotización vencida: actualizá el resumen antes de pagar.'}{quote.exchangeRate?` · ${quote.exchangeLabel}: $${Number(quote.exchangeRate).toLocaleString('es-AR')} ARS`:''}</p>}
 
             {(confirmationReady||validQuote && quote.shippingQuotedSeparately) && (
               <label className="flex items-start gap-2 rounded-xl bg-sky-50 p-3 text-xs text-sky-900 border border-sky-100">

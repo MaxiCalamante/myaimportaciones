@@ -72,7 +72,7 @@ async function readCrosslinkWorkspace(db: SupabaseClient): Promise<CrosslinkWork
 
 export async function readSupplierWorkspace() {
   const db = await getAdminClient();
-  const supplierResult = await db.from("suppliers").select("id,name,website,official_key,query_mode,automation_authorized,freshness_hours,is_active,capabilities").order("name");
+  const supplierResult = await db.from("suppliers").select("id,name,website,official_key,query_mode,automation_authorized,freshness_hours,is_active,capabilities").eq("is_active",true).order("name");
   if (supplierResult.error) {
     if (["42703", "PGRST204"].includes(supplierResult.error.code)) return null;
     throw new Error("No se pudo leer el registro de proveedores.");

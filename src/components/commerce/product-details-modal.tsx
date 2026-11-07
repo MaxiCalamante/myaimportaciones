@@ -1,4 +1,5 @@
 "use client";
+import {ProductPrice} from './currency-provider';
 import { MAX_ORDER_QUANTITY, WHOLESALE_ENABLED, isVerifiedStock, purchasableQuantity } from "@/lib/commerce-policy";
 
 import React, { useState, useMemo } from "react";
@@ -182,7 +183,7 @@ function ProductDetailsModalContent() {
               {/* Minorista Row */}
               <div className="flex items-center justify-between px-4 py-2.5">
                 <span className="text-zinc-700">Precio por unidad</span>
-                <span className="font-bold text-zinc-900">{formatCurrency(selectedProduct.retailPrice)}</span>
+                <span className="font-bold text-zinc-900">{<ProductPrice product={selectedProduct} ars={selectedProduct.retailPrice}/>}</span>
               </div>
               {/* Mayorista Row */}
               {isWholesaleAllowed && (
@@ -196,7 +197,7 @@ function ProductDetailsModalContent() {
                         -{discount}%
                       </span>
                     )}
-                    <span className="font-bold text-emerald-700">{wholesale.price===null?'Precio por confirmar':formatCurrency(wholesale.price)}</span>
+                    <span className="font-bold text-emerald-700">{<ProductPrice product={selectedProduct} channel="wholesale" ars={wholesale.price}/>}</span>
                   </div>
                 </div>
               )}

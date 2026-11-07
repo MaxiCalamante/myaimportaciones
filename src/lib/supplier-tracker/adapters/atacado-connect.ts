@@ -1,0 +1,7 @@
+import{dom,item,clean,sourceUrl,safeImage,originalPrice,pagination,categories,categoryIdentity,structuredDetail,type SupplierAdapter,type FoundProduct}from'./shared';
+const key='atacado-connect' as const;
+const category=(url:string)=>/^\/categoria\/[^/]+\/?$/.test(new URL(url).pathname);
+const product=(url:string)=>/^\/produto\/.+\/\d+\/?$/.test(new URL(url).pathname);
+export const atacadoConnectAdapter:SupplierAdapter={key,category,product,
+ listing(html,url,root){const $=dom(html),products:FoundProduct[]=[];$('.product-slide a[href*="/produto/"],main a.border[href*="/produto/"]').each((_,el)=>{const card=$(el);try{const target=sourceUrl(card.attr('href')??'',url,key),id=new URL(target).pathname.match(/\/(\d+)\/?$/)?.[1];if(!id)return;const title=clean(card.find('h2,h3,h4').first().text()||card.find('img').first().attr('alt')||card.attr('title')||'');if(!title)return;const text=clean(card.text()),rawPrice=text.match(/U\$\s*[\d.,]+/)?.[0]??'';products.push(item({externalId:id,url:target,title,imageUrl:safeImage(card.find('img').first().attr('src'),url),rawPrice,...originalPrice(rawPrice)}));}catch{}});
+ return{products,pages:pagination($,'nav[aria-label*="agina"] a[href],nav.pagination a[href],a[rel="next"],a[href*="page="]',url,root,key),categories:categories($,'a[href*="/categoria/"]',url,key,category),pageIdentity:categoryIdentity(url,key)};},detail:(html,url)=>structuredDetail(html,url,key)};

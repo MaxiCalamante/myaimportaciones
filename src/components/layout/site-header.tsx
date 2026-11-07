@@ -1,5 +1,6 @@
 "use client";
 
+import {ExchangeTicker} from '@/components/commerce/currency-provider';
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ChevronDown, Heart, Menu, MessageCircle, Search, ShieldCheck, ShoppingBag, Store, User, X } from "lucide-react";
@@ -116,8 +117,8 @@ export function SiteHeader({ initialCategories = [], profile = null }: {
 
   return <>
       <div className="bg-zinc-950 text-zinc-200">
-        <div className="mx-auto flex h-6 max-w-7xl items-center justify-center gap-4 px-3 text-[9px] tracking-[0.015em] sm:justify-between sm:px-6 sm:text-[10px] lg:px-8">
-          <p className="truncate">Envíos a toda Argentina <span className="mx-1.5 text-zinc-600">·</span> Atención de Máximo y Agustina</p>
+        <div className="mx-auto flex min-h-8 max-w-7xl items-center justify-center gap-4 px-3 text-[10px] tracking-[0.015em] sm:justify-between sm:px-6 sm:text-[11px] lg:px-8">
+          <p className="min-w-0 py-1 leading-4">Envíos a toda Argentina <span className="mx-1.5 text-zinc-600">·</span> <ExchangeTicker/></p>
           <button type="button" onClick={() => openWhatsApp("Hola MYA Importaciones, quiero hacer una consulta.")}
             className="hidden h-6 shrink-0 items-center gap-1.5 text-[10px] hover:text-white sm:inline-flex"><MessageCircle aria-hidden="true" className="size-3" />Hablemos por WhatsApp</button>
         </div>

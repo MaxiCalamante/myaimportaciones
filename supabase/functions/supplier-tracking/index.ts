@@ -1,3 +1,6 @@
+import {runSupplierTracker} from '../../../src/lib/supplier-tracker/worker';
+import {runTrackerAutomaticDrafts} from '../../../src/lib/supplier-tracker/automatic-import';
+import {refreshExchangeRate} from '../../../src/lib/exchange-rate';
 // Supabase Edge runtime. Shared business rules are packaged from src/lib, never copied by hand.
 import {runCatalogImportJobs} from '../../../src/lib/catalog-import-worker';
 import {createClient} from '@supabase/supabase-js';
@@ -21,8 +24,12 @@ async function run(job:string){
  let report:Record<string,unknown>={};
  try{
   if(job==='sync'){
+   try{await refreshExchangeRate(db);}catch(e){report.exchangeError=e instanceof Error?e.message:'Cotización pendiente';}
    const catalogImports=await runCatalogImportJobs(db,8000);
    report={...await runSupplierAutomation(db,{worker:'supabase-linked-products',limit:18,timeBudgetMs:70000}),catalogImports};
+  }
+  else if(job==='catalog'){
+   report={tracker:await runSupplierTracker(db,{budgetMs:45000,maxTasks:12}),automaticDrafts:await runTrackerAutomaticDrafts(db),imports:await runCatalogImportJobs(db,6000)};
   }
   else if(job==='details'){
    const catalog=await readCrosslinkCatalog(db);
@@ -50,8 +57,9 @@ async function run(job:string){
     report={...report,prices:applied,pricesChecked:checked};
    }
   }else throw new Error('Tarea desconocida.');
+  const trackerErrors=Number((report.tracker as {errors?:number}|undefined)?.errors??0);
   const marketErrors=(report.market as {errors?:number}|undefined)?.errors??0;
-  const closed=await db.from('supplier_sync_runs').update({status:Number(report.errors)>0||marketErrors>0||(report.fx as {error?:string}|undefined)?.error?'partial':'success',completed_at:new Date().toISOString(),report}).eq('id',initial.data.id).select('id').single();
+  const closed=await db.from('supplier_sync_runs').update({status:Number(report.errors)>0||trackerErrors>0||marketErrors>0||(report.fx as {error?:string}|undefined)?.error?'partial':'success',completed_at:new Date().toISOString(),report}).eq('id',initial.data.id).select('id').single();
   if(closed.error)throw new Error('No se pudo confirmar el cierre del ciclo.');
  }catch(e){
   await db.from('supplier_sync_runs').update({status:'error',completed_at:new Date().toISOString(),report:{...report,error:e instanceof Error?e.message:'Error del procesador'}}).eq('id',initial.data.id);

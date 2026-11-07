@@ -1,5 +1,6 @@
 "use client";
 
+import {CartUsd} from '@/components/commerce/currency-provider';
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
@@ -148,7 +149,7 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
           const imageSrc = line.variantImage || line.product.imageUrl || "/placeholder-product.svg";
           const maxQty = cartLineQuantityLimit(line);
           return <article key={lineKey} className="flex gap-3 rounded-2xl border border-zinc-200 p-3"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="relative size-16 shrink-0 sm:size-20 overflow-hidden rounded-xl bg-slate-50"><Image src={imageSrc} alt={line.variantTitle ? `${line.product.title} (${line.variantTitle})` : line.product.title} fill sizes="80px" className="object-contain p-2" /></Link><div className="min-w-0 flex-1"><Link href={`/producto/${line.product.slug}`} onClick={() => setCartOpen(false)} className="line-clamp-2 text-sm font-bold leading-5 text-zinc-950 hover:text-sky-700">{line.product.title}</Link>{line.variantTitle && <div className="mt-1 flex flex-wrap items-center gap-1.5"><span className="inline-flex items-center gap-1 rounded-md max-w-full break-words bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 border border-sky-200/80"><span className="size-1.5 rounded-full bg-sky-600"></span>{line.variantTitle}</span>{line.variantSku && <span className="break-all text-[10px] text-zinc-400">{line.variantSku}</span>}</div>}<div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <p className="text-xs text-zinc-500">{unitPrice===null?"Precio a confirmar":`${formatCurrency(unitPrice)} por unidad`}</p>
+            <CartUsd line={line}/><p className="text-xs text-zinc-500">{unitPrice===null?"Precio a confirmar":`${formatCurrency(unitPrice)} por unidad`}</p>
             {tiered.discountPct > 0 && (
               <span className="inline-flex items-center rounded-md bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
                 {tiered.tierLabel}

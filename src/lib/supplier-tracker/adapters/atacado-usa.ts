@@ -1,0 +1,12 @@
+import {dom,item,clean,sourceUrl,safeImage,originalPrice,pagination,categories,categoryIdentity,structuredDetail,currencyOf,type SupplierAdapter,type FoundProduct}from'./shared';
+const key='atacado-usa' as const;
+const category=(url:string)=>/^\/categoria\/[^/]+\/?$/.test(new URL(url).pathname)||/^\/\d+-/.test(new URL(url).pathname);
+const product=(url:string)=>/^\/produto\/\d+\/?$/.test(new URL(url).pathname)||/\/\d+-[^/]+\.html$/.test(new URL(url).pathname);
+export const atacadoUsaAdapter:SupplierAdapter={key,category,product,
+ listing(html,url,root){const $=dom(html),products:FoundProduct[]=[];$('.av-product-card').each((_,el)=>{const card=$(el),raw=card.find('h3 a[href],a.av-product-img[href]').first().attr('href');if(!raw)return;try{const target=sourceUrl(raw,url,key),id=new URL(target).pathname.match(/\/produto\/(\d+)/)?.[1];if(!id)return;
+ const data=card.find('[data-av-id]').first(),rawPrice=clean(card.find('.av-price').text());let nativeUrl:string|null=null;try{const native=data.attr('data-av-native-url');if(native)nativeUrl=sourceUrl(native,url,key);}catch{}
+ products.push(item({externalId:id,url:target,title:clean(card.find('h3').text()),brand:data.attr('data-av-brand')??'',sku:clean(card.find('small').text()).replace(/^Ref\.?\s*/i,''),imageUrl:safeImage(card.find('img').attr('src'),url),description:data.attr('data-av-description')??'',rawPrice,...originalPrice(rawPrice,currencyOf(html)),nativeUrl,warnings:['El listado no acredita stock reservado ni disponibilidad explícita.']}));}catch{}});
+ return{products,pages:pagination($,'.av-pagination a[href],nav.pagination a[href],a[rel="next"]',url,root,key),categories:categories($,'a[href*="/categoria/"]',url,key,category),pageIdentity:categoryIdentity(url,key)};},
+ detail(html,url){const complete=structuredDetail(html,url,key);if(complete)return complete;const $=dom(html),primary=$('.av-product-detail'),id=new URL(url).pathname.match(/\/produto\/(\d+)/)?.[1];if(!id||primary.length!==1)return null;
+ const formId=primary.find('input[name="av_id_product"]').attr('value');if(formId&&formId!==id)return null;const rawPrice=clean(primary.find('.av-detail-price').text());return item({externalId:id,url,title:clean(primary.find('h1').text()),sku:id,imageUrl:safeImage(primary.find('.av-detail-photo img').attr('src'),url),rawPrice,...originalPrice(rawPrice,currencyOf(html)),warnings:['La ficha resumida no acredita moneda ni stock; requiere información explícita.']});}
+};

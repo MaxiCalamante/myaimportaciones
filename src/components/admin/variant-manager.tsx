@@ -6,6 +6,7 @@ import type { ProductOptionDimension } from "@/lib/types";
 import { generateCombinations, type VariantFormInput } from "@/lib/admin-variants";
 
 interface VariantManagerProps {
+  currency?: string;
   hasVariants: boolean;
   setHasVariants: (val: boolean) => void;
   optionsConfig: ProductOptionDimension[];
@@ -30,7 +31,7 @@ export function VariantManager({
   basePrice,
   baseFulfillmentMode,
   baseSupplierAvailable,
-  disabled = false,
+  disabled = false, currency="ARS",
 }: VariantManagerProps) {
   const [newDimName, setNewDimName] = useState("");
   const [tagInputs, setTagInputs] = useState<Record<number, string>>({});
@@ -398,7 +399,7 @@ export function VariantManager({
                     type="number"
                     min="0"
                     step="0.01"
-                    placeholder="Precio ARS"
+                    placeholder={`Precio ${currency}`}
                     value={bulkPrice}
                     onChange={e => setBulkPrice(e.target.value)}
                     className="h-8 w-24 rounded-lg border border-zinc-300 bg-white px-2 text-xs"
@@ -456,7 +457,7 @@ export function VariantManager({
                     <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-600 font-bold">
                       <th className="py-2.5 px-3 w-8 text-center">#</th>
                       <th className="py-2.5 px-3">Variante</th>
-                      <th className="py-2.5 px-3 w-32">Precio Minorista</th>
+                      <th className="py-2.5 px-3 w-32">Precio Minorista ({currency})</th>
                       <th className="py-2.5 px-3 w-28">Stock / Disp.</th>
                       <th className="py-2.5 px-3 w-28">SKU</th>
                       <th className="py-2.5 px-3 w-36">Foto</th>

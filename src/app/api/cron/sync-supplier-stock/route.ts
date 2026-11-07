@@ -1,3 +1,4 @@
+import {refreshExchangeRate} from '@/lib/exchange-rate';
 import { createCommerceService, hasCommerceService } from "@/lib/supabase/service";
 import { NextRequest, NextResponse } from "next/server";
 import { runCatalogImportJobs } from "@/lib/catalog-import-worker";
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const serviceClient = createCommerceService();
+    await refreshExchangeRate(serviceClient);
     const catalogImports = await runCatalogImportJobs(serviceClient, 8000);
     const report = await runSupplierAutomation(serviceClient, { worker: "vercel-daily", limit: Math.min(limit, 9), timeBudgetMs: 35000 });
     const wholesalePrices = await runWholesalePriceRefresh(serviceClient, Math.min(limit, 100));

@@ -1,6 +1,24 @@
+## Propuesta local de rentabilidad — 06/11/2026
+
+Objetivos nuevos: contribución 30% minorista, 18% mayorista y piso absoluto 10%. Política decimal preparada en modo simulación, sin aplicación productiva. Ver [fórmulas e impacto](../USD-PROFITABILITY.md) y [corrección postauditoría](../POST-AUDIT-2026-11-06.md). Prevalece sobre la conservación de margen histórico para el recorrido nuevo. No reactivar proveedores archivados ni motores de precios heredados para eludir la validación USD. Ninguna aprobación de tarifas o costos se infiere de las muestras HTTP.
+
+## Proveedores y rastreador vigente — 06/11/2026
+
+Decisión expresa del dueño: sólo Atacado Connect (`atacadoconnect.com`), Atacado USA (`atacadousa.com.py`), Star Company (`starcompany-py.com`) y Total Herramientas Oficial (`totalherramientasoficial.com.py`). Las referencias posteriores a nueve proveedores son históricas. La tabla privada `suppliers` conserva cinco archivados por auditoría; no reactivarlos ni consultarlos automáticamente. Star Company fue comprobado por dominio e identidad; no se interpretó como Star Compass.
+
+Se aplicó la baja lógica auditada de 43 productos exclusivamente dependientes de descartados y 30 variantes (25 exclusivas más 5 de padres archivados); 10 de esos productos estaban activos. No se tocaron órdenes, ítems ni movimientos de stock. Los candidatos del rastreador no son productos publicados. Panel nuevo `/admin/proveedores/rastreador`; comparador y abastecimiento existentes `/admin/proveedores/inteligencia`. Descubrimiento y monitor usan colas separadas, leases y cron Supabase `mya-supplier-catalog` cada minuto. Importación automática de borradores desactivada por defecto; nunca publicación automática. No instalar tareas de Windows ni servicios locales.
+
+Estado, evidencia real, migraciones, límites y mantenimiento: [FOUR-SUPPLIER-TRACKER-2026-11-06.md](FOUR-SUPPLIER-TRACKER-2026-11-06.md). La prueba de Cosméticos USA recorrió 13 páginas y 151 identidades; dos repeticiones sin duplicados. Los otros adaptadores tienen muestras reales de categoría y monitor alojado de una ficha, sin afirmar cobertura completa de sus catálogos. Cotizaciones y gastos requieren evidencia propia y vigente; el precio de origen no es costo total. Se preservan precios manuales y se revierte un ajuste USD automático que infrinja el piso por canal.
+
 # Proveedores, costos y seguimiento de MYA
 
 Panel: `/admin/proveedores/inteligencia`. Agenda: `/admin/proveedores`. Editor y costos comerciales existentes se conservan.
+
+## Herramienta manual local — 05/11/2026
+
+El dueño autorizó una herramienta que abre manualmente en su PC y eligió conservar el respaldo en la nube. Inicio: `Iniciar proveedores MYA.cmd` en la raíz MYAimportaciones, o `npm run suppliers:local` en Tienda WEB. Permite revisar fichas, explorar oportunidades y observar el avance producto por producto, con guardado de selecciones concretas. No instala tareas periódicas ni servicios; los instaladores históricos siguen retirados. Operación y límites: [LOCAL-MANUAL-2026-11-05.md](LOCAL-MANUAL-2026-11-05.md).
+
+Ampliación del mismo día: sincronización durante el recorrido y ajustes automáticos conservando el margen actual, pedidos expresamente por el dueño. Para ese modo confirmó mercadería + 20% de pasador, ambos pagados en USDT al cambio de compra del día; USD100 se convierten en 120 USDT. El modo `localMarginPrices` usa bases exactas documentadas y una RPC privada con auditoría, límite de cambio y protección de ediciones manuales. No activa el antiguo motor de comparables. La disponibilidad guardada y los precios aplicados se reflejan en la base común del administrador y la tienda al actualizar la página. Los candidatos recopilados se completan y publican mediante el flujo administrativo existente; no se publican por haber sido explorados. Las tarifas y el cambio fijo históricos de las secciones siguientes no describen este nuevo modo local.
 
 Revisión de vínculos y variantes del 01/11/2026: [LINKING-2026-11-01.md](LINKING-2026-11-01.md). Atlántico dispone ahora de lector HTTP de ficha primaria y confirmación administrativa de propuestas por lote. La cobertura restante sigue explícitamente pendiente.
 
@@ -8,7 +26,7 @@ Revisión de vínculos y variantes del 01/11/2026: [LINKING-2026-11-01.md](LINKI
 
 Los nueve proveedores oficiales estan registrados en `suppliers`. Ocho catalogos publicos devolvieron productos reales: Star Company, Vencell Alberdi, Neo Import, Atacado USA, Total Herramientas Oficial, Atlantico Shop, Atacado Connect y Mobile Zone. Madrid Center restringe el acceso automatizado y dispone de importacion CSV o carga manual. No se evitan controles de acceso ni se usan claves internas.
 
-El seguimiento se aloja en Supabase y conserva el respaldo diario existente de Vercel. Desde el 21/10/2026 no hay tarea de Windows ni revisión periódica local de Codex: el dueño prohibió usar su PC como servidor o abrir consolas automáticas. Los scripts PowerShell anteriores están deshabilitados. No reinstalarlos.
+El seguimiento automático se aloja en Supabase y conserva el respaldo diario existente de Vercel. Desde el 21/10/2026 no hay tarea de Windows ni revisión periódica local de Codex: se mantienen prohibidas las consolas automáticas y el uso de la PC como servidor permanente. El 05/11/2026 autorizó la herramienta manual descrita arriba. Los scripts PowerShell de instalación periódica anteriores están deshabilitados. No reinstalarlos.
 
 El procesador histórico `scripts/supplier-worker.mts` consultaba catálogos mediante navegador local; ese recorrido periódico fue retirado. Las listas iniciales son muestras/páginas visibles, no catálogos completos. La función Edge procesa las fichas primarias compatibles con HTTP, el cruce exacto de esas fichas y los comparables ya registrados. Las búsquedas que requieren renderizar un navegador (incluidos catálogos dinámicos) no están migradas a Edge: quedan para listas autorizadas CSV o revisión expresamente solicitada. No contratar ni simular un navegador remoto, ni reanudar el local silenciosamente. Vincular no publica productos; las coincidencias parciales requieren revisión. Se excluyen iPhone CPO, OUTLET, usados o activados de Connect; solo nuevos sellados.
 
@@ -30,7 +48,7 @@ El motor en la nube conserva permisos, identidad, robots, cadencia, tarifas, vig
 
 El paquete Edge se prepara puntualmente con `node scripts/package-supplier-cloud.mjs`, usando las fuentes compartidas de `src/lib` y dependencias fijadas; no instala servicios ni tareas. Nunca versionar `.env.local`, registros, cotizaciones privadas o credenciales. La programación usa tickets aleatorios de un uso, con vencimiento de dos minutos, emitidos solo desde PostgreSQL. Edge verifica y consume el ticket con el service role propio del servidor. No se coloca una clave de servicio o secreto reutilizable en la cola HTTP de `pg_net`.
 
-Los instaladores locales rechazan su ejecución. La PC puede estar apagada; la ejecución programada permanece en Supabase. No cambiar esta decisión por instrucciones históricas en documentos de entrega.
+Los instaladores periódicos locales rechazan su ejecución. La PC puede estar apagada; la ejecución programada de respaldo permanece en Supabase. La nueva herramienta sólo trabaja cuando el dueño la abre e inicia un recorrido. No reinstalar procesos locales periódicos por instrucciones históricas en documentos de entrega.
 
 ## Adaptadores y evidencia
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatCurrency } from "@/lib/format";
+import {ProductPrice} from '@/components/commerce/currency-provider';
 import type { Product } from "@/lib/types";
 
 const popular = ["Medicube", "SKIN1004", "Lattafa", "Kérastase", "iPhone", "Total", "Wadfow"];
@@ -94,7 +94,7 @@ export function ProductSearch({ mobile = false, catalogPath, onNavigate }: {
                 <Image width={48} height={48} src={product.imageUrl || "/placeholder-product.svg"} alt=""
                   className="size-12 shrink-0 rounded-lg border border-zinc-100 bg-white object-contain p-1" />
                 <span className="min-w-0 flex-1"><span className="line-clamp-2 block text-sm font-medium leading-5">{product.title}</span>
-                  <span className="mt-1 block text-xs font-semibold tabular-nums">{formatCurrency(product.retailPrice)}</span></span>
+                  <span className="mt-1 block text-xs font-semibold tabular-nums">{<ProductPrice product={product} ars={product.retailPrice}/>}</span></span>
                 <ArrowRight className="size-4 shrink-0 text-zinc-400" />
               </Link>)}
             </div>

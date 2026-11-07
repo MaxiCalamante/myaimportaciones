@@ -1,4 +1,8 @@
 "use server";
+import {moneyPercent,moneyCents} from '@/lib/money';
+
+import { getExchangeSnapshot } from '@/lib/monetary';
+import { DOLLAR_TYPES } from '@/lib/exchange-rate';
 import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
 import { scheduleTransactionalEmails } from "@/lib/email-worker";
 import { limitCommerceRequest } from "@/lib/request-limit";
@@ -28,7 +32,7 @@ export interface CheckoutInput {
 export interface OrderInput extends CheckoutInput {
   name: string; email: string; phone: string; address: string; city: string; notes: string;
   province?: string;
-  requestId: string; expectedTotal: number;
+  requestId: string; expectedTotal: number; quoteId?: string;
   acceptSeparateShipping: boolean;
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,6 +58,7 @@ async function resolveQuote(input: CheckoutInput) {
     if (line.variantId) variantIds.add(line.variantId);
   }
   const db = createCommerceService();
+  const exchange = await getExchangeSnapshot();
   const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...productIds]).is("deleted_at", null);
   if (error || products?.length !== productIds.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
   let dbVariants: { id: string; product_id: string; title: string; retail_price: number; stock: number; stock_verified_at: string | null; fulfillment_mode: string; supplier_available: boolean; is_active: boolean }[] = [];
@@ -62,18 +67,18 @@ async function resolveQuote(input: CheckoutInput) {
     if (varError || variants?.length !== variantIds.size) throw new Error("No pudimos verificar las variantes seleccionadas. Intentá nuevamente.");
     dbVariants = variants;
   }
+  const priced = await db.rpc('store_checkout_prices_v1',{items_input:input.lines,payment_input:input.paymentMethod,rate_input:exchange?.status==='valid'?exchange.id:null});
+  if(priced.error)throw new Error('Necesitamos una cotización vigente, costos y disponibilidad confirmados antes de cobrar. Actualizá el resumen o consultanos.');
+  const monetaryPrices=priced.data as Array<{productId:string;variantId:string|null;price:number|null;basis:WholesaleBasis|null;revision:number|null;usd:string|null}>;
   const wholesaleLines=input.lines.filter(l=>l.channel==='wholesale');
-  const wholesaleBasis=new Map<string,WholesaleBasis>();
   if(wholesaleLines.length){
     const reasons:string[]=[];
     for(const line of wholesaleLines){
       const p=products.find(p=>p.id===line.productId)!;
       const v=line.variantId?dbVariants.find(v=>v.id===line.variantId&&v.product_id===p.id):null;
       if(!p.is_active||line.variantId&&!v||v&&!v.is_active||p.has_variants&&!line.variantId)throw new Error('Revisá el producto y la variante exacta.');
-      const result=await db.rpc('wholesale_quote_basis_v1',{product_input:p.id,variant_input:line.variantId??null,quantity_input:line.quantity,payment_input:input.paymentMethod});
-      if(result.error)throw new Error('No se pudo verificar la cotización mayorista. Intentá nuevamente.');
-      const basis=result.data as WholesaleBasis;
-      wholesaleBasis.set(`${line.productId}:${line.variantId??''}`,basis);
+      const basis=monetaryPrices.find(r=>r.productId===p.id&&(r.variantId??null)===(line.variantId??null))?.basis;
+      if(!basis)throw Error('No se pudo verificar la cotización mayorista.');
       if(basis.status!=='ready'||!(Number(basis.unit_price)>0))reasons.push(`${p.title}: requiere confirmar costos y disponibilidad.`);
     }
     if(reasons.length)return{kind:'confirmation' as const,db,reasons};
@@ -107,7 +112,8 @@ async function resolveQuote(input: CheckoutInput) {
       }
     }
 
-    if(line.channel==='wholesale')price=Number(wholesaleBasis.get(`${line.productId}:${line.variantId??''}`)!.unit_price);
+    price=Number(monetaryPrices.find(r=>r.productId===p.id&&(r.variantId??null)===(line.variantId??null))?.price);
+    if(!Number.isFinite(price)||price<=0)throw new Error('Precio pendiente de confirmación.');
     const cost = costs?.find(c => c.product_id === p.id);
     const fresh = cost?.expenses_confirmed && cost?.verified_at && Date.now() - Date.parse(cost.verified_at) < 30 * 86400000;
     // Charge the published server price. Unknown costs disable discounts, not the purchase.
@@ -119,13 +125,11 @@ async function resolveQuote(input: CheckoutInput) {
       quantity: line.quantity,
       price,
       landedCost: fresh ? Number(cost.landed_cost) : null,
-      variableCost: fresh ? Number(cost.variable_cost ?? 0) + price * Number(cost.payment_fee_percent ?? 0) / 100 : 0,
+      variableCost: fresh ? (moneyCents(Number(cost.variable_cost ?? 0))+moneyCents(moneyPercent(price,Number(cost.payment_fee_percent ?? 0))))/100 : 0,
       minimumContribution: fresh ? Number(cost.minimum_contribution ?? 0) : 0,
       beauty: /cosm|capilar|crema|serum|tonic|limpieza|shampoo|aceite|mascarilla/i.test(category?.name ?? ""),
     };
   });
-  const supplyCheck = await db.rpc('supplier_checkout_quote_v1', {items_input:items.filter(i=>i.channel!=='wholesale').map(i=>({id:i.id,variant_id:i.variant_id,price:i.price})), payment_input:input.paymentMethod});
-  if (items.some(i=>i.channel!=='wholesale') && supplyCheck.error) throw new Error('Necesitamos confirmar disponibilidad y costos del proveedor antes de cobrar. Consultanos para continuar.');
   const supplierDelivery = input.lines.some(line => {
     if (line.variantId) {
       const v = dbVariants.find(v => v.id === line.variantId);
@@ -163,16 +167,30 @@ async function resolveQuote(input: CheckoutInput) {
     const policy=await getPublicWholesalePolicy(db);
     const minimum=validateWholesaleOrder(items.map(i=>({channel:i.channel,quantity:i.quantity,price:i.price})),policy);
     if(!minimum.meetsMinimum)throw new Error(minimum.errorMessage);
-    const subtotal=Math.round(items.reduce((sum,i)=>sum+i.price*i.quantity,0)*100)/100;
+    const subtotal=items.reduce((sum,i)=>sum+moneyCents(i.price)*i.quantity,0)/100;
     // Quote already includes the configured payment/risk costs and quantity margin. Do not stack retail promotions.
-    quote={subtotal,discount:0,shipping:option.price,total:Math.round((subtotal+option.price)*100)/100,promotion:'Precios mayoristas verificados',couponMessage:input.coupon?'Los precios mayoristas no acumulan cupones minoristas.':''};
+    quote={subtotal,discount:0,shipping:option.price,total:(moneyCents(subtotal)+moneyCents(option.price))/100,promotion:'Precios mayoristas verificados',couponMessage:input.coupon?'Los precios mayoristas no acumulan cupones minoristas.':''};
   }else quote=priceOrder(items,input.paymentMethod,input.coupon,option.price,input.postalCode);
-  return {kind:'order' as const, db, items, quote: { ...quote, shippingQuotedSeparately }, option };
+  return {kind:'order' as const, db, items, quote: { ...quote, shippingQuotedSeparately }, option, monetaryPrices, exchange };
+}
+function checkoutFingerprint(input:CheckoutInput){
+ return createHash('sha256').update(JSON.stringify({lines:input.lines.map(l=>({productId:l.productId,variantId:l.variantId??null,quantity:l.quantity,channel:l.channel})),payment:input.paymentMethod,postal:input.postalCode.trim().toUpperCase(),province:(input.province??'').trim(),city:(input.city??'').trim(),address:(input.address??'').trim(),shipping:input.shippingOptionId,coupon:input.coupon.trim().toUpperCase()})).digest('hex');
 }
 export async function quoteOrderAction(input: CheckoutInput) {
-  try { await limitCommerceRequest("quote"); const result=await resolveQuote(input);
-    return result.kind==='confirmation'?{ok:true as const,quote:null,confirmationRequired:true as const,reasons:result.reasons}:{ok:true as const,quote:result.quote,confirmationRequired:false as const,reasons:[]}; }
-  catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "No pudimos cotizar el pedido." }; }
+ try {
+  await limitCommerceRequest('quote');const result=await resolveQuote(input);
+  if(result.kind==='confirmation')return {ok:true as const,quote:null,confirmationRequired:true as const,reasons:result.reasons};
+  const {db,items,quote,option,monetaryPrices,exchange}=result;
+  const settings=await db.from('store_money_settings').select('quote_seconds').eq('id',true).single();
+  if(settings.error)throw Error('No se pudo verificar la vigencia de compra.');
+  const expiresAt=new Date(Math.min(Date.now()+settings.data.quote_seconds*1000,exchange?.status==='valid'&&exchange.expiresAt?Date.parse(exchange.expiresAt):Infinity)).toISOString();
+  const payload={payment:input.paymentMethod,items,subtotal:quote.subtotal,discount:quote.discount,shipping:quote.shipping,total:quote.total,shipping_option:option.id,promotion:quote.promotion,discountAllocations:quote.discountAllocations??{}};
+  const checked=await db.rpc('store_validate_profitability_v2',{payload_input:payload,rate_input:exchange?.id??null,snapshot_input:null});
+  if(checked.error)throw Error('La rentabilidad final requiere revisión: costos, comisiones o descuentos pendientes. Consultanos antes de pagar.');
+  const saved=await db.from('store_checkout_quotes').insert({fingerprint:checkoutFingerprint(input),rate_id:monetaryPrices.some(p=>p.usd)?exchange?.id:null,payload,prices:monetaryPrices,profitability_snapshot:checked.data,expires_at:expiresAt}).select('id').single();
+  if(saved.error)throw Error('No se pudo guardar la cotización de compra.');
+  return {ok:true as const,quote:{...quote,quoteId:saved.data.id as string,expiresAt,exchangeRate:exchange?.rate??undefined,exchangeLabel:exchange?`Dólar ${DOLLAR_TYPES[exchange.kind]} venta`:undefined},confirmationRequired:false as const,reasons:[]};
+ }catch(error){return {ok:false as const,error:error instanceof Error?error.message:'No pudimos cotizar el pedido.'};}
 }
 export async function createOrderAction(input: OrderInput) {
   await limitCommerceRequest("order");
@@ -196,17 +214,24 @@ export async function createOrderAction(input: OrderInput) {
     scheduleTransactionalEmails(existing.id);
     return { pendingConfirmation:false as const, orderId: existing.id as string, trackingCode: existing.tracking_code as string, total: Number(existing.total_amount), initPoint: existing.payment_url as string | undefined, expiresAt: existing.reservation_expires_at as string, paymentError: existing.payment_method === "mercado_pago" && !existing.payment_url ? "Pedido reservado. Contactanos con el código para recuperar el pago." : undefined };
   }
-  const resolved=await resolveQuote(input);
-  if(resolved.kind==='confirmation'){
-    const request=await resolved.db.rpc('create_wholesale_request_v1',{payload:{request_id:input.requestId,request_hash:requestHash,profile_id:user?.id??null,contact:{name:input.name.trim(),email:input.email.toLowerCase().trim(),phone:input.phone.trim(),address:input.address,city:input.city,province:input.province,postalCode:input.postalCode,notes:input.notes},selection:input.lines,reasons:resolved.reasons}});
-    if(request.error)throw new Error('No se pudo registrar la solicitud. Reintentá con el mismo carrito.');
-    return{pendingConfirmation:true as const,trackingCode:String(request.data.reference),requestId:input.requestId};
+  if(!input.quoteId){
+    const resolved=await resolveQuote(input);
+    if(resolved.kind==='confirmation'){
+      const request=await resolved.db.rpc('create_wholesale_request_v1',{payload:{request_id:input.requestId,request_hash:requestHash,profile_id:user?.id??null,contact:{name:input.name.trim(),email:input.email.toLowerCase().trim(),phone:input.phone.trim(),address:input.address,city:input.city,province:input.province,postalCode:input.postalCode,notes:input.notes},selection:input.lines,reasons:resolved.reasons}});
+      if(request.error)throw new Error('No se pudo registrar la solicitud.');
+      return{pendingConfirmation:true as const,trackingCode:String(request.data.reference),requestId:input.requestId};
+    }
+    throw Error('Actualizá el resumen para obtener una cotización de compra vigente.');
   }
-  const { db, items, quote, option } = resolved;
-  if (option.type !== "pickup" && (!input.address.trim() || !input.city.trim())) throw new Error("Completá domicilio o sucursal exacta y localidad.");
-  if (quote.total !== input.expectedTotal) throw new Error("El precio cambió. Actualizá el resumen antes de confirmar.");
-  const { data: order, error } = await db.rpc(input.lines.some(l=>l.channel==='wholesale')?"create_wholesale_order_v1":"create_retail_order_v2", {
-    payload: { request_id: input.requestId, request_hash: requestHash, profile_id: user?.id ?? null, name: input.name.trim(), email: input.email.toLowerCase().trim(), phone: input.phone.trim(), address: option.type === "pickup" ? "Retiro coordinado en Tandil" : `${input.address}, ${input.city}${input.province ? `, Prov. ${input.province}` : ""}, CP ${input.postalCode}`, notes: [input.notes, quote.shippingQuotedSeparately ? "Envío a cotizar y abonar por separado. El pago de este pedido corresponde únicamente a los productos." : ""].filter(Boolean).join("\n"), payment: input.paymentMethod, items, subtotal: quote.subtotal, discount: quote.discount, shipping: quote.shipping, total: quote.total, shipping_option: option.id, promotion: quote.promotion },
+  if(!uuid.test(input.quoteId))throw Error('Cotización inválida.');
+  const db=createCommerceService();
+  const saved=await db.from('store_checkout_quotes').select('payload,expires_at,fingerprint').eq('id',input.quoteId).single();
+  if(saved.error||saved.data.fingerprint!==checkoutFingerprint(input)||Date.parse(saved.data.expires_at)<Date.now())throw Error('La cotización venció o cambió. Actualizá el resumen.');
+  if(Number(saved.data.payload.total)!==input.expectedTotal)throw Error('El total cambió. Actualizá el resumen.');
+  const pickup=saved.data.payload.shipping_option==='pickup_tandil';
+  if(!pickup&&(!input.address.trim()||!input.city.trim()))throw Error('Completá el domicilio y la localidad.');
+  const {data:order,error}=await db.rpc('create_store_order_v1',{
+    quote_input:input.quoteId,fingerprint_input:checkoutFingerprint(input),customer_input:{request_id:input.requestId,request_hash:requestHash,profile_id:user?.id??null,name:input.name.trim(),email:input.email.toLowerCase().trim(),phone:input.phone.trim(),address:pickup?'Retiro coordinado en Tandil':`${input.address}, ${input.city}, ${input.province??''}, CP ${input.postalCode}`,notes:[input.notes,isShippingPaidSeparately()?'Envío a cotizar y abonar por separado. El pago corresponde únicamente a los productos.':''].filter(Boolean).join('\n')}
   });
   if (error || !order) throw new Error("No pudimos reservar el pedido. Actualizá disponibilidad e intentá nuevamente.");
   scheduleTransactionalEmails(order.id);

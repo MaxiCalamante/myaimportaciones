@@ -26,9 +26,12 @@ export interface PublicOrderItem {
   variant_title?: string | null;
   quantity: number;
   unit_price: number;
+  base_unit_usd?: number | null;
 }
 
 export interface PublicOrder {
+  charge_currency?: string | null;
+  exchange_snapshot?: {rate:string;kind:string;sourceAt:string;source:string} | null;
   id: string;
   tracking_code: string;
   status: string;
@@ -99,6 +102,7 @@ export function OrderDetailView({ order }: { order: PublicOrder }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {order.exchange_snapshot&&<p className="rounded-xl border bg-white p-3 text-xs text-zinc-600">Importes fijados en ARS · Dólar {order.exchange_snapshot.kind} venta: {formatCurrency(Number(order.exchange_snapshot.rate))} ARS · Fuente: {new Date(order.exchange_snapshot.sourceAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})}</p>}
       {/* Print-Only Official Invoice / Packing Header */}
       <div className="hidden print:block border-b-2 border-zinc-950 pb-5 mb-6">
         <div className="flex justify-between items-start">

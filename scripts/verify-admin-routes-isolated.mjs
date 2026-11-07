@@ -1,0 +1,24 @@
+// Real Next routes with controlled local auth responses, plus SQL permission tests
+// in tests/profitability-checkout.test.ts. Not a production login certification.
+import{createServer}from'node:http';import{spawn}from'node:child_process';import{readFile,readdir,writeFile}from'node:fs/promises';import{resolve}from'node:path';import assert from'node:assert/strict';
+const target=resolve(process.argv[2]??'');let backendPort;
+for(const name of await readdir(resolve(target,'.next/server/chunks/ssr'))){if(!name.endsWith('.js'))continue;const s=await readFile(resolve(target,'.next/server/chunks/ssr',name),'utf8');const m=s.match(/http:\/\/127\.0\.0\.1:(\d+)/);if(m){backendPort=Number(m[1]);break;}}
+if(!backendPort)throw Error('No isolated mock URL found in build');
+const uid='11111111-1111-4111-8111-111111111111',now=Math.floor(Date.now()/1000),requests=[];
+const token=role=>[Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:uid,role,aud:'authenticated',iat:now,exp:now+3600})).toString('base64url'),'local-test-signature'].join('.');
+const cookie=role=>'sb-127-auth-token=base64-'+Buffer.from(JSON.stringify({access_token:token(role),refresh_token:'local-refresh',expires_at:now+3600,token_type:'bearer',user:{id:uid}})).toString('base64url');
+const backend=createServer((req,res)=>{let role='';try{role=JSON.parse(Buffer.from((req.headers.authorization??'').split('.')[1],'base64url')).role;}catch{}requests.push({url:req.url,role});res.setHeader('content-type','application/json');
+ if(req.url.startsWith('/auth/')){if(!['admin','customer'].includes(role)){res.statusCode=401;return res.end('{"message":"No local session"}');}return res.end(JSON.stringify({id:uid,aud:'authenticated',role:'authenticated',email:'qa@example.test',app_metadata:{},user_metadata:{}}));}
+ if(req.url.startsWith('/rest/v1/profiles'))return res.end(JSON.stringify({id:uid,role:role==='admin'?'admin':'customer',full_name:'Cliente QA',customer_tier:'retail'}));
+ if(req.url.includes('claim_store_exchange_refresh_v1'))return res.end('{}');
+ if(req.url.includes('store_exchange_public_v1'))return res.end('null');
+ if(req.url.includes('store_profitability_workspace_v2'))return res.end(JSON.stringify({policy:{retail_target:'30',wholesale_target:'18',minimum_margin:'10',usd_step:'0.01',cost_max_age_seconds:86400,enforcement:'preview',methods:{mercado_pago:{confirmed:false},transferencia:{confirmed:false}}},profiles:[]}));
+ if(req.url.includes('tracker_workspace_v1'))return res.end(JSON.stringify({total:0,page:1,size:30,items:[],suppliers:[],sources:[],runs:[],events:[],categories:[],counts:{}}));
+ if(req.url.startsWith('/rest/v1/store_money_settings'))return res.end(JSON.stringify({id:true,kind:'blue',refresh_seconds:900,max_age_seconds:86400,quote_seconds:900,adjustment:0,round_ars:1,max_change:20,retail_margin:30,wholesale_margin:18,minimum_margin:10}));
+ res.end('[]');}).listen(backendPort,'127.0.0.1');await new Promise(r=>backend.once('listening',r));
+const temporary=createServer().listen(0,'127.0.0.1');await new Promise(r=>temporary.once('listening',r));const appPort=temporary.address().port;await new Promise(r=>temporary.close(r));
+const child=spawn(process.execPath,[resolve(target,'node_modules/next/dist/bin/next'),'start','-p',String(appPort)],{cwd:target,env:{...process.env,NEXT_PUBLIC_SUPABASE_URL:`http://127.0.0.1:${backendPort}`,NEXT_PUBLIC_SUPABASE_ANON_KEY:'isolated-public-test-key',SUPABASE_SERVICE_ROLE_KEY:'isolated-service-test-key',NEXT_TELEMETRY_DISABLED:'1',COMMERCE_CHECKOUT_ENABLED:'false'},windowsHide:true,stdio:['ignore','pipe','pipe']});let logs='';child.stdout.on('data',v=>logs+=v);child.stderr.on('data',v=>logs+=v);
+const results=[];try{for(let i=0;i<60;i++){try{await fetch(`http://127.0.0.1:${appPort}/robots.txt`);break;}catch{await new Promise(r=>setTimeout(r,250));}}
+ for(const route of['/admin/moneda','/admin/proveedores/rastreador'])for(const role of['anonymous','customer','admin']){const r=await fetch(`http://127.0.0.1:${appPort}${route}`,{redirect:'manual',headers:role==='anonymous'?{}:{cookie:cookie(role)}});const html=await r.text(),location=r.headers.get('location');if(role==='anonymous'){assert.equal(r.status,307);assert.ok(location?.startsWith('/login'));}else if(role==='customer'){assert.equal(r.status,307);assert.equal(location,'/cuenta');}else{assert.equal(r.status,200);assert.ok(html.includes(route.endsWith('moneda')?'Monedas y precios USD':'Proveedores y rastreador'));assert.ok(!html.includes('error-boundary'))}results.push({route,role,status:r.status,location});}
+ console.log(JSON.stringify({environment:'real Next local routes; controlled local auth backend',results},null,2));
+}finally{child.kill();backend.close();await writeFile(resolve(target,'admin-route-proof.json'),JSON.stringify({results,requests,logs},null,2));}

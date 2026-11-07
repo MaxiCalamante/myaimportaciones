@@ -1,5 +1,6 @@
 "use client";
 
+import {ProductPrice} from './currency-provider';
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -65,7 +66,7 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
       </Link>
       <div className="mt-1.5">
         <p data-product-price className="flex flex-wrap items-baseline gap-x-1 text-[clamp(0.9375rem,4.4vw,1.2rem)] font-bold leading-6 tracking-tight tabular-nums text-zinc-950 sm:text-xl">
-          {(priceRange||(channel==='wholesale'&&wholesale.from)) && <span className="text-[10px] font-normal tracking-normal text-zinc-500">Desde</span>}<span className="whitespace-nowrap">{displayPrice===null?'Precio por confirmar':formatCurrency(displayPrice)}</span>
+          {(priceRange||(channel==='wholesale'&&wholesale.from)) && <span className="text-[10px] font-normal tracking-normal text-zinc-500">Desde</span>}<span className="whitespace-nowrap">{<ProductPrice product={product} channel={channel} ars={displayPrice}/>}</span>
         </p>
         {channel === "wholesale" && <p className="text-[10px] leading-4 text-zinc-600">{pending?'Solicitud sin cobro previo':'Por unidad · combinable con otros productos'}</p>}
         {channel==='wholesale'&&price!==null&&product.retailPrice>price&&!product.hasVariants&&<p className="text-[10px] leading-4 text-zinc-500">Minorista: {formatCurrency(product.retailPrice)}</p>}

@@ -1,3 +1,5 @@
+import { CurrencyProvider } from '@/components/commerce/currency-provider';
+import { getExchangeSnapshot } from '@/lib/monetary';
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -75,7 +77,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { profile } = await getCurrentProfile();
+  const [exchange, { profile }] = await Promise.all([getExchangeSnapshot(), getCurrentProfile()]);
   const { categories } = await getPublicNavigation();
 
   return (
@@ -96,7 +98,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full bg-white text-zinc-950">
         <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-5 focus:py-3 focus:font-bold focus:shadow-xl">Saltar al contenido</a>
-        <CommerceProvider key={profile?.id || 'guest'} accountId={profile?.id}>
+        <CurrencyProvider snapshot={exchange}><CommerceProvider key={profile?.id || 'guest'} accountId={profile?.id}>
           <div className="storefront-shell flex min-h-screen flex-col">
             <SiteHeader initialCategories={categories} profile={profile} />
             <main id="contenido" tabIndex={-1} className="flex-1">{children}</main>
@@ -111,7 +113,7 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <MarketingScripts />
           </Suspense>
-        </CommerceProvider>
+        </CommerceProvider></CurrencyProvider>
       </body>
     </html>
   );

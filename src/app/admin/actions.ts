@@ -211,6 +211,18 @@ export async function createProductAction(formData: FormData) {
 async function createProduct(formData: FormData) {
   const db = await getAdminClient();
   const { fields, slug, stock, hasVariants, variants } = parseProductForm(formData, true);
+  const usdMode=formData.get('price_currency')==='USD';
+  const publishRequested=fields.is_active;
+  if(usdMode)fields.is_active=false;
+  const usdBase={retail:String(fields.retail_price),wholesale:String(fields.wholesale_price)};
+  const usdVariants=variants.map(v=>({retail:String(v.retailPrice),wholesale:String(v.wholesalePrice??0)}));
+  if(usdMode){
+    const {getExchangeSnapshot}=await import('@/lib/monetary');const {usdToArs}=await import('@/lib/money');
+    const exchange=await getExchangeSnapshot();if(exchange?.status!=='valid'||!exchange.rate)throw new AdminFormError('Actualizá la cotización en Monedas y USD antes de crear el producto.');
+    if(!(fields.retail_price>0))throw new AdminFormError('Ingresá un precio base USD positivo.');
+    fields.retail_price=usdToArs(usdBase.retail,exchange.rate,exchange.roundArs);fields.wholesale_price=Number(usdBase.wholesale)>0?usdToArs(usdBase.wholesale,exchange.rate,exchange.roundArs):0;
+    variants.forEach((v,i)=>{v.retailPrice=usdToArs(usdVariants[i].retail,exchange.rate!,exchange.roundArs);v.wholesalePrice=Number(usdVariants[i].wholesale)>0?usdToArs(usdVariants[i].wholesale,exchange.rate!,exchange.roundArs):0;});
+  }
   await checkProductCategory(db, fields.category_id, getString(formData, "category_id"));
   const { data: match, error: slugError } = await db.from("products").select("id").eq("slug", slug).maybeSingle();
   if (slugError) throw new AdminFormError("No se pudo verificar el enlace del producto.");
@@ -228,8 +240,10 @@ async function createProduct(formData: FormData) {
     throw new AdminFormError(error?.code === "23505" ? "Ya existe un producto con ese enlace o SKU. Revisá el catálogo." : "No se pudo guardar el producto. Revisá los datos y tu conexión.");
   }
 
+  const insertedVariantIds:string[]=[];
   if (hasVariants && variants.length) {
     const variantRows = variants.map((v, idx) => ({
+      id: crypto.randomUUID(),
       product_id: data.id,
       title: v.title,
       sku: v.sku || null,
@@ -244,6 +258,7 @@ async function createProduct(formData: FormData) {
       options: v.options,
       display_order: idx,
     }));
+    insertedVariantIds.push(...variantRows.map(v=>v.id));
     const { error: variantError } = await db.from("product_variants").insert(variantRows);
     if (variantError) {
       await db.from("products").delete().eq("id", data.id);
@@ -251,6 +266,14 @@ async function createProduct(formData: FormData) {
     }
   }
 
+  if(usdMode){
+    const rows=[{variantId:null as string|null,...usdBase},...usdVariants.map((v,i)=>({variantId:insertedVariantIds[i],...v}))];
+    for(const row of rows){
+      const saved=await db.rpc('save_product_usd_v1',{product_input:data.id,variant_input:row.variantId,prices_input:{retailUsd:row.retail,wholesaleUsd:Number(row.wholesale)>0?row.wholesale:null,retailSource:'manual',wholesaleSource:'manual',retailMargin:null,wholesaleMargin:null,revision:0},note_input:'Alta administrativa con moneda original USD.'});
+      if(saved.error){await db.from('products').delete().eq('id',data.id);throw new AdminFormError('No se guardó la base USD. Se revirtió el alta para evitar un precio ambiguo.');}
+    }
+  }
+  if(usdMode&&publishRequested){const activated=await db.from('products').update({is_active:true}).eq('id',data.id);if(activated.error){await db.from('products').delete().eq('id',data.id);throw new AdminFormError('La publicación requiere confirmar costos y documentación. Guardá primero como borrador.');}}
   refreshCatalog();
   return { success: true, id: data.id, slug: data.slug };
 }

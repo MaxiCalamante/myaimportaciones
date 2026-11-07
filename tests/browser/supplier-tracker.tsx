@@ -1,0 +1,2 @@
+import React from'react';import{createRoot}from'react-dom/client';import{SupplierTrackerPanel}from'../../src/components/admin/supplier-tracker-panel';import{fixture}from'./tracker-actions';
+createRoot(document.getElementById('root')!).render(<main className="mx-auto max-w-7xl px-4 py-8"><h1 className="mb-7 text-3xl font-bold">Proveedores y rastreador · QA local</h1><SupplierTrackerPanel initial={fixture}/></main>);

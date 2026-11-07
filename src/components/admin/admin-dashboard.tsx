@@ -720,10 +720,11 @@ Logística / Despacho: +${calcShippingPercent}%
             Panel de administración
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Productos, pedidos y clientes en un solo lugar.
+            Productos, pedidos y clientes en un solo lugar. Para productos dolarizados, consultá Monedas y USD; los controles ARS anteriores conservan el respaldo de migración.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+          <a href="/admin/moneda" className="inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold">Monedas y USD</a>
           <a
             href="/admin/costos"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 text-center text-xs font-bold text-zinc-950 hover:bg-amber-400 shadow-sm transition-colors sm:px-5 sm:text-sm"
@@ -843,10 +844,10 @@ Logística / Despacho: +${calcShippingPercent}%
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
                     <Building2 className="h-3.5 w-3.5" /> B2B & Supply Chain Hub
                   </span>
-                  <span className="text-xs text-zinc-500 font-medium">Cotización referencia: 1 USD = $1.350 ARS</span>
+                  <span className="text-xs text-zinc-500 font-medium">Cotizaciones y costos según evidencia vigente</span>
                 </div>
                 <h2 className="mt-2 text-2xl font-black text-zinc-900 tracking-tight">
-                  Control de Proveedores, Costos y Stock Mayorista
+                  Proveedores, rastreador y costos
                 </h2>
                 <p className="mt-1 text-sm text-zinc-600 max-w-3xl">
                   Monitoreá en tiempo real los costos de compra en origen (Paraguay / USA), márgenes brutos,
@@ -854,6 +855,7 @@ Logística / Despacho: +${calcShippingPercent}%
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
+                <a href="/admin/proveedores/rastreador" className="inline-flex min-h-11 items-center rounded-xl bg-sky-800 px-4 text-sm font-semibold text-white">Abrir proveedores y rastreador</a>
                 <button
                   type="button"
                   onClick={() => setActiveTab("pricing_engine")}

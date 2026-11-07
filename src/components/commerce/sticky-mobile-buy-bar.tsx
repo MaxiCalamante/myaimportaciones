@@ -1,9 +1,11 @@
 "use client";
 
 import { Check, MessageCircle, ShoppingBag, ShoppingCart } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
+import {multiplyUsd}from'@/lib/money';
+import {DualPrice} from './currency-provider';
 
 interface Props {
+  usd?: string | null;
   price: number;
   quantity: number;
   added: boolean;
@@ -17,7 +19,7 @@ interface Props {
   variantTitle?: string;
 }
 
-export function StickyMobileBuyBar({ price, quantity, added, onAddToCart, onOpenWhatsApp, cartCount, onOpenCart, visible, disabled, needsSelection, variantTitle }: Props) {
+export function StickyMobileBuyBar({ price, quantity, usd, added, onAddToCart, onOpenWhatsApp, cartCount, onOpenCart, visible, disabled, needsSelection, variantTitle }: Props) {
   if (!visible) return null;
   const label = added ? "Agregado" : disabled ? needsSelection ? "Elegir" : "Consultar" : "Agregar";
   const Icon = added ? Check : disabled ? MessageCircle : ShoppingCart;
@@ -33,7 +35,7 @@ export function StickyMobileBuyBar({ price, quantity, added, onAddToCart, onOpen
       <div className="mx-auto grid max-w-xl grid-cols-[minmax(0,1fr)_auto_2.75rem] items-center gap-2 pb-3">
         <div className="min-w-0 pr-1">
           <p className="truncate text-[11px] font-medium text-zinc-500">{needsSelection ? "Elegí una opción" : `Total · ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`}</p>
-          <p className="whitespace-nowrap text-[clamp(0.95rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight tabular-nums text-zinc-950">{formatCurrency(price * quantity)}</p>
+          <p className="text-[clamp(0.95rem,4.5vw,1.125rem)] font-bold leading-tight tracking-tight tabular-nums text-zinc-950"><DualPrice ars={price>0?price*quantity:null} usd={usd?multiplyUsd(usd,quantity):null}/></p>
           {variantTitle && <p className="truncate text-[10px] text-zinc-500" title={variantTitle}>{variantTitle}</p>}
         </div>
         <button type="button" onClick={purchase} aria-label={disabled ? needsSelection ? "Elegir opciones del producto" : "Consultar disponibilidad por WhatsApp" : "Agregar al carrito desde el resumen"} className="inline-flex h-12 min-w-24 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 text-sm font-semibold text-white transition-colors hover:bg-sky-800 active:scale-[0.98] sm:min-w-28">
