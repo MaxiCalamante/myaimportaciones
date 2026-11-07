@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { CatalogSyncButton } from './catalog-sync-button';
-import { OpportunityCardActions } from './opportunity-card-actions';
+import { OpportunityInteractiveGrid, type OpportunityItem } from './opportunity-interactive-grid';
 
 const root = '/admin/oportunidades';
 export const opportunityStates: Record<string,string> = {
@@ -13,13 +12,7 @@ const num = new Intl.NumberFormat('es-AR',{ maximumFractionDigits:2 });
 export const displayCatalogDate = (value: string|null) => value ? date.format(new Date(value)) : 'Pendiente';
 export const displayCatalogAmount = (value: number|null, currency = 'USD') => value == null ? 'Pendiente' : currency + ' ' + num.format(value);
 
-type Opportunity = {
-  id:string; title:string; brand:string; sku:string; model:string; url:string; image_url:string|null;
-  origin_cost:number|null; currency:string|null; last_success_at:string|null; last_error:string|null; supplier:string;
-  state:string; availability:string; displayed_retail_usd:number|null; displayed_wholesale_usd:number|null;
-  displayed_retail_ars:number|null; displayed_wholesale_ars:number|null;
-  cost_usd:number|null; margin:number|null; active:boolean; slug:string|null;
-};
+type Opportunity = OpportunityItem;
 export type CatalogSummary = {
   suppliers:{ id:string; name:string; enabled:boolean; last_success_at:string|null; next_run_at:string|null }[];
   sources:{ id:string; supplier_id:string; label:string; enabled:boolean; items:number }[];
@@ -35,9 +28,32 @@ export function SupplierOpportunityCatalog({ summary, page, filters }: {
   summary:CatalogSummary; page:CatalogPageData; filters:Record<string,string>;
 }) {
   const params = (next: number) => root + '?' + new URLSearchParams({ ...filters, page:String(next) });
+  const filterParams = (overrides: Record<string, string | null>) => {
+    const next = { ...filters };
+    for (const [k, v] of Object.entries(overrides)) {
+      if (v === null || v === '') delete next[k];
+      else next[k] = v;
+    }
+    delete next.page;
+    const qs = new URLSearchParams(next).toString();
+    return root + (qs ? '?' + qs : '');
+  };
+
   const maxPage = Math.max(1,Math.ceil(page.total/page.size));
   const selectedSource = summary.sources.find(source => source.id === filters.sourceId);
   const runLabels: Record<string,string> = { queued:'En cola', running:'En curso', done:'Navegación finalizada', partial:'Cobertura incompleta', paused:'Pausado', error:'Error' };
+  const totalStockEvidence = summary.counts.reduce((acc, c) => acc + (c.with_stock_evidence ?? 0), 0);
+
+  const statusPills: { key: string | null; label: string; count?: number }[] = [
+    { key: null, label: 'Todos' },
+    { key: 'in_stock', label: '⚡ Solo en stock', count: totalStockEvidence > 0 ? totalStockEvidence : undefined },
+    { key: 'new', label: 'Nuevos (24 h)' },
+    { key: 'ready', label: 'Listos para publicar' },
+    { key: 'published', label: 'Ya publicados' },
+    { key: 'review', label: 'Requiere revisión' },
+    { key: 'out_of_stock', label: 'Sin stock' },
+  ];
+
   return <section className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><h1 className="text-2xl font-bold">Catálogo de oportunidades</h1><p className="mt-1 text-sm text-zinc-600">Referencias privadas de los cuatro proveedores autorizados.</p></div>
@@ -71,6 +87,35 @@ export function SupplierOpportunityCatalog({ summary, page, filters }: {
         </div>)}
       </div>
     </details>
+
+    {/* Quick status filter pills */}
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Filtro rápido:</span>
+      {statusPills.map((pill) => {
+        const isActive = (pill.key === null && !filters.status) || filters.status === pill.key;
+        return (
+          <Link
+            key={pill.key ?? 'all'}
+            href={filterParams({ status: pill.key })}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+              isActive
+                ? 'bg-sky-900 text-white shadow-sm ring-1 ring-sky-900'
+                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+            }`}
+          >
+            {pill.label}
+            {pill.count != null && (
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                isActive ? 'bg-sky-800 text-sky-100' : 'bg-zinc-200 text-zinc-600'
+              }`}>
+                {pill.count}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </div>
+
     <form action={root} className="grid gap-3 rounded-xl border bg-zinc-50 p-4 sm:grid-cols-2 lg:grid-cols-4">
       <label className="text-sm">Nombre, SKU, marca o modelo<input className={field} name="q" type="search" maxLength={120} defaultValue={filters.q} /></label>
       <label className="text-sm">Proveedor<select className={field} name="supplierId" defaultValue={filters.supplierId ?? ''}>
@@ -98,37 +143,10 @@ export function SupplierOpportunityCatalog({ summary, page, filters }: {
     </form>
     {selectedSource?.enabled && <CatalogSyncButton label="Sincronizar categoría" sourceId={selectedSource.id} />}
     <p className="text-sm font-medium">{num.format(page.total)} resultados</p>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {page.items.map(item => {
-        const costEstimated = item.cost_usd ?? (item.origin_cost != null && (!item.currency || item.currency === 'USD') ? Math.round(item.origin_cost * 1.2 * 100) / 100 : null);
-        const retailEstimated = item.displayed_retail_usd ?? (costEstimated != null ? Math.round((costEstimated / 0.7) * 100) / 100 : null);
-        const wholesaleEstimated = item.displayed_wholesale_usd ?? (costEstimated != null ? Math.round((costEstimated / 0.82) * 100) / 100 : null);
-        return (
-          <article key={item.id} className="min-w-0 rounded-xl border bg-white p-4 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-start gap-3">
-                {item.image_url && <Image unoptimized width={64} height={64} src={item.image_url} alt="" loading="lazy" className="size-16 shrink-0 rounded-lg object-contain bg-zinc-50 border border-zinc-100" />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-zinc-500 font-medium">{item.supplier} · {opportunityStates[item.state]}</p>
-                  <h2 className="break-words font-semibold text-zinc-900 leading-snug line-clamp-2">{item.title}</h2>
-                  <p className="break-words text-xs text-zinc-500 mt-0.5">{[item.brand,item.model,item.sku].filter(Boolean).join(' · ')}</p>
-                </div>
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm bg-zinc-50/70 p-2.5 rounded-lg border border-zinc-100">
-                <div><dt className="text-[11px] font-medium text-zinc-500">Origen</dt><dd className="font-semibold text-zinc-900">{displayCatalogAmount(item.origin_cost,item.currency ?? '')}</dd></div>
-                <div><dt className="text-[11px] font-medium text-zinc-500">Costo total (+20% pasero)</dt><dd className="font-semibold text-zinc-900">{displayCatalogAmount(item.cost_usd ?? costEstimated)}</dd></div>
-                <div><dt className="text-[11px] font-medium text-zinc-500">Minorista MYA (30%)</dt><dd className="font-semibold text-emerald-700">{item.displayed_retail_usd!=null?displayCatalogAmount(item.displayed_retail_usd):retailEstimated!=null?displayCatalogAmount(retailEstimated):displayCatalogAmount(item.displayed_retail_ars,'ARS')}</dd></div>
-                <div><dt className="text-[11px] font-medium text-zinc-500">Mayorista MYA (18%)</dt><dd className="font-semibold text-sky-700">{item.displayed_wholesale_usd!=null?displayCatalogAmount(item.displayed_wholesale_usd):wholesaleEstimated!=null?displayCatalogAmount(wholesaleEstimated):displayCatalogAmount(item.displayed_wholesale_ars,'ARS')}</dd></div>
-              </dl>
-              <p className="mt-2.5 text-xs text-zinc-500">{opportunityStates[item.availability]} · Verificado {displayCatalogDate(item.last_success_at)}</p>
-              {item.margin != null && <p className="text-xs font-medium text-emerald-700 mt-0.5">Margen minorista calculado: {num.format(item.margin)}%</p>}
-              {item.last_error && <p className="mt-1 line-clamp-2 text-xs text-red-700 bg-red-50 p-1.5 rounded">{item.last_error}</p>}
-            </div>
-            <OpportunityCardActions item={item} />
-          </article>
-        );
-      })}
-    </div>
+
+    {/* Interactive Grid with Multi-select and Batch Publishing */}
+    <OpportunityInteractiveGrid items={page.items} />
+
     <nav aria-label="Paginación del catálogo" className="flex flex-wrap items-center justify-center gap-4 text-sm">
       {page.page > 1 && <Link href={params(page.page-1)} className="rounded-lg border px-3 py-2">Anterior</Link>}
       <span>Página {page.page} de {maxPage}</span>

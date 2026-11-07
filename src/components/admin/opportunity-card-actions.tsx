@@ -22,15 +22,17 @@ export function OpportunityCardActions({ item }: OpportunityCardActionsProps) {
     id: string;
     slug: string;
     active: boolean;
-  } | null>(
-    item.active && item.slug
+  } | null>(null);
+
+  const effectivePublished =
+    published ||
+    (item.active && item.slug
       ? {
           id: item.product_id || '',
           slug: item.slug,
           active: true,
         }
-      : null
-  );
+      : null);
 
   const handleQuickPublish = () => {
     setMessage(null);
@@ -48,7 +50,7 @@ export function OpportunityCardActions({ item }: OpportunityCardActionsProps) {
     });
   };
 
-  if (published) {
+  if (effectivePublished) {
     return (
       <div className="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -58,9 +60,9 @@ export function OpportunityCardActions({ item }: OpportunityCardActionsProps) {
             </svg>
             Publicado en la tienda
           </span>
-          {published.id ? (
+          {effectivePublished.id ? (
             <Link
-              href={`/admin?editProduct=${published.id}`}
+              href={`/admin?editProduct=${effectivePublished.id}`}
               className="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-200 transition-colors"
             >
               Editar
@@ -74,7 +76,7 @@ export function OpportunityCardActions({ item }: OpportunityCardActionsProps) {
             </Link>
           )}
           <Link
-            href={`/producto/${published.slug}`}
+            href={`/producto/${effectivePublished.slug}`}
             target="_blank"
             className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-100 transition-colors"
           >
