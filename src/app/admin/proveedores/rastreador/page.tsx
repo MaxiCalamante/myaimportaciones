@@ -63,7 +63,7 @@ async function CatalogArchive({ archive, page }: { archive: "productos" | "varia
 }
 
 export default async function TrackerPage({ searchParams }: {
-  searchParams: Promise<{ archivo?: string; pagina?: string }>;
+  searchParams: Promise<{ archivo?: string; pagina?: string; q?: string }>;
 }) {
   const { profile } = await getCurrentProfile();
   if (!profile) redirect("/login?next=/admin/proveedores/rastreador");
@@ -83,7 +83,7 @@ export default async function TrackerPage({ searchParams }: {
       <Link href={`${trackerPath}?archivo=productos`} className="mb-7 inline-flex min-h-11 items-center font-semibold text-sky-800">
         Ver catálogo archivado
       </Link>
-      <SupplierTrackerPanel initial={await readTracker()} />
+      <SupplierTrackerPanel initial={await readTracker({ q: typeof params.q === 'string' ? params.q.slice(0,120) : undefined })} />
     </>}
   </main>;
 }

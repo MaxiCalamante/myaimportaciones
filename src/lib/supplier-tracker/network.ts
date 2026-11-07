@@ -17,7 +17,7 @@ async function request(url:string,key:SupplierKey,fetcher:typeof fetch,authorize
  let current=sourceUrl(url,url,key);const signal=AbortSignal.timeout(10000);
  for(let redirects=0;redirects<=3;redirects++){
   authorize?.(current);
-  const response=await fetcher(current,{redirect:'manual',signal,headers:{'User-Agent':'MYA-CatalogMonitor/2.0 (+https://myaimportaciones.com)','Accept':'text/html,application/xhtml+xml,text/plain'}});
+  const response=await fetcher(current,{redirect:'manual',signal,headers:{'User-Agent':'MYA-CatalogMonitor/2.0 (+https://myaimportaciones.com)','Accept':'text/html,application/xhtml+xml,application/xml,text/plain'}});
   if(![301,302,303,307,308].includes(response.status))return {response,finalUrl:current};
   const location=response.headers.get('location');await response.body?.cancel();if(!location)throw new TrackerHttpError('Redirección inválida.');current=sourceUrl(location,current,key);
  }throw new TrackerHttpError('Demasiadas redirecciones.');
@@ -34,13 +34,16 @@ export async function fetchTrackerResponse(url:string,key:SupplierKey,fetcher:ty
  if(!robotsAllowed(rules??'',normalized))throw new TrackerHttpError('La ruta está restringida por robots.txt.',403);
  if((!cached||Date.now()-cached.at>3600000)&&fetcher===fetch)await new Promise(resolve=>setTimeout(resolve,10000));
  const {response,finalUrl}=await request(normalized,key,fetcher,target=>{if(!robotsAllowed(rules??'',target))throw new TrackerHttpError('El destino está restringido por robots.txt.',403);});
- if(new URL(finalUrl).pathname.replace(/\/$/,'')!==new URL(normalized).pathname.replace(/\/$/,''))throw new TrackerHttpError('La URL cambió; verificar la nueva ficha antes de actualizar evidencia.');
+ const original=new URL(normalized),target=new URL(finalUrl);
+ if(target.pathname.replace(/\/$/,'')!==original.pathname.replace(/\/$/,'')||
+  ['p','page','pagina','start','offset'].some(key=>original.searchParams.get(key)!==target.searchParams.get(key)))throw new TrackerHttpError('La URL cambió; verificar el destino antes de actualizar evidencia.');
  return{response,finalUrl};
 }
 export async function fetchTrackerHtml(url:string,key:SupplierKey,fetcher:typeof fetch=fetch){
  const {response}=await fetchTrackerResponse(url,key,fetcher);
  if(!response.ok)throw new TrackerHttpError(`HTTP ${response.status}: incidencia técnica; no acredita agotamiento.`,response.status);
- const html=await readSupplierHtml(response);
+ const isSitemap=key==='atacado-connect'&&new URL(url).pathname==='/sitemap.xml';
+ const html=await readSupplierHtml(response,isSitemap?12_000_000:undefined);
  if(/<title>[^<]*(?:just a moment|access denied|captcha|verifica.{0,10}humano)/i.test(html))throw new TrackerHttpError('El proveedor requiere verificación de acceso.',403);
  return html;
 }

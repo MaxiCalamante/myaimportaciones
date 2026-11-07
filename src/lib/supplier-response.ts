@@ -1,4 +1,4 @@
-export async function readSupplierHtml(response: Response): Promise<string> {
+export async function readSupplierHtml(response: Response, maxBytes = 3_000_000): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) return "";
   const chunks: Uint8Array[] = [];
@@ -8,7 +8,7 @@ export async function readSupplierHtml(response: Response): Promise<string> {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 3_000_000) throw new Error("La página del proveedor supera el tamaño permitido.");
+      if (size > maxBytes) throw new Error("La página del proveedor supera el tamaño permitido.");
       chunks.push(value);
     }
   } catch (error) {

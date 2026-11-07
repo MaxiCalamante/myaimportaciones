@@ -70,7 +70,8 @@ try {
  await ctx.addCookies([{name:"sb-127-auth-token",value:`base64-${enc(session)}`,url:"http://localhost:3432"}]);
  const page=await ctx.newPage(),errors=[];page.on("pageerror",e=>errors.push(e.message));
  for(const width of [320,390,768,1440]) for(const route of ["oportunidades","precios"]){
-  console.log(`Probando ${route} ${width}`); await page.setViewportSize({width,height:900}); await page.goto(`http://localhost:3432/admin/${route}`,{waitUntil:"domcontentloaded",timeout:90000});
+  const view=route==="oportunidades"?"oportunidades?vista=radar":route;
+  console.log(`Probando ${route} ${width}`); await page.setViewportSize({width,height:900}); await page.goto(`http://localhost:3432/admin/${view}`,{waitUntil:"domcontentloaded",timeout:90000});
   await page.getByRole("heading",{name:route==="oportunidades"?"Descubrí y sumá oportunidades para revisar":"Revisá tus precios y referencias de mercado"}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${route} ${width} overflow`);
   await page.screenshot({path:resolve(root,`${route}-${width}.png`),fullPage:true});

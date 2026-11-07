@@ -1,3 +1,4 @@
+// @ts-types="npm:@types/papaparse@5.5.2"
 import Papa from "papaparse";
 
 export interface IntelligenceSupplier {

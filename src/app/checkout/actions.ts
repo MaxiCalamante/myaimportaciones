@@ -14,6 +14,7 @@ import { priceOrder, type PricedItem } from "@/lib/order-pricing";
 import { createMercadoPagoPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 import { getPublicWholesalePolicy, getPublicWholesaleOffers } from '@/lib/wholesale-v2-read';
 import { validateWholesaleOrder } from '@/lib/wholesale-policy';
+import { refreshCheckoutSupplierCatalog } from '@/lib/supplier-tracker/checkout';
 interface WholesaleBasis {status:string;reason:string;unit_price:number|null;policy_id:string|null;cost_basis?:unknown}
 export async function loadWholesaleCartAction(items:Array<{productId:string;variantId?:string|null;quantity?:number}>){
  try{return{ok:true as const,policy:await getPublicWholesalePolicy(),offers:await getPublicWholesaleOffers(items)};}
@@ -58,6 +59,7 @@ async function resolveQuote(input: CheckoutInput) {
     if (line.variantId) variantIds.add(line.variantId);
   }
   const db = createCommerceService();
+  await refreshCheckoutSupplierCatalog(db,input.lines);
   const exchange = await getExchangeSnapshot();
   const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...productIds]).is("deleted_at", null);
   if (error || products?.length !== productIds.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
@@ -230,6 +232,7 @@ export async function createOrderAction(input: OrderInput) {
   if(Number(saved.data.payload.total)!==input.expectedTotal)throw Error('El total cambió. Actualizá el resumen.');
   const pickup=saved.data.payload.shipping_option==='pickup_tandil';
   if(!pickup&&(!input.address.trim()||!input.city.trim()))throw Error('Completá el domicilio y la localidad.');
+  await refreshCheckoutSupplierCatalog(db,input.lines);
   const {data:order,error}=await db.rpc('create_store_order_v1',{
     quote_input:input.quoteId,fingerprint_input:checkoutFingerprint(input),customer_input:{request_id:input.requestId,request_hash:requestHash,profile_id:user?.id??null,name:input.name.trim(),email:input.email.toLowerCase().trim(),phone:input.phone.trim(),address:pickup?'Retiro coordinado en Tandil':`${input.address}, ${input.city}, ${input.province??''}, CP ${input.postalCode}`,notes:[input.notes,isShippingPaidSeparately()?'Envío a cotizar y abonar por separado. El pago corresponde únicamente a los productos.':''].filter(Boolean).join('\n')}
   });
