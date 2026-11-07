@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, MessageCircle } from "lucide-react";
+import { MapPin, MessageCircle, ShieldCheck, Truck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import { useCommerce } from "@/components/commerce/commerce-provider";
@@ -33,7 +33,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-zinc-900 bg-zinc-950 text-white">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr] lg:px-8 lg:py-16">
-        {/* Column 1: Info */}
+        {/* Column 1: Info & Brand */}
         <div className="col-span-2 space-y-4 md:col-span-1">
           <div className="flex items-center gap-3">
             <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-white/30">
@@ -53,7 +53,7 @@ export function SiteFooter() {
           <p className="text-sm leading-6 text-zinc-400">
             {isWholesale
               ? "Explorá productos importados y precios mayoristas confirmados para tu negocio. Combiná rubros y armá tu pedido; las presentaciones o importes pendientes se confirman antes del pago."
-              : "Tu tienda de confianza en importaciones. Electrónica Apple y Samsung, cosmética coreana, cuidado capilar, fragancias y herramientas. Atención de Máximo y Agustina desde Tandil con envíos a toda la Argentina."}
+              : "Tu tienda de confianza en importaciones. Belleza y cuidado personal, tecnología y electrónica, y herramientas industriales. Atención directa de Máximo y Agustina desde Tandil con envíos a toda la Argentina."}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <a
@@ -76,26 +76,31 @@ export function SiteFooter() {
           </div>
         </div>
 
-        {/* Column 2: Rubros */}
+        {/* Column 2: Los 3 Rubros Principales */}
         <div>
           <h2 className="text-sm font-semibold uppercase text-zinc-300 tracking-wider">Catálogos & Rubros</h2>
           <div className="mt-4 grid text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors font-medium" href="/catalogo?category=cosmetica-coreana">
+              Belleza: K-Beauty, Capilar & Perfumes
+            </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=cosmetica-coreana">
-              Cosmética Coreana (K-Beauty)
-            </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=perfumeria">
-              Perfumería & Fragancias Árabes
-            </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=herramientas-equipamiento">
-              Herramientas Total Tools & Wadfow
+              · Cosmética Coreana (SKIN1004, Medicube)
             </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=cuidado-capilar">
-              Tratamientos Capilares & Karseell
+              · Cuidado Capilar (Karseell, Kérastase)
+            </Link>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=perfumeria">
+              · Perfumería & Fragancias Árabes
+            </Link>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors font-medium" href="/catalogo?category=electronica">
+              Tecnología & Electrónica
+            </Link>
+            <Link className="text-zinc-400 hover:text-sky-400 transition-colors font-medium" href="/catalogo?category=herramientas-equipamiento">
+              Herramientas Total Tools & Wadfow
             </Link>
             <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href={isWholesale ? "/mayorista" : "/catalogo"}>
-              Explorar productos
+              Explorar catálogo completo
             </Link>
-            <Link className="text-zinc-400 hover:text-sky-400 transition-colors" href="/catalogo?category=electronica">Electrónica Apple & Samsung</Link>
           </div>
         </div>
 
@@ -118,9 +123,11 @@ export function SiteFooter() {
                   Catálogo de Productos
                 </Link>
                 <Link className="text-zinc-400 hover:text-white transition-colors" href="/#ofertas">
-                  Más para descubrir
+                  Novedades y Ofertas
                 </Link>
-                <Link className="text-sky-300 hover:text-white" href="/mayorista">Venta mayorista para comercios</Link>
+                <Link className="text-sky-300 hover:text-white font-medium" href="/mayorista">
+                  Venta mayorista para comercios
+                </Link>
                 <button
                   type="button"
                   onClick={() => openWhatsApp("Hola MYA Importaciones! Quisiera consultar por un producto.")}
@@ -142,20 +149,37 @@ export function SiteFooter() {
           </div>
         </div>
 
+        {/* Column 4: Contact & Location */}
         <div className="col-span-2 md:col-span-1">
           <h2 className="text-sm font-semibold text-zinc-200">Hablemos de tu próxima compra</h2>
           <div className="mt-4 grid gap-3 text-sm text-zinc-400">
-            {siteConfig.whatsappContacts.map(contact => <a key={contact.id} href={getWhatsAppUrl(`Hola ${contact.name}, quiero hacer una consulta sobre MYA Importaciones.`, contact.whatsappNumber)} target="_blank" rel="noopener noreferrer"
-              className="flex min-h-16 items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
-              <MessageCircle className="size-5 shrink-0 stroke-[1.5] text-zinc-200" />
-              <span className="min-w-0"><span className="block text-xs font-medium text-white">WhatsApp de {contact.name}</span><span className="mt-1 block text-xs tabular-nums text-zinc-400">{contact.phone}</span></span>
-            </a>)}
-            <p className="flex items-center gap-2 pt-2 text-xs leading-5"><MapPin className="size-4 shrink-0" />{siteConfig.location}</p>
-            <p className="text-xs leading-5">Envíos a toda Argentina. Consultanos por tu destino.</p>
+            {siteConfig.whatsappContacts.map(contact => (
+              <a
+                key={contact.id}
+                href={getWhatsAppUrl(`Hola ${contact.name}, quiero hacer una consulta sobre MYA Importaciones.`, contact.whatsappNumber)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+              >
+                <MessageCircle className="size-5 shrink-0 stroke-[1.5] text-zinc-200" />
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium text-white">WhatsApp de {contact.name}</span>
+                  <span className="mt-0.5 block text-xs tabular-nums text-zinc-400">{contact.phone}</span>
+                </span>
+              </a>
+            ))}
+            <p className="flex items-center gap-2 pt-2 text-xs leading-5">
+              <MapPin className="size-4 shrink-0 text-sky-400" />
+              {siteConfig.location}
+            </p>
+            <p className="text-xs leading-5 flex items-center gap-2">
+              <Truck className="size-4 shrink-0 text-emerald-400" />
+              Envíos a toda Argentina por Correo Argentino.
+            </p>
           </div>
         </div>
       </div>
-      
+
       {/* Guarantees bar & Copyright */}
       <div className="mx-auto max-w-7xl border-t border-zinc-900 px-4 pt-6 pb-24 sm:px-6 md:pb-6 lg:px-8 text-center text-xs text-zinc-400 space-y-2">
         <p className="text-zinc-400 font-medium">

@@ -8,14 +8,18 @@ import Link from "next/link";
 import {
   ArrowRight,
   Boxes,
+  CheckCircle2,
   ChevronRight,
   Headphones,
   Package,
   Pause,
   Play,
   ShieldCheck,
+  Smartphone,
+  Sparkles,
   Store,
   Truck,
+  Wrench,
 } from "lucide-react";
 import type { Category, Product, ProductChannel } from "@/lib/types";
 import { ProductCard } from "@/components/commerce/product-card";
@@ -33,6 +37,7 @@ export function StoreHero({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
+
   useEffect(() => {
     if (
       paused ||
@@ -48,8 +53,10 @@ export function StoreHero({
     );
     return () => clearInterval(timer);
   }, [paused, interacting, preview, slides.length]);
+
   if (!slides.length) return null;
   const current = currentSlide % slides.length;
+
   return (
     <section
       aria-label={
@@ -70,7 +77,7 @@ export function StoreHero({
         </h1>
       )}
       <div className="mya-container pt-3 sm:pt-5">
-        <div className="relative overflow-hidden rounded-2xl bg-zinc-800 sm:rounded-3xl">
+        <div className="relative overflow-hidden rounded-2xl bg-zinc-900 sm:rounded-3xl shadow-sm">
           {slides.map((slide, index) => (
             <div
               key={slide.id}
@@ -79,7 +86,7 @@ export function StoreHero({
               inert={index !== current}
               className={
                 index === current
-                  ? "relative isolate min-h-56 sm:min-h-80 lg:min-h-[26rem]"
+                  ? "relative isolate min-h-[17rem] sm:min-h-[22rem] lg:min-h-[28rem] flex items-center"
                   : "hidden"
               }
             >
@@ -89,26 +96,27 @@ export function StoreHero({
                   alt=""
                   fill
                   sizes="(min-width:1280px) 1216px, 100vw"
-                  quality={75}
+                  quality={80}
                   preload={index === 0}
                   className="-z-20 object-cover object-[65%_center]"
                 />
               )}
               <div
                 aria-hidden="true"
-                className="absolute inset-0 -z-10 bg-gradient-to-r from-black/80 via-black/40 to-transparent"
+                className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/50 to-transparent"
               />
-              <div className="w-full max-w-2xl px-5 pb-16 pt-6 sm:px-8 sm:pb-16 sm:pt-12 lg:px-12 lg:pb-16 lg:pt-16">
-                <p className="mb-2 truncate text-[10px] font-semibold uppercase tracking-wider text-white/80 sm:mb-3 sm:text-xs">
+              <div className="w-full max-w-2xl px-5 pb-14 pt-6 sm:px-10 sm:pb-16 sm:pt-10 lg:px-14 lg:pb-16 lg:pt-14">
+                <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white sm:mb-3 sm:text-xs border border-white/20">
+                  <Sparkles className="size-3 text-amber-300" />
                   {slide.eyebrow}
-                </p>
-                <h2 className="max-w-[78%] text-balance text-[clamp(1.5rem,6.5vw,2rem)] font-bold leading-[1.12] tracking-tight text-white sm:max-w-md sm:text-4xl lg:text-5xl">
+                </span>
+                <h2 className="max-w-[85%] text-balance text-[clamp(1.5rem,6.5vw,2.25rem)] font-extrabold leading-[1.12] tracking-tight text-white sm:max-w-md sm:text-4xl lg:text-5xl">
                   {slide.title}
                 </h2>
-                <p className="mt-3 line-clamp-2 max-w-[78%] text-pretty text-xs leading-5 text-white/95 sm:max-w-sm sm:text-sm sm:leading-6">
+                <p className="mt-3 line-clamp-2 max-w-[85%] text-pretty text-xs leading-5 text-zinc-200 sm:max-w-sm sm:text-sm sm:leading-6">
                   {slide.description}
                 </p>
-                <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-7">
+                <div className="mt-5 flex flex-wrap items-center gap-2.5 sm:mt-8">
                   {slide.btnText && slide.btnLink && (
                     <Link
                       href={slide.btnLink}
@@ -118,25 +126,26 @@ export function StoreHero({
                           ? (event) => event.preventDefault()
                           : undefined
                       }
-                      className="mya-action inline-flex items-center gap-2 px-4 text-[11px] font-semibold sm:px-5 sm:text-sm"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-sky-800 active:scale-[0.99] sm:text-sm"
                     >
-                      {slide.btnText}
+                      <span>{slide.btnText}</span>
                       <ArrowRight className="size-4" />
                     </Link>
                   )}
                   {!preview && (
                     <Link
                       href="/mayorista"
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--mya-radius-control)] bg-white/95 px-4 text-[11px] font-semibold text-zinc-900 backdrop-blur-sm sm:px-4 sm:text-sm"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-white/20 bg-white/95 px-4 text-xs font-bold text-zinc-900 backdrop-blur-md transition hover:bg-white sm:text-sm"
                     >
-                      <Store className="size-4" />
-                      Mayorista
+                      <Store className="size-4 text-sky-700" />
+                      Precios Mayoristas
                     </Link>
                   )}
                 </div>
               </div>
             </div>
           ))}
+
           {slides.length > 1 && (
             <div className="pointer-events-none absolute inset-x-0 bottom-3 flex items-center justify-center gap-1">
               {slides.map((slide, index) => (
@@ -149,23 +158,19 @@ export function StoreHero({
                   className="pointer-events-auto grid size-11 place-items-center rounded-full focus-visible:outline-white"
                 >
                   <span
-                    className={`h-1.5 rounded-full transition-[width] ${index === current ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
+                    className={`h-1.5 rounded-full transition-[width] duration-300 ${
+                      index === current ? "w-6 bg-white" : "w-1.5 bg-white/50"
+                    }`}
                   />
                 </button>
               ))}
               <button
                 type="button"
                 onClick={() => setPaused((v) => !v)}
-                aria-label={
-                  paused ? "Reanudar carrusel" : "Pausar carrusel"
-                }
-                className="pointer-events-auto ml-1 grid size-11 place-items-center rounded-full bg-black/25 text-white hover:bg-black/50"
+                aria-label={paused ? "Reanudar carrusel" : "Pausar carrusel"}
+                className="pointer-events-auto ml-1 grid size-11 place-items-center rounded-full bg-black/30 text-white backdrop-blur-xs hover:bg-black/50"
               >
-                {paused ? (
-                  <Play className="size-3.5" />
-                ) : (
-                  <Pause className="size-3.5" />
-                )}
+                {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
               </button>
             </div>
           )}
@@ -178,27 +183,44 @@ export function StoreHero({
 /* ── RetailHighlights ── */
 export function RetailHighlights() {
   const items = [
-    { icon: Truck, title: "Envíos a toda Argentina", subtitle: "Correo Argentino con seguimiento" },
-    { icon: Package, title: "Minorista y mayorista", subtitle: "Desde 1 unidad o por bulto" },
-    { icon: Headphones, title: "Atención personalizada", subtitle: "Máximo y Agustina por WhatsApp" },
-    { icon: ShieldCheck, title: "Condiciones claras", subtitle: "Garantía y devoluciones" },
+    {
+      icon: Truck,
+      title: "Envíos a toda Argentina",
+      subtitle: "Correo Argentino con código Paq.ar en vivo",
+    },
+    {
+      icon: Package,
+      title: "Minorista y mayorista",
+      subtitle: "Comprá desde 1 unidad o lote para reventa",
+    },
+    {
+      icon: Headphones,
+      title: "Atención personalizada",
+      subtitle: "Máximo y Agustina directos por WhatsApp",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Condiciones y garantía",
+      subtitle: "Garantía oficial y punto de retiro en Tandil",
+    },
   ];
+
   return (
     <section aria-label="Beneficios de comprar en MYA" className="mya-container">
-      <div className="grid grid-cols-2 gap-2 py-4 sm:grid-cols-4 sm:gap-4 sm:py-6">
+      <div className="grid grid-cols-2 gap-2.5 py-4 sm:grid-cols-4 sm:gap-4 sm:py-6">
         {items.map(({ icon: Icon, title, subtitle }) => (
           <div
             key={title}
-            className="flex items-start gap-3 rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 sm:p-4"
+            className="flex items-start gap-3 rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/60 p-3.5 sm:p-4 shadow-2xs"
           >
-            <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-sky-50 text-sky-700">
-              <Icon className="size-4.5 stroke-[1.6]" />
+            <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
+              <Icon className="size-4.5 stroke-[1.75]" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-semibold leading-4 text-zinc-900 sm:text-sm">
+              <p className="text-xs font-bold leading-4 text-zinc-900 sm:text-sm">
                 {title}
               </p>
-              <p className="mt-0.5 text-[10px] leading-3 text-zinc-500 sm:text-[11px] sm:leading-4">
+              <p className="mt-0.5 text-[10px] leading-3.5 text-zinc-500 sm:text-[11px] sm:leading-4">
                 {subtitle}
               </p>
             </div>
@@ -209,80 +231,114 @@ export function RetailHighlights() {
   );
 }
 
-/* ── CategoryStrip — Three main rubros ── */
+/* ── CategoryStrip — Three Main Rubros ── */
 const RUBRO_CONFIG = [
   {
     name: "Belleza y Cuidado",
     shortName: "Belleza",
     slug: "cosmetica-coreana",
-    description: "Cosmética, capilar y perfumería",
-    gradient: "from-rose-50 to-pink-50",
-    accent: "text-rose-700",
-    border: "border-rose-100 hover:border-rose-200",
+    description: "Cosmética coreana, cuidado capilar y perfumería importada.",
+    cta: "Explorar belleza",
+    icon: Sparkles,
+    badge: "K-Beauty & Fragancias",
+    gradient: "from-rose-50/70 via-pink-50/30 to-white",
+    accent: "text-rose-950",
+    border: "border-rose-200/80 hover:border-rose-300",
   },
   {
     name: "Tecnología y Electrónica",
     shortName: "Tecnología",
     slug: "electronica",
-    description: "Smartphones y accesorios",
-    gradient: "from-blue-50 to-sky-50",
-    accent: "text-blue-700",
-    border: "border-blue-100 hover:border-blue-200",
+    description: "Smartphones, accesorios originales, audio y gadgets.",
+    cta: "Ver tecnología",
+    icon: Smartphone,
+    badge: "Apple, Samsung & Audio",
+    gradient: "from-sky-50/70 via-blue-50/30 to-white",
+    accent: "text-sky-950",
+    border: "border-sky-200/80 hover:border-sky-300",
   },
   {
     name: "Herramientas y Equipamiento",
     shortName: "Herramientas",
     slug: "herramientas-equipamiento",
-    description: "Profesionales e industriales",
-    gradient: "from-amber-50 to-orange-50",
-    accent: "text-amber-700",
-    border: "border-amber-100 hover:border-amber-200",
+    description: "Líneas profesionales e industriales Total Tools y Wadfow.",
+    cta: "Comprar herramientas",
+    icon: Wrench,
+    badge: "Total Tools & Wadfow",
+    gradient: "from-amber-50/70 via-orange-50/30 to-white",
+    accent: "text-amber-950",
+    border: "border-amber-200/80 hover:border-amber-300",
   },
 ];
 
 export function CategoryStrip({ categories }: { categories: Category[] }) {
   const roots = categories.filter((c) => !c.parentId);
   return (
-    <section id="categorias" className="bg-white py-4 sm:py-8">
+    <section id="categorias" className="bg-white py-5 sm:py-8">
       <div className="mya-container">
-        <h2 className="mya-section-title mb-4">Explorá por categoría</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1.5">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">
+              Catálogo principal
+            </p>
+            <h2 className="mya-section-title mt-0.5">Explorá por rubro</h2>
+          </div>
+          <Link
+            href="/catalogo"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-sky-800 hover:text-sky-950 sm:text-sm"
+          >
+            Ver catálogo completo <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3 sm:gap-5">
           {RUBRO_CONFIG.map((rubro) => {
             const cat = roots.find(
               (c) =>
                 c.slug === rubro.slug ||
                 c.slug.includes(rubro.slug.split("-")[0])
             );
+            const Icon = rubro.icon;
             return (
               <Link
                 key={rubro.slug}
                 href={`/catalogo?category=${encodeURIComponent(rubro.slug)}`}
-                className={`group flex items-center gap-4 overflow-hidden rounded-2xl border bg-gradient-to-br p-4 transition-shadow hover:shadow-md sm:flex-col sm:items-start sm:p-5 ${rubro.gradient} ${rubro.border}`}
+                className={`group flex flex-col justify-between overflow-hidden rounded-2xl border bg-gradient-to-br p-5 transition-all duration-200 hover:shadow-lg sm:p-6 ${rubro.gradient} ${rubro.border}`}
               >
-                {cat?.imageUrl && (
-                  <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-white/80 sm:h-32 sm:w-full">
-                    <Image
-                      src={cat.imageUrl}
-                      alt=""
-                      fill
-                      sizes="(min-width:640px) 300px, 64px"
-                      quality={75}
-                      className="object-contain p-2 mix-blend-multiply"
-                    />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/90 border border-zinc-200/70 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-700">
+                      <Icon className="size-3 text-sky-700" />
+                      {rubro.badge}
+                    </span>
+                    <h3 className={`mt-2.5 text-lg font-bold tracking-tight sm:text-xl ${rubro.accent}`}>
+                      {rubro.name}
+                    </h3>
+                    <p className="mt-1 text-xs leading-4.5 text-zinc-600">
+                      {rubro.description}
+                    </p>
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <h3
-                    className={`text-base font-bold leading-5 sm:text-lg ${rubro.accent}`}
-                  >
-                    {rubro.name}
-                  </h3>
-                  <p className="mt-1 text-xs leading-4 text-zinc-600">
-                    {rubro.description}
-                  </p>
-                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-zinc-900 group-hover:text-sky-800">
-                    Explorar
-                    <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  {cat?.imageUrl && (
+                    <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-white/90 p-1.5 shadow-2xs sm:size-20">
+                      <Image
+                        src={cat.imageUrl}
+                        alt=""
+                        fill
+                        sizes="80px"
+                        quality={75}
+                        className="object-contain p-1 mix-blend-multiply transition-transform duration-200 group-hover:scale-105"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-5 flex items-center justify-between border-t border-zinc-200/60 pt-3">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-800 group-hover:text-sky-950">
+                    {rubro.cta}
+                    <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-1" />
+                  </span>
+                  <span className="text-[10px] font-medium text-zinc-500">
+                    Envíos a todo el país
                   </span>
                 </div>
               </Link>
@@ -301,29 +357,33 @@ export function ProductSection({
   title,
   products,
   channel = "retail",
+  href,
 }: {
   id?: string;
   eyebrow: string;
   title: string;
   products: Product[];
   channel?: ProductChannel;
+  href?: string;
 }) {
   if (!products.length) return null;
+  const targetHref = href ?? (channel === "wholesale" ? "/mayorista" : "/catalogo");
+
   return (
     <section className="bg-white py-5 sm:py-8" id={id}>
       <div className="mya-container">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-700">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">
               {eyebrow}
             </p>
             <h2 className="mya-section-title mt-0.5">{title}</h2>
           </div>
           <Link
-            href={channel === "wholesale" ? "/mayorista" : "/catalogo"}
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[11px] font-semibold text-sky-800 sm:text-sm"
+            href={targetHref}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[11px] font-bold text-sky-800 hover:text-sky-950 sm:text-sm"
           >
-            Ver catálogo
+            Ver más
             <ArrowRight className="size-3.5" />
           </Link>
         </div>
@@ -421,5 +481,3 @@ export function WholesaleTeaser({ products }: { products: Product[] }) {
     </section>
   );
 }
-
-// Reviews are displayed only after their source and permission have been verified.
