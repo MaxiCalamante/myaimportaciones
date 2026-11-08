@@ -73,6 +73,11 @@ export const RUBROS_DEFINITION = [
         parentSlug: "electronica-consolas-gaming",
         description: "Notebooks, consolas PlayStation, Nintendo, monitores y drones.",
       },
+      {
+        name: "Electrodomésticos y Hogar",
+        parentSlug: "electronica-electrodomesticos-hogar",
+        description: "Freidoras de aire, licuadoras, afeitadoras y hogar inteligente.",
+      },
     ],
   },
   {
@@ -102,6 +107,25 @@ export const RUBROS_DEFINITION = [
       },
     ],
   },
+];
+
+const POPULATED_TOOLS_PRIORITY = [
+  "sierras-corte",
+  "taladros-rotomartillos",
+  "hidrolavadoras-alta-presion",
+  "niveles-laser-medicion",
+  "amoladoras-pulidoras",
+  "gatos-hidraulicos-criques",
+  "llaves-tubos-criques",
+  "compresores-neumatica",
+  "lijadoras-mezcladoras",
+  "pistolas-pintura-calor",
+  "destornilladores-puntas",
+  "soldadoras-inverter",
+  "baterias-cargadores-litio",
+  "cepillos-fresadoras",
+  "albanileria-pintura",
+  "electricidad-iluminacion",
 ];
 
 /**
@@ -138,6 +162,15 @@ export function buildStoreRubros(allCategories: Category[]): CategoryGroupItem[]
             )
           );
         }
+
+        matchedCategories.sort((a, b) => {
+          const indexA = POPULATED_TOOLS_PRIORITY.indexOf(a.slug);
+          const indexB = POPULATED_TOOLS_PRIORITY.indexOf(b.slug);
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          if (indexA !== -1) return -1;
+          if (indexB !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
       } else if (rubro.id === "tecnologia-electronica") {
         const techParent = bySlug.get("electronica");
         const allTech = techParent ? allCategories.filter((c) => c.parentId === techParent.id) : [];
@@ -146,6 +179,8 @@ export function buildStoreRubros(allCategories: Category[]): CategoryGroupItem[]
           matchedCategories = allTech.filter((c) => /smartphone|celular|tablet|telefono/i.test(c.slug + " " + c.name));
         } else if (sub.name.includes("Audio")) {
           matchedCategories = allTech.filter((c) => /audio|parlante|auricular|soundbar|fone|som/i.test(c.slug + " " + c.name));
+        } else if (sub.name.includes("Electrodomésticos")) {
+          matchedCategories = allTech.filter((c) => /electro|hogar|freidora|aspirador|pava|licuador|afeitador|cortador|secador/i.test(c.slug + " " + c.name));
         } else {
           matchedCategories = allTech.filter((c) => /notebook|computador|desktop|pc|game|console|playstation|nintendo|xbox|tv|monitor|drone|camara|componente|accesorio/i.test(c.slug + " " + c.name));
         }

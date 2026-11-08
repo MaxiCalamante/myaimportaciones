@@ -385,7 +385,7 @@ export function SiteHeader({
                         : "invisible opacity-0 -translate-y-1 pointer-events-none"
                     }`}
                   >
-                    <div className="w-[860px] max-w-[calc(100vw-4rem)] overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl">
+                    <div className="w-[940px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl">
                       <CategoryNavigation
                         categories={categories}
                         catalogPath={catalogPath}

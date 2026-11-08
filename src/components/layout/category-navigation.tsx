@@ -83,11 +83,13 @@ export function CategoryNavigation({
 
           <div
             className={`grid gap-6 ${
-              selectedRubro.subgroups.length >= 3
-                ? "grid-cols-3"
-                : selectedRubro.subgroups.length === 2
-                  ? "grid-cols-2"
-                  : "grid-cols-1"
+              selectedRubro.subgroups.length >= 4
+                ? "grid-cols-2 lg:grid-cols-4"
+                : selectedRubro.subgroups.length === 3
+                  ? "grid-cols-3"
+                  : selectedRubro.subgroups.length === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-1"
             }`}
           >
             {selectedRubro.subgroups.map((sub) => (
