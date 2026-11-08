@@ -120,28 +120,49 @@ export function CartDrawer({ checkoutEnabled }: { checkoutEnabled: boolean }) {
             </Link>
           </div>
         ) : <div className="space-y-3">
-          {wholesaleValidation.hasWholesale && (
-            !wholesaleValidation.meetsMinimum ? (
-              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
-                <div className="flex items-center gap-2 font-bold text-amber-900">
-                  <AlertCircle className="size-4 shrink-0 text-amber-600" />
-                  <span>Mínimo Mayorista Combinable</span>
+          {wholesaleValidation.hasWholesale && (() => {
+            const progressPct = Math.min(100, Math.max(
+              Math.round((wholesaleValidation.totalAmount / 100000) * 100),
+              Math.round((wholesaleValidation.totalUnits / 5) * 100)
+            ));
+            return !wholesaleValidation.meetsMinimum ? (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950 shadow-2xs">
+                <div className="flex items-center justify-between font-bold text-amber-900">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="size-4 shrink-0 text-amber-600" />
+                    <span>Mínimo Mayorista Combinable</span>
+                  </div>
+                  <span className="text-[11px] font-extrabold text-amber-800">{progressPct}%</span>
                 </div>
-                <p className="mt-1 leading-relaxed">
-                  Para compras mayoristas necesitás alcanzar <strong>$100.000</strong> o sumar al menos <strong>5 unidades combinadas</strong>.
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-amber-200/80">
+                  <div className="h-full rounded-full bg-amber-600 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                </div>
+                <p className="mt-2 leading-relaxed text-zinc-700">
+                  Para acceder a tarifa mayorista alcanzá <strong>$100.000</strong> o sumá <strong>5 unidades</strong> combinadas.
                 </p>
                 <div className="mt-2 flex items-center justify-between border-t border-amber-200/80 pt-2 text-[11px] font-semibold text-amber-900">
                   <span>Actual: {formatCurrency(wholesaleValidation.totalAmount)} ({wholesaleValidation.totalUnits} un.)</span>
-                  <span className="text-amber-800">Faltan {formatCurrency(wholesaleValidation.missingAmount)} o {wholesaleValidation.missingUnits} un.</span>
+                  <span className="text-amber-800 font-bold">Faltan {formatCurrency(wholesaleValidation.missingAmount)} o {wholesaleValidation.missingUnits} un.</span>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-950 flex items-center gap-2 font-semibold">
-                <Check className="size-4 text-emerald-600 shrink-0" />
-                <span>¡Genial! Tu pedido cumple el mínimo de compra mayorista.</span>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3.5 text-xs text-emerald-950 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between font-bold text-emerald-900">
+                  <div className="flex items-center gap-1.5">
+                    <Check className="size-4 text-emerald-600 shrink-0" />
+                    <span>¡Mínimo mayorista alcanzado!</span>
+                  </div>
+                  <span className="text-[11px] font-extrabold text-emerald-700">100%</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-200">
+                  <div className="h-full w-full rounded-full bg-emerald-600" />
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-4">
+                  Desbloqueaste tarifa mayorista y descuentos automáticos por volumen para todo el pedido.
+                </p>
               </div>
-            )
-          )}{cart.map(line => {
+            );
+          })()}{cart.map(line => {
           const basePrice = cartLineUnitPrice(line);
           const tiered = {unitPrice:basePrice,discountPct:0,tierLabel:null,total:basePrice===null?null:basePrice*line.quantity};
           const unitPrice = tiered.unitPrice;

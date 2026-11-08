@@ -44,7 +44,12 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
   const shipping = getProductShippingTimeInfo(stockChoices.find(isVerifiedStock) || product);
   const baseHref = productVariantHref(product.slug);
   const href = channel === "wholesale" ? `${baseHref}${baseHref.includes("?") ? "&" : "?"}canal=mayorista` : baseHref;
-  const badge = product.tags.includes("oferta") ? "Oferta" : product.featured ? "Destacado" : null;
+  const wholesaleBadge = channel === "wholesale"
+    ? product.wholesaleMinQuantity && product.wholesaleMinQuantity > 1
+      ? `Mínimo ${product.wholesaleMinQuantity} u.`
+      : "1 u. combinable"
+    : null;
+  const badge = channel === "wholesale" ? wholesaleBadge : product.tags.includes("oferta") ? "Oferta" : product.featured ? "Destacado" : null;
   const actionClassName = "flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-sky-700 px-2 py-2 text-center text-xs font-semibold text-white transition-colors hover:bg-sky-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 sm:text-sm";
 
   return <article data-product-card className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:border-sky-200 hover:shadow-sm">
@@ -53,7 +58,13 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
         <Image fill src={imageSrc} alt={product.title} loading={priority ? "eager" : "lazy"}
           sizes="(min-width: 1280px) 286px, (min-width: 768px) 30vw, 46vw" quality={75}
           className="object-contain p-3 sm:p-5" onError={() => setImageSrc("/placeholder-product.svg")} />
-        {badge && <span className="absolute left-2 top-2.5 max-w-[calc(100%-3.5rem)] truncate rounded-md bg-sky-50 px-2 py-1 text-[10px] font-semibold leading-3 text-sky-800">{badge}</span>}
+        {badge && (
+          <span className={`absolute left-2 top-2.5 max-w-[calc(100%-3.5rem)] truncate rounded-md px-2 py-0.5 text-[10px] font-bold leading-4 shadow-2xs ${
+            channel === "wholesale"
+              ? "border border-amber-200 bg-amber-50 text-amber-900"
+              : "bg-sky-50 text-sky-800"
+          }`}>{badge}</span>
+        )}
       </Link>
       <button type="button" aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"} aria-pressed={favorite}
         className={`absolute right-0.5 top-0.5 grid size-11 place-items-center rounded-full bg-white/95 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-700 ${favorite ? "text-rose-600" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950"}`}

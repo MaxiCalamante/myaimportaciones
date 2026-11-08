@@ -296,3 +296,45 @@ export async function reviewWholesaleCheckoutRequestAction(
     message: status === "confirmed" ? "Solicitud confirmada exitosamente." : "Solicitud rechazada.",
   };
 }
+
+/**
+ * Permite a un administrador reajustar masivamente precios mayoristas que hayan variado
+ * de margen respecto al 18% objetivo debido a fluctuaciones de flete de pasero o costo en origen.
+ */
+export async function bulkAdjustWholesalePricesAction(
+  updates: Array<{ productId: string; newWholesalePrice: number }>
+): Promise<WholesaleActionResult> {
+  const adminClient = await getAdminClient();
+  if (!adminClient) {
+    return { success: false, error: "Permiso denegado. Se requiere cuenta de administrador." };
+  }
+  if (!updates || updates.length === 0) {
+    return { success: false, error: "No se proporcionaron precios para actualizar." };
+  }
+
+  const serviceDb = createCommerceService();
+  for (const item of updates) {
+    if (item.productId && item.newWholesalePrice > 0) {
+      await serviceDb
+        .from("products")
+        .update({
+          wholesale_price: Math.round(item.newWholesalePrice),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", item.productId);
+    }
+  }
+
+  try {
+    invalidateAdminStorefrontCache();
+  } catch {}
+
+  revalidatePath("/admin/mayoristas");
+  revalidatePath("/admin/precios");
+  revalidatePath("/mayorista");
+
+  return {
+    success: true,
+    message: `Se reajustaron exitosamente ${updates.length} productos al margen del 18% objetivo.`,
+  };
+}

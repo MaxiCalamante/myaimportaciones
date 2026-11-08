@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/sync-supplier-stock",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/wholesale-prices",
+      "schedule": "0 12 * * *"
     }
   ]
 }

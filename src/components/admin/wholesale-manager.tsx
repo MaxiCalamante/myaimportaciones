@@ -7,6 +7,7 @@ import {
   setWholesaleByEmailAction,
   updateWholesalePriceAction,
   reviewWholesaleCheckoutRequestAction,
+  bulkAdjustWholesalePricesAction,
   type WholesaleActionResult,
 } from "@/app/actions/wholesale";
 import {
@@ -30,6 +31,11 @@ import {
   Sparkles,
   ArrowRight,
   Save,
+  Printer,
+  Share2,
+  Download,
+  Copy,
+  AlertTriangle,
 } from "lucide-react";
 import { adminCard, adminInput } from "@/components/admin/commerce-ui";
 import { formatCurrency } from "@/lib/format";
@@ -237,6 +243,80 @@ export function WholesaleManager({
     );
   });
 
+  const driftedProducts = marginsList.filter((p) => p.marginPct < 18);
+
+  const handleBulkAdjustMargins = () => {
+    if (driftedProducts.length === 0) return;
+    startTransition(async () => {
+      const updates = driftedProducts.map((p) => ({
+        productId: p.id,
+        newWholesalePrice: p.suggestedWholesalePrice,
+      }));
+      const res = await bulkAdjustWholesalePricesAction(updates);
+      if (res.success) {
+        setActionMessage({ type: "success", text: res.message || "Precios reajustados al 18%." });
+        setMarginsList((prev) =>
+          prev.map((item) => {
+            const up = updates.find((u) => u.productId === item.id);
+            if (!up) return item;
+            const newPrice = up.newWholesalePrice;
+            const newMarginPct = Math.round(((newPrice - item.landedCost) / newPrice) * 1000) / 10;
+            return {
+              ...item,
+              wholesalePrice: newPrice,
+              marginPct: newMarginPct,
+              netProfit: newPrice - item.landedCost,
+            };
+          })
+        );
+      } else {
+        setActionMessage({ type: "error", text: res.error || "No se pudieron reajustar los precios." });
+      }
+    });
+  };
+
+  const handlePrintCatalog = () => {
+    window.print();
+  };
+
+  const handleCopyWhatsAppCatalog = () => {
+    const header = `🛍️ *MYA IMPORTACIONES — LISTA MAYORISTA VIGENTE*\n📦 *Mínimo combinable:* $100.000 o 5 unidades totales\n🚚 *Envíos asegurados:* Todo el país por Correo Argentino | Retiro en Tandil\n💳 *Pago:* Transferencia bancaria directa / Mercado Pago\n📅 *Actualizado:* ${new Date().toLocaleDateString("es-AR")}\n\n`;
+
+    const grouped = new Map<string, WholesaleProductMargin[]>();
+    marginsList.slice(0, 40).forEach((item: WholesaleProductMargin) => {
+      const cat = item.categoryName || "General";
+      if (!grouped.has(cat)) grouped.set(cat, []);
+      grouped.get(cat)!.push(item);
+    });
+
+    let body = "";
+    for (const [cat, items] of grouped.entries()) {
+      body += `*${cat.toUpperCase()}*\n`;
+      items.slice(0, 6).forEach((item) => {
+        body += `• ${item.title}: ${item.wholesalePrice.toLocaleString("es-AR")} (Mín. ${item.wholesaleMinQty} u. | Ref. Min: ${item.retailPrice.toLocaleString("es-AR")})\n`;
+      });
+      body += "\n";
+    }
+
+    body += `👉 *Ver catálogo completo online:* https://myaimportaciones.com/mayorista\n`;
+
+    navigator.clipboard.writeText(header + body);
+    setActionMessage({ type: "success", text: "¡Lista mayorista copiada para WhatsApp!" });
+  };
+
+  const handleExportCsv = () => {
+    const headers = "ID,Producto,Categoría,Precio Mayorista (ARS),Precio Minorista (ARS),Mínimo Unidades,Costo Landed (ARS),Margen (%)\n";
+    const rows = marginsList.map((m) =>
+      `"${m.id}","${m.title.replace(/"/g, '""')}","${m.categoryName.replace(/"/g, '""')}",${m.wholesalePrice},${m.retailPrice},${m.wholesaleMinQty},${m.landedCost},${m.marginPct}`
+    ).join("\n");
+    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `mya-catalogo-mayorista-${new Date().toISOString().split("T")[0]}.csv`);
+    link.click();
+  };
+
   const filteredMargins = marginsList.filter((p) => {
     if (marginFilter === "low" && p.marginPct >= 25) return false;
     if (marginFilter === "critical" && p.marginPct >= 15) return false;
@@ -301,6 +381,73 @@ export function WholesaleManager({
           <span>Habilitar como Mayorista</span>
         </button>
       </form>
+
+      {/* Barra de Acciones Mayoristas: Generador PDF, WhatsApp y CSV */}
+      <div className={`${adminCard} flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-zinc-900 to-zinc-950 text-white p-4`}>
+        <div>
+          <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+            <Share2 className="size-4 text-amber-400" />
+            <span>Herramientas de Venta & Catálogo Mayorista</span>
+          </h2>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Compartí la lista de precios vigente con tus revendedores o imprimí el catálogo en PDF.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopyWhatsAppCatalog}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            <Copy className="size-3.5" />
+            <span>Copiar para WhatsApp</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintCatalog}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-3.5 py-2 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            <Printer className="size-3.5" />
+            <span>Imprimir / PDF</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-3.5 py-2 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            <Download className="size-3.5" />
+            <span>Exportar CSV</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Alerta de Variación de Costo de Pasero / Origen */}
+      {driftedProducts.length > 0 && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="size-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-amber-950">
+                  Alerta de variación de costo: {driftedProducts.length} {driftedProducts.length === 1 ? "producto" : "productos"} con margen inferior al 18% objetivo
+                </p>
+                <p className="text-[11px] text-amber-800">
+                  Debido a ajustes en origen o flete de pasero, podés restablecer el margen de rentabilidad garantizado con 1 clic.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleBulkAdjustMargins}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-4 py-2 text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              <Sparkles className="size-3.5" />
+              <span>Reajustar todos al 18%</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs Principales */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-3">
