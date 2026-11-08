@@ -173,7 +173,7 @@ export function detectStoreCategory(
 
 
   // 1. Perfumería
-  if (/\b(?:lattafa|asdaf|yara|khamrah|bade'e|asad|qaed|fakhar|ejaazi|orientica|al haramain|afnan)\b/i.test(t)) {
+  if (/\b(?:lattafa|asdaf|yara|khamrah|bade'e|asad|qaed|fakhar|ejaazi|orientica|al haramain|afnan|al wataniah|wataniah|maison alhambra|alhambra|armaf)\b/i.test(t)) {
     const c = findCat("perfumes-arabes") || findCat("perfumeria");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
@@ -182,7 +182,15 @@ export function detectStoreCategory(
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
   if (/perfum|edp|edt|cologne|eau de/i.test(t)) {
-    const c = findCat("perfumeria");
+    if (/\b(?:fem|femenino|mujer|woman|donna|pour femme)\b/i.test(t)) {
+      const c = findCat("perfumes-importados-mujer") || findCat("perfumeria");
+      if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+    }
+    if (/\b(?:masc|masculino|hombre|man|uomo|pour homme)\b/i.test(t)) {
+      const c = findCat("perfumes-importados-hombre") || findCat("perfumeria");
+      if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+    }
+    const c = findCat("perfumes-unisex-autor") || findCat("perfumeria");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
 
@@ -283,6 +291,26 @@ export function detectStoreCategory(
   }
   if (/apple|airpods|airpod|earpods|charger|cargador|magsafe/i.test(t)) {
     const c = findCat("electronica-smartphones") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/jbl|soundbar|parlante|speaker|fone|auricular|headphone|airpod|earbud/i.test(t)) {
+    const c = findCat("electronica-audio-parlantes") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/playstation|ps5|ps4|dualsense|nintendo|switch|xbox|gamer|joystick|gamepad/i.test(t)) {
+    const c = findCat("electronica-consolas-gaming") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/\b(tv|smart\s*tv|televisor|televis[aã]o|monitor)\b/i.test(t)) {
+    const c = findCat("electronica-tvs-monitores") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/drone|dji|gimbal|osmo|camara|câmera|gopro|estabilizador|action/i.test(t)) {
+    const c = findCat("electronica-drones-camaras") || findCat("electronica");
+    if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
+  }
+  if (/ssd|ram|ryzen|intel|placa|fuente|gabinete|procesador|mother|disco|memoria|sandisk|kingston|patriot/i.test(t)) {
+    const c = findCat("electronica-componentes-accesorios") || findCat("electronica");
     if (c) return { categoryId: c.id, categorySlug: c.slug, categoryName: c.name };
   }
   if (/\b(tv|televisor|televis[aã]o|smart\s*tv|placa de video|placa de v[ií]deo|geforce|radeon|playstation|xbox)\b|ssd|ram|kingston|sandisk|pendrive|auricular|headphone|gamer|silla|monitor|teclado|mouse|jbl|alexa|echo|soundbar|parlante/i.test(t)) {

@@ -58,7 +58,7 @@ export function CategoryNavigation({
 
     if (selectedRubro) {
       return (
-        <div className="bg-white p-6 text-zinc-950">
+        <div className="bg-white p-6 text-zinc-950 max-h-[min(32rem,75vh)] overflow-y-auto">
           <div className="mb-5 border-b border-zinc-100 pb-4">
             <div className="flex items-center justify-between">
               <div>

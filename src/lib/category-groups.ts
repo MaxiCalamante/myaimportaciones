@@ -53,15 +53,25 @@ export const RUBROS_DEFINITION = [
     name: "Tecnología y Electrónica",
     slug: "electronica",
     groupSlug: "tecnologia-electronica",
-    description: "Smartphones, accesorios originales, audio y gadgets.",
+    description: "Smartphones, consolas, gaming, audio y accesorios de alta gama.",
     icon: "Smartphone" as const,
     href: "/catalogo?category=electronica",
-    keywords: ["electronica", "smartphone", "tecnologia", "audio", "computacion"],
+    keywords: ["electronica", "smartphone", "tecnologia", "audio", "computacion", "gaming", "playstation", "apple"],
     subgroups: [
       {
-        name: "Electrónica y Dispositivos",
-        parentSlug: "electronica",
-        description: "Equipos Apple, Samsung, audio y accesorios de alta gama.",
+        name: "Smartphones y Tablets",
+        parentSlug: "electronica-smartphones",
+        description: "iPhones nuevos y sellados, Samsung Galaxy y tablets.",
+      },
+      {
+        name: "Audio y Parlantes",
+        parentSlug: "electronica-audio-parlantes",
+        description: "Parlantes JBL, auriculares inalámbricos y soundbars.",
+      },
+      {
+        name: "Computación y Gaming",
+        parentSlug: "electronica-consolas-gaming",
+        description: "Notebooks, consolas PlayStation, Nintendo, monitores y drones.",
       },
     ],
   },
@@ -73,12 +83,22 @@ export const RUBROS_DEFINITION = [
     description: "Herramientas manuales, eléctricas e inalámbricas Total Tools y Wadfow.",
     icon: "Wrench" as const,
     href: "/catalogo?category=herramientas-equipamiento",
-    keywords: ["herramientas", "equipamiento", "taller", "ferreteria"],
+    keywords: ["herramientas", "equipamiento", "taller", "ferreteria", "total", "wadfow"],
     subgroups: [
       {
-        name: "Herramientas y Taller",
+        name: "Eléctricas e Inalámbricas",
         parentSlug: "herramientas-equipamiento",
-        description: "Líneas industriales y profesionales para trabajo y hogar.",
+        description: "Taladros, rotomartillos, amoladoras, soldadoras y baterías 20V.",
+      },
+      {
+        name: "Equipamiento y Taller",
+        parentSlug: "herramientas-equipamiento",
+        description: "Compresores, hidrolavadoras, cajas de herramientas y generadores.",
+      },
+      {
+        name: "Manuales y Medición",
+        parentSlug: "herramientas-equipamiento",
+        description: "Llaves, destornilladores, alicates y niveles láser.",
       },
     ],
   },
@@ -93,26 +113,65 @@ export function buildStoreRubros(allCategories: Category[]): CategoryGroupItem[]
 
   return RUBROS_DEFINITION.map((rubro) => {
     const subgroups = rubro.subgroups.map((sub) => {
-      const parentCat = bySlug.get(sub.parentSlug);
-      // Children of this parent category
-      const directChildren = parentCat
-        ? allCategories.filter((c) => c.parentId === parentCat.id)
-        : [];
+      let matchedCategories: Category[] = [];
 
-      // Or categories matching keyword if no strict parentId
-      const matchedCategories = directChildren.length > 0
-        ? directChildren
-        : allCategories.filter((c) => {
-            if (c.slug === sub.parentSlug) return true;
-            if (c.parentId && byId.get(c.parentId)?.slug === sub.parentSlug) return true;
-            return false;
-          });
+      if (rubro.id === "herramientas-equipamiento") {
+        const toolsParent = bySlug.get("herramientas-equipamiento");
+        const allTools = toolsParent ? allCategories.filter((c) => c.parentId === toolsParent.id) : [];
+
+        if (sub.name.includes("Eléctricas")) {
+          matchedCategories = allTools.filter((c) =>
+            /taladro|rotomartillo|amolador|soldador|bateria|sierra|atornillador|lijador|cepillo|calador|fresador|pistola/i.test(
+              c.slug + " " + c.name
+            )
+          );
+        } else if (sub.name.includes("Equipamiento")) {
+          matchedCategories = allTools.filter((c) =>
+            /compresor|hidrolavadora|caja|bolso|gato|generador|limpieza|jardin|agro|aspirador|soplador|bomba|cofre|crique/i.test(
+              c.slug + " " + c.name
+            )
+          );
+        } else {
+          matchedCategories = allTools.filter((c) =>
+            /llave|tubo|manual|destornillador|alicate|pinza|nivel|medicion|cincel|martillo|corte|cuter|consumible|disco|broca|punta/i.test(
+              c.slug + " " + c.name
+            )
+          );
+        }
+      } else if (rubro.id === "tecnologia-electronica") {
+        const techParent = bySlug.get("electronica");
+        const allTech = techParent ? allCategories.filter((c) => c.parentId === techParent.id) : [];
+
+        if (sub.name.includes("Smartphones")) {
+          matchedCategories = allTech.filter((c) => /smartphone|celular|tablet|telefono/i.test(c.slug + " " + c.name));
+        } else if (sub.name.includes("Audio")) {
+          matchedCategories = allTech.filter((c) => /audio|parlante|auricular|soundbar|fone|som/i.test(c.slug + " " + c.name));
+        } else {
+          matchedCategories = allTech.filter((c) => /notebook|computador|desktop|pc|game|console|playstation|nintendo|xbox|tv|monitor|drone|camara|componente|accesorio/i.test(c.slug + " " + c.name));
+        }
+
+        // If tech subcategories in DB are still few, fallback to matching direct
+        if (matchedCategories.length === 0 && sub.parentSlug) {
+          const direct = bySlug.get(sub.parentSlug);
+          if (direct) matchedCategories = [direct];
+        }
+      } else {
+        const parentCat = bySlug.get(sub.parentSlug);
+        const directChildren = parentCat ? allCategories.filter((c) => c.parentId === parentCat.id) : [];
+        matchedCategories = directChildren.length > 0
+          ? directChildren
+          : allCategories.filter((c) => {
+              if (c.slug === sub.parentSlug) return true;
+              if (c.parentId && byId.get(c.parentId)?.slug === sub.parentSlug) return true;
+              return false;
+            });
+      }
 
       return {
         name: sub.name,
         parentSlug: sub.parentSlug,
         description: sub.description,
-        categories: matchedCategories,
+        categories: matchedCategories.slice(0, 7), // Cap to 7 items so menu never overflows
       };
     });
 

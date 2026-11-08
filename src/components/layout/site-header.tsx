@@ -398,14 +398,6 @@ export function SiteHeader({
               );
             })}
 
-            <Link
-              aria-current={isWholesalePage ? "page" : undefined}
-              className={`${linkClass} ${isWholesalePage ? "bg-white font-semibold text-sky-800 shadow-xs" : ""}`}
-              href="/mayorista"
-            >
-              Mayoristas
-            </Link>
-
             <Link className={linkClass} href="/#ofertas">
               Novedades
             </Link>
@@ -424,7 +416,7 @@ export function SiteHeader({
             ) : (
               isWholesaleAllowed && (
                 <Link
-                  className="ml-auto rounded-full bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-sky-800 transition"
+                  className="ml-auto rounded-full bg-sky-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-sky-800 transition"
                   href="/mayorista"
                 >
                   Catálogo Mayorista
