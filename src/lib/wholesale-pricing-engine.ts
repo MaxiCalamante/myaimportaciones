@@ -83,13 +83,16 @@ export function classifyWholesaleRubro(
 
   // 1. EXCLUSIONES ABSOLUTAS: Celulares, telefonía, smartwatches, notebooks, PCs, consolas y alta tecnología
   const isExcludedTech =
-    /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora|desktop|pc |tablet|monitor|laptop|celular|telefonia|telefono|smartwatch|apple watch|reloj inteligente|galaxy watch|playstation|nintendo|xbox|consola|redmi note|moto g/i.test(t) ||
+    /iphone|macbook|ipad|galaxy|smartphone|notebook|computadora|desktop|pc |tablet|monitor|laptop|celular|telefonia|telefono|smartwatch|apple watch|reloj inteligente|galaxy watch|playstation|nintendo|xbox|consola|redmi note|moto g|televisor|smart tv|dji drone|drone/i.test(t) ||
     cat.includes("smartphone") ||
     cat.includes("notebook") ||
     cat.includes("tablet") ||
     cat.includes("computadoras") ||
     cat.includes("celular") ||
     cat.includes("telefonia") ||
+    cat.includes("consolas") ||
+    cat.includes("tvs-monitores") ||
+    cat.includes("drones") ||
     (b === "apple" && !/cable|funda|adaptador|cargador|earpods/i.test(t));
 
   if (isExcludedTech) {
@@ -161,11 +164,11 @@ export function classifyWholesaleRubro(
     return { rubro: "herramientas", isEligible: true };
   }
 
-  // 6. PEQUEÑA ELECTRÓNICA BARATA / ACCESORIOS (solo si retail < $150.000 ARS)
+  // 6. ELECTRODOMÉSTICOS DE HOGAR, COCINA, CUIDADO PERSONAL & ACCESORIOS (hasta $450.000 ARS)
   if (
-    (cat.includes("electronica") || /auricular|cable|cargador|pendrive|headphone|mouse|teclado|parlante|soundbar/i.test(t)) &&
+    (cat.includes("electronica") || cat.includes("hogar") || /licuadora|blender|procesadora|air fryer|freidora|pava|kettle|cafetera|espresso|afeitadora|shaver|cortadora de pelo|trimmer|cortabarba|secador de pelo|hair dryer|planchita|cepillo secador|masajeador|aspiradora|vacuum|ventilador|extractor|vaporizador|auricular|cable|cargador|pendrive|headphone|mouse|teclado|parlante|soundbar/i.test(t)) &&
     price > 0 &&
-    price < 150_000
+    price <= 450_000
   ) {
     return { rubro: "electro_barata", isEligible: true };
   }
@@ -291,7 +294,7 @@ export function calculateProductWholesalePricing(
       break;
     case "electro_barata":
       resellerTargetMarginPercent = 0.25;
-      minQty = 5;
+      minQty = costLanded > 80_000 ? 2 : 4;
       myaSafetyMarkup = 1.20;
       break;
   }

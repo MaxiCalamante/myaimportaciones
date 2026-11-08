@@ -76,6 +76,7 @@ export async function WholesaleLanding({category,filters={}}:{category?:Wholesal
    <ProductSelection title="Cosmética y skincare" products={categoryProducts('cosmetica-coreana')} href="/mayorista/cosmetica-coreana#catalogo"/>
    <ProductSelection title="Perfumería y fragancias" products={categoryProducts('perfumeria')} href="/mayorista/perfumeria#catalogo"/>
    <ProductSelection title="Herramientas para tu negocio" products={categoryProducts('herramientas-equipamiento')} href="/mayorista/herramientas#catalogo"/>
+   <ProductSelection title="Electrodomésticos y Hogar" products={categoryProducts('electronica-electrodomesticos-hogar')} href="#catalogo"/>
    <ProductSelection title="Ofertas mayoristas" products={products.filter(p=>p.tags.includes('oferta')&&p.wholesaleOffer?.status==='ready')} href="#catalogo"/>
   </>}
   {category&&<section className="mt-12 grid gap-6 border-t border-zinc-200 pt-8 md:grid-cols-2"><div><h2 className="text-2xl font-semibold tracking-tight">Elegí la presentación exacta</h2>{category.buyingGuide.map(item=><article key={item.title} className="mt-5"><h3 className="text-sm font-semibold">{item.title}</h3><p className="mt-2 text-sm leading-7 text-zinc-600">{item.text}</p></article>)}</div><aside className="self-start rounded-2xl border border-zinc-200 bg-zinc-50 p-5"><Boxes aria-hidden="true" className="size-5 text-sky-800"/><h2 className="mt-3 text-base font-semibold">Antes de confirmar</h2><ul className="mt-3 space-y-3 text-sm text-zinc-600">{category.checklist.map(item=><li key={item}>{item}</li>)}</ul></aside></section>}

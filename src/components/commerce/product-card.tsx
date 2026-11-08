@@ -69,7 +69,7 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
           {(priceRange||(channel==='wholesale'&&wholesale.from)) && <span className="text-[10px] font-normal tracking-normal text-zinc-500">Desde</span>}<span className="whitespace-nowrap">{<ProductPrice product={product} channel={channel} ars={displayPrice}/>}</span>
         </p>
         {channel === "wholesale" && <p className="text-[10px] leading-4 text-zinc-600">{pending?'Solicitud sin cobro previo':'Por unidad · combinable con otros productos'}</p>}
-        {channel==='wholesale'&&price!==null&&product.retailPrice>price&&!product.hasVariants&&<p className="text-[10px] leading-4 text-zinc-500">Minorista: {formatCurrency(product.retailPrice)}</p>}
+        {channel==='wholesale'&&price!==null&&product.retailPrice>price&&!product.hasVariants&&<p className="text-[10px] leading-4 text-zinc-500">Minorista: {formatCurrency(product.retailPrice)}<span className="ml-1 font-semibold text-emerald-700">· Ahorro {Math.round((1 - price / product.retailPrice) * 100)}%</span></p>}
         {channel === "retail" && <ElectronicsPrice product={product} />}
       </div>
       <div className="mt-0.5 h-4 min-w-0">{product.hasVariants && <ProductVariantPreview slug={product.slug} variants={product.variants} />}</div>

@@ -25,6 +25,14 @@ test("classifyWholesaleRubro: incluye rubros mayoristas legítimos", () => {
   const cheapAudio = classifyWholesaleRubro("Auriculares In-Ear Bluetooth MYA TWS", "electronica", "MYA", 28000);
   assert.equal(cheapAudio.isEligible, true);
   assert.equal(cheapAudio.rubro, "electro_barata");
+
+  const airfryer = classifyWholesaleRubro("Freidora de Aire Ninja Air Fryer 3.8L AF101", "electronica", "Ninja", 195000);
+  assert.equal(airfryer.isEligible, true);
+  assert.equal(airfryer.rubro, "electro_barata");
+
+  const shaver = classifyWholesaleRubro("Afeitadora Eléctrica Braun Serie 5 Wet & Dry", "electronica", "Braun", 125000);
+  assert.equal(shaver.isEligible, true);
+  assert.equal(shaver.rubro, "electro_barata");
 });
 
 test("classifyWholesaleRubro: excluye estrictamente alta gama, iPhones, MacBooks y notebooks", () => {

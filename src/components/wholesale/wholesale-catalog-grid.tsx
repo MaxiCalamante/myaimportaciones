@@ -26,6 +26,7 @@ const QUICK_PILLS = [
   { label: "Cuidado Capilar", slug: "cuidado-capilar" },
   { label: "Perfumería", slug: "perfumeria" },
   { label: "Herramientas", slug: "herramientas-equipamiento" },
+  { label: "Electro y Hogar", slug: "electronica-electrodomesticos-hogar" },
 ];
 
 const SORT_OPTIONS = [
