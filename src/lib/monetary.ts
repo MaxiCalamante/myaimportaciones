@@ -19,16 +19,31 @@ export async function projectUsdProducts(products:Product[],client?:SupabaseClie
   const db=client??await createServerSupabaseClient();
   const result=await db.rpc('store_usd_prices_v1',{ids_input:products.map(p=>p.id)});
   if(result.error){
-    console.error('[monetary] store_usd_prices_v1 error, using base product prices:', result.error);
-    return products;
+    console.error('[monetary] store_usd_prices_v1 error, using unverified reference prices:', result.error);
+    return products.map(p=>({
+      ...p,
+      priceVerified: false,
+      isPurchasable: false,
+      priceWarning: 'Precio referencial en actualización. Consultanos antes de comprar.',
+      variants: p.variants?.map(v=>({
+        ...v,
+        priceVerified: false,
+        isPurchasable: false,
+      }))
+    }));
   }
-  const rows=result.data as PublicUsdPrice[];
+  const rows=(result.data??[]) as PublicUsdPrice[];
   const byIdentity=new Map(rows.map(r=>[r.variantId??r.productId,r]));
   return products.map(p=>{
     const base=byIdentity.get(p.id);
-    const variants=p.variants?.map(v=>{const r=byIdentity.get(v.id);return r?{...v,retailUsd:r.retailUsd,wholesaleUsd:r.wholesaleUsd,retailPrice:r.retailArs??0,wholesalePrice:r.wholesaleArs??0}:v;});
-    const prices=variants?.filter(v=>v.isActive).map(v=>v.retailPrice).filter(v=>v>0)??[];
-    return {...p,...(base?{retailUsd:base.retailUsd,wholesaleUsd:base.wholesaleUsd,retailPrice:base.retailArs??0,wholesalePrice:base.wholesaleArs??0}:{}),variants,
+    const variants=p.variants?.map(v=>{
+      const r=byIdentity.get(v.id);
+      const isVerified=Boolean(r&&r.retailArs!==null&&r.retailArs>0);
+      return r?{...v,retailUsd:r.retailUsd,wholesaleUsd:r.wholesaleUsd,retailPrice:r.retailArs??0,wholesalePrice:r.wholesaleArs??0,priceVerified:isVerified,isPurchasable:isVerified}:{...v,priceVerified:false,isPurchasable:false};
+    });
+    const prices=variants?.filter(v=>v.isActive&&v.priceVerified).map(v=>v.retailPrice).filter(v=>v>0)??[];
+    const isBaseVerified=Boolean(base&&base.retailArs!==null&&base.retailArs>0);
+    return {...p,...(base?{retailUsd:base.retailUsd,wholesaleUsd:base.wholesaleUsd,retailPrice:base.retailArs??0,wholesalePrice:base.wholesaleArs??0,priceVerified:isBaseVerified,isPurchasable:isBaseVerified}:{priceVerified:false,isPurchasable:false,priceWarning:'Precio referencial en actualización.'}),variants,
       ...(p.hasVariants?{minPrice:prices.length?Math.min(...prices):undefined,maxPrice:prices.length?Math.max(...prices):undefined}:{}),};
   });
 }

@@ -52,6 +52,8 @@ export interface ProductVariant {
   retailUsd?: string;
   wholesaleUsd?: string | null;
   wholesaleOffer?: PublicWholesaleOffer;
+  priceVerified?: boolean;
+  isPurchasable?: boolean;
   id: string;
   productId: string;
   title: string;
@@ -76,6 +78,9 @@ export interface Product {
   retailUsd?: string;
   wholesaleUsd?: string | null;
   wholesaleOffer?: PublicWholesaleOffer;
+  priceVerified?: boolean;
+  isPurchasable?: boolean;
+  priceWarning?: string;
   sourceUrl?: string | null;
   supplierLastCheckedAt?: string | null;
   supplierStockStatus?: string | null;

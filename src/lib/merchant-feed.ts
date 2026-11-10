@@ -5,10 +5,17 @@ import { canonicalProductSlug, PRODUCT_CANONICAL_ALIASES } from "./seo-product-a
 import { verifiedGtin } from "./product-identifiers";
 export { verifiedGtin } from "./product-identifiers";
 
+export function isMerchantProductEligible(p: Product, options?: { strictVerification?: boolean }): boolean {
+  if (!p.active || p.wholesaleOnly || !(p.retailPrice > 0) || !p.imageUrl) return false;
+  if (p.priceVerified === false) return false;
+  if (options?.strictVerification && p.priceVerified !== true) return false;
+  return true;
+}
+
 export function escapeXml(value: string) { return value.replace(/[<>&'"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!); }
-export function merchantFeed(products: Product[], checkoutEnabled: boolean) {
+export function merchantFeed(products: Product[], checkoutEnabled: boolean, options?: { strictVerification?: boolean }) {
   const field = (key: string, value: string) => `<g:${key}>${escapeXml(value)}</g:${key}>`;
-  const publicProducts = products.filter(p => p.active && !p.wholesaleOnly && p.retailPrice > 0 && p.imageUrl);
+  const publicProducts = products.filter(p => isMerchantProductEligible(p, options));
   const bySlug = new Map(publicProducts.map(p => [p.slug, p]));
   const items = (checkoutEnabled ? publicProducts : []).filter(p => canonicalProductSlug(p, bySlug.get(PRODUCT_CANONICAL_ALIASES[p.slug])) === p.slug).map(p => {
     const gtin = verifiedGtin(p.specifications?.GTIN || p.specifications?.EAN || p.specifications?.UPC);

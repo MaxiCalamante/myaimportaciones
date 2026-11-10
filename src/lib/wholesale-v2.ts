@@ -1,6 +1,6 @@
 /** Public prices are a projection of reviewed private costs; never a discount off retail. */
 export type WholesalePayment = 'mercado_pago' | 'transferencia';
-export interface PublicWholesalePolicy { minAmountArs:number; minUnits:number }
+export interface PublicWholesalePolicy { minAmountArs:number; minUnits:number; confirmed?: boolean }
 export interface WholesaleTier { minQty:number; unitPrice:number }
 export interface PublicWholesaleOffer {
  productId:string; variantId:string|null; unitPrice:number|null;

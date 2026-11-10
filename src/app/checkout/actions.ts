@@ -91,6 +91,9 @@ async function resolveQuote(input: CheckoutInput) {
     const p = products.find(p => p.id === line.productId)!;
     const category = Array.isArray(p.categories) ? p.categories[0] : p.categories;
     if (!p.is_active || (p as unknown as { commercial_status?: string }).commercial_status !== "AVAILABLE" || (line.channel === "retail" && p.is_wholesale_only)) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+    if (Array.isArray(p.payment_methods) && p.payment_methods.length > 0 && !p.payment_methods.includes(input.paymentMethod)) {
+      throw new Error(`${p.title} no acepta ${input.paymentMethod === "mercado_pago" ? "Mercado Pago" : "transferencia bancaria"}. Elegí otro medio de pago.`);
+    }
 
     let price = Number(p.retail_price);
     let title = p.title;
@@ -167,6 +170,7 @@ async function resolveQuote(input: CheckoutInput) {
   let quote;
   if(wholesaleLines.length){
     const policy=await getPublicWholesalePolicy(db);
+    if(!policy.confirmed)throw new Error('No se pudieron confirmar las condiciones mayoristas vigentes. Por favor reintentá o consultanos por WhatsApp.');
     const minimum=validateWholesaleOrder(items.map(i=>({channel:i.channel,quantity:i.quantity,price:i.price})),policy);
     if(!minimum.meetsMinimum)throw new Error(minimum.errorMessage);
     const subtotal=items.reduce((sum,i)=>sum+moneyCents(i.price)*i.quantity,0)/100;
@@ -188,7 +192,11 @@ export async function quoteOrderAction(input: CheckoutInput) {
   const expiresAt=new Date(Math.min(Date.now()+settings.data.quote_seconds*1000,exchange?.status==='valid'&&exchange.expiresAt?Date.parse(exchange.expiresAt):Infinity)).toISOString();
   const payload={payment:input.paymentMethod,items,subtotal:quote.subtotal,discount:quote.discount,shipping:quote.shipping,total:quote.total,shipping_option:option.id,promotion:quote.promotion,discountAllocations:quote.discountAllocations??{}};
   const checked=await db.rpc('store_validate_profitability_v2',{payload_input:payload,rate_input:exchange?.id??null,snapshot_input:null});
-  if(checked.error)throw Error('La rentabilidad final requiere revisión: costos, comisiones o descuentos pendientes. Consultanos antes de pagar.');
+  const checkedData = checked.data as { allowed?: boolean; state?: string; reason?: string } | null;
+  if(checked.error || checkedData?.allowed === false || checkedData?.state === 'review') {
+    const reason = checkedData?.reason ? `: ${checkedData.reason}` : '';
+    throw Error(`La rentabilidad final requiere revisión${reason}. Consultanos antes de pagar.`);
+  }
   const saved=await db.from('store_checkout_quotes').insert({fingerprint:checkoutFingerprint(input),rate_id:monetaryPrices.some(p=>p.usd)?exchange?.id:null,payload,prices:monetaryPrices,profitability_snapshot:checked.data,expires_at:expiresAt}).select('id').single();
   if(saved.error)throw Error('No se pudo guardar la cotización de compra.');
   return {ok:true as const,quote:{...quote,quoteId:saved.data.id as string,expiresAt,exchangeRate:exchange?.rate??undefined,exchangeLabel:exchange?`Dólar ${DOLLAR_TYPES[exchange.kind]} venta`:undefined},confirmationRequired:false as const,reasons:[]};
@@ -227,8 +235,10 @@ export async function createOrderAction(input: OrderInput) {
   }
   if(!uuid.test(input.quoteId))throw Error('Cotización inválida.');
   const db=createCommerceService();
-  const saved=await db.from('store_checkout_quotes').select('payload,expires_at,fingerprint').eq('id',input.quoteId).single();
+  const saved=await db.from('store_checkout_quotes').select('payload,expires_at,fingerprint,profitability_snapshot').eq('id',input.quoteId).single();
   if(saved.error||saved.data.fingerprint!==checkoutFingerprint(input)||Date.parse(saved.data.expires_at)<Date.now())throw Error('La cotización venció o cambió. Actualizá el resumen.');
+  const profSnapshot = saved.data.profitability_snapshot as { allowed?: boolean; state?: string } | null;
+  if(profSnapshot?.allowed === false || profSnapshot?.state === 'review')throw Error('La cotización requiere confirmación de rentabilidad antes de reservar el pedido.');
   if(Number(saved.data.payload.total)!==input.expectedTotal)throw Error('El total cambió. Actualizá el resumen.');
   const pickup=saved.data.payload.shipping_option==='pickup_tandil';
   if(!pickup&&(!input.address.trim()||!input.city.trim()))throw Error('Completá el domicilio y la localidad.');

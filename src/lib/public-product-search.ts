@@ -14,9 +14,10 @@ const getPublicSearchIndex = cache(async (): Promise<PublicSearchProduct[]> => {
     .order("id").range(from, to));
 });
 
-export async function searchPublicProductIds(query: string, categoryIds: string[]): Promise<string[]> {
+export async function searchPublicProductIds(query: string, categoryIds?: string[]): Promise<string[]> {
+  if (categoryIds !== undefined && categoryIds.length === 0) return [];
   const index = await getPublicSearchIndex();
-  const filtered = categoryIds.length > 0
+  const filtered = categoryIds !== undefined
     ? (() => {
         const ids = new Set(categoryIds);
         return index.filter(p => ids.has(p.category_id));

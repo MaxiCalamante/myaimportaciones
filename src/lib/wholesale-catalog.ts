@@ -19,7 +19,7 @@ export function wholesaleCategoryIds(categories: Category[], slug?: string): Set
 
 /** Published products and a deliberately limited public quote, never acquisition costs. */
 export const getWholesaleCatalog=cache(async(categorySlug?: string, brand?: string, limit?: number)=>{
-  const [data,policy]=await Promise.all([getStorefrontData({wholesale:true,all:true}),hasSupabaseConfig()?getPublicWholesalePolicy():Promise.resolve(INITIAL_PUBLIC_WHOLESALE_POLICY)]);
+  const [data,policy]=await Promise.all([getStorefrontData({wholesale:true,all:true}),hasSupabaseConfig()?getPublicWholesalePolicy(undefined,{allowFallback:true}):Promise.resolve({...INITIAL_PUBLIC_WHOLESALE_POLICY,confirmed:false})]);
   const categoryMap = new Map(data.categories.map(c => [c.id, c.slug]));
   const eligibleProducts = data.products.filter(p => {
     const catSlug = categoryMap.get(p.categoryId) ?? "";

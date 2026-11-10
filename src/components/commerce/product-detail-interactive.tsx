@@ -15,6 +15,7 @@ import {
   CreditCard,
   ChevronDown,
   ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 import { formatCurrency, formatPaymentMethod } from "@/lib/format";
 import { copyToClipboard } from "@/lib/clipboard";
@@ -142,6 +143,7 @@ export function ProductDetailInteractive({
   }, [product,wholesale.price]);
 
   const getCtaState = () => {
+    if(product.priceVerified===false||(isVariantMode&&matchedVariant&&matchedVariant.priceVerified===false))return{text:'Precio en actualización',disabled:true};
     if(channel==='wholesale'&&wholesale.offer?.status==='unavailable')return{text:'No disponible para compra mayorista',disabled:true};
     if(requestable&&(!isVariantMode||allDimensionsSelected&&matchedVariant))return{text:added?'Solicitud agregada':'Solicitar confirmación',disabled:false};
     if (!isVariantMode) {
@@ -232,6 +234,12 @@ export function ProductDetailInteractive({
             <p className="mt-2 text-xs leading-5 text-zinc-600">Beneficio por transferencia y opciones de pago a confirmar antes de comprar.</p>
           )}
           {channel === "retail" && <ElectronicsPrice product={{ ...product, retailPrice: price??product.retailPrice }} detail />}
+          {product.priceWarning && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200">
+              <AlertCircle className="size-3.5 shrink-0" />
+              {product.priceWarning}
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className={`inline-flex items-center gap-1.5 font-medium ${inStock ? "text-emerald-800" : "text-amber-800"}`}><span className={`size-1.5 shrink-0 rounded-full ${inStock ? "bg-emerald-600" : "bg-amber-500"}`}/>{inStock ? "Disponible" : "Disponibilidad a confirmar"}</span>
             <span className="text-zinc-500">{isImmediate ? "Stock confirmado" : "Entrega a coordinar"}</span>
