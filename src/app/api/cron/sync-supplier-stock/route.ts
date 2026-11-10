@@ -25,6 +25,10 @@ export async function GET(req: NextRequest) {
     const catalogImports = await runCatalogImportJobs(serviceClient, 8000);
     const report = await runSupplierAutomation(serviceClient, { worker: "vercel-daily", limit: Math.min(limit, 9), timeBudgetMs: 35000 });
     const wholesalePrices = await runWholesalePriceRefresh(serviceClient, Math.min(limit, 100));
+    const [lifecycleRes, consumablesRes] = await Promise.all([
+      serviceClient.rpc('evaluate_catalog_lifecycle_v1'),
+      serviceClient.rpc('filter_tracker_consumables_v1')
+    ]);
     invalidateAdminStorefrontCache();
     revalidatePath("/", "layout");
     return NextResponse.json({
@@ -33,6 +37,8 @@ export async function GET(req: NextRequest) {
       report,
       catalogImports,
       wholesalePrices,
+      lifecycle: lifecycleRes.data ?? null,
+      consumables: consumablesRes.data ?? null,
     });
   } catch {
     return NextResponse.json(

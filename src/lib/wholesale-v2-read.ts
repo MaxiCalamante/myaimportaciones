@@ -9,7 +9,25 @@ export async function getPublicWholesalePolicy(client?:SupabaseClient):Promise<P
 export async function getPublicWholesaleOffers(items:Array<{productId:string;variantId?:string|null;quantity?:number}>,payment:WholesalePayment='mercado_pago',client?:SupabaseClient):Promise<PublicWholesaleOffer[]>{
  if(!items.length)return[];if(items.length>1000)throw new Error('La consulta mayorista supera el límite.');
  const db=client??await createServerSupabaseClient(),result:PublicWholesaleOffer[]=[];
- for(let i=0;i<items.length;i+=100){const r=await db.rpc('wholesale_public_offers_v1',{items_input:items.slice(i,i+100),payment_input:payment});if(r.error)throw new Error('No se pudieron actualizar los precios mayoristas.');result.push(...r.data as PublicWholesaleOffer[]);}
+ for(let i=0;i<items.length;i+=100){
+  const batch=items.slice(i,i+100);
+  const r=await db.rpc('wholesale_public_offers_v1',{items_input:batch,payment_input:payment});
+  if(r.error){
+   console.error('[wholesale-v2-read] wholesale_public_offers_v1 error:', r.error);
+   result.push(...batch.map(item=>({
+    productId: item.productId,
+    variantId: item.variantId ?? null,
+    unitPrice: null,
+    status: 'review' as const,
+    reason: 'Precio por confirmar.',
+    tiers: [],
+    validUntil: null,
+    policyId: null,
+   })));
+  } else {
+   result.push(...r.data as PublicWholesaleOffer[]);
+  }
+ }
  return result;
 }
 export async function readWholesaleAdmin(db:SupabaseClient){

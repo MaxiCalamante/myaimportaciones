@@ -1,222 +1,1193 @@
-# Auditoría e implementación SEO — MYA Importaciones
+# MYA Importaciones — SEO Audit & Growth
 
-Fecha: 17 de octubre de 2026. Dominio solicitado: https://myaimportaciones.com. Alcance nacional, español de Argentina y precios en ARS. Este documento se completa con las verificaciones de cada etapa.
+> Auditoría, arquitectura SEO y estrategia de posicionamiento orgánico.
+>
+> Última revisión de referencia: 10/11/2026.
+>
+> Dominio oficial: https://myaimportaciones.com
+>
+> Mercado objetivo: Argentina.
+>
+> Idioma principal: español argentino.
+>
+> Stack: Next.js 16, React 19, Supabase y Vercel.
+>
+> Este documento contiene las reglas SEO vigentes, el estado técnico observado, los pendientes y los criterios de verificación. Las métricas históricas no representan necesariamente el estado actual.
 
-## Estado inicial verificado
+---
 
-Next.js 16 App Router, React 19, Vercel y Supabase. Catálogo, filtros, paginación y productos se renderizan en el servidor; carrito y controles interactivos usan componentes cliente. La autenticación se valida con Supabase y el panel exige rol administrador. Las lecturas comerciales utilizan una lista explícita de columnas públicas que excluye costos y proveedores. Los precios y disponibilidad se leen sin caché compartida entre clientes. Existen feeds Google/Meta, analítica con consentimiento, checkout de Mercado Pago, correo transaccional condicionado a configuración y un sistema de sorteos separado.
+## 1. Objetivo SEO
 
-Base de datos: 463 productos minoristas activos, 16 marcas, 438 productos disponibles del proveedor y ningún producto con stock propio verificado. Ninguno de los 463 productos carece de marca o imagen; uno tiene descripción inferior a 70 caracteres. Hay categorías vacías. No se modifican precios, stock, identidad comercial ni reglas de compra para el SEO.
+El objetivo de MYA Importaciones es captar tráfico orgánico relevante que se convierta en consultas, pedidos y ventas.
 
-| Severidad | Hallazgo inicial | Corrección prevista |
-| --- | --- | --- |
-| P0 | El dominio raíz devuelve 308 hacia www, contrario al dominio canónico solicitado. | Invertir la configuración sin bucle, comprobar HTTPS y conservar rutas/parámetros. |
-| P1 | La URL pública de configuración, canonical, sitemap, JSON-LD y enlaces compartidos todavía derivan del dominio Vercel anterior. | Centralizar identidad oficial y mantener compatibles las integraciones. |
-| P1 | Product declara envío gratis, devolución gratuita de 30 días y vencimiento de precio inventados; las condiciones dicen envío por separado y arrepentimiento de diez días. | Eliminar datos estructurados sin respaldo. |
-| P1 | Búsquedas y combinaciones de filtros indexables; paginación canonicalizada a la primera página. | Indexar categorías/marcas reales y paginación propia; noindex en búsqueda y filtros combinados. |
-| P1 | Sitemap incorpora categorías vacías y lastmod equivalente a la hora de cada petición. | Incluir sólo páginas comerciales con productos; omitir lastmod sin evidencia fiable. |
-| P1 | Feed infiere marcas, publica identifier_exists=no indiscriminadamente, trata todo como nuevo y conserva caché hasta un día; hoy queda vacío al excluir todo el stock de proveedor. | Compartir la disponibilidad/condición real con la ficha, no inferir identificadores, fallar ante errores de datos y revisar requisitos de Merchant. |
-| P1 | Reseñas, cinco estrellas, 1.500 envíos y despachos garantizados están escritos en código sin referencia verificable. | Sustituir prueba social sin evidencia por información comercial comprobable, preservando el lenguaje visual. |
-| P2 | Titles extensos/duplicación de marca, afirmaciones de garantía oficial y originalidad genérica en metadata. | Metadata reutilizable y basada en cada producto, marca o categoría real. |
-| P2 | Lookup del producto duplicado entre metadata y página; galería renderiza segunda imagen grande oculta. | Memoización por petición y carga de ampliación al abrir. |
+La estrategia debe favorecer el crecimiento comercial sostenible, no solamente aumentar la cantidad de páginas indexadas.
 
-## Accesos y límites iniciales
+### Prioridades
 
-DNS y SSL responden, Vercel informa dominio verificado y sin conflictos DNS. Las herramientas conectadas permiten consultar el proyecto, pero la lectura de variables de entorno devuelve 403. Se utiliza el panel autenticado para la configuración que no expone el conector. No se presupone acceso a Search Console o Merchant Center ni aprobación de Google.
+1. Posicionar productos que realmente podemos comercializar.
+2. Atraer compradores minoristas en Argentina.
+3. Captar emprendedores y revendedores mayoristas.
+4. Mejorar la visibilidad de marcas y categorías relevantes.
+5. Mantener información correcta sobre precios y disponibilidad.
+6. Evitar páginas duplicadas, vacías o de baja calidad.
+7. Mejorar la experiencia móvil y el rendimiento.
+8. Obtener métricas verificables mediante Search Console y analítica.
 
-## Implementado
+**Principio central: el SEO debe reflejar el catálogo comercial real y no generar páginas artificialmente para captar visitas.**
 
-### Dominio, entornos e integraciones
+---
 
-- `myaimportaciones.com` está asociado al proyecto Vercel `myaimportaciones`, verificado, con DNS sin conflictos y HTTPS operativo. Se quitó la redirección del raíz hacia www; www ahora tiene redirección 308 al raíz.
-- `NEXT_PUBLIC_SITE_URL` de **producción** fue reemplazada por `https://myaimportaciones.com`, con confirmación expresa del usuario para sustituir la variable pública heredada. Ninguna clave privada fue modificada. Las herramientas conectadas devolvieron 403 para variables; el cambio se completó en el panel autenticado.
-- `site-origin.ts` mantiene una identidad oficial fija para los entornos alojados. Configuraciones antiguas, www, dominios ajenos y previews no pueden convertirse en canonical. Los callbacks de fixtures locales conservan localhost; `.env.example` usa localhost para desarrollo.
-- La variable de **development** en Vercel se verificó como `http://localhost:3000` y se conserva; no existe una variante específica de esa variable para preview, que usa la normalización del código y noindex.
-- Preview recibe `X-Robots-Tag: noindex, nofollow` por configuración del servidor. Sus metadatos apuntan a la identidad oficial. No se publicaron pruebas como nuevas páginas comerciales.
-- Las páginas comerciales GET/HEAD del dominio Vercel anterior redirigen 308 a la misma ruta y parámetros del dominio nuevo. Los POST, endpoints API, callbacks y rutas privadas de sesión se conservan para compatibilidad con enlaces de pago y sesiones anteriores. Estas excepciones tienen noindex o control de acceso; no se ofrecen como páginas comerciales indexables.
-- En Supabase se verificó Site URL `https://myaimportaciones.com` y se guardaron callbacks restringidos a `/auth/callback**` de ese dominio y del dominio Vercel anterior. El sufijo permite conservar los parámetros `next`; el código continúa validando el destino interno. No se agregaron comodines de host.
-- Las preferencias nuevas de Mercado Pago derivan de la URL oficial. Los handlers de firmas, verificación del proveedor, moneda, idempotencia y conciliación no cambiaron. Los webhooks antiguos siguen atendiendo directamente. No se realizó un cobro real para probar SEO.
-- Correo, vistas previas de correo, enlaces de productos compartidos, Open Graph, Twitter, schemas y sitemap usan la identidad nueva. No se activó Resend ni se inventó un remitente. El UID histórico del calendario del sorteo se conserva: es un identificador persistente, no un enlace que deba redirigir.
-- Al cambiar de dominio los navegadores no trasladan automáticamente sesiones ni datos locales de un origen a otro. Puede ser necesario volver a ingresar. Las rutas privadas antiguas se preservan para reducir la interrupción.
+## 2. Alcance comercial
 
-### Metadata, indexación y renderizado
+MYA vende principalmente:
 
-`seo.ts` centraliza title, description, canonical, robots, Open Graph y Twitter. Home tiene un título nacional breve, sin repetir la marca por la plantilla. Productos conservan sus nombres, modelos y presentaciones reales. La descripción individual usa información de la ficha o especificaciones existentes; no agrega prestaciones ni beneficios médicos.
+- Cosmética coreana y skincare.
+- Perfumería y fragancias.
+- Cuidado capilar.
+- Electrónica y tecnología.
+- Herramientas y equipamiento profesional.
 
-Se conservan las rutas actuales del catálogo con parámetros descriptivos. No se crean rutas nuevas que dupliquen las categorías o marcas existentes. Cada categoría y marca con productos es indexable; tiene H1, enlaces HTML, descripción, breadcrumbs y productos renderizados en servidor. Las marcas incluyen navegación hacia sus categorías reales y las fichas enlazan a su marca. Las subcategorías aparecen también en los breadcrumbs estructurados.
+Opera desde Tandil, Buenos Aires, con alcance comercial nacional.
 
-| Tipo de URL | Indexación y canonical |
-| --- | --- |
-| `/catalogo` | Indexable, canonical propia. |
-| `?category=...` con productos | Indexable, canonical de esa categoría. |
-| `?brand=...` real | Indexable, canonical de esa marca. |
-| Paginación comercial | Canonical propia con `page`; navegación Anterior/Siguiente en HTML. |
-| Búsqueda `q`, familia/modelo, rangos, orden y categoría+marca | Noindex/follow; canonical normalizada, conservando la identidad de la consulta y su página. El orden no crea un canonical adicional. |
-| Categoría/marca inexistente o vacía; página comercial fuera de rango | Not found, sin presentarlas como una colección comercial válida. |
-| Producto inexistente | Not found desde metadata y página. |
-| Administración, cuenta, login, registro, checkout, seguimiento y recuperación | Se conservan las restricciones de acceso y noindex existentes. |
+### Públicos objetivo
 
-Se resuelve metadata antes de enviar cabeceras (`htmlLimitedBots: /.*/`) para incluir las señales en HTML inicial y evitar decisiones tardías de 404 durante streaming. Esto puede aumentar TTFB respecto de enviar inmediatamente un shell vacío; se mide también LCP, no sólo el tiempo de las primeras cabeceras. El contenido para personas y robots es el mismo.
+**Minorista:** personas que buscan comprar productos específicos.
 
-### Productos duplicados y calidad de datos
+**Mayorista:** comercios, emprendedores, revendedores, profesionales y tiendas online.
 
-Se identificaron tres pares existentes: Medicube Zero Pore One Day Cream 50 ml, Shiseido Tsubaki Kit Premium Cool Repair 2 × 450 ml y Apple iPhone 16 128 GB azul ultramar A3287 HN/A. Se contrastaron título, modelo, presentación y condición antes de consolidar sus señales mediante canonical.
+### Estrategia geográfica
 
-`seo-product-aliases.ts` define sus URLs preferidas. Los seis registros, precios, stock, acceso y slugs permanecen intactos. Las tres URLs secundarias no se envían al sitemap o feed. Si el registro preferido desaparece, se despublica o cambia la identidad, se recupera la canonical propia para evitar referencias incorrectas. No se aplican fusiones automáticas a variantes no verificadas.
+Priorizar búsquedas comerciales orientadas a Argentina.
 
-La ficha corta `amoladora-20v-total` contiene referencias a 20 V y 900 W sin modelo suficiente. **Pendiente de evidencia comercial:** confirmar modelo y presentación antes de enriquecerla. No se reescribe con supuestos ni se modifican sus precios o publicación.
+No construir decenas de páginas duplicadas del tipo:
 
-### Sitemap, robots y automatización
+- Cosmética coreana en Córdoba.
+- Cosmética coreana en Rosario.
+- Cosmética coreana en Mendoza.
 
-El sitemap se genera con todos los productos públicos mediante lecturas paginadas. Omite categorías vacías, privados, filtros infinitos, búsquedas y duplicados canónicos. No fabrica `lastmod` con la hora de cada visita: `updated_at` también puede reflejar cambios internos y no garantiza un cambio público relevante.
+Crear contenido geográfico específico únicamente cuando exista un servicio, propuesta o información diferencial auténtica para esa ubicación.
 
-El rastreo local del catálogo actual verificó **523 URLs**: 460 productos canónicos, 42 categorías/subcategorías con productos, 16 marcas y cinco páginas generales. La cantidad cambia automáticamente con la publicación real del catálogo.
+No utilizar páginas locales artificiales como estrategia de posicionamiento nacional.
 
-Robots apunta al sitemap oficial, permite recursos de renderizado y los feeds, y restringe administración, autenticación técnica y APIs privadas. Se quitaron bloqueos de rastreo de login/registro/checkout para permitir que los robots lean su noindex. Robots no reemplaza autenticación, RLS ni la autorización del servidor.
+---
 
-Los productos nuevos reciben automáticamente metadata, canonical, imagen social, alt descriptivo, Product/Offer, breadcrumbs, enlaces HTML y sitemap cuando están publicados. El editor actual incorpora título SEO y descripción SEO opcionales; se guardan en el JSON de especificaciones existente y se ocultan de la tabla técnica pública. Limpiarlos restaura el cálculo automático. No se creó un modelo paralelo ni se necesitó una migración de base de datos. La canonical no se expone como un campo libre que permita dominios externos.
+## 3. Dominio y canonicalización
 
-### Datos estructurados y condiciones comerciales
+El dominio oficial es:
 
-- Organization contiene la identidad real, URL, logo, contactos y cuenta de Instagram. Se quitaron el Store duplicado con geolocalización genérica y señales que concentraban el SEO global en Tandil.
-- WebSite conserva SearchAction porque `/catalogo?q=...` funciona; no se atribuye un beneficio de rich results a esa propiedad.
-- Product y Offer comparten precio base ARS y disponibilidad con la ficha mediante la misma política de stock propio/proveedor. Se conserva la condición explícita de reacondicionados y activados, siguiendo la clasificación comercial existente.
-- SKU sólo usa el código disponible. MPN requiere el atributo explícito `MPN`; no se convierte una familia de modelo o SKU interno en un identificador de fabricante. GTIN/EAN/UPC sólo se incorporan desde atributos existentes y con formato/dígito verificador válidos. Esa validación formal no prueba una asignación GS1 ni reemplaza su evidencia comercial.
-- Se retiraron precio de vencimiento inventado, envío gratis, plazo fijo de entrega y política gratuita de 30 días. Las condiciones públicas no respaldaban esos valores. No se reemplazaron por otras tarifas o plazos supuestos; las condiciones legales permanecen intactas.
-- No se publican AggregateRating ni puntuaciones inventadas. Se retiraron reseñas estáticas sin fuente, cinco estrellas, 1.500 envíos y despacho garantizado, conservando la estética de tarjetas y atención comercial. La FAQ y la ficha ya no afirman garantía oficial general ni que todos los productos estén sellados: existen variantes reacondicionadas y activadas.
+`https://myaimportaciones.com`
 
-### Merchant Center
+Todas las señales SEO deben utilizar esta identidad.
 
-El feed funcional está en `https://myaimportaciones.com/api/catalog/google-feed`; Meta reutiliza el mismo contrato comercial. Incluye IDs estables, título, descripción, marca real, categoría comercial, URL, foto, ARS, condición y disponibilidad. Se habilita únicamente cuando el checkout está habilitado. Actualmente genera 460 entradas canónicas; no inventa stock físico para los productos del proveedor. Se eliminan `identifier_exists=no` indiscriminado, marcas inferidas y una categoría propia presentada como taxonomía oficial de Google.
+### Reglas
 
-Ambos feeds responden sin caché de precios o stock, devuelven error de servicio si falla la lectura y no publican un catálogo vacío como si la sincronización hubiera funcionado. La condición y disponibilidad proceden de las mismas funciones que la ficha.
+- Utilizar HTTPS.
+- Mantener una única versión canónica del dominio.
+- Redirigir las versiones públicas alternativas a la oficial.
+- Conservar rutas y parámetros pertinentes en las redirecciones.
+- Evitar cadenas y bucles.
+- No utilizar dominios temporales de Vercel como canonical.
+- Mantener compatibilidad con callbacks y endpoints que requieren el host anterior.
+- No redirigir webhooks de forma indiscriminada.
 
-**Preparado técnicamente, sin aprobación externa:** para activarlo en Merchant Center se necesita acceso a la cuenta, verificar/reclamar el dominio y revisar el diagnóstico de cada producto. Los GTIN/MPN ausentes deben completarse con evidencia cuando el fabricante los haya asignado. No marcar que carecen de identificador sólo porque no está cargado.
+### Implementación existente
 
-**Pendiente de decisión comercial:** publicar los datos fiscales/domicilio que las condiciones todavía señalan pendientes y definir en Merchant Center transporte, tarifas, plazos y devoluciones reales. El envío se cotiza y paga por separado en la modalidad vigente: debe revisarse su compatibilidad con el checkout y las políticas de Google antes de solicitar activación de las fichas gratuitas. No se cambió esa modalidad para obtener una aprobación aparente.
+Archivos principales:
 
-### Rendimiento, imágenes y analítica
+- `src/lib/site-origin.ts`
+- `src/lib/site-redirect.ts`
+- `src/lib/site.ts`
+- `src/proxy.ts`
+- `next.config.ts`
 
-- Memoización dentro de una petición React para perfil, navegación pública y producto consultado desde página y metadata. No se comparte información de usuarios entre peticiones ni se cachean precios entre clientes.
-- Carrusel con imágenes responsive de Next/Image: prioriza la primera y evita descargar todos los fondos ocultos al inicio. Mantiene composición, controles y movimiento reducido.
-- La imagen grande del zoom de la ficha sólo se crea cuando se abre; se conservan dimensiones, alt, miniaturas, formatos y fallback. No se descargaron ni reemplazaron masivamente fotos del catálogo.
-- Se mantienen analítica y scripts terceros detrás del consentimiento existente. La búsqueda del catálogo emite un evento al enviar el formulario, sin emitir otra búsqueda por cada cambio de orden o filtro. Se adapta `search_term` para GA4.
-- ViewContent, AddToCart, InitiateCheckout y Purchase reutilizan las integraciones existentes; Purchase continúa dependiendo del estado confirmado del pedido y de su identificador. No se creó un segundo sistema de conversiones. Si se configura GA4/GTM, elegir una sola fuente para cada evento para evitar duplicación con medición mejorada.
+La implementación actual define `myaimportaciones.com` como origen oficial.
 
-Las medidas reproducibles de laboratorio están en los JSON de `docs/seo/qa-private/`. Antes del cambio: LCP aproximado de 1,44 s móvil y 1,14 s desktop en home; 1,26 s móvil y 1,05 s desktop en la ficha muestreada, con CLS 0 en esas cuatro navegaciones. Sin emulación de red/CPU; no equivalen al percentil 75 de usuarios reales ni certifican Core Web Vitals. INP de campo queda pendiente de datos CrUX/Search Console o RUM consentido; no se lo reemplaza por un clic sintético.
+El comportamiento debe verificarse después de modificar configuración, proxy, middleware o despliegue.
 
-## Verificación
+### Entornos
 
-Los resultados se guardan fuera de Git en `docs/seo/qa-private/` y `docs/sorteos/qa-private/`.
+Los entornos de preview y desarrollo no deben competir con producción en los buscadores.
 
-| Comprobación | Estado |
-| --- | --- |
-| Tests de aplicación/SQL aislado y SEO | 116 aprobados. |
-| Build y typecheck | Aprobados sobre el conjunto final antes de publicar. |
-| ESLint | Sin errores; quedan advertencias históricas del repositorio. Se eliminó el error previo de Date.now en la ficha al retirar el vencimiento de precio inventado. |
-| Rastreo local de sitemap | 523 URLs, sin fallos de HTTP/canonical ni títulos duplicados entre las URLs enviadas. |
-| Sitemap/robots/feed XML | URLs oficiales, exclusiones, XML válido y 460 entradas de feed comprobados. |
-| SSR y códigos HTTP | Contenido y precios en HTML, metadata individual, noindex de filtros y respuestas de inexistentes comprobados. |
-| Navegador | Catálogo y ficha a 320/390/768/1280/1440; sin desborde ni errores JS; Axe sin infracciones en las reglas ejecutadas. |
-| Carrito/checkout/login | Agregado y persistencia del carrito, acceso al checkout y login comprobados sin enviar pedidos ni cobros. |
-| Sorteos | Regresión completa aprobada con base y participantes aislados: ensayo, importación, selector, revisión, exportación, repetición, idempotencia, responsive y accesibilidad. |
-| Administración/stock/pagos | Se conservan guards, RLS, permisos y tests de contratos/SQL. La API privada rechaza visitantes. No se hizo una compra, un pago, un cambio real de stock ni un sorteo oficial como prueba. |
-| Producción | Vercel READY para `750807fbf54b570d2d277a91d9028c550908a423`, alias oficial confirmado. Rastreo de las 523 URLs sin fallos de HTTP/canonical ni títulos duplicados; feed con 460 productos; carrito persistente; API privada 401; cinco anchos sin desborde, errores JS o infracciones Axe en las reglas ejecutadas. |
-| Validadores externos de Google | Search Console procesó el sitemap y descubrió 523 páginas. La prueba pública de Rich Results se abrió con una ficha real, pero no produjo un informe en esta sesión: queda pendiente. Parsear JSON-LD y revisar sus valores no equivale a aprobación de Rich Results o Merchant. |
+Las versiones temporales deben conservar sus controles de indexación.
 
-Comandos: `npm test`, `npm run type-check`, `npm run lint`, `npm run build`, `npm run test:giveaway`, `node scripts/check-public-evidence.mjs`, `git diff --check` y `node scripts/verify-seo.mjs`. El verificador SEO permite `SEO_BASE_URL`, `SEO_BASELINE=1` para medir antes y `SEO_CRAWL=1` para recorrer todo el sitemap. Bloquea escrituras desde el navegador y terceros de analítica.
+No permitir que una variable de entorno incorrecta convierta un dominio de pruebas en la identidad SEO de MYA.
 
-## Estado de Google y configuración restante
+---
 
-Se accedió a la propiedad de dominio `myaimportaciones.com` en Search Console con la cuenta del titular. Ya estaba creada: no se generó otra propiedad ni se publicó un token inventado. Rendimiento, indexación y experiencia muestran **datos en procesamiento**. Después de verificar el despliegue se envió `https://myaimportaciones.com/sitemap.xml`: Google confirmó **«El sitemap se ha procesado correctamente» y 523 páginas descubiertas**, con última lectura el 17/10/2026. Esto prueba lectura del sitemap, no indexación de todas las URLs. La captura quedó en `docs/seo/qa-private/search-console-sitemap.png`.
+## 4. Arquitectura de URLs
 
-1. Conservar la propiedad de dominio existente y su verificación. Si se necesita verificar otra propiedad, usar el TXT exacto suministrado por Google en el DNS autoritativo, preservando MX y verificaciones existentes. No hay un token ficticio configurado.
-2. Como alternativa para una propiedad de prefijo `https://myaimportaciones.com/`, usar su token real en `GOOGLE_SITE_VERIFICATION`; el layout ya admite la etiqueta. El método HTML no sustituye la verificación DNS de la propiedad de dominio.
-3. La consulta de la propiedad antigua `https://myaimportaciones.vercel.app/` mostró **«Vaya, no puedes acceder a esta propiedad»**. Queda pendiente acreditar su propiedad o recibir acceso del titular para usar Cambio de dirección, si la herramienta lo ofrece y se cumplen sus requisitos. No se envió ese cambio ni se alteraron permisos para aparentar acceso.
-4. Sitemap enviado y procesado. Queda observar indexación y canonical elegida por Google cuando terminen de procesarse los informes. Se verificaron por HTTP home, categoría, marca, ficha y página 2; eso no sustituye un informe de indexación de Google. No se enviaron filtros indiscriminadamente ni se atribuyó una indexación inexistente.
-5. Seguir los informes Indexación de páginas, Sitemaps, Estadísticas de rastreo, Resultados de productos, Fichas de comerciantes y Core Web Vitals. Analizar rendimiento por consulta, página, dispositivo y país Argentina. La elegibilidad y la aparición efectiva dependen de Google.
-6. Mantener las redirecciones públicas al menos un año y preferiblemente mientras existan enlaces antiguos. Revisar que los perfiles comerciales y campañas externas enlacen al dominio nuevo. No se enviaron mensajes a terceros ni se editaron cuentas sociales.
-7. En Merchant Center verificar/reclamar el mismo dominio, completar identidad comercial y condiciones reales, conectar el feed por URL y revisar sus diagnósticos. No anunciar aprobación, Shopping activo o productos indexados hasta verificarlo en la cuenta.
-8. Para GA4 utilizar el ID real y revisar consentimiento, parámetros, referencias de Mercado Pago y deduplicación de compras. Configurar dimensiones/objetivos con datos efectivos, no métricas inventadas.
+Mantener URLs estables, descriptivas y coherentes.
 
-## Matriz de intención nacional
+### Rutas principales
 
-Prioridades y competencia son hipótesis cualitativas de planificación, sin volúmenes, CPC ni posiciones comprobadas. Las URLs corresponden al catálogo real; no se crean páginas por ciudad.
+- `/`
+- `/catalogo`
+- `/producto/[slug]`
+- `/mayorista`
+- `/mayorista/[rubro]`
+- `/condiciones`
+- `/privacidad`
 
-| Consulta principal | Intención | URL objetivo | Prioridad | Contenido | Competencia estimada |
-| --- | --- | --- | --- | --- | --- |
-| Cosmética facial y corporal Argentina | Compra | `/catalogo?category=cosmetica-coreana` | Alta | Categoría y subcategorías | Alta |
-| Sérums y ampollas faciales | Compra/comparación | `/catalogo?category=serums-ampollas` | Alta | Fichas y presentaciones | Alta |
-| Protector solar facial | Compra | `/catalogo?category=proteccion-solar` | Alta | Presentaciones documentadas | Alta |
-| Kits de skincare | Compra/regalo | `/catalogo?category=kits-de-viaje-k-beauty` | Alta | Contenido de cada kit | Media/alta |
-| SKIN1004 Argentina | Marca/compra | `/catalogo?brand=SKIN1004` | Alta | Marca y modelos reales | Alta |
-| Medicube Argentina | Marca/compra | `/catalogo?brand=Medicube` | Alta | Marca y fichas específicas | Alta |
-| Karseell mascarilla capilar | Compra | `/catalogo?brand=Karseell` | Alta | Presentación y contenido | Alta |
-| Shiseido Fino Hair Mask | Compra | `/catalogo?brand=Shiseido` | Alta | Fichas, Fino y Tsubaki diferenciados | Alta |
-| Kérastase Argentina | Marca/compra | `/catalogo?brand=K%C3%A9rastase` | Media | Productos por línea real | Alta |
-| Victoria's Secret body mist | Compra | `/catalogo?brand=Victoria%27s+Secret` | Media | Fragancia y volumen exactos | Alta |
-| Herramientas Total Argentina | Marca/compra | `/catalogo?brand=Total` | Alta | Fichas por código | Alta |
-| Herramientas Wadfow | Marca/compra | `/catalogo?brand=Wadfow` | Alta | Modelos y accesorios incluidos | Media/alta |
-| Llaves de impacto a batería | Comparación/compra | `/catalogo?category=atornilladores-llaves-impacto` | Alta | Modelo y contenido del kit | Alta |
-| Taladros y rotomartillos | Comparación/compra | `/catalogo?category=taladros-rotomartillos` | Alta | Especificaciones verificadas | Alta |
-| Amoladoras y pulidoras | Compra | `/catalogo?category=amoladoras-pulidoras` | Media | Modelo, potencia y presentación | Alta |
-| Apple iPhone modelo/capacidad | Compra específica | `/catalogo?brand=Apple` y ficha exacta | Media | SIM, región, color y condición | Alta |
-| Samsung Galaxy modelo/capacidad | Compra específica | `/catalogo?brand=Samsung` y ficha exacta | Media | Modelo y presentación exactos | Alta |
+### Principios
 
-## Plan de 30, 60 y 90 días
+- No cambiar slugs sin necesidad.
+- No crear dos URLs indexables para el mismo contenido.
+- No construir páginas de categorías sin productos útiles.
+- No crear páginas de marcas inexistentes.
+- No indexar búsquedas internas indiscriminadamente.
+- No alterar URLs comerciales por cambios puramente visuales.
 
-**0–30 días — Base técnica y observación:** verificar las propiedades de Google, enviar sitemap/cambio de dirección cuando sea aplicable, revisar rastreo/404/canonical, completar identidad fiscal y condiciones comerciales pendientes y confirmar la ficha ambigua de la amoladora. Revisar GTIN/MPN con fuentes de fabricante y completar únicamente identificadores exactos. Validar un ciclo autorizado de compra y entrega por separado del trabajo SEO.
+### Política de indexación
 
-**31–60 días — Captación:** usar consultas reales de Search Console para priorizar títulos y fichas con impresiones y bajo CTR. Revisar conversiones por marca/categoría, configurar Merchant si el negocio reúne sus requisitos y publicar pocos contenidos útiles basados en dudas reales, por ejemplo cómo leer el contenido de un kit de herramientas o comparar presentaciones de cuidado capilar, vinculados a productos existentes. Evitar recomendaciones médicas y páginas vacías.
+| Tipo de página | Tratamiento objetivo |
+|---|---|
+| Home | Indexable |
+| Catálogo principal | Indexable |
+| Categorías reales con contenido útil | Indexables |
+| Marcas reales con productos | Indexables |
+| Productos comercialmente válidos | Indexables |
+| Landing mayorista | Indexable |
+| Rubros mayoristas con contenido útil | Indexables |
+| Búsquedas internas | Noindex |
+| Filtros combinados | Noindex o política de rastreo específica |
+| Ordenamientos | Evitar indexación |
+| Parámetros de precio | Evitar indexación |
+| Checkout | Noindex |
+| Carrito | Noindex |
+| Administración | Acceso restringido |
+| Cuenta y autenticación | Noindex y protección correspondiente |
+| Páginas inexistentes | HTTP 404 correcto |
 
-**61–90 días — Crecimiento:** comparar evolución por dispositivo y Argentina, contrastar ventas verificadas con tráfico orgánico, mejorar categorías rentables y enlaces internos, revisar Core Web Vitals de campo y duplicados detectados por Google. Expandir contenido o categorías sólo con inventario y evidencia suficientes. No se prometen posiciones, tráfico ni aprobación.
+La paginación comercial debe evaluarse según la implementación actual, evitando canonicals incorrectas hacia la primera página.
 
-## Archivos y recursos principales
+No crear canonical hacia contenido que no es equivalente.
 
-| Archivos | Responsabilidad |
-| --- | --- |
-| `src/lib/site-origin.ts`, `site-redirect.ts`, `site.ts`, `src/proxy.ts` | Identidad, redirecciones compatibles y previews. |
-| `next.config.ts` | Metadata resuelta antes de cabeceras para decisiones de indexación/404. |
-| `src/lib/seo.ts`, `seo-product-aliases.ts`, `product-identifiers.ts` | Metadata, schemas, canonicals verificados e identificadores. |
-| `src/app/layout.tsx`, `page.tsx`, `catalogo/page.tsx`, `producto/[slug]/page.tsx` | SEO global, home, marcas/categorías, productos y navegación real. |
-| `src/app/sitemap.ts`, `robots.ts` | Descubrimiento e indexación. |
-| `src/lib/merchant-feed.ts`, `src/app/api/catalog/{google,meta}-feed/route.ts` | Feeds consistentes sin datos inventados ni caché de precios. |
-| `src/lib/admin-product.ts`, `src/components/admin/product-editor.tsx` | Personalización SEO opcional sobre el modelo existente. |
-| `src/lib/storefront.ts`, `auth.ts` | Memoización por petición, sin compartir datos privados entre usuarios. |
-| `src/components/commerce/product-gallery.tsx`, `storefront-sections.tsx` | Carga de imágenes y retiro de testimonios sin fuente. |
-| `social-proof-section.tsx`, `store-seo-faq.tsx`, `product-detail-interactive.tsx`, `proforma-quote-modal.tsx` | Información comercial respaldada, sin métricas, garantía oficial o despacho inventados. |
-| `src/components/commerce/catalog-search-controls.tsx`, `src/components/analytics/marketing-scripts.tsx` | Búsqueda medida por intención y consentimiento. |
-| `src/lib/email-config.ts`, `src/components/admin/email-preview.tsx` | Enlaces públicos de correo con el dominio oficial. |
-| `src/app/condiciones/page.tsx`, `privacidad/page.tsx` | Metadata individual sin cambiar condiciones legales. |
-| `.env.example`, `.gitignore` | Configuración documentada y evidencia de QA privada. |
-| `tests/seo.test.ts`, `tests/site.test.ts`, `scripts/verify-seo.mjs` | Regresiones, rastreo, responsive, contratos e informe reproducible. |
-| `SEO_AUDIT.md` | Auditoría inicial, implementación, límites y seguimiento. |
+---
 
-## Cierre de publicación y medición
+## 5. Gestión de filtros y navegación facetada
 
-La publicación funcional `750807f` quedó READY en Vercel con los alias raíz, www y Vercel anterior. HTTPS respondió sin omitir validación de certificados. Se comprobaron redirecciones 308 de www y del dominio anterior hacia la misma ruta y parámetros del raíz, y compatibilidad de `/api/sorteo`, feed y callback antiguo. El callback sin código válido vuelve al login con error de confirmación, como corresponde; no prueba recepción real de un correo.
+MYA tiene filtros por:
 
-El rastreo completo de producción recorrió las 523 URLs. También se verificaron XML, robots, metadata/JSON-LD, noindex de filtros, inexistentes con 404, agregado al carrito y persistencia después de recargar, acceso a checkout/login y rechazo 401 de administración sin sesión. El catálogo y la ficha se inspeccionaron a 320/390/768/1280/1440 px, sin desborde ni errores JavaScript. El sorteo público respondió con 81 participantes, sin ronda ni ganador; no se ejecutó un sorteo oficial para probar la publicación. Los logs consultados de Vercel no mostraron errores/fatales en la ventana revisada.
+- Categoría.
+- Marca.
+- Precio.
+- Búsqueda.
+- Familia o modelo.
+- Ordenamiento.
 
-La revisión posterior detectó que la plantilla global duplicaba el sufijo de marca en el título del sorteo. Se declaró ese título como absoluto y se agregó una comprobación al verificador HTTP. Se repitieron los 116 tests, build y typecheck sobre ese ajuste antes de publicar el cierre. No cambia la animación, selección ni estado del sorteo.
+La combinación de parámetros puede generar muchas URLs similares.
 
-Mediciones de laboratorio en producción, mismo navegador, sin limitar CPU/red. Cada celda es una navegación, no una distribución estadística:
+### Objetivo
 
-| Página/ancho | LCP anterior | LCP tras publicar | LCP repetición posterior | CLS |
-| --- | --- | --- | --- | --- |
-| Home 390 px | 1,440 s | 2,076 s | 1,012 s | 0 |
-| Home 1440 px | 1,144 s | 1,368 s | 0,956 s | 0 |
-| Ficha muestreada 390 px | 1,264 s | 1,128 s | 0,856 s | 0 |
-| Ficha muestreada 1440 px | 1,048 s | 1,008 s | 0,904 s | 0 |
+Permitir que el comprador filtre libremente sin generar un espacio prácticamente infinito de URLs para Google.
 
-La primera navegación de portada fue más lenta que la referencia; la repetición fue más rápida, compatible con variación de caché y generación inicial de imágenes, sin demostrar por sí sola la causa. No se oculta ese costo inicial ni se promete una mejora porcentual general. TTFB observado: aproximadamente 44–47 ms tras publicar frente a 45–53 ms de referencia. Transferencia JS observada en home: 252.875 → 252.167 bytes; ficha: 253.989 → 254.059 bytes. Se conservan como evidencia la referencia, la verificación completa y la repetición separada. INP y percentiles reales siguen pendientes de datos de campo.
+### Reglas
 
-No fue necesaria una migración SEO: se reutilizó el JSON de especificaciones existente. No se modificaron registros de productos, precios, stock, pedidos ni permisos de usuarios. Merchant Center, identificadores faltantes y datos fiscales/logísticos requieren la evidencia y decisiones comerciales detalladas arriba. El acceso a la propiedad antigua de Search Console y el informe externo de Rich Results permanecen pendientes.
+1. Indexar únicamente combinaciones con valor comercial y contenido suficiente.
+2. Mantener parámetros normalizados.
+3. Evitar duplicados por diferente orden de parámetros.
+4. Aplicar correctamente `noindex` y canonical.
+5. Analizar el presupuesto de rastreo.
+6. No bloquear con `robots.txt` una URL si Google necesita rastrearla para detectar su `noindex`.
+7. No convertir automáticamente todos los filtros en páginas SEO.
+8. No generar enlaces internos masivos hacia combinaciones irrelevantes.
 
-## Fuentes oficiales consultadas
+Consultar las recomendaciones actuales de Google sobre navegación facetada antes de modificar esta arquitectura.
 
-- [Google: migración de URLs](https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes?hl=es) y [Cambio de dirección](https://support.google.com/webmasters/answer/9370220).
-- [Google: estructura de URLs de e-commerce](https://developers.google.com/search/docs/specialty/ecommerce/designing-a-url-structure-for-ecommerce-sites) y [canonical](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls).
-- [Product y Merchant listings](https://developers.google.com/search/docs/appearance/structured-data/product), [identificadores de fabricante](https://support.google.com/merchants/answer/160161) y [requisitos de compra](https://support.google.com/merchants/answer/10249082).
-- [Vercel: configuración de dominios](https://vercel.com/docs/domains) y [Supabase: redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls).
-- Documentación incluida con Next.js 16.3.8: metadata, redirects, sitemap, robots y htmlLimitedBots. No se utilizaron recetas de otra versión para cambiar esas convenciones.
+---
+
+## 6. Metadata
+
+El motor SEO debe centralizar:
+
+- Title.
+- Description.
+- Canonical.
+- Robots.
+- Open Graph.
+- Twitter/X Cards.
+- Datos estructurados.
+- Breadcrumbs.
+
+### Implementación
+
+Archivo principal:
+
+`src/lib/seo.ts`
+
+Complementos:
+
+- `src/lib/retail-content.ts`
+- `src/lib/wholesale-content.ts`
+- `src/lib/seo-product-aliases.ts`
+
+### Titles
+
+Los títulos deben identificar claramente la intención de búsqueda.
+
+Ejemplos de estructura:
+
+**Producto:**
+
+`Medicube Collagen Jelly Cream 50 ml | MYA Importaciones`
+
+**Categoría:**
+
+`Cosmética coreana y skincare en Argentina | MYA`
+
+**Mayorista:**
+
+`Cosmética coreana por mayor en Argentina | MYA`
+
+Los ejemplos son orientativos. Usar siempre el nombre real de la ficha y evitar duplicaciones automáticas de marca.
+
+### Meta descriptions
+
+Deben:
+
+- Resumir el contenido real.
+- Ser coherentes con la página.
+- Evitar afirmaciones sin respaldo.
+- Diferenciar productos, marcas y categorías.
+- Invitar a una acción útil.
+- No repetir textos genéricos en cientos de URLs.
+
+No inventar beneficios médicos, disponibilidad, descuentos ni condiciones de entrega para mejorar el texto SEO.
+
+---
+
+## 7. SEO de productos
+
+Cada producto publicado debe tener información comercial suficiente.
+
+### Datos principales
+
+- Nombre real.
+- Marca.
+- Modelo.
+- Presentación.
+- Tamaño o capacidad.
+- Categoría.
+- Descripción.
+- Imagen correcta.
+- Precio.
+- Disponibilidad.
+- Condición comercial.
+- Identificadores verificables cuando existan.
+
+### Calidad de títulos
+
+Evitar:
+
+- Duplicación de marca.
+- Nombres excesivamente extensos.
+- Títulos genéricos.
+- Modelos incorrectos.
+- Presentaciones ambiguas.
+- Mezcla de español y portugués cuando dificulta la comprensión.
+- Palabras clave repetidas artificialmente.
+
+No eliminar códigos de fabricante útiles para identificar herramientas, electrónica y productos técnicos.
+
+### Descripciones
+
+Las descripciones deben ayudar al usuario a comprender qué está comprando.
+
+Para cosmética:
+
+- Tipo de producto.
+- Presentación.
+- Uso general según información verificable.
+- Características documentadas.
+
+Para tecnología:
+
+- Marca.
+- Modelo.
+- Capacidad.
+- Características verificadas.
+- Condición.
+
+Para herramientas:
+
+- Modelo.
+- Potencia.
+- Voltaje.
+- Función.
+- Accesorios incluidos cuando estén confirmados.
+
+No generar especificaciones técnicas mediante suposiciones.
+
+### Productos duplicados
+
+El proyecto mantiene lógica de aliases canónicos para determinadas fichas históricamente duplicadas.
+
+Archivo:
+
+`src/lib/seo-product-aliases.ts`
+
+Antes de agregar aliases o consolidar URLs:
+
+1. Confirmar identidad exacta.
+2. Comparar marca y modelo.
+3. Verificar presentación y condición.
+4. Revisar variantes.
+5. Comprobar cuál es la URL preferida.
+6. Evitar redirigir hacia un producto diferente.
+
+No fusionar registros comerciales por simple similitud de títulos.
+
+---
+
+## 8. SEO y disponibilidad de productos
+
+Esta sección es especialmente importante para el modelo de MYA.
+
+El negocio trabaja principalmente bajo pedido.
+
+Por eso debe distinguir:
+
+- Stock físico propio.
+- Stock del proveedor.
+- Disponibilidad confirmada.
+- Disponibilidad desconocida.
+- Verificación vencida.
+- Agotamiento confirmado.
+- Producto archivado.
+- Producto discontinuado.
+
+### Objetivo comercial
+
+La política solicitada para MYA contempla:
+
+- Ocultar de los listados públicos los productos agotados.
+- Mantener seguimiento interno.
+- Archivar lógicamente después de siete días consecutivos de agotamiento confirmado.
+- Recuperar productos cuando vuelva a existir disponibilidad válida.
+
+### Consideración SEO
+
+**Ocultar un producto del catálogo no exige necesariamente destruir su URL.**
+
+Para productos agotados temporalmente, evaluar conservar la ficha individual accesible con:
+
+- Estado real `OutOfStock`.
+- Compra deshabilitada.
+- Información útil del producto.
+- Alternativas genuinas cuando existan.
+- Canonical válida.
+
+Esto puede preservar señales SEO durante faltantes temporales.
+
+La ficha no debe volver a ofrecer compras hasta recuperar disponibilidad comprobada.
+
+### Archivo lógico
+
+El archivo interno por siete días no debe interpretarse automáticamente como una eliminación definitiva de Google.
+
+Definir una política diferenciada:
+
+**Agotamiento temporal:** ocultar de recomendaciones y listados comerciales, bloquear compra y evaluar conservar la ficha útil.
+
+**Archivo recuperable:** mantener el historial y decidir la indexación según la probabilidad de regreso y el valor de la URL.
+
+**Producto discontinuado definitivamente:** utilizar 404 o 410 cuando no exista una sustitución equivalente.
+
+**Producto reemplazado por otro equivalente real:** evaluar redirección 301 cuando corresponda.
+
+No redirigir todos los productos agotados a la home.
+
+No fabricar páginas vacías que respondan HTTP 200.
+
+### Datos estructurados
+
+La disponibilidad declarada en Schema.org debe coincidir con la condición real de compra.
+
+Nunca indicar `InStock` si el proveedor no está verificado o el artículo no puede comprarse.
+
+El proceso de sincronización de stock debe actualizar también las señales comerciales expuestas a Google.
+
+---
+
+## 9. Sitemap y robots
+
+### Archivos existentes
+
+- `src/app/sitemap.ts`
+- `src/app/robots.ts`
+
+### Sitemap
+
+El sitemap debe contener solamente URLs canónicas que correspondan a la política de indexación.
+
+Incluir, cuando sean elegibles:
+
+- Inicio.
+- Catálogo.
+- Categorías con contenido real.
+- Marcas con productos.
+- Productos canónicos.
+- Landing mayorista.
+- Rubros mayoristas útiles.
+- Páginas informativas indexables.
+
+### Excluir
+
+- Búsquedas internas.
+- Filtros arbitrarios.
+- Administración.
+- Checkout.
+- Cuentas privadas.
+- Duplicados canónicos.
+- URLs eliminadas definitivamente.
+- Páginas que no deben indexarse.
+
+### `lastmod`
+
+Incluir fechas únicamente cuando representen cambios públicos relevantes y exista evidencia confiable.
+
+No generar `lastmod` utilizando simplemente la hora de cada petición.
+
+### Fallos
+
+Si falla Supabase o la consulta del catálogo:
+
+- No presentar un sitemap vacío como si fuera el resultado correcto.
+- Registrar el error.
+- Preservar las garantías de consistencia.
+- No eliminar masivamente URLs por una interrupción temporal.
+
+### Robots
+
+No utilizar `robots.txt` como mecanismo de autenticación o seguridad.
+
+Las páginas privadas deben protegerse mediante permisos.
+
+Evitar configuraciones que impidan a Google acceder a recursos necesarios para renderizar páginas públicas.
+
+---
+
+## 10. Datos estructurados
+
+Revisar los schemas implementados en cada página.
+
+### Tipos relevantes
+
+- `Organization`
+- `WebSite`
+- `Product`
+- `ProductGroup`
+- `Offer`
+- `BreadcrumbList`
+- `Service` cuando corresponda
+
+No incorporar tipos solamente para intentar obtener resultados enriquecidos.
+
+### Product y Offer
+
+Los datos deben coincidir con la información visible:
+
+- Nombre.
+- Precio.
+- Moneda.
+- Disponibilidad.
+- Condición.
+- Marca.
+- URL.
+- Imagen.
+- Variante.
+
+### Identificadores
+
+- GTIN únicamente cuando esté verificado.
+- MPN únicamente cuando exista identificación confiable.
+- SKU según los datos del producto.
+- No inventar códigos.
+- No marcar indiscriminadamente que un artículo carece de identificadores.
+
+### Reseñas
+
+No publicar:
+
+- Estrellas ficticias.
+- Calificaciones generadas.
+- Reseñas inventadas.
+- Cantidades de clientes no verificadas.
+- Cantidades de envíos inventadas.
+
+### Condiciones comerciales
+
+No incorporar datos estructurados falsos de:
+
+- Envío gratuito.
+- Entrega inmediata.
+- Devoluciones gratuitas.
+- Garantías generales.
+- Vencimiento de precios.
+- Descuentos inexistentes.
+
+### Validación
+
+Utilizar pruebas automatizadas y herramientas oficiales.
+
+La existencia de JSON-LD válido no demuestra que Google haya aprobado un resultado enriquecido.
+
+---
+
+## 11. Google Merchant Center y feeds
+
+### Implementación existente
+
+Archivos principales:
+
+- `src/lib/merchant-feed.ts`
+- `src/app/api/catalog/google-feed/route.ts`
+- `src/app/api/catalog/meta-feed/route.ts`
+
+Feed de Google:
+
+`https://myaimportaciones.com/api/catalog/google-feed`
+
+### Objetivo
+
+Mantener feeds consistentes con el catálogo público y las condiciones reales de compra.
+
+### Datos críticos
+
+- ID estable.
+- Nombre.
+- Descripción.
+- URL canónica.
+- Imagen.
+- Marca.
+- Condición.
+- Disponibilidad.
+- Precio.
+- Moneda.
+- Identificadores disponibles.
+
+### Consistencia
+
+Los siguientes elementos deben coincidir:
+
+**Ficha pública = checkout = datos estructurados = feed comercial.**
+
+No mostrar un precio en Google diferente del importe vigente y comprable en la web.
+
+No declarar un producto disponible si el checkout lo rechaza por falta de stock.
+
+No mostrar una presentación distinta de la publicada en el feed.
+
+### Monedas
+
+MYA utiliza precios dolarizados y equivalencias en pesos argentinos.
+
+Verificar qué moneda y precio corresponden realmente al cobro antes de generar feeds.
+
+No publicar conversiones inconsistentes entre USD y ARS.
+
+### Requisitos externos
+
+La existencia de un feed funcional no garantiza aprobación en Merchant Center.
+
+Antes de anunciar que Google Shopping está funcionando:
+
+- Verificar la cuenta.
+- Confirmar el dominio.
+- Revisar identidad comercial.
+- Revisar políticas de envío.
+- Revisar devoluciones.
+- Confirmar requisitos de productos.
+- Revisar diagnósticos.
+- Comprobar aprobación efectiva.
+
+No manipular información comercial para superar artificialmente una validación.
+
+---
+
+## 12. SEO mayorista
+
+El canal mayorista constituye una oportunidad de captación orgánica.
+
+### URLs principales
+
+`/mayorista`
+
+Rubros:
+
+- Cosmética coreana.
+- Perfumería.
+- Cuidado capilar.
+- Herramientas.
+- Electrónica.
+- Medicube.
+
+Los slugs reales deben consultarse en el código.
+
+### Público objetivo
+
+- Revendedores.
+- Emprendedores.
+- Perfumerías.
+- Centros de estética.
+- Peluquerías.
+- Ferreterías.
+- Comercios electrónicos.
+- Tiendas físicas.
+
+### Estrategia
+
+Crear contenido que responda preguntas reales:
+
+- Qué productos se pueden comprar al por mayor.
+- Qué presentaciones existen.
+- Qué marcas se comercializan.
+- Cómo combinar productos.
+- Cuáles son los mínimos.
+- Cómo se solicitan cotizaciones.
+- Qué condiciones de envío se aplican.
+
+### Palabras clave orientativas
+
+- Cosmética coreana por mayor Argentina.
+- Medicube por mayor Argentina.
+- Skincare coreano para revender.
+- Perfumes árabes por mayor.
+- Herramientas Total por mayor.
+- Productos importados para revendedores.
+
+Estas consultas son hipótesis de posicionamiento, no palabras clave con volumen o rentabilidad verificada.
+
+Validarlas con datos reales de Search Console y herramientas de investigación antes de priorizar inversiones.
+
+### Calidad de landings
+
+Las páginas mayoristas deben aportar contenido específico.
+
+No crear páginas casi idénticas cambiando únicamente el nombre de una marca.
+
+No publicar landing pages que anuncien productos inexistentes.
+
+Verificar que la información comercial respete la política mayorista vigente.
+
+---
+
+## 13. Estrategia de contenido
+
+Priorizar contenido útil asociado a productos y categorías reales.
+
+### Belleza
+
+Posibles temas:
+
+- Cómo diferenciar sérum, ampolla y crema.
+- Qué revisar antes de comprar skincare coreano.
+- Presentaciones y tamaños de productos Medicube.
+- Diferencias entre tipos de limpiadores faciales.
+- Cómo organizar un catálogo inicial para revender skincare.
+
+### Herramientas
+
+Posibles temas:
+
+- Taladro percutor frente a rotomartillo.
+- Diferencia entre atornillador y llave de impacto.
+- Qué incluye un kit de herramientas.
+- Cómo interpretar potencia, torque y voltaje.
+- Diferencias entre baterías y accesorios compatibles.
+
+### Perfumería
+
+Posibles temas:
+
+- Diferencias entre EDP y EDT.
+- Cómo identificar la presentación de un perfume.
+- Qué comprobar al comprar packs.
+- Diferencias entre perfumes, body mists y sets.
+
+### Reglas
+
+- No escribir contenido masivo sin utilidad.
+- No copiar textos ajenos sin autorización.
+- No inventar especificaciones.
+- No crear recomendaciones médicas sin respaldo.
+- No prometer resultados de productos cosméticos.
+- No incorporar enlaces a artículos agotados como si estuvieran disponibles.
+- Actualizar contenidos cuando cambien productos o condiciones.
+
+El contenido debe dirigir a categorías y productos relacionados de forma natural.
+
+---
+
+## 14. SEO técnico y rendimiento
+
+El proyecto utiliza Next.js con renderizado del lado del servidor en páginas comerciales.
+
+### Prioridades
+
+- HTML útil accesible para buscadores.
+- Metadatos presentes correctamente.
+- Códigos HTTP coherentes.
+- Imágenes optimizadas.
+- Navegación con enlaces rastreables.
+- Menor duplicación de consultas.
+- Carga eficiente.
+- Buena experiencia móvil.
+- Evitar errores de hidratación.
+- Evitar contenido principal que aparezca demasiado tarde.
+
+### Core Web Vitals
+
+Monitorear:
+
+- LCP.
+- INP.
+- CLS.
+
+Priorizar datos reales de usuarios cuando estén disponibles.
+
+Las mediciones locales y de laboratorio sirven para diagnosticar problemas, pero no deben presentarse como Core Web Vitals reales de campo.
+
+### Imágenes
+
+- Utilizar imágenes correspondientes al producto exacto.
+- Mantener dimensiones adecuadas.
+- Evitar deformaciones.
+- Priorizar imágenes importantes.
+- Cargar de forma diferida las secundarias.
+- Utilizar atributos alt descriptivos.
+- Evitar nombres y textos alternativos artificialmente saturados de keywords.
+
+No realizar descargas masivas de imágenes de terceros sin comprobar sus permisos de uso.
+
+---
+
+## 15. Analítica y conversiones
+
+El SEO debe medirse por su contribución comercial.
+
+### Herramientas
+
+- Google Search Console.
+- GA4.
+- Herramientas de diagnóstico de rendimiento.
+- Datos comerciales internos de MYA.
+
+### Indicadores
+
+- Clics orgánicos.
+- Impresiones.
+- CTR.
+- Posición media por consulta.
+- Páginas indexadas.
+- Errores de cobertura.
+- Rendimiento móvil.
+- Consultas mayoristas originadas en búsqueda.
+- Productos añadidos al carrito.
+- Compras verificadas.
+- Ingresos atribuibles cuando la medición lo permita.
+
+### Eventos
+
+Conservar una implementación coherente de eventos como:
+
+- `view_item`
+- `add_to_cart`
+- `begin_checkout`
+- `purchase`
+- `search`
+
+Verificar los nombres efectivamente implementados.
+
+No emitir dos veces la misma conversión.
+
+No registrar una compra como confirmada por haber abierto una página de pago.
+
+Respetar los controles de consentimiento existentes.
+
+### Interpretación
+
+Más impresiones no significan necesariamente más ventas.
+
+Priorizar páginas y consultas que atraigan compradores relevantes.
+
+---
+
+## 16. Google Search Console
+
+### Estado histórico comprobado
+
+El 17/10/2026 se documentó:
+
+- Propiedad de dominio existente.
+- Sitemap enviado.
+- Sitemap procesado correctamente.
+- 523 URLs descubiertas en esa verificación.
+
+Ese resultado confirma el procesamiento histórico del sitemap.
+
+**No demuestra que las 523 páginas hayan sido indexadas.**
+
+Tampoco demuestra cuál es el estado actual de Google Search Console.
+
+### Verificaciones pendientes
+
+Cuando exista acceso autorizado a la propiedad:
+
+1. Revisar indexación real.
+2. Identificar URLs excluidas.
+3. Investigar 404 y soft 404.
+4. Revisar canonicals elegidas por Google.
+5. Inspeccionar páginas importantes.
+6. Revisar errores de datos estructurados.
+7. Revisar rendimiento por dispositivo.
+8. Identificar consultas con impresiones y CTR bajo.
+9. Analizar categorías con tráfico pero sin conversiones.
+10. Consultar Core Web Vitals.
+
+No utilizar estimaciones como sustituto de datos de Search Console.
+
+---
+
+## 17. Auditoría histórica — 17/10/2026
+
+La auditoría original registró:
+
+- 463 productos minoristas activos.
+- 16 marcas.
+- 438 productos disponibles según la evidencia de entonces.
+- 523 URLs recorridas.
+- 460 productos canónicos en el feed.
+- Corrección del dominio canónico.
+- Correcciones de metadata.
+- Mejora de sitemap.
+- Consolidación de duplicados canónicos.
+- Corrección de datos estructurados.
+- Eliminación de prueba social sin respaldo.
+- Mejoras de feeds.
+- Pruebas responsive.
+- Verificación de publicación en Vercel.
+
+Commit documentado:
+
+`750807fbf54b570d2d277a91d9028c550908a423`
+
+### Resultado histórico
+
+La implementación SEO del 17 de octubre fue publicada y verificada dentro del alcance documentado.
+
+La indexación completa y la aprobación de Merchant Center no quedaron demostradas.
+
+Las cifras y condiciones anteriores no deben trasladarse automáticamente al estado actual.
+
+Los informes completos y evidencias permanecen en la documentación histórica.
+
+---
+
+## 18. Riesgos conocidos al 10/11/2026
+
+### P0 — Integridad comercial
+
+Evitar mostrar precios o condiciones de compra inconsistentes.
+
+El SEO no debe enviar compradores a páginas con precios que puedan generar pérdidas o con información de compra incorrecta.
+
+### P1 — Disponibilidad
+
+Revisar la relación entre:
+
+- Publicación.
+- Stock de proveedor.
+- Stock físico.
+- Visibilidad.
+- Datos estructurados.
+- Feeds.
+- Checkout.
+
+Se detectaron productos con disponibilidad pendiente y una política de visibilidad que requiere unificación.
+
+### P1 — Sitemap
+
+El sitemap actual utiliza datos del catálogo, pero debe verificarse que aplique la misma política de publicación vigente en todos los recorridos.
+
+Especial atención a productos ocultos y archivados.
+
+### P1 — Feeds
+
+Verificar consistencia entre precio, moneda, disponibilidad y capacidad real de compra.
+
+No considerar el feed válido únicamente porque responde HTTP 200.
+
+### P1 — Promesas comerciales
+
+Revisar afirmaciones generales de garantía, autenticidad, entrega y disponibilidad en la home y otras páginas.
+
+No eliminar información correcta: verificar cada afirmación antes de modificarla.
+
+### P2 — Calidad del catálogo
+
+Revisar:
+
+- Marcas faltantes.
+- Títulos extensos.
+- Presentaciones ambiguas.
+- Duplicados.
+- Descripciones poco útiles.
+- Categorías sin contenido.
+- Fotografías incorrectas.
+
+### P2 — Cobertura SEO mayorista
+
+Auditar las landings mayoristas y su consistencia con el catálogo disponible.
+
+No asumir que la existencia de una ruta significa que esté posicionando.
+
+---
+
+## 19. Procedimiento de auditoría SEO
+
+Cuando se solicite una auditoría completa:
+
+### Etapa 1 — Estado inicial
+
+Registrar:
+
+- Fecha.
+- Commit.
+- Despliegue.
+- Dominio.
+- Número de URLs.
+- Cantidad de productos visibles.
+- Páginas indexables.
+- Feeds disponibles.
+- Configuración de robots.
+
+### Etapa 2 — Rastreo
+
+Comprobar:
+
+- HTTP.
+- Redirecciones.
+- Canonicals.
+- Titles.
+- Descriptions.
+- H1.
+- Indexación permitida.
+- Breadcrumbs.
+- JSON-LD.
+- Enlaces internos.
+- Imágenes.
+- Paginación.
+- Productos ocultos.
+
+### Etapa 3 — Calidad
+
+Revisar:
+
+- Duplicados.
+- Contenido insuficiente.
+- Fichas sin marca.
+- Productos sin imagen.
+- URLs huérfanas.
+- Categorías vacías.
+- Información comercial incorrecta.
+
+### Etapa 4 — Datos externos
+
+Consultar Search Console y Merchant Center únicamente cuando exista acceso disponible y autorizado.
+
+No inventar resultados externos.
+
+### Etapa 5 — Correcciones
+
+Priorizar por impacto comercial y riesgo.
+
+Realizar cambios comprobables y evitar alterar múltiples sistemas sin necesidad.
+
+### Etapa 6 — Regresión
+
+Confirmar que las mejoras SEO no rompan:
+
+- Inicio.
+- Catálogo.
+- Mayorista.
+- Fichas.
+- Carrito.
+- Checkout.
+- Autenticación.
+- Pagos.
+- Administración.
+
+### Etapa 7 — Evidencia
+
+Guardar resultados, capturas e informes con fecha y versión.
+
+---
+
+## 20. Pruebas técnicas
+
+Archivos y herramientas relevantes:
+
+- `tests/seo.test.ts`
+- `tests/site.test.ts`
+- `scripts/verify-seo.mjs`
+- `scripts/check-public-evidence.mjs`
+
+Comandos:
+
+```bash
+npm run lint
+npm run type-check
+npm test
+npm run build
+```
+
+Para el verificador SEO, revisar las opciones admitidas por la versión actual antes de ejecutarlo.
+
+### Criterios
+
+- No afirmar aprobación por ejecutar solamente un test unitario.
+- No confundir un rastreo local con indexación en Google.
+- No declarar un sitemap correcto sin comprobar sus URLs.
+- No afirmar que el feed cumple Merchant únicamente porque genera XML válido.
+- No atribuir cambios en ventas a SEO sin datos suficientes.
+- No ejecutar compras reales para validar metadata.
+
+---
+
+## 21. Plan de mejora continua
+
+### Prioridad inmediata
+
+**1. Unificar la publicabilidad.**
+
+Garantizar que catálogo, sitemap, búsqueda, schemas, feeds y checkout utilicen condiciones comerciales compatibles.
+
+**2. Resolver productos agotados.**
+
+Implementar una política que preserve el valor SEO de URLs recuperables sin permitir compras de productos no disponibles.
+
+**3. Corregir inconsistencias económicas.**
+
+Revisar precios y conversiones antes de exponerlos en datos estructurados o feeds.
+
+**4. Validar la información pública.**
+
+Eliminar o corregir afirmaciones comerciales no verificadas.
+
+### Siguiente etapa
+
+**5. Mejorar el SEO mayorista.**
+
+Priorizar cosmética coreana, perfumería y herramientas según demanda y rentabilidad comprobables.
+
+**6. Normalizar productos.**
+
+Corregir marcas, modelos, presentaciones y duplicados.
+
+**7. Medir resultados.**
+
+Consultar Search Console para priorizar URLs y consultas relevantes.
+
+### Crecimiento
+
+**8. Crear contenido útil.**
+
+Publicar guías asociadas a productos y necesidades reales.
+
+**9. Optimizar conversión orgánica.**
+
+Relacionar tráfico, consultas mayoristas, pedidos y ventas verificadas.
+
+**10. Ampliar categorías solamente cuando exista oferta comercial suficiente.**
+
+---
+
+## 22. Estado de aprobación SEO
+
+Una mejora SEO puede estar en alguno de estos estados:
+
+- **Propuesta:** cambio planificado.
+- **Implementada:** código desarrollado.
+- **Probada:** validaciones locales completas.
+- **Desplegada:** versión servida en producción.
+- **Verificada:** funcionamiento productivo comprobado.
+- **Observada en Google:** Search Console u otra herramienta oficial confirma su procesamiento o comportamiento.
+- **Con resultado comercial medido:** existen datos suficientes para evaluar el impacto.
+
+No confundir estos estados.
+
+Un cambio desplegado no garantiza indexación.
+
+Una página indexada no garantiza posicionamiento.
+
+Un buen posicionamiento no garantiza ventas.
+
+---
+
+## 23. Referencias técnicas
+
+### Código MYA
+
+- `src/lib/seo.ts`
+- `src/lib/site-origin.ts`
+- `src/lib/site-redirect.ts`
+- `src/lib/seo-product-aliases.ts`
+- `src/lib/product-identifiers.ts`
+- `src/lib/merchant-feed.ts`
+- `src/lib/retail-content.ts`
+- `src/lib/wholesale-content.ts`
+- `src/lib/storefront.ts`
+- `src/app/sitemap.ts`
+- `src/app/robots.ts`
+- `src/app/catalogo/page.tsx`
+
+### Documentación del proyecto
+
+- `AGENTS.md`
+- `AI_CONTEXT.md`
+- `design-qa.md`
+- `mayorista-publico-plan.md`
+- `docs/RELEASE-FINAL-2026-11-07.md`
+
+### Google Search Central
+
+- https://developers.google.com/search/docs
+- https://developers.google.com/search/docs/crawling-indexing/canonicalization
+- https://developers.google.com/search/docs/appearance/structured-data/product
+- https://developers.google.com/crawling/docs/faceted-navigation
+- https://developers.google.com/search/docs/crawling-indexing/pause-online-business
+
+Consultar la documentación vigente cuando se modifiquen requisitos técnicos relacionados con Google.
+
+---
+
+## 24. Mantenimiento de SEO_AUDIT.md
+
+Este archivo no debe volver a convertirse en un diario de desarrollo.
+
+Actualizar únicamente cuando cambien:
+
+- Reglas SEO.
+- Arquitectura de URLs.
+- Política de indexación.
+- Gestión de productos agotados.
+- Integración con Merchant.
+- Configuración de Search Console.
+- Prioridades de posicionamiento.
+- Riesgos conocidos.
+- Estado de aprobación de mejoras importantes.
+
+Los informes extensos, resultados de pruebas y capturas deben almacenarse en `docs/seo/` o en los directorios documentales correspondientes.
+
+Cada auditoría nueva debe tener su propia fecha y evidencia.
+
+No sobrescribir pruebas históricas.
+
+### Principio final
+
+**MYA necesita atraer compradores reales mediante páginas útiles, técnicamente correctas y comercialmente confiables.**
+
+El SEO debe crecer junto al negocio.
+
+No se debe sacrificar calidad del catálogo, rentabilidad ni confianza del cliente para aumentar artificialmente la cantidad de URLs indexadas.

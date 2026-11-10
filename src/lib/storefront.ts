@@ -3,7 +3,7 @@ async function projectUsdProducts(...args: Parameters<typeof import('./monetary'
 }
 import { readAllPages, readAllPagesParallel } from "@/lib/read-all-pages";
 import { cache } from "react";
-import { WHOLESALE_ENABLED, isExcludedCategory } from "@/lib/commerce-policy";
+import { WHOLESALE_ENABLED, isExcludedCategory, isPubliclyEligible } from "@/lib/commerce-policy";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Product, StorefrontData } from "@/lib/types";
@@ -20,7 +20,7 @@ export const getPublicFacetProducts = cache(async (): Promise<CatalogFacetProduc
   if (!hasSupabaseConfig()) return [];
   const db = await createServerSupabaseClient();
   return readAllPages((from, to) => db.from("products").select("category_id,brand,model")
-    .eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null).order("id").range(from, to));
+    .eq("is_active", true).eq("commercial_status", "AVAILABLE").eq("is_wholesale_only", false).is("deleted_at", null).order("id").range(from, to));
 });
 
 export const getStorefrontData = cache(async function getStorefrontData(options?: {
@@ -62,7 +62,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
           ? "*, categories(name), product_variants(*)"
           : `${PUBLIC_PRODUCT_COLUMNS}, categories(name), product_variants(id, title, sku, retail_price, is_active, stock, supplier_available, fulfillment_mode, options, image_url)`,
       );
-    if (!options?.admin) query = query.eq("is_active", true).is("deleted_at", null);
+    if (!options?.admin) query = query.eq("is_active", true).eq("commercial_status", "AVAILABLE").is("deleted_at", null);
 
     if (!WHOLESALE_ENABLED && !options?.admin && !options?.wholesale) query = query.eq("is_wholesale_only", false);
     if (options?.brand) query = query.eq("brand", options.brand);
@@ -98,7 +98,9 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
   const categories = ((categoriesData ?? []) as unknown as DbCategory[]).map(c => mapCategory(c, options?.admin));
   const excluded = new Set(categories.filter(c => isExcludedCategory(c.slug)).map(c => c.id));
   categories.forEach(c => { if (c.parentId && excluded.has(c.parentId)) excluded.add(c.id); });
-  let products = (productsData as DbProduct[]).map(p => mapProduct(p, options?.admin, options?.wholesale)).filter(p => options?.admin || !excluded.has(p.categoryId));
+  let products = (productsData as DbProduct[])
+    .map(p => mapProduct(p, options?.admin, options?.wholesale))
+    .filter(p => options?.admin || (!excluded.has(p.categoryId) && isPubliclyEligible(p, options)));
 
   if (!options?.admin) products = await projectUsdProducts(products, supabase);
   const result: StorefrontData = {
@@ -123,12 +125,16 @@ export const getProductBySlug = cache(async function getProductBySlug(slug: stri
     )
     .eq("slug", slug)
     .eq("is_active", true)
+    .eq("commercial_status", "AVAILABLE")
     .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !data || (!WHOLESALE_ENABLED && data.is_wholesale_only) || isExcludedCategory((Array.isArray(data.categories) ? data.categories[0] : data.categories)?.slug ?? "")) return null;
 
-  return (await projectUsdProducts([mapProduct(data as unknown as DbProduct, false, WHOLESALE_ENABLED)], supabase))[0];
+  const mapped = (await projectUsdProducts([mapProduct(data as unknown as DbProduct, false, WHOLESALE_ENABLED)], supabase))[0];
+  if (!mapped || !isPubliclyEligible(mapped)) return null;
+
+  return mapped;
 });
 
 // Share the same navigation read between metadata, layout and the catalog in one request.

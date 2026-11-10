@@ -57,6 +57,16 @@ export function catalogExclusion(key: SupplierKey, item: FoundProduct): string |
   if (key === 'atacado-connect' && /\biphone\b/i.test(title) && /\b(?:cpo|outlet|refurbished|recondicionado|reacondicionado|usado|seminovo|ativado|activado|open box)\b/i.test(title)) {
     return 'iPhone fuera de la condición comercial autorizada.';
   }
+  // Hardware loose consumables exclusion (screws, nuts, washers, rivets, loose nails, motor brushes)
+  // Preserves bench vises (tornillo de banco), bolt cutters, extractors, hammers, nailers, sets/kits/boxes
+  if (key === 'total' || /\b(?:total|wadfow)\b/i.test(title)) {
+    const isLooseScrew = /\btornillos?\b/i.test(title) && !/\b(?:banco|prensa|cortador|corta|extractor|juego|kit|set|caja|maletin)\b/i.test(title);
+    const isLooseHardware = /\b(?:arandelas?|tuercas?|remaches?|carbones)\b/i.test(title) && !/\b(?:remachadora|juego|kit|set|caja|maletin)\b/i.test(title);
+    const isLooseNails = /\bclavos?\b/i.test(title) && !/\b(?:martillo|clavadora|engrapadora|juego|kit|set|caja|maletin)\b/i.test(title);
+    if (isLooseScrew || isLooseHardware || isLooseNails) {
+      return 'Consumible menor / ferretería suelta sin viabilidad de importación.';
+    }
+  }
   return null;
 }
 

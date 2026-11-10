@@ -59,10 +59,18 @@ export default async function Home({
   // 2. Three core rubros products
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
+  const getRootSlug = (catId: string): string => {
+    let cat = categoryById.get(catId);
+    while (cat?.parentId) {
+      const parent = categoryById.get(cat.parentId);
+      if (!parent) break;
+      cat = parent;
+    }
+    return cat ? cat.slug.toLowerCase() : "";
+  };
+
   const isBeauty = (catId: string) => {
-    const cat = categoryById.get(catId);
-    if (!cat) return false;
-    const s = cat.slug.toLowerCase();
+    const s = getRootSlug(catId);
     return (
       s.includes("cosmetica") ||
       s.includes("coreana") ||
@@ -73,16 +81,12 @@ export default async function Home({
   };
 
   const isTech = (catId: string) => {
-    const cat = categoryById.get(catId);
-    if (!cat) return false;
-    const s = cat.slug.toLowerCase();
+    const s = getRootSlug(catId);
     return s.includes("electronica") || s.includes("smartphone");
   };
 
   const isTools = (catId: string) => {
-    const cat = categoryById.get(catId);
-    if (!cat) return false;
-    const s = cat.slug.toLowerCase();
+    const s = getRootSlug(catId);
     return s.includes("herramienta") || s.includes("equipamiento");
   };
 

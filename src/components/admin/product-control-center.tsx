@@ -88,7 +88,7 @@ export function ProductControlCenter({
 
   // Filters state
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "trash">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "out_of_stock" | "review_required" | "trash">("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<
     "all" | "in_stock" | "out_of_stock" | "supplier_available" | "supplier_paused" | "own_stock"
   >("all");
@@ -157,6 +157,8 @@ export function ProductControlCenter({
     let supplierAvailable = 0;
     let withSupplierLink = 0;
     let withVariants = 0;
+    let outOfStock = 0;
+    let reviewRequired = 0;
     const total = products.length;
 
     for (let i = 0; i < total; i++) {
@@ -165,6 +167,9 @@ export function ProductControlCenter({
         deleted++;
         continue;
       }
+      if (p.commercialStatus === "OUT_OF_STOCK") outOfStock++;
+      else if (p.commercialStatus === "REVIEW_REQUIRED") reviewRequired++;
+
       if (p.hasVariants) withVariants++;
       if (p.active !== false) active++;
       else paused++;
@@ -192,6 +197,8 @@ export function ProductControlCenter({
       withSupplierLink,
       withoutSupplierLink,
       withVariants,
+      outOfStock,
+      reviewRequired,
       activeRate: nonDeleted > 0 ? Math.round((active / nonDeleted) * 100) : 0,
     };
   }, [products]);
@@ -223,9 +230,11 @@ export function ProductControlCenter({
           if (!isDeleted) return false;
         } else {
           if (isDeleted) return false;
-          // Shop Status (Active / Paused)
+          // Shop Status (Active / Paused / Out of stock / Review required)
           if (statusFilter === "active" && p.active === false) return false;
           if (statusFilter === "paused" && p.active !== false) return false;
+          if (statusFilter === "out_of_stock" && p.commercialStatus !== "OUT_OF_STOCK") return false;
+          if (statusFilter === "review_required" && p.commercialStatus !== "REVIEW_REQUIRED") return false;
         }
 
         // Supplier Link Filter
@@ -938,6 +947,34 @@ export function ProductControlCenter({
               <button
                 type="button"
                 onClick={() => {
+                  setStatusFilter("out_of_stock");
+                  setPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all ${
+                  statusFilter === "out_of_stock" ? "bg-red-600 text-white shadow-xs" : "text-zinc-500 hover:text-red-700"
+                }`}
+                title="Productos confirmados sin stock en proveedores (Día 0-6)"
+              >
+                <span>⚠️ Sin Stock ({stats.outOfStock})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("review_required");
+                  setPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all ${
+                  statusFilter === "review_required" ? "bg-amber-500 text-white shadow-xs" : "text-zinc-500 hover:text-amber-700"
+                }`}
+                title="Productos que requieren revisión de márgenes o enlace"
+              >
+                <span>🔍 Revisión ({stats.reviewRequired})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setStatusFilter("trash");
                   setPage(1);
                   setSelectedIds([]);
@@ -1628,6 +1665,26 @@ export function ProductControlCenter({
                               <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
                               {isActive ? "Activo" : "Pausado"}
                             </button>
+                            {product.commercialStatus && product.commercialStatus !== "AVAILABLE" && (
+                              <div className="mt-1">
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                    product.commercialStatus === "OUT_OF_STOCK"
+                                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                                      : product.commercialStatus === "REVIEW_REQUIRED"
+                                      ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                      : product.commercialStatus === "ARCHIVED"
+                                      ? "bg-zinc-200 text-zinc-700 border border-zinc-300"
+                                      : "bg-zinc-100 text-zinc-600 border border-zinc-200"
+                                  }`}
+                                >
+                                  {product.commercialStatus === "OUT_OF_STOCK" && "Sin Stock"}
+                                  {product.commercialStatus === "REVIEW_REQUIRED" && "Revisar"}
+                                  {product.commercialStatus === "ARCHIVED" && "Archivado"}
+                                  {product.commercialStatus === "HIDDEN" && "Oculto"}
+                                </span>
+                              </div>
+                            )}
                           </td>
                         </>
                       )}

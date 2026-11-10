@@ -10,7 +10,7 @@ const getPublicSearchIndex = cache(async (): Promise<PublicSearchProduct[]> => {
   const db = await createServerSupabaseClient();
   return readAllPages((from, to) => db.from("products")
     .select("id,title,brand,model,sku,tags,category_id,product_variants(title,sku,is_active,options)")
-    .eq("is_active", true).eq("is_wholesale_only", false).is("deleted_at", null)
+    .eq("is_active", true).eq("commercial_status", "AVAILABLE").eq("is_wholesale_only", false).is("deleted_at", null)
     .order("id").range(from, to));
 });
 

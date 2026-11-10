@@ -2,7 +2,7 @@ import { WHOLESALE_ENABLED, cleanProductTitle } from "./commerce-policy";
 import type { Category, PaymentMethod, Product } from "./types";
 import { resolveVariantDimensions } from "./variant-preview";
 // Public reads explicitly omit costs and supplier sources, including for signed-in admins.
-export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, supplier_last_checked_at, tags, payment_methods, specifications, warranty_terms, has_variants, options_config, deleted_at, deleted_by";
+export const PUBLIC_PRODUCT_COLUMNS = "id, slug, title, description, category_id, image_url, image_urls, retail_price, wholesale_price, wholesale_min_qty, stock, stock_verified_at, is_active, is_featured, is_wholesale_only, brand, model, sku, fulfillment_mode, supplier_available, supplier_last_checked_at, commercial_status, out_of_stock_since, tags, payment_methods, specifications, warranty_terms, has_variants, options_config, deleted_at, deleted_by";
 
 export interface DbCategory {
   id: string;
@@ -26,6 +26,8 @@ export interface DbProductVariant {
   stock_verified_at: string | null;
   fulfillment_mode: "own_stock" | "supplier" | null;
   supplier_available: boolean | null;
+  commercial_status?: import("./types").CommercialStatus | null;
+  out_of_stock_since?: string | null;
   image_url: string | null;
   is_active: boolean | null;
   options: Record<string, string> | null;
@@ -41,6 +43,8 @@ export interface DbProduct {
   supplier_live_price?: number | null;
   fulfillment_mode?: "own_stock" | "supplier";
   supplier_available?: boolean;
+  commercial_status?: import("./types").CommercialStatus | null;
+  out_of_stock_since?: string | null;
   is_active?: boolean;
   brand?: string | null;
   model?: string | null;
@@ -83,6 +87,8 @@ export function mapProductVariant(v: DbProductVariant): import("./types").Produc
     stockVerifiedAt: v.stock_verified_at ?? null,
     fulfillmentMode: v.fulfillment_mode ?? "own_stock",
     supplierAvailable: Boolean(v.supplier_available),
+    commercialStatus: (v.commercial_status as import("./types").CommercialStatus) ?? "AVAILABLE",
+    outOfStockSince: v.out_of_stock_since ?? null,
     imageUrl: v.image_url ?? undefined,
     isActive: v.is_active ?? true,
     options: v.options && typeof v.options === "object" ? v.options : {},
@@ -143,6 +149,8 @@ export function mapProduct(product: DbProduct, admin = false, wholesale = false)
     } : {}),
     fulfillmentMode: product.fulfillment_mode ?? "own_stock",
     supplierAvailable: effectiveSupplierAvailable,
+    commercialStatus: (product.commercial_status as import("./types").CommercialStatus) ?? "AVAILABLE",
+    outOfStockSince: product.out_of_stock_since ?? null,
     active: product.is_active ?? true,
     slug: product.slug,
     title: admin ? product.title : cleanProductTitle(product.title),

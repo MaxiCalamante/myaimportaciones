@@ -8,8 +8,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   Boxes,
-  CheckCircle2,
-  ChevronRight,
   Headphones,
   Package,
   Pause,
@@ -97,7 +95,8 @@ export function StoreHero({
                   fill
                   sizes="(min-width:1280px) 1216px, 100vw"
                   quality={80}
-                  preload={index === 0}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  priority={index === 0}
                   className="-z-20 object-cover object-[65%_center]"
                 />
               )}

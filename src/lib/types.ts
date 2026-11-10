@@ -39,6 +39,15 @@ export interface ProductOptionDimension {
   values: string[];
 }
 
+export type CommercialStatus =
+  | "AVAILABLE"
+  | "OUT_OF_STOCK"
+  | "UNKNOWN"
+  | "STALE"
+  | "HIDDEN"
+  | "ARCHIVED"
+  | "REVIEW_REQUIRED";
+
 export interface ProductVariant {
   retailUsd?: string;
   wholesaleUsd?: string | null;
@@ -53,6 +62,8 @@ export interface ProductVariant {
   stockVerifiedAt?: string | null;
   fulfillmentMode: "own_stock" | "supplier";
   supplierAvailable: boolean;
+  commercialStatus?: CommercialStatus;
+  outOfStockSince?: string | null;
   imageUrl?: string | null;
   isActive: boolean;
   options: Record<string, string>;
@@ -71,6 +82,8 @@ export interface Product {
   supplierLivePrice?: number | null;
   fulfillmentMode?: "own_stock" | "supplier";
   supplierAvailable?: boolean;
+  commercialStatus?: CommercialStatus;
+  outOfStockSince?: string | null;
   active?: boolean;
   brand?: string;
   model?: string;

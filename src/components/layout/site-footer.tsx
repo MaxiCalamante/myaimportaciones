@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, MessageCircle, ShieldCheck, Truck } from "lucide-react";
+import { MapPin, MessageCircle, Truck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { siteConfig, getWhatsAppUrl } from "@/lib/site";
 import { useCommerce } from "@/components/commerce/commerce-provider";

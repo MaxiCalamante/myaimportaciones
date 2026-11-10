@@ -14,7 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { Category } from "@/lib/types";
-import { buildStoreRubros, type CategoryGroupItem } from "@/lib/category-groups";
+import { buildStoreRubros } from "@/lib/category-groups";
 
 function CategoryIcon({ slug }: { slug: string }) {
   const Icon = slug.startsWith("electronica")

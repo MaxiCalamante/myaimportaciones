@@ -63,9 +63,9 @@ async function resolveQuote(input: CheckoutInput) {
   const exchange = await getExchangeSnapshot();
   const { data: products, error } = await db.from("products").select(`${PUBLIC_PRODUCT_COLUMNS}, categories(name, slug)`).in("id", [...productIds]).is("deleted_at", null);
   if (error || products?.length !== productIds.size) throw new Error("No pudimos verificar los productos. Intentá nuevamente.");
-  let dbVariants: { id: string; product_id: string; title: string; retail_price: number; stock: number; stock_verified_at: string | null; fulfillment_mode: string; supplier_available: boolean; is_active: boolean }[] = [];
+  let dbVariants: { id: string; product_id: string; title: string; retail_price: number; stock: number; stock_verified_at: string | null; fulfillment_mode: string; supplier_available: boolean; is_active: boolean; commercial_status?: string | null }[] = [];
   if (variantIds.size > 0) {
-    const { data: variants, error: varError } = await db.from("product_variants").select("id, product_id, title, retail_price, stock, stock_verified_at, fulfillment_mode, supplier_available, is_active").in("id", [...variantIds]);
+    const { data: variants, error: varError } = await db.from("product_variants").select("id, product_id, title, retail_price, stock, stock_verified_at, fulfillment_mode, supplier_available, is_active, commercial_status").in("id", [...variantIds]);
     if (varError || variants?.length !== variantIds.size) throw new Error("No pudimos verificar las variantes seleccionadas. Intentá nuevamente.");
     dbVariants = variants;
   }
@@ -78,7 +78,7 @@ async function resolveQuote(input: CheckoutInput) {
     for(const line of wholesaleLines){
       const p=products.find(p=>p.id===line.productId)!;
       const v=line.variantId?dbVariants.find(v=>v.id===line.variantId&&v.product_id===p.id):null;
-      if(!p.is_active||line.variantId&&!v||v&&!v.is_active||p.has_variants&&!line.variantId)throw new Error('Revisá el producto y la variante exacta.');
+      if(!p.is_active || (p as unknown as { commercial_status?: string }).commercial_status !== 'AVAILABLE' || (line.variantId && !v) || (v && (!v.is_active || v.commercial_status !== 'AVAILABLE')) || (p.has_variants && !line.variantId)) throw new Error('Revisá el producto y la variante exacta.');
       const basis=monetaryPrices.find(r=>r.productId===p.id&&(r.variantId??null)===(line.variantId??null))?.basis;
       if(!basis)throw Error('No se pudo verificar la cotización mayorista.');
       if(basis.status!=='ready'||!(Number(basis.unit_price)>0))reasons.push(`${p.title}: requiere confirmar costos y disponibilidad.`);
@@ -90,14 +90,14 @@ async function resolveQuote(input: CheckoutInput) {
   const items: PricedItem[] = input.lines.map(line => {
     const p = products.find(p => p.id === line.productId)!;
     const category = Array.isArray(p.categories) ? p.categories[0] : p.categories;
-    if (!p.is_active || (line.channel === "retail" && p.is_wholesale_only)) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
+    if (!p.is_active || (p as unknown as { commercial_status?: string }).commercial_status !== "AVAILABLE" || (line.channel === "retail" && p.is_wholesale_only)) throw new Error(`Consultá disponibilidad de ${p.title} antes de comprar.`);
 
     let price = Number(p.retail_price);
     let title = p.title;
 
     if (line.variantId) {
       const v = dbVariants.find(v => v.id === line.variantId);
-      if (!v || v.product_id !== p.id || !v.is_active) {
+      if (!v || v.product_id !== p.id || !v.is_active || (v.commercial_status && v.commercial_status !== "AVAILABLE")) {
         throw new Error(`La opción seleccionada de ${p.title} no está disponible.`);
       }
       if (v.fulfillment_mode === "supplier" ? !v.supplier_available : (!v.stock_verified_at || v.stock < line.quantity)) {
