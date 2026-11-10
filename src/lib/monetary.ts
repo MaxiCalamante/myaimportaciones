@@ -18,7 +18,10 @@ export async function projectUsdProducts(products:Product[],client?:SupabaseClie
   await getExchangeSnapshot();
   const db=client??await createServerSupabaseClient();
   const result=await db.rpc('store_usd_prices_v1',{ids_input:products.map(p=>p.id)});
-  if(result.error)throw Error('No se pudieron verificar las monedas del catálogo.');
+  if(result.error){
+    console.error('[monetary] store_usd_prices_v1 error, using base product prices:', result.error);
+    return products;
+  }
   const rows=result.data as PublicUsdPrice[];
   const byIdentity=new Map(rows.map(r=>[r.variantId??r.productId,r]));
   return products.map(p=>{

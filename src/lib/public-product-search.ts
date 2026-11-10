@@ -15,6 +15,12 @@ const getPublicSearchIndex = cache(async (): Promise<PublicSearchProduct[]> => {
 });
 
 export async function searchPublicProductIds(query: string, categoryIds: string[]): Promise<string[]> {
-  const ids = new Set(categoryIds);
-  return rankProductSearch((await getPublicSearchIndex()).filter(p => ids.has(p.category_id)), query).map(p => p.id);
+  const index = await getPublicSearchIndex();
+  const filtered = categoryIds.length > 0
+    ? (() => {
+        const ids = new Set(categoryIds);
+        return index.filter(p => ids.has(p.category_id));
+      })()
+    : index;
+  return rankProductSearch(filtered, query).map(p => p.id);
 }

@@ -1,10 +1,14 @@
 import 'server-only';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {createServerSupabaseClient} from './supabase/server';
-import {DRAFT_WHOLESALE_POLICY,type PublicWholesaleOffer,type PublicWholesalePolicy,type WholesalePayment,type WholesaleV2Policy} from './wholesale-v2';
+import {DRAFT_WHOLESALE_POLICY,INITIAL_PUBLIC_WHOLESALE_POLICY,type PublicWholesaleOffer,type PublicWholesalePolicy,type WholesalePayment,type WholesaleV2Policy} from './wholesale-v2';
 export async function getPublicWholesalePolicy(client?:SupabaseClient):Promise<PublicWholesalePolicy>{
  const db=client??await createServerSupabaseClient(),r=await db.rpc('wholesale_public_policy_v1');
- if(r.error)throw new Error('No se pudieron leer las condiciones mayoristas.');return r.data as PublicWholesalePolicy;
+ if(r.error){
+  console.error('[wholesale-v2-read] wholesale_public_policy_v1 error, using fallback:', r.error);
+  return INITIAL_PUBLIC_WHOLESALE_POLICY;
+ }
+ return r.data as PublicWholesalePolicy;
 }
 export async function getPublicWholesaleOffers(items:Array<{productId:string;variantId?:string|null;quantity?:number}>,payment:WholesalePayment='mercado_pago',client?:SupabaseClient):Promise<PublicWholesaleOffer[]>{
  if(!items.length)return[];if(items.length>1000)throw new Error('La consulta mayorista supera el límite.');

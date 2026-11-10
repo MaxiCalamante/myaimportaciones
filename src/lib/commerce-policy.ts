@@ -92,3 +92,87 @@ export function isPubliclyEligible(product: CommercialPolicySubject, options?: {
   return true;
 }
 
+/**
+ * High-ticket classification:
+ * Electronics, consoles, notebooks or any item with acquisition cost >= 600 USD.
+ */
+export function isHighTicketCost(costUsd: number | null | undefined): boolean {
+  return typeof costUsd === 'number' && Number.isFinite(costUsd) && costUsd >= 600;
+}
+
+export interface ScaledMarginRecommendation {
+  channel: 'retail' | 'wholesale';
+  targetMarginPercent: number;
+  minimumMarginPercent: number;
+  isHighTicket: boolean;
+  fixedContributionUsd?: number;
+}
+
+/**
+ * Calculates competitive scaled contribution margin targets.
+ * Standard items apply 30% retail / 18% wholesale.
+ * High-ticket items (>= 600 USD) scale down to 12-15% retail / 10% wholesale
+ * to remain competitive in Argentina without selling below cost or violating the 10% floor.
+ */
+export function getRecommendedMargin(
+  costUsd: number,
+  channel: 'retail' | 'wholesale' = 'retail'
+): ScaledMarginRecommendation {
+  const isHigh = isHighTicketCost(costUsd);
+  const floor = 10; // Floor invariant across the entire system
+
+  if (channel === 'wholesale') {
+    if (isHigh) {
+      return {
+        channel: 'wholesale',
+        targetMarginPercent: 10,
+        minimumMarginPercent: floor,
+        isHighTicket: true,
+        fixedContributionUsd: 60,
+      };
+    }
+    return {
+      channel: 'wholesale',
+      targetMarginPercent: 18,
+      minimumMarginPercent: floor,
+      isHighTicket: false,
+    };
+  }
+
+  // Retail channel
+  if (costUsd >= 1000) {
+    return {
+      channel: 'retail',
+      targetMarginPercent: 12,
+      minimumMarginPercent: floor,
+      isHighTicket: true,
+      fixedContributionUsd: 120,
+    };
+  }
+  if (costUsd >= 600) {
+    return {
+      channel: 'retail',
+      targetMarginPercent: 15,
+      minimumMarginPercent: floor,
+      isHighTicket: true,
+      fixedContributionUsd: 90,
+    };
+  }
+  if (costUsd >= 300) {
+    return {
+      channel: 'retail',
+      targetMarginPercent: 22,
+      minimumMarginPercent: floor,
+      isHighTicket: false,
+    };
+  }
+
+  return {
+    channel: 'retail',
+    targetMarginPercent: 30,
+    minimumMarginPercent: floor,
+    isHighTicket: false,
+  };
+}
+
+
