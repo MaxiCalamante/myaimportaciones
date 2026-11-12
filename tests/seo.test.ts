@@ -8,7 +8,7 @@ import type { Product, ProductVariant, Category } from "../src/lib/types";
 import { canonicalRedirect } from "../src/lib/site-redirect";
 import { canonicalProductSlug } from "../src/lib/seo-product-aliases";
 
-const product = { id: "real-id", slug: "producto-50-ml", title: "Marca Producto 50 ml", description: "Presentación de 50 ml. Incluye un frasco.", categoryName: "Cuidado facial", categoryId: "c", imageUrl: "/foto.webp", imageUrls: [], retailPrice: 12300, active: true, wholesaleOnly: false, brand: "Marca", model: "Una familia comercial", sku: "SKU-1", stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, specifications: {}, tags: [] } as unknown as Product;
+const product = { id: "real-id", slug: "producto-50-ml", title: "Marca Producto 50 ml", description: "Presentación de 50 ml. Incluye un frasco.", categoryName: "Cuidado facial", categoryId: "c", imageUrl: "/foto.webp", imageUrls: [], retailPrice: 12300, priceVerified: true, active: true, wholesaleOnly: false, brand: "Marca", model: "Una familia comercial", sku: "SKU-1", stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, specifications: {}, tags: [] } as unknown as Product;
 const category = { id: "c", slug: "cuidado", name: "Cuidado facial", description: "Presentaciones para tu rutina." } as Category;
 
 test("hosted aliases and unsafe origins cannot replace MYA's canonical identity", () => {
@@ -51,7 +51,7 @@ test("product schema shares real price and supplier availability and never inven
   assert.equal(schema.image?.[0], "https://myaimportaciones.com/foto.webp");
 });
 test("variant offers link to the exact selection and preserve real prices and availability", () => {
-  const variant: ProductVariant = { id: "rouge", productId: product.id, title: "Rouge 60 ml", retailPrice: 25000, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: { Versión: "Rouge" }, displayOrder: 0 };
+  const variant: ProductVariant = { id: "rouge", productId: product.id, title: "Rouge 60 ml", retailPrice: 25000, priceVerified: true, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: { Versión: "Rouge" }, displayOrder: 0 };
   const schema = productStructuredData({
     ...product,
     hasVariants: true,
@@ -76,7 +76,7 @@ test("variant offers link to the exact selection and preserve real prices and av
 });
 
 test("schema excludes inactive or unpriced variants without substituting a parent offer", () => {
-  const variant: ProductVariant = { id: "choice", productId: product.id, title: "Presentación", retailPrice: 25000, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: {}, displayOrder: 0 };
+  const variant: ProductVariant = { id: "choice", productId: product.id, title: "Presentación", retailPrice: 25000, priceVerified: true, stock: 0, fulfillmentMode: "supplier", supplierAvailable: true, isActive: true, options: {}, displayOrder: 0 };
   const invalid = [0, -1, NaN, Infinity].map((retailPrice, index) => ({ ...variant, id: `invalid-${index}`, retailPrice }));
   const variants = [...invalid, { ...variant, id: "inactive", isActive: false }];
   assert.equal(productStructuredData({ ...product, hasVariants: true, variants }).offers, undefined);
@@ -141,4 +141,16 @@ test("dynamic Open Graph cards adapt to product, category and store branding wit
 
   const catalogMeta = catalogSeo({ category: "cuidado" }, [category], ["Marca"]);
   assert.ok(catalogMeta.image?.includes("tipo=categoria"));
+});
+test('reference prices never become structured offers, social price metadata or priced share cards',()=>{
+ for(const priceVerified of [false,undefined]){
+  const reference={...product,priceVerified};
+  assert.equal(productStructuredData(reference).offers,undefined);
+  assert.equal(productMetadata(reference).other?.['product:price:amount'],undefined);
+  assert.equal(new URL(buildProductShareImageUrl(reference),'https://mya.test').searchParams.has('precio'),false);
+  assert.equal(productStructuredData(reference).name,product.title);
+ }
+ const variant:ProductVariant={id:'verified',productId:product.id,title:'Exact verified choice',priceVerified:true,retailPrice:15000,stock:1,stockVerifiedAt:new Date().toISOString(),fulfillmentMode:'own_stock',supplierAvailable:false,isActive:true,options:{},displayOrder:0};
+ const schema=productStructuredData({...product,hasVariants:true,variants:[variant,{...variant,id:'stale',priceVerified:false},{...variant,id:'missing',priceVerified:undefined}]});
+ assert.equal(schema['@type'],'ProductGroup');assert.equal(schema.hasVariant.length,1);assert.equal(schema.hasVariant[0].offers.price,15000);
 });

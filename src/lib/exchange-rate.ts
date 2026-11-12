@@ -1,13 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decimalUnits } from './money';
-export const DOLLAR_TYPES = {blue:'Blue',bolsa:'MEP',oficial:'Oficial',contadoconliqui:'CCL',cripto:'Cripto',tarjeta:'Tarjeta',mayorista:'Mayorista bancario'} as const;
+import { refreshSupplierUsdtQuote } from './supplier-usdt';
+export const DOLLAR_TYPES = {blue:'Blue',bolsa:'MEP',oficial:'Oficial',contadoconliqui:'CCL',cripto:'Cripto',tarjeta:'Tarjeta',mayorista:'Mayorista bancario',usdt:'USDT'} as const;
 export type DollarType = keyof typeof DOLLAR_TYPES;
 export interface ExchangeSnapshot {
   refreshSeconds?:number;
   id:string|null; kind:DollarType; rate:string|null; rawRate:string|null;
   sourceAt:string|null; fetchedAt:string|null; expiresAt:string|null;
-  status:'valid'|'stale'|'missing'; source:'dolarapi'|'manual'; adjustment:string; roundArs:string;
+  status:'valid'|'stale'|'missing'; source:'dolarapi'|'manual'|'usdt'; adjustment:string; roundArs:string;
 }
+export const exchangeRateLabel=(kind:DollarType)=>kind==='usdt'?'USDT comercial':`Dólar ${DOLLAR_TYPES[kind]} venta`;
+export const exchangeSourceLabel=(source:ExchangeSnapshot['source'])=>source==='manual'?'Manual interna':source==='usdt'?'CriptoYa + Binance':'DolarAPI';
 export function validateDollarResponse(value:unknown, kind:DollarType, previous:string|null, maxChange:number, now=Date.now()) {
   if (!value || typeof value !== 'object') throw Error('Respuesta de cotización inválida.');
   const v=value as Record<string,unknown>;
@@ -27,13 +30,19 @@ export async function refreshExchangeRate(db:SupabaseClient, force=false, fetche
   const lease=claim.data as {token?:string;kind:DollarType;previous:string|null;maxChange:number};
   if(!lease?.token)return;
   try {
-    const response=await fetcher(`https://dolarapi.com/v1/dolares/${lease.kind}`,{cache:'no-store',signal:AbortSignal.timeout(5000)});
-    if(!response.ok)throw Error(`DolarAPI respondió HTTP ${response.status}.`);
-    const parsed=validateDollarResponse(await response.json(),lease.kind,lease.previous,lease.maxChange);
+    let parsed:{rate:string;sourceAt:string};
+    if(lease.kind==='usdt'){
+      const quote=await refreshSupplierUsdtQuote(db,fetcher);
+      parsed={rate:String(quote.rateArs),sourceAt:quote.quotedAt};
+    }else{
+      const response=await fetcher(`https://dolarapi.com/v1/dolares/${lease.kind}`,{cache:'no-store',signal:AbortSignal.timeout(5000)});
+      if(!response.ok)throw Error(`DolarAPI respondió HTTP ${response.status}.`);
+      parsed=validateDollarResponse(await response.json(),lease.kind,lease.previous,lease.maxChange);
+    }
     const saved=await db.rpc('finish_store_exchange_refresh_v1',{token_input:lease.token,rate_input:parsed.rate,source_at_input:parsed.sourceAt,error_input:null});
     if(saved.error)throw Error('No se pudo conservar la cotización validada.');
   } catch(e) {
-    const error=e instanceof Error?e.message:'No se pudo consultar DolarAPI.';
+    const error=e instanceof Error?e.message:'No se pudo consultar la fuente de cotización.';
     await db.rpc('finish_store_exchange_refresh_v1',{token_input:lease.token,rate_input:null,source_at_input:null,error_input:error});
     if(force)throw Error(error);
   }

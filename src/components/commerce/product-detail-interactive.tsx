@@ -28,7 +28,7 @@ import { trackAdsEvent } from "@/lib/analytics";
 import { StickyMobileBuyBar } from "./sticky-mobile-buy-bar";
 import { QuantityStepper } from "./quantity-stepper";
 import { getColorSwatch } from "@/lib/variant-swatches";
-import {wholesaleDisplay} from "@/components/wholesale/public-price";
+import {wholesaleDisplay,isWholesaleDisplayVerified} from "@/components/wholesale/public-price";
 import { ProductShippingCalculator } from "./shipping-calculator";
 
 export function ProductDetailInteractive({
@@ -143,7 +143,9 @@ export function ProductDetailInteractive({
   }, [product,wholesale.price]);
 
   const getCtaState = () => {
-    if(product.priceVerified===false||(isVariantMode&&matchedVariant&&matchedVariant.priceVerified===false))return{text:'Precio en actualización',disabled:true};
+    const identity=matchedVariant??product;
+    const verified=channel==='wholesale'?isWholesaleDisplayVerified(product,matchedVariant,quantity):identity.priceVerified;
+    if((!isVariantMode||matchedVariant)&&verified===false)return{text:'Precio en actualización',disabled:true};
     if(channel==='wholesale'&&wholesale.offer?.status==='unavailable')return{text:'No disponible para compra mayorista',disabled:true};
     if(requestable&&(!isVariantMode||allDimensionsSelected&&matchedVariant))return{text:added?'Solicitud agregada':'Solicitar confirmación',disabled:false};
     if (!isVariantMode) {
@@ -227,6 +229,7 @@ export function ProductDetailInteractive({
       <div data-product-purchase className="space-y-5 rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-7">
         <div className="min-w-0">
           <p className="text-xs font-medium text-zinc-500">{channel === "wholesale" ? "Precio mayorista por unidad" : "Precio por unidad"}</p>
+          {(channel==='wholesale'?isWholesaleDisplayVerified(product,matchedVariant,quantity):(matchedVariant??product).priceVerified)===false&&<p className="mt-1 text-xs text-amber-800">Precio de referencia. Confirmamos cotización y costos antes de habilitar la compra.</p>}
           <p className="mt-1 break-words text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-tight tracking-tight tabular-nums text-zinc-950">
             {hasPriceRange && <span className="mr-2 text-sm font-medium text-zinc-500">Desde</span>}{<ProductPrice product={product} channel={channel} variant={matchedVariant} ars={price} context/>}
           </p>

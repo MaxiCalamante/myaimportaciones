@@ -7,7 +7,7 @@ import{fetchSupplierPage,readSupplierHtml}from'./supplier-url';
 import{inspectSupplierProduct,supplierEvidenceGap}from'./supplier-offer-adapters';
 import{publicReadRules}from'./supplier-automation';
 
-export interface TrackedOffer extends SupplierOffer{evidence?:{sourceTitle?:string;availabilityBasis?:string;costScope?:string;linkedBy?:string}}
+export interface TrackedOffer extends SupplierOffer{evidence?:{sourceTitle?:string;observedUrl?:string;availabilityBasis?:string;costScope?:string;linkedBy?:string}}
 export interface PublicCard{id:string;title:string;brand?:string;price?:string;currency?:PublicProduct['currency'];url:string;availability:PublicProduct['availability'];basis:string;scope:string;gtin?:string}
 export interface CatalogPage{records:PublicCard[];url:string;searched?:boolean;nextUrl?:string|null;limited?:boolean}
 export interface DiscoveryJob{id:string;supplier_id:string;kind:'search'|'detail';query:string;source_url:string;product_ids:string[];attempts:number}

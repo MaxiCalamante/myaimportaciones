@@ -26,7 +26,7 @@ test('assisted publication is atomic, idempotent, and uses approved expenses and
     const input={title:d.title,categoryId:category,description:'Taladro de prueba con voltaje de 20 V según la ficha de origen de la prueba aislada.',
       identityConfirmed:true,complianceConfirmed:true,mediaAuthorized:true,evidence:'Registro documental de prueba aislada',basis};
     await db.exec('set role authenticated');
-    const preview=async(value:unknown)=>(await db.query<{p:{revision:string;reasons:string[];prices:{retailMargin:number;wholesaleMargin:number;retailArs:number;totalCostUsd:number}}}>(
+    const preview=async(value:unknown)=>(await db.query<{p:{revision:string;reasons:string[];prices:{retailMargin:number;wholesaleMargin:number;retailArs:number;totalCostUsd:number;results:Record<string,unknown>}}}>(
       'select tracker_preview_publication_v1($1,$2)p',[item,value])).rows[0].p;
     const publish=async(revision:string)=>(await db.query<{p:{id:string;existing:boolean;active:boolean;slug:string}}>(
       'select tracker_publish_opportunity_v1($1,$2,$3)p',[item,revision,'taladro-de-prueba-total-t12345-20v'])).rows[0].p;
@@ -40,6 +40,7 @@ test('assisted publication is atomic, idempotent, and uses approved expenses and
     const ready=await preview(input);
     assert.deepEqual(ready.reasons,[]);
     assert.equal(ready.prices.totalCostUsd,61);
+    assert.equal(ready.prices.results['retail:mercado_pago'],undefined,'new products accept only transfer by default');
     assert.ok(ready.prices.retailMargin>=30);
     assert.ok(ready.prices.wholesaleMargin>=18);
     const result=await publish(ready.revision);

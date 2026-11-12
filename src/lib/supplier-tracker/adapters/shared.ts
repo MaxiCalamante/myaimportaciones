@@ -22,8 +22,11 @@ export function categories($:CheerioAPI,selector:string,url:string,key:SupplierK
 }
 export function originalPrice(raw:string,explicit?:string):{cost:number|null;currency:PublicProduct['currency']} {
  const currency:PublicProduct['currency']=/\bUSD\b|US\$|U\$S?/.test(raw)?'USD':/\bARS\b/.test(raw)?'ARS':/\bPYG\b|\bGs\.?\b|₲/.test(raw)?'PYG':['USD','ARS','PYG'].includes(explicit??'')?explicit as PublicProduct['currency']:null;
- const amount=currency==='USD'?(raw.match(/(?:\bUSD\b|US\$|U\$S?)\s*([\d.,]+)/)?.[1]??raw.match(/([\d.,]+)\s*USD\b/)?.[1]):currency==='ARS'?raw.match(/\bARS\s*\$?\s*([\d.,]+)/)?.[1]:currency==='PYG'?raw.match(/(?:\bPYG|\bGs\.?|₲)\s*([\d.,]+)/)?.[1]:null;
- return {cost:currency?parsePublicAmount(amount??raw):null,currency};
+ const suffix=raw.match(/(?:(\bARS|\bPYG|\bGs\.?|₲)\s*\$?\s*)?([\d.,]+)\s*USD\b/);
+ const amount=currency==='USD'?(raw.match(/(?:\bUSD\b|US\$|U\$S?)\s*([\d.,]+)/)?.[1]??(suffix&&!suffix[1]?suffix[2]:undefined)):currency==='ARS'?raw.match(/\bARS\s*\$?\s*([\d.,]+)/)?.[1]:currency==='PYG'?raw.match(/(?:\bPYG|\bGs\.?|₲)\s*([\d.,]+)/)?.[1]:null;
+ // A labelled quote without an amount must not borrow another currency's digits.
+ const labelled=/\bUSD\b|US\$|U\$S?|\bARS\b|\bPYG\b|\bGs\.?\b|₲/.test(raw);
+ return {cost:currency?parsePublicAmount(amount??(labelled?'':raw)):null,currency};
 }
 export function safeImage(raw:string|undefined,base:string):string|null {
  try{
@@ -42,7 +45,7 @@ export function structuredDetail(html:string,url:string,key:SupplierKey):FoundPr
  let native:Record<string,unknown>={};
  if(raw)try{native=JSON.parse(raw);}catch{}
  const str=(value:unknown)=>typeof value==='string'?value:'';
- const reference=str(native.reference)||str(structured?.sku);
+ const reference=str(native.reference)||str(structured?.sku)||(key==='total'?str(structured?.productID):'');
  const imageNodes=$('.product-cover img, .product-images img, [itemprop="image"], .product-gallery img');
  const imageCandidates=[
   ...(Array.isArray(structured?.image)?structured.image:[structured?.image]),

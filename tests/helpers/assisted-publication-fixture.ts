@@ -63,6 +63,9 @@ export async function publicationFixture() {
   ]) await f.db.query('insert into suppliers(id,name,official_key,website) values($1,$2,$2,$3)',[randomUUID(),key,'https://'+host+'/']);
   await f.db.exec(migration('20261107212258_supplier_catalog_discovery'));
   await f.db.exec(migration('20261107213252_supplier_opportunity_publication'));
+  await f.db.exec(migration('20261110123000_wholesale_public_offers_resilience'));
+  await f.db.exec(migration('20261110190000_checkout_profitability_enforcement'));
+  await f.db.exec(migration('20261111203705_enabled_payment_pricing'));
   // Activate the public scope gate in this isolated database.
   await f.db.exec("insert into catalog_supplier_scope_runs values(repeat('0',64),now(),'{}','{}')");
   const now = new Date().toISOString(), validUntil = new Date(Date.now()+86400000).toISOString();

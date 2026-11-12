@@ -8,7 +8,7 @@ import { readCrosslinkCatalog, type CrosslinkCatalog, type TrackedOffer, type Pu
 import { readAllPages } from '../../src/lib/read-all-pages';
 import { publicReadRules } from '../../src/lib/supplier-automation';
 import { fetchSupplierPage, readSupplierHtml } from '../../src/lib/supplier-url';
-import { inspectSupplierProduct, supplierEvidenceGap } from '../../src/lib/supplier-offer-adapters';
+import { inspectRegisteredSupplierProduct, registeredProductIdentityMatches, supplierEvidenceGap } from '../../src/lib/supplier-offer-adapters';
 import { observationFromPublic, titleIdentity, parsePublicAmount, type PublicProduct } from '../../src/lib/supplier-public-data';
 import { parseObservation, supplierSourceUrl, type IntelligenceSupplier } from '../../src/lib/supplier-intelligence';
 import { collectPublicCatalog } from '../lib/supplier-browser.mjs';
@@ -24,7 +24,7 @@ export interface LocalRow {
   proposedRetail?: number; proposedWholesale?: number;
 }
 type Event = { seq: number; at: string; kind: 'log' | 'row'; message?: string; row?: LocalRow };
-type Pending = { row: LocalRow; supplier: IntelligenceSupplier; found: PublicProduct; prior?: TrackedOffer; basis?: string };
+type Pending = { row: LocalRow; supplier: IntelligenceSupplier; found: PublicProduct; prior?: TrackedOffer; basis?: string; observedUrl?: string };
 type ProductState = { id: string; is_active: boolean; deleted_at: string | null };
 export class LocalSupplierRunner {
   state = { runId: '', phase: 'idle', mode: '' as string, current: '', checked: 0, total: 0, saved: 0, errors: 0, startedAt: '', finishedAt: '', logFile: '' };
@@ -184,13 +184,20 @@ export class LocalSupplierRunner {
           const response = await fetchSupplierPage(prior.source_url, 'MYA-LocalMonitor/1.0');
           if (!response.ok) throw new Error('HTTP ' + response.status + ': se conserva la disponibilidad anterior.');
           const html = await readSupplierHtml(response);
-          const found = inspectSupplierProduct(html, prior.source_url, supplier, prior.external_id);
+          const inspected = await inspectRegisteredSupplierProduct(html, prior.source_url, supplier, prior, async native => {
+            await this.reserve(supplier, native);
+            const nativeResponse = await fetchSupplierPage(native, 'MYA-LocalMonitor/1.0');
+            if (!nativeResponse.ok) throw new Error('HTTP ' + nativeResponse.status + ' en ficha nativa; se conserva la evidencia anterior.');
+            return readSupplierHtml(nativeResponse);
+          });
+          const found = inspected.product;
           if (!found) throw new Error(supplierEvidenceGap(html, supplier) ?? 'La ficha no ofrece evidencia primaria compatible; no equivale a agotado.');
+          if (registeredProductIdentityMatches(inspected.html, prior.source_url, supplier, prior, found)) found.variant_key = prior.variant_key;
           const identity = localIdentity(found, target, supplier, prior);
           row.title = found.title; row.at = new Date().toISOString(); row.availability = found.availability; row.originCost = found.origin_cost; row.currency = found.currency;
           if (!identity.ok || found.availability === 'unknown') { row.message = identity.ok ? 'La ficha no confirma disponibilidad explícita.' : identity.reason; this.result(row); }
           else if (prior.evidence?.sourceTitle && titleIdentity(prior.evidence.sourceTitle) !== titleIdentity(found.title)) { row.message = 'Cambió el nombre de la fuente; requiere revisión del vínculo.'; this.result(row); }
-          else { row.status = 'ready'; row.message = 'Identidad y disponibilidad comprobadas. Pendiente de tu selección para guardar.'; this.result(row, { supplier, found, prior }); }
+          else { row.status = 'ready'; row.message = 'Identidad y disponibilidad comprobadas. Pendiente de tu selección para guardar.'; this.result(row, { supplier, found, prior, observedUrl: inspected.observedUrl }); }
         }
       } catch (e) { this.state.errors++; row.status = 'error'; row.message = publicLocalError(e); this.result(row); }
       this.state.checked++; await this.flushAutomatic(); await this.checkpoint();
@@ -252,12 +259,13 @@ export class LocalSupplierRunner {
           if (prior) {
             const current = catalog.offers.find(o => o.id === prior.id);
             if (!current || current.product_id !== prior.product_id || current.variant_id !== prior.variant_id || current.source_url !== prior.source_url || current.verification !== 'verified' || current.external_id !== found.external_id || current.variant_key !== found.variant_key) throw new Error('El vínculo cambió desde la revisión. Volvé a consultar.');
+            if (item.observedUrl && item.observedUrl !== found.source_url && current.evidence?.observedUrl !== item.observedUrl) throw new Error('La ficha nativa revisada cambió desde la consulta. Volvé a consultar.');
             const target = catalog.targets.find(t => t.productId === current.product_id && t.variantId === current.variant_id);
             const identity = localIdentity(found, target, supplier, current);
             if (!identity.ok) throw new Error(identity.reason);
             if (current.evidence?.sourceTitle && titleIdentity(current.evidence.sourceTitle) !== titleIdentity(found.title)) throw new Error('La identidad registrada cambió mientras revisabas.');
             if (current.gtin && found.gtin && current.gtin !== found.gtin) throw new Error('El GTIN no coincide con la revisión.');
-            payload = { ...parseObservation({ ...observationFromPublic(found, supplier, current.product_id), variant_id: current.variant_id, title: current.title, brand: current.brand, model: current.model, gtin: current.gtin ?? found.gtin, verification: current.verification, observed_at: row.at }, supplier, 'product_page'), evidence: { ...current.evidence, sourceTitle: found.title, availabilityBasis: 'explicit', localRun: this.state.runId } };
+            payload = { ...parseObservation({ ...observationFromPublic(found, supplier, current.product_id), variant_id: current.variant_id, title: current.title, brand: current.brand, model: current.model, gtin: current.gtin ?? found.gtin, verification: current.verification, observed_at: row.at }, supplier, 'product_page'), evidence: { ...current.evidence, sourceTitle: found.title, observedUrl: item.observedUrl ?? found.source_url, availabilityBasis: 'explicit', localRun: this.state.runId } };
           } else {
             if (catalog.offers.some(o => o.supplier_id === supplier.id && o.external_id === found.external_id && o.variant_key === found.variant_key)) throw new Error('Esta oferta fue registrada mientras revisabas. No se sobrescribe.');
             payload = { ...parseObservation({ ...observationFromPublic(found, supplier, null), verification: 'pending', observed_at: row.at }, supplier, 'product_page'), evidence: { sourceTitle: found.title, availabilityBasis: item.basis, localRun: this.state.runId } };

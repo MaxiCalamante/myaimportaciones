@@ -40,8 +40,9 @@ export default async function OpportunityPage({ params }: { params:Promise<{ id:
   const title = titleForMya(item.title,source.data?.official_key);
   const proposed = detectStoreCategory(title,categories,item.brand);
 
-  const nowIso = new Date().toISOString();
-  const validUntilIso = new Date(Date.now() + 365 * 86400000).toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const validUntilIso = new Date(now.getTime() + 365 * 86400000).toISOString();
   const isTotal = source.data?.official_key === 'total';
   const isExcludedVat = isTotal && detail?.taxBasis !== 'included';
   const cost = detail?.cost ?? item.origin_cost;

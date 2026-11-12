@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from './supabase/server';
 import { createCommerceService, hasCommerceService } from './supabase/service';
 import { refreshExchangeRate, type ExchangeSnapshot } from './exchange-rate';
 import type { Product } from './types';
-export interface PublicUsdPrice {productId:string;variantId:string|null;retailUsd:string;wholesaleUsd:string|null;retailArs:number|null;wholesaleArs:number|null;rateId:string|null}
+import {projectPublicUsdPrices,readPublicPriceVerification,type PublicUsdPrice} from './usd-price-projection';
 export const getExchangeSnapshot=cache(async():Promise<ExchangeSnapshot|null>=>{
   const db=await createServerSupabaseClient();
   // Refresh is best effort. An outage preserves the persisted source timestamp.
@@ -20,30 +20,9 @@ export async function projectUsdProducts(products:Product[],client?:SupabaseClie
   const result=await db.rpc('store_usd_prices_v1',{ids_input:products.map(p=>p.id)});
   if(result.error){
     console.error('[monetary] store_usd_prices_v1 error, using unverified reference prices:', result.error);
-    return products.map(p=>({
-      ...p,
-      priceVerified: false,
-      isPurchasable: false,
-      priceWarning: 'Precio referencial en actualización. Consultanos antes de comprar.',
-      variants: p.variants?.map(v=>({
-        ...v,
-        priceVerified: false,
-        isPurchasable: false,
-      }))
-    }));
+    return projectPublicUsdPrices(products,[],[]);
   }
   const rows=(result.data??[]) as PublicUsdPrice[];
-  const byIdentity=new Map(rows.map(r=>[r.variantId??r.productId,r]));
-  return products.map(p=>{
-    const base=byIdentity.get(p.id);
-    const variants=p.variants?.map(v=>{
-      const r=byIdentity.get(v.id);
-      const isVerified=Boolean(r&&r.retailArs!==null&&r.retailArs>0);
-      return r?{...v,retailUsd:r.retailUsd,wholesaleUsd:r.wholesaleUsd,retailPrice:r.retailArs??0,wholesalePrice:r.wholesaleArs??0,priceVerified:isVerified,isPurchasable:isVerified}:{...v,priceVerified:false,isPurchasable:false};
-    });
-    const prices=variants?.filter(v=>v.isActive&&v.priceVerified).map(v=>v.retailPrice).filter(v=>v>0)??[];
-    const isBaseVerified=Boolean(base&&base.retailArs!==null&&base.retailArs>0);
-    return {...p,...(base?{retailUsd:base.retailUsd,wholesaleUsd:base.wholesaleUsd,retailPrice:base.retailArs??0,wholesalePrice:base.wholesaleArs??0,priceVerified:isBaseVerified,isPurchasable:isBaseVerified}:{priceVerified:false,isPurchasable:false,priceWarning:'Precio referencial en actualización.'}),variants,
-      ...(p.hasVariants?{minPrice:prices.length?Math.min(...prices):undefined,maxPrice:prices.length?Math.max(...prices):undefined}:{}),};
-  });
+  const verification=await readPublicPriceVerification(products.map(p=>p.id),hasCommerceService()?createCommerceService():null);
+  return projectPublicUsdPrices(products,rows,verification);
 }

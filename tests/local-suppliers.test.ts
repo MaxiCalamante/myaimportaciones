@@ -56,9 +56,10 @@ function fixture(badNeighbor = false) {
   return { db, calls, tables };
 }
 async function finished(runner: LocalSupplierRunner) {
-  const deadline = Date.now() + 15000;
+  // Initial robots cadence and a reviewed native read can each reserve ten seconds.
+  const deadline = Date.now() + 45000;
   while (runner.busy() && Date.now() < deadline) await new Promise(r => setTimeout(r, 20));
-  assert.equal(runner.busy(), false);
+  assert.equal(runner.busy(), false, JSON.stringify(runner.snapshot()));
 }
 test('local: revisión no escribe catálogo; guardado usa RPC, preserva inventario y bloquea agregados con enlaces ajenos', async () => {
   const original = globalThis.fetch;
@@ -178,4 +179,90 @@ test('local: sincronización durante el recorrido, lectura compartida y recupera
     assert.deepEqual(f.calls.map(x=>x.name),['reserve_supplier_source_slot_v1','reserve_supplier_source_slot_v1','record_supplier_observation_v1','refresh_supplier_availability_v1']);
     await live.close();
   } finally { globalThis.fetch=original; await rm(folder,{recursive:true,force:true}); }
+});
+
+test('local: sincronización conserva el atributo base histórico de Connect y Total sólo con evidencia exacta', async t => {
+  const folder = await mkdtemp(join(tmpdir(), 'mya-local-default-'));
+  try {
+    for (const key of ['atacado-connect', 'total']) {
+      const url = key === 'total' ? 'https://www.totalherramientasoficial.com.py/produto/anua-123.html'
+        : 'https://atacadoconnect.com/produto/anua/123';
+      for (const scenario of [
+        { name: 'base histórica', variant: 'attribute:0', id: '123', source: url, variants: undefined, want: true },
+        { name: 'atributo real', variant: 'attribute:1', id: '123', source: url, variants: undefined, want: false },
+        { name: 'otro producto', variant: 'attribute:0', id: '999', source: url, variants: undefined, want: false },
+        { name: 'otra URL primaria', variant: 'attribute:0', id: '123', source: url + '?variant=2', variants: undefined, want: false },
+        { name: 'variantes publicadas', variant: 'attribute:0', id: '123', source: url, variants: [{ sku: '123-red' }], want: false },
+      ]) {
+        const f = fixture();
+        f.tables.suppliers[0] = { ...f.tables.suppliers[0], official_key: key, website: new URL(url).origin };
+        Object.assign(f.tables.supplier_offers[0], { source_url: url, variant_key: scenario.variant });
+        f.tables.products[0].source_url = url;
+        const html = '<script type="application/ld+json">' + JSON.stringify({
+          '@type': 'Product', url: scenario.source, productID: scenario.id, name: target.title,
+          brand: { name: 'Anua' }, hasVariant: scenario.variants,
+          offers: { price: 20, priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+        }) + '</script><h1>Anua Serum 50 ml</h1><div class="product-price">USD 20.00</div>';
+        const mock = t.mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => String(input).endsWith('robots.txt')
+          ? new Response('User-agent: *\nDisallow:') : new Response(html));
+        const runner = new LocalSupplierRunner(f.db, folder);
+        try {
+          await runner.start({ ...options, suppliers: [key], sync: true }); await finished(runner);
+          const row = [...runner.rows.values()][0];
+          assert.equal(row.status, scenario.want ? 'saved' : 'review', `${key}: ${scenario.name}: ${row.message}`);
+          const records = f.calls.filter(call => call.name === 'record_supplier_observation_v1');
+          assert.equal(records.length, scenario.want ? 1 : 0, scenario.name);
+          if (scenario.want) {
+            const payload = records[0].input.p as Record<string, unknown>;
+            assert.equal(payload.variant_key, 'attribute:0');
+            assert.equal(payload.product_id, pid);
+            assert.equal(payload.verification, 'verified');
+            assert.equal('stock' in payload, false);
+          }
+        } finally { await runner.close(); mock.mock.restore(); }
+      }
+    }
+  } finally { await rm(folder, { recursive: true, force: true }); }
+});
+
+test('local: USA sincroniza la ficha nativa revisada y conserva la URL e identidad registradas', async t => {
+  const folder = await mkdtemp(join(tmpdir(), 'mya-local-native-'));
+  const url = 'https://atacadousa.com.py/produto/9051', native = 'https://atacadousa.com.py/cosmeticos/9051-anua.html?av_native=1';
+  try {
+    for (const scenario of [
+      { observed: native, currency: 'USD', want: true },
+      { observed: native.replace('9051', '9052'), currency: 'USD', want: false },
+      { observed: native.replace('atacadousa.com.py', 'evil.test'), currency: 'USD', want: false },
+      { observed: native, currency: undefined, want: false },
+    ]) {
+      const f = fixture();
+      f.tables.suppliers[0] = { ...f.tables.suppliers[0], official_key: 'atacado-usa', website: 'https://atacadousa.com.py' };
+      Object.assign(f.tables.supplier_offers[0], { external_id: '9051', source_url: url,
+        evidence: { sourceTitle: target.title, observedUrl: scenario.observed } });
+      f.tables.products[0].source_url = url;
+      const requests: string[] = [];
+      const detail = '<div id="product-details" data-product=\'' + JSON.stringify({ id_product: 9051, id_product_attribute: 0,
+        name: target.title, manufacturer_name: 'Anua', quantity: 2, price_amount: 10, price_currency_code: scenario.currency }) + '\'></div>';
+      const mock = t.mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+        const request = String(input); requests.push(request);
+        return new Response(request.endsWith('/robots.txt') ? 'User-agent: *\nDisallow:' : request === url
+          ? '<section class="av-product-detail"><h1>Anua Serum 50 ml</h1><div class="av-detail-price">$10,00</div></section>' : detail);
+      });
+      const runner = new LocalSupplierRunner(f.db, folder);
+      try {
+        await runner.start({ ...options, suppliers: ['atacado-usa'], sync: true }); await finished(runner);
+        const row = [...runner.rows.values()][0];
+        assert.equal(row.status, scenario.want ? 'saved' : 'error', row.message);
+        assert.equal(requests.includes(native), scenario.observed === native);
+        const records = f.calls.filter(call => call.name === 'record_supplier_observation_v1');
+        assert.equal(records.length, scenario.want ? 1 : 0);
+        if (scenario.want) {
+          const payload = records[0].input.p as Record<string, unknown>;
+          assert.equal(payload.source_url, url); assert.equal(payload.external_id, '9051'); assert.equal(payload.variant_key, 'attribute:0');
+          assert.equal((payload.evidence as Record<string, unknown>).observedUrl, native);
+          assert.equal(f.calls.filter(call => call.name === 'reserve_supplier_source_slot_v1').length, 2);
+        }
+      } finally { await runner.close(); mock.mock.restore(); }
+    }
+  } finally { await rm(folder, { recursive: true, force: true }); }
 });

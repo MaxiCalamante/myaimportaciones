@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useCommerce } from "./commerce-provider";
 import { ElectronicsPrice } from "./electronics-price";
 import { ProductVariantPreview } from "./product-variant-preview";
-import { wholesaleDisplay } from "@/components/wholesale/public-price";
+import { wholesaleDisplay,isWholesaleDisplayVerified } from "@/components/wholesale/public-price";
 
 export function ProductCard({ product, channel = "retail", priority = false }: {
   product: Product;
@@ -25,6 +25,7 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
   const favorite = isFavorite(product.id);
   const wholesale=wholesaleDisplay(product);
   const price = channel === "wholesale" ? wholesale.price : product.retailPrice;
+  const priceVerified = channel === "wholesale" ? isWholesaleDisplayVerified(product) : product.priceVerified;
   const requestable=channel==='wholesale'&&wholesale.offer?.status!=='unavailable';
   const pending=channel==='wholesale'&&price===null;
   const maxQty=pending?MAX_ORDER_QUANTITY:purchasableQuantity(product);
@@ -81,6 +82,7 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
         </p>
         {channel === "wholesale" && <p className="text-[10px] leading-4 text-zinc-600">{pending?'Solicitud sin cobro previo':'Por unidad · combinable con otros productos'}</p>}
         {channel==='wholesale'&&price!==null&&product.retailPrice>price&&!product.hasVariants&&<p className="text-[10px] leading-4 text-zinc-500">Minorista: <span className="line-through">{formatCurrency(product.retailPrice)}</span><span className="ml-1 font-semibold text-emerald-700">· Ahorro {Math.round((1 - price / product.retailPrice) * 100)}%</span></p>}
+        {priceVerified===false&&<p className="text-[10px] leading-4 text-amber-800">Precio de referencia · a confirmar</p>}
         {channel === "retail" && <ElectronicsPrice product={product} />}
       </div>
       <div className="mt-0.5 h-4 min-w-0">{product.hasVariants && <ProductVariantPreview slug={product.slug} variants={product.variants} />}</div>
@@ -97,7 +99,7 @@ export function ProductCard({ product, channel = "retail", priority = false }: {
           <span aria-live="polite" className="text-sm font-semibold tabular-nums text-sky-950">{cartItem.quantity}</span>
           <button type="button" aria-label="Sumar unidad" disabled={cartItem.quantity >= maxQty} className="grid size-11 shrink-0 place-items-center rounded-lg text-lg text-sky-900 hover:bg-sky-100 focus-visible:outline-2 focus-visible:outline-sky-700 disabled:opacity-40"
             onClick={() => updateQuantity(product.id, channel, cartItem.quantity + 1)}>+</button>
-        </div> : !(pending&&requestable)&&(!available||(channel==='wholesale'&&wholesale.offer?.status==='unavailable')||product.priceVerified===false) ? <Link href={href} className={actionClassName}>{product.priceVerified===false?'Ver cotización':'Ver disponibilidad'}</Link> : <Button type="button" aria-label={justAdded ? "Agregado al carrito" : pending?"Solicitar confirmación":"Agregar al carrito"} className="w-full gap-1.5 rounded-lg px-2 py-2 text-xs sm:text-sm"
+        </div> : !(pending&&requestable)&&(!available||(channel==='wholesale'&&wholesale.offer?.status==='unavailable')||priceVerified===false) ? <Link href={href} className={actionClassName}>{priceVerified===false?'Ver cotización':'Ver disponibilidad'}</Link> : <Button type="button" aria-label={justAdded ? "Agregado al carrito" : pending?"Solicitar confirmación":"Agregar al carrito"} className="w-full gap-1.5 rounded-lg px-2 py-2 text-xs sm:text-sm"
           icon={justAdded ? <Check className="size-3.5 shrink-0" /> : <ShoppingBag className="size-3.5 shrink-0 stroke-[1.75]" />}
           onClick={() => { addToCart(product, channel, addQuantity); setJustAdded(true); setTimeout(() => setJustAdded(false), 1500); }}>
           <span aria-live="polite">{justAdded ? "Agregado" : pending?"Solicitar confirmación":"Agregar"}</span>

@@ -1,7 +1,7 @@
 'use client';
 import {createContext,useContext,useEffect,useRef,type ReactNode} from 'react';
 import {usePathname,useRouter} from 'next/navigation';
-import {DOLLAR_TYPES,type ExchangeSnapshot} from '@/lib/exchange-rate';
+import {exchangeRateLabel,exchangeSourceLabel,type ExchangeSnapshot} from '@/lib/exchange-rate';
 import {formatCurrency} from '@/lib/format';
 import {formatUsd,arsToUsd,usdToArs,multiplyUsd} from '@/lib/money';
 import type {Product,ProductVariant,ProductChannel,CartLine} from '@/lib/types';
@@ -20,13 +20,13 @@ export function CurrencyProvider({snapshot,children}:{snapshot:ExchangeSnapshot|
 }
 export function ExchangeTicker({compact=false}:{compact?:boolean}){
  const rate=useContext(CurrencyContext);
- const dollarKind=rate?`Dólar ${DOLLAR_TYPES[rate.kind]} venta`:'Cotización';
+ const dollarKind=rate?exchangeRateLabel(rate.kind):'Cotización';
  const formattedRate=rate?.rate?formatCurrency(Number(rate.rate)):'a confirmar';
  const formattedTime=rate?.sourceAt
   ?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(rate.sourceAt))
   :null;
  const fullUpdate=rate?.sourceAt?new Date(rate.sourceAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}):'sin datos';
- const tooltip=`Cotización informativa: ${dollarKind} · 1 USD = ${formattedRate} ARS · Fuente: ${rate?.source==='manual'?'Manual interna':'DolarAPI'} (${fullUpdate})${rate&&Number(rate.adjustment)!==0?` · Ajuste ${rate.adjustment}%`:''} · ${rate?.status==='valid'?'vigente':'requiere actualización'}`;
+ const tooltip=`Cotización informativa: ${dollarKind} · 1 USD = ${formattedRate} ARS · Fuente: ${rate?exchangeSourceLabel(rate.source):'sin datos'} (${fullUpdate})${rate&&Number(rate.adjustment)!==0?` · Ajuste ${rate.adjustment}%`:''} · ${rate?.status==='valid'?'vigente':'requiere actualización'}`;
  return <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums text-[10px] sm:text-[11px]" title={tooltip} aria-label={`${dollarKind}: 1 USD = ${formattedRate} ARS. Actualizado ${formattedTime||fullUpdate}`}>
   <span className="font-bold text-emerald-400">USD 1</span>
   <span className="text-zinc-500">=</span>
@@ -39,7 +39,7 @@ export function ExchangeTicker({compact=false}:{compact?:boolean}){
 export function DualPrice({ars,usd,context=false}:{ars:number|null;usd?:string|null;context?:boolean}){
  const rate=useContext(CurrencyContext);
  if(!usd)return <span>{ars===null||ars<=0?'Precio por confirmar':formatCurrency(ars)}</span>;
- return <span className="inline-flex max-w-full flex-col tabular-nums"><span>{formatUsd(usd)}</span><span className="text-xs font-medium tracking-normal text-zinc-600">{ars===null||ars<=0?'ARS a confirmar':`Aprox. ${formatCurrency(ars)} ARS`}{rate?.status==='stale'?' · cotización vencida':''}</span>{context&&<span className="mt-1 text-[11px] font-normal tracking-normal text-zinc-500">{rate?`Dólar ${DOLLAR_TYPES[rate.kind]} venta${Number(rate.adjustment)!==0?` · ajuste ${rate.adjustment}%`:''}`:'Cotización a confirmar'}</span>}</span>;
+ return <span className="inline-flex max-w-full flex-col tabular-nums"><span>{formatUsd(usd)}</span><span className="text-xs font-medium tracking-normal text-zinc-600">{ars===null||ars<=0?'ARS a confirmar':`Aprox. ${formatCurrency(ars)} ARS`}{rate?.status==='stale'?' · cotización vencida':''}</span>{context&&<span className="mt-1 text-[11px] font-normal tracking-normal text-zinc-500">{rate?`${exchangeRateLabel(rate.kind)}${Number(rate.adjustment)!==0?` · ajuste ${rate.adjustment}%`:''}`:'Cotización a confirmar'}</span>}</span>;
 }
 export function ProductPrice({product,channel='retail',ars,variant,context=false,quantity=1}:{quantity?:number;product:Product;channel?:ProductChannel;ars:number|null;variant?:ProductVariant|null;context?:boolean}){
  const rate=useContext(CurrencyContext);

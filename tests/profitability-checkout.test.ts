@@ -1,5 +1,5 @@
 import test from'node:test';import assert from'node:assert/strict';import{readFileSync}from'node:fs';import{randomUUID}from'node:crypto';import{usdFixture}from'./helpers/usd-fixture';
-async function fixture(){const f=await usdFixture();await f.db.exec('reset role;create table product_supplier_preferences(product_id uuid,variant_id uuid,offer_id uuid)');for(const name of['20261106213029_usd_contribution_policy.sql','20261106213412_usd_profitability_integration.sql'])await f.db.exec(readFileSync('supabase/migrations/'+name,'utf8'));
+async function fixture(){const f=await usdFixture();await f.db.exec('reset role;create table product_supplier_preferences(product_id uuid,variant_id uuid,offer_id uuid)');for(const name of['20261106213029_usd_contribution_policy.sql','20261106213412_usd_profitability_integration.sql','20261110123000_wholesale_public_offers_resilience.sql','20261110190000_checkout_profitability_enforcement.sql','20261111203705_enabled_payment_pricing.sql'])await f.db.exec(readFileSync('supabase/migrations/'+name,'utf8'));
  const b={status:'COSTO_VERIFICADO',settlementBasis:'usd',settlementDocument:'Pago desde saldo USD confirmado QA',document:'Factura y gastos confirmados QA',costsComplete:true,identityVerified:true,accountingConfirmed:true,accountingBasis:'gross_no_vat',currency:'USD',origin:'10',unitsPerUsd:'1',fxSource:'Factura USD QA',fxAt:new Date().toISOString(),checkedAt:new Date().toISOString(),components:[],carrier:{kind:'percent',percent:'20',confirmed:true,document:'Cotización de prueba 20%',validUntil:new Date(Date.now()+86400000).toISOString()}};
  await f.db.query('select save_store_profitability_profile_v2($1,null,$2,0,\'Registro documentado de prueba\')',[f.id,b]);
  const m={confirmed:true,rounding:'exact',document:'Tarifa confirmada QA',validUntil:new Date(Date.now()+86400000).toISOString(),tiers:[{minUsd:'0',maxUsd:null,percentGross:'0',percentNet:'0',fixedUsd:'0',fixedArs:'0'}]};
@@ -18,3 +18,67 @@ test('checkout discount must be allocated to eligible lines and sum exactly',asy
 test('administrative policy cannot lower the 10% floor or silently enable production enforcement',async()=>{const f=await fixture();try{await f.db.exec('reset role');await assert.rejects(f.db.query('select save_store_profitability_policy_v2($1,\'Propuesta por debajo del piso\')',[{retailTarget:30,wholesaleTarget:18,minimumMargin:5,usdStep:.01,costMaxAgeSeconds:86400,methods:{}}]),/check constraint/);assert.equal((await f.db.query<{enforcement:string}>('select enforcement from store_profitability_policy')).rows[0].enforcement,'preview');await f.db.exec('set role authenticated');await f.db.exec("select set_config('test.admin','false',false)");await assert.rejects(f.db.query('select store_profitability_workspace_v2()'),/Forbidden/);}finally{await f.db.close();}});
 test('existing supplier comparison ranks verified total cost, excludes incomplete offers and never changes preference',async()=>{const f=await fixture();try{const ids=[randomUUID(),randomUUID(),randomUUID()];for(let i=0;i<3;i++){const supplier=randomUUID();await f.db.query("insert into suppliers(id,name)values($1,$2)",[supplier,'Supplier QA '+i]);await f.db.query("insert into supplier_offers(id,supplier_id,product_id,origin_cost,currency,source_url,verification,availability,cost_checked_at,availability_checked_at)values($1,$2,$3,$4,'USD',$5,'verified','in_stock',now(),now())",[ids[i],supplier,f.id,[8,12,1][i],'https://qa.test/'+i]);if(i<2){const b={...f.b,origin:String([8,12][i]),supplierUrl:'https://qa.test/'+i,components:[{id:'freight',group:'acquisition',amountUsd:String([8,2][i]),document:'Confirmed individual freight QA'}]};await f.db.query('select save_store_offer_profitability_v2($1,$2,0,\'Documented alternative cost QA\')',[ids[i],b]);}}const r=(await f.db.query<{r:{recommended:string;offers:Array<{offerId:string;totalUsd:number;eligible:boolean}>}}>('select tracker_alternatives_v1($1,null)r',[f.id])).rows[0].r;assert.equal(r.recommended,ids[1]);assert.equal(Number(r.offers.find(o=>o.offerId===ids[0])!.totalUsd),17.6);assert.equal(r.offers.find(o=>o.offerId===ids[2])!.eligible,false);assert.equal((await f.db.query<{n:number}>('select count(*)::int n from product_supplier_preferences')).rows[0].n,0);await f.db.query("update supplier_offers set availability='unknown'where id=$1",[ids[1]]);assert.equal((await f.db.query<{r:{recommended:string}}>('select tracker_alternatives_v1($1,null)r',[f.id])).rows[0].r.recommended,ids[0]);}finally{await f.db.close();}});
 test('supplier refresh proposes centrally, preserves manual wholesale and reviews a later loss without overwriting it',async()=>{const f=await fixture();try{const supplier=randomUUID(),offer=randomUUID();await f.db.query("insert into suppliers(id,name)values($1,'QA')",[supplier]);await f.db.query("insert into supplier_offers(id,supplier_id,product_id,origin_cost,currency,source_url,verification,availability,cost_checked_at,availability_checked_at)values($1,$2,$3,11,'USD','https://qa.test/exact','verified','in_stock',now(),now())",[offer,supplier,f.id]);const b={...f.b,origin:'11',offerId:offer,supplierUrl:'https://qa.test/exact'};await f.db.query('select save_store_profitability_profile_v2($1,null,$2,1,\'Vincular oferta exacta de prueba\')',[f.id,b]);await f.db.exec("update product_usd_prices set retail_source='automatic',wholesale_source='manual',wholesale_usd=15.50;update store_money_settings set max_change=100");await f.db.exec('set role service_role');let r=(await f.db.query<{r:{status:string;proposal:{retailUsd:string}}}>('select store_refresh_supplier_usd_v1($1)r',[offer])).rows[0].r;assert.equal(r.status,'proposal');assert.equal(Number(r.proposal.retailUsd),18.86);assert.equal(Number((await f.db.query<{retail_usd:string}>('select retail_usd from product_usd_prices')).rows[0].retail_usd),40);await f.enforce();r=(await f.db.query<{r:typeof r}>('select store_refresh_supplier_usd_v1($1)r',[offer])).rows[0].r;assert.equal(r.status,'applied');assert.equal(Number((await f.db.query<{wholesale_usd:string}>('select wholesale_usd from product_usd_prices')).rows[0].wholesale_usd),15.5);await f.db.exec('reset role');await f.db.exec(`update store_profitability_policy set methods=jsonb_set(methods,'{mercado_pago,tiers,0,fixedArs}','"1000"'),version=version+1`);await f.db.exec('set role service_role');assert.equal((await f.db.query<{r:{status:string}}>('select store_refresh_supplier_usd_v1($1)r',[offer])).rows[0].r.status,'applied');const fixedUsd=(await f.db.query<{retail_usd:string}>('select retail_usd from product_usd_prices')).rows[0].retail_usd;await f.db.exec('reset role');await f.rate(1500);await f.db.exec('set role service_role');await f.db.query('select store_refresh_supplier_usd_v1($1)',[offer]);assert.equal((await f.db.query<{retail_usd:string}>('select retail_usd from product_usd_prices')).rows[0].retail_usd,fixedUsd,'FX alone must not rewrite USD base, including ARS fixed fees');await f.db.exec('reset role');await f.db.query('update supplier_offers set origin_cost=20 where id=$1',[offer]);await f.db.exec('set role service_role');assert.equal((await f.db.query<{r:{status:string}}>('select store_refresh_supplier_usd_v1($1)r',[offer])).rows[0].r.status,'review');assert.deepEqual((await f.db.query('select wholesale_usd,state from product_usd_prices')).rows[0],{wholesale_usd:'15.500000',state:'review'});}finally{await f.db.close();}});
+
+test('transfer-only automatic prices ignore disabled Mercado Pago fees and payment changes invalidate refresh',async()=>{
+ const f=await fixture();try{
+  const supplier=randomUUID(),offer=randomUUID();
+  await f.db.query("insert into suppliers(id,name)values($1,'Exact supplier QA')",[supplier]);
+  await f.db.query("insert into supplier_offers(id,supplier_id,product_id,origin_cost,currency,source_url,verification,availability,cost_checked_at,availability_checked_at)values($1,$2,$3,1210,'USD','https://qa.test/exact','verified','in_stock',now(),now())",[offer,supplier,f.id]);
+  await f.db.query('select save_store_profitability_profile_v2($1,null,$2,1,\'Verified supplier pricing regression\')',[f.id,{...f.b,origin:'1210',offerId:offer,supplierUrl:'https://qa.test/exact'}]);
+  await f.db.exec("update product_usd_prices set retail_source='automatic',wholesale_source='automatic',retail_usd=2268.76,wholesale_usd=1910.53;update store_money_settings set max_change=100;update store_profitability_policy set methods=jsonb_set(methods,'{mercado_pago,tiers,0,percentGross}','\"6\"');");
+  await f.enforce();
+  const refresh=async()=>(await f.db.query<{r:{status:string;proposal:{retailUsd:string;wholesaleUsd:string;results:Record<string,unknown>}}}>('select store_refresh_supplier_usd_v1($1)r',[offer])).rows[0].r;
+  let r=await refresh();assert.equal(r.status,'applied');assert.equal(Number(r.proposal.retailUsd),2074.29);assert.equal(Number(r.proposal.wholesaleUsd),1770.74);assert.equal(r.proposal.results['retail:mercado_pago'],undefined);
+  await f.db.exec("reset role;update products set payment_methods=array['transferencia','mercado_pago']::payment_method[];set role service_role");
+  r=await refresh();assert.equal(r.status,'applied');assert.equal(Number(r.proposal.retailUsd),2268.75);assert.equal(Number(r.proposal.wholesaleUsd),1910.53);
+  await f.db.exec("reset role;update products set payment_methods=array['transferencia']::payment_method[];update store_profitability_policy set methods=methods-'mercado_pago';set role service_role");
+  assert.equal((await refresh()).status,'applied','an undocumented disabled method must not prevent synchronization');
+ }finally{await f.db.close();}
+});
+test('review only evaluates enabled methods and checkout rejects disabled methods in preview',async()=>{
+ const f=await fixture();try{
+  await f.db.exec("update store_profitability_policy set methods=methods-'mercado_pago'");
+  const review=async(payment:string|null)=>(await f.db.query<{r:{allowed:boolean;reason:string;results:Record<string,unknown>}}>('select store_review_product_prices_v2($1,null,$2,$3)r',[f.id,{retailUsd:'40',wholesaleUsd:'27.58',retailSource:'automatic',wholesaleSource:'automatic'},payment])).rows[0].r;
+  assert.equal((await review(null)).allowed,true);assert.match((await review('mercado_pago')).reason,/not enabled/i);
+  await f.db.exec(readFileSync('supabase/migrations/20261111203705_enabled_payment_pricing.sql','utf8'));
+  assert.equal((await review(null)).allowed,true,'reapplying the migration preserves its method filters');
+  await assert.rejects(f.check({...f.payload,payment:'mercado_pago'}),/not enabled/i);
+  await f.db.exec('set role service_role');
+  await assert.rejects(f.db.query("select store_checkout_prices_v1($1,'mercado_pago',$2)",[[{productId:f.id,quantity:1,channel:'retail'}],f.rateId]),/not enabled/i);
+ }finally{await f.db.close();}
+});
+test('removing the accepted quote payment blocks reservation without changing stock',async()=>{
+ const f=await fixture();try{
+  const q=await f.quote();
+  await f.db.exec("reset role;update products set payment_methods=array['mercado_pago']::payment_method[];set role service_role");
+  await assert.rejects(f.create(q.id),/not enabled|no permite/i);
+  assert.equal((await f.db.query<{stock:number}>('select stock from products')).rows[0].stock,10);
+  assert.equal((await f.db.query<{n:number}>('select count(*)::int n from orders')).rows[0].n,0);
+ }finally{await f.db.close();}
+});
+test('wholesale display chooses an enabled default while an explicit disabled method is unavailable',async()=>{
+ const f=await fixture();try{
+  const offers=async(payment:string|null)=>(await f.db.query<{r:Array<{status:string;reason:string}>}>('select wholesale_public_offers_v1($1,$2)r',[[{productId:f.id}],payment])).rows[0].r;
+  const automatic=await offers(null);assert.equal(automatic[0].status,'review');assert.match(automatic[0].reason,/revisión mayorista/i);
+  const disabled=await offers('mercado_pago');assert.equal(disabled[0].status,'unavailable');assert.match(disabled[0].reason,/habilitado/i);
+ }finally{await f.db.close();}
+});
+test('enabled-payment migration preserves strict reservation rejection while policy remains preview',async()=>{
+ const f=await fixture();try{
+  const q=await f.quote();
+  await f.db.exec('reset role');
+  await f.db.query("update store_profitability_profiles set basis=jsonb_set(basis,'{origin}','35'),revision=revision+1 where product_id=$1",[f.id]);
+  await f.db.exec('set role service_role');
+  await assert.rejects(f.create(q.id),/rentabilidad.*no está autorizada/i);
+  assert.equal((await f.db.query<{stock:number}>('select stock from products')).rows[0].stock,10);
+  assert.equal((await f.db.query<{n:number}>('select count(*)::int n from orders')).rows[0].n,0);
+ }finally{await f.db.close();}
+});
+test('enabled-method defaults retain per-item wholesale error isolation',async()=>{
+ const f=await fixture();try{
+  const r=(await f.db.query<{r:Array<{status:string;reason:string}>}>('select wholesale_public_offers_v1($1,null)r',[[{productId:f.id,quantity:0},{productId:f.id,quantity:1}]])).rows[0].r;
+  assert.equal(r.length,2);
+  assert.equal(r[0].status,'review');assert.match(r[0].reason,/Invalid wholesale quantity/);
+  assert.equal(r[1].status,'review');assert.match(r[1].reason,/revisión mayorista/i);
+ }finally{await f.db.close();}
+});

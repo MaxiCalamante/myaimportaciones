@@ -14,7 +14,7 @@ export async function getPublicWholesalePolicy(client?:SupabaseClient,options?:{
  const data=r.data as PublicWholesalePolicy;
  return {...data,confirmed:true};
 }
-export async function getPublicWholesaleOffers(items:Array<{productId:string;variantId?:string|null;quantity?:number}>,payment:WholesalePayment='mercado_pago',client?:SupabaseClient):Promise<PublicWholesaleOffer[]>{
+export async function getPublicWholesaleOffers(items:Array<{productId:string;variantId?:string|null;quantity?:number}>,payment:WholesalePayment|null=null,client?:SupabaseClient):Promise<PublicWholesaleOffer[]>{
  if(!items.length)return[];if(items.length>1000)throw new Error('La consulta mayorista supera el límite.');
  const db=client??await createServerSupabaseClient(),result:PublicWholesaleOffer[]=[];
  for(let i=0;i<items.length;i+=100){

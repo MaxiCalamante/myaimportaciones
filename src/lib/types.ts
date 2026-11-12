@@ -53,6 +53,7 @@ export interface ProductVariant {
   wholesaleUsd?: string | null;
   wholesaleOffer?: PublicWholesaleOffer;
   priceVerified?: boolean;
+  wholesalePriceVerified?: boolean;
   isPurchasable?: boolean;
   id: string;
   productId: string;
@@ -79,6 +80,7 @@ export interface Product {
   wholesaleUsd?: string | null;
   wholesaleOffer?: PublicWholesaleOffer;
   priceVerified?: boolean;
+  wholesalePriceVerified?: boolean;
   isPurchasable?: boolean;
   priceWarning?: string;
   sourceUrl?: string | null;

@@ -11,6 +11,7 @@ import { useCommerce } from "@/components/commerce/commerce-provider";
 import { formatCurrency } from "@/lib/format";
 import { siteConfig } from "@/lib/site";
 import { trackAdsEvent } from "@/lib/analytics";
+import { checkoutPayments } from "@/lib/checkout-payment";
 import {
   CORREO_ARGENTINO_PROVINCES,
   getProvinceByCode,
@@ -47,7 +48,12 @@ export function CheckoutPanel({
     openWhatsApp,
   } = useCommerce();
 
-  const [paymentMethod, setPayment] = useState<CheckoutInput["paymentMethod"]>("transferencia");
+  const [selectedPayment, setPayment] = useState<CheckoutInput["paymentMethod"]>("transferencia");
+  const allowedPayments = checkoutPayments(cart.map(line => line.product), mercadoPagoEnabled);
+  const paymentMethod = allowedPayments.includes(selectedPayment) ? selectedPayment : allowedPayments[0] ?? selectedPayment;
+  const paymentReady = allowedPayments.includes(paymentMethod);
+  const transferAvailable = allowedPayments.includes("transferencia");
+  const mercadoPagoAvailable = allowedPayments.includes("mercado_pago");
   const [coupon, setCoupon] = useState("");
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [quotedKey, setQuotedKey] = useState("");
@@ -87,10 +93,10 @@ export function CheckoutPanel({
 
   const key = JSON.stringify(input);
   const hasUnpriced=cart.some(line=>cartLineUnitPrice(line)===null);
-  const confirmationReady=confirmationRequired&&key===quotedKey;
+  const confirmationReady=paymentReady&&confirmationRequired&&key===quotedKey;
   const [clock,setClock]=useState(()=>Date.now());
   useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer);},[]);
-  const validQuote = quote !== null && key === quotedKey && (!quote.expiresAt||Date.parse(quote.expiresAt)>clock);
+  const validQuote = paymentReady && quote !== null && key === quotedKey && (!quote.expiresAt||Date.parse(quote.expiresAt)>clock);
   const pickup = selectedShippingOption?.type === "pickup";
 
   useEffect(() => {
@@ -102,7 +108,7 @@ export function CheckoutPanel({
 
   // Recotización reactiva automática en segundo plano cuando cambia cualquier dato
   useEffect(() => {
-    if (!cart.length || !checkoutEnabled || !shippingCalculation.isValid) return;
+    if (!cart.length || !checkoutEnabled || !shippingCalculation.isValid || !paymentReady) return;
 
     let cancelled = false;
     const timer = setTimeout(async () => {
@@ -130,9 +136,10 @@ export function CheckoutPanel({
 
     return () => { cancelled = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, cart.length, checkoutEnabled, shippingCalculation.isValid]);
+  }, [key, cart.length, checkoutEnabled, shippingCalculation.isValid, paymentReady]);
 
   const refreshQuote = () => startTransition(async () => {
+    if (!paymentReady) return;
     setError("");
     try {
       const response = await quoteOrderAction(input);
@@ -361,7 +368,7 @@ export function CheckoutPanel({
           className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]"
           onSubmit={e => {
             e.preventDefault();
-            if (!checkoutEnabled || pending || (!validQuote && !confirmationReady)) return;
+            if (!checkoutEnabled || !paymentReady || pending || (!validQuote && !confirmationReady)) return;
             const form = new FormData(e.currentTarget);
             const emailInput = String(form.get("email") ?? "").trim();
             setCustomerEmail(emailInput);
@@ -383,6 +390,7 @@ export function CheckoutPanel({
                   expectedTotal: quote?.total ?? (cartTotal + shippingCost),
                   quoteId: quote?.quoteId,
                 });
+                setPayment(input.paymentMethod);
                 setResult(response);
                 if(!response.pendingConfirmation)clearCart();
               } catch (err) {
@@ -552,9 +560,12 @@ export function CheckoutPanel({
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => setPayment("transferencia")}
+                  disabled={!transferAvailable}
+                  onClick={() => transferAvailable && setPayment("transferencia")}
                   className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all cursor-pointer ${
-                    paymentMethod === "transferencia"
+                    !transferAvailable
+                      ? "border-zinc-200 bg-zinc-50/60 opacity-60 cursor-not-allowed"
+                      : paymentMethod === "transferencia"
                       ? "border-sky-600 bg-sky-50/40 shadow-xs ring-1 ring-sky-600"
                       : "border-zinc-200 bg-white hover:border-zinc-300"
                   }`}
@@ -575,10 +586,10 @@ export function CheckoutPanel({
 
                 <button
                   type="button"
-                  disabled={!mercadoPagoEnabled}
-                  onClick={() => mercadoPagoEnabled && setPayment("mercado_pago")}
+                  disabled={!mercadoPagoAvailable}
+                  onClick={() => mercadoPagoAvailable && setPayment("mercado_pago")}
                   className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all ${
-                    !mercadoPagoEnabled
+                    !mercadoPagoAvailable
                       ? "border-zinc-200 bg-zinc-50/60 opacity-60 cursor-not-allowed"
                       : paymentMethod === "mercado_pago"
                       ? "border-sky-600 bg-sky-50/40 shadow-xs ring-1 ring-sky-600 cursor-pointer"
@@ -590,9 +601,9 @@ export function CheckoutPanel({
                       <CreditCard className="size-4 text-zinc-600" />
                       Mercado Pago
                     </span>
-                    {!mercadoPagoEnabled && (
+                    {!mercadoPagoAvailable && (
                       <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-semibold text-zinc-600">
-                        Próximamente
+                        {mercadoPagoEnabled ? "No disponible para este carrito" : "Próximamente"}
                       </span>
                     )}
                   </div>
@@ -609,9 +620,10 @@ export function CheckoutPanel({
                 value={paymentMethod}
                 onChange={e => setPayment(e.target.value as CheckoutInput["paymentMethod"])}
               >
-                <option value="transferencia">Transferencia bancaria directa</option>
-                <option value="mercado_pago" disabled={!mercadoPagoEnabled}>Tarjetas y dinero en cuenta con Mercado Pago{!mercadoPagoEnabled ? " — próximamente" : ""}</option>
+                <option value="transferencia" disabled={!transferAvailable}>Transferencia bancaria directa</option>
+                <option value="mercado_pago" disabled={!mercadoPagoAvailable}>Tarjetas y dinero en cuenta con Mercado Pago{!mercadoPagoAvailable ? " — no disponible" : ""}</option>
               </select>
+              {!paymentReady && <p role="alert" className="mt-3 text-sm text-amber-800">Los productos del carrito no comparten un medio de pago disponible. Separá tu compra o consultanos.</p>}
 
               {paymentMethod === "transferencia" && (
                 <p className="mt-3 text-xs text-slate-600 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3">
@@ -648,7 +660,7 @@ export function CheckoutPanel({
 
             <button
               type="button"
-              disabled={pending || !checkoutEnabled}
+              disabled={pending || !checkoutEnabled || !paymentReady}
               onClick={refreshQuote}
               className="w-full rounded-xl bg-sky-50 border border-sky-600 p-3 font-bold text-sky-800 hover:bg-sky-100 transition-colors disabled:opacity-40 text-sm cursor-pointer"
             >
@@ -732,7 +744,7 @@ export function CheckoutPanel({
 
             <button
               type="submit"
-              disabled={pending || !checkoutEnabled || (!validQuote&&!confirmationReady)}
+              disabled={pending || !checkoutEnabled || !paymentReady || (!validQuote&&!confirmationReady)}
               className="w-full rounded-xl bg-sky-700 p-3.5 font-bold text-white shadow-sm hover:bg-sky-800 transition-colors disabled:opacity-40 text-base cursor-pointer"
             >
               {pending

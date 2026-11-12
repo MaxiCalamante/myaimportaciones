@@ -2,7 +2,7 @@
 import {moneyPercent,moneyCents} from '@/lib/money';
 
 import { getExchangeSnapshot } from '@/lib/monetary';
-import { DOLLAR_TYPES } from '@/lib/exchange-rate';
+import { exchangeRateLabel } from '@/lib/exchange-rate';
 import { PUBLIC_PRODUCT_COLUMNS } from "@/lib/catalog-data";
 import { scheduleTransactionalEmails } from "@/lib/email-worker";
 import { limitCommerceRequest } from "@/lib/request-limit";
@@ -199,7 +199,7 @@ export async function quoteOrderAction(input: CheckoutInput) {
   }
   const saved=await db.from('store_checkout_quotes').insert({fingerprint:checkoutFingerprint(input),rate_id:monetaryPrices.some(p=>p.usd)?exchange?.id:null,payload,prices:monetaryPrices,profitability_snapshot:checked.data,expires_at:expiresAt}).select('id').single();
   if(saved.error)throw Error('No se pudo guardar la cotización de compra.');
-  return {ok:true as const,quote:{...quote,quoteId:saved.data.id as string,expiresAt,exchangeRate:exchange?.rate??undefined,exchangeLabel:exchange?`Dólar ${DOLLAR_TYPES[exchange.kind]} venta`:undefined},confirmationRequired:false as const,reasons:[]};
+  return {ok:true as const,quote:{...quote,quoteId:saved.data.id as string,expiresAt,exchangeRate:exchange?.rate??undefined,exchangeLabel:exchange?exchangeRateLabel(exchange.kind):undefined},confirmationRequired:false as const,reasons:[]};
  }catch(error){return {ok:false as const,error:error instanceof Error?error.message:'No pudimos cotizar el pedido.'};}
 }
 export async function createOrderAction(input: OrderInput) {

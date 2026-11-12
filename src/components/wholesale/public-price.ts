@@ -1,3 +1,4 @@
+import {isWholesaleAmountVerified} from "@/lib/usd-price-projection";
 import type { Product, ProductVariant } from "@/lib/types";
 
 import { publicWholesaleUnitPrice } from "@/lib/wholesale-v2";
@@ -25,4 +26,10 @@ export function wholesaleDisplay(product: Product, variant?: ProductVariant | nu
   }
   const p = publicWholesalePrice(product.wholesaleOffer, quantity);
   return { price: p ?? (product.wholesalePrice || null), from: false, offer: product.wholesaleOffer };
+}
+
+export function isWholesaleDisplayVerified(product:Product,variant?:ProductVariant|null,quantity=1):boolean{
+ if(variant&&variant.productId!==product.id)return false;
+ if(!variant&&product.hasVariants)return false;
+ return isWholesaleAmountVerified(variant??product,wholesaleDisplay(product,variant,quantity).price);
 }

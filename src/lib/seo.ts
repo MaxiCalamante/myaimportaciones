@@ -58,6 +58,7 @@ export function buildProductShareImageUrl(product: {
   slug?: string;
   title?: string;
   retailPrice?: number;
+  priceVerified?: boolean;
   brand?: string;
   categoryName?: string;
   imageUrl?: string;
@@ -66,7 +67,7 @@ export function buildProductShareImageUrl(product: {
   sp.set("tipo", "producto");
   if (product.slug) sp.set("slug", product.slug);
   if (product.title) sp.set("titulo", product.title);
-  if (product.retailPrice && product.retailPrice > 0) sp.set("precio", String(product.retailPrice));
+  if (product.priceVerified === true && product.retailPrice && product.retailPrice > 0) sp.set("precio", String(product.retailPrice));
   if (product.brand) sp.set("marca", product.brand);
   if (product.categoryName) sp.set("cat", product.categoryName);
   if (product.imageUrl) sp.set("img", product.imageUrl);
@@ -129,7 +130,7 @@ export function productMetadata(product: Product, canonicalSlug = product.slug):
       ],
     },
     other: {
-      ...(!product.hasVariants && Number.isFinite(product.retailPrice) && product.retailPrice > 0
+      ...(!product.hasVariants && product.priceVerified === true && Number.isFinite(product.retailPrice) && product.retailPrice > 0
         ? { "product:price:amount": String(product.retailPrice), "product:price:currency": "ARS" } : {}),
       ...(product.brand ? { "product:brand": product.brand } : {}),
       ...(product.categoryName ? { "product:category": product.categoryName } : {}),
@@ -178,7 +179,7 @@ export function productStructuredData(product: Product) {
     seller: { "@id": publicUrl("/#organization"), "@type": "Organization", name: "MYA Importaciones" },
   });
   const variants = product.hasVariants
-    ? (product.variants ?? []).filter(v => v.isActive && Number.isFinite(v.retailPrice) && v.retailPrice > 0)
+    ? (product.variants ?? []).filter(v => v.isActive && v.priceVerified === true && Number.isFinite(v.retailPrice) && v.retailPrice > 0)
     : [];
   if (variants.length) {
     const attributes = variants.map(variantAttributes);
@@ -216,7 +217,7 @@ export function productStructuredData(product: Product) {
     ...(product.sku ? { sku: product.sku } : {}),
     ...(mpn ? { mpn } : {}),
     ...gtinData,
-    ...(!product.hasVariants && Number.isFinite(product.retailPrice) && product.retailPrice > 0 ? { offers: offer(product, url) } : {}),
+    ...(!product.hasVariants && product.priceVerified === true && Number.isFinite(product.retailPrice) && product.retailPrice > 0 ? { offers: offer(product, url) } : {}),
   };
 }
 export type CatalogParams = { q?: string; category?: string; page?: string; sort?: string; brand?: string; family?: string; min?: string; max?: string };

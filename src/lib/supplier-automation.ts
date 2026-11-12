@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchSupplierPage, readSupplierHtml } from "./supplier-url";
-import { inspectSupplierProduct, supplierEvidenceGap } from "./supplier-offer-adapters";
+import { inspectRegisteredSupplierProduct, registeredProductIdentityMatches, supplierEvidenceGap } from "./supplier-offer-adapters";
 import { observationFromPublic, titleIdentity } from "./supplier-public-data";
 import {parseObservation,type IntelligenceSupplier,type SupplierOffer} from "./supplier-intelligence";
 import { calculateImport, classifyImport, type ImportPolicy } from "./import-costs";
@@ -53,9 +53,21 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
     const html=await readSupplierHtml(response);
     let product:{id:string;title:string;sku:string;brand:string;model:string}|null=null;
     if(job.product_id){const r=await db.from('products').select('id,title,sku,brand,model').eq('id',job.product_id).single();if(r.error)throw new Error('No se pudo leer el producto.');product=r.data;}
-    const found=inspectSupplierProduct(html,job.source_url,supplier,prior?.external_id??product?.sku);
+    const inspected=await inspectRegisteredSupplierProduct(html,job.source_url,supplier,prior,async native=>{
+      const rules=await publicReadRules(native);
+      const slot=await db.rpc('reserve_supplier_source_slot_v1',{supplier_input:supplier.id,delay_input:rules.delay});
+      if(slot.error)throw Error('No se pudo coordinar la consulta de la ficha nativa.');
+      const wait=Math.max(0,Number(slot.data)||0);
+      if(wait>10000)throw Error('La ficha nativa requiere esperar otro turno de consulta; se conserva la evidencia anterior.');
+      if(wait)await pause(wait);
+      const nativeResponse=await fetchSupplierPage(native,'MYA-CatalogMonitor/1.0');
+      if(!nativeResponse.ok)throw Error(`HTTP ${nativeResponse.status} en ficha nativa; se conserva evidencia anterior.`);
+      return readSupplierHtml(nativeResponse);
+    },product?.sku);
+    const found=inspected.product;
     if(!found?.external_id||found.availability==='unknown')throw new Error(supplierEvidenceGap(html,supplier)??'El producto principal no confirma identidad y disponibilidad; revisar la ficha.');
-    if(prior&&(prior.external_id!==found.external_id||prior.variant_key!==found.variant_key))throw new Error('Cambió el identificador o la variante; requiere revisión de identidad.');
+    if(prior&&!registeredProductIdentityMatches(inspected.html,job.source_url,supplier,prior,found))throw new Error('Cambió el identificador o la variante; requiere revisión de identidad.');
+    if(prior)found.variant_key=prior.variant_key;
     const oldTitle=(prior as SupplierOffer&{evidence?:{sourceTitle?:string}}|null)?.evidence?.sourceTitle;
     if(oldTitle&&titleIdentity(oldTitle)!==titleIdentity(found.title))throw new Error('Cambió la presentación o nombre de la fuente; revisión de identidad.');
     if(!prior&&supplier.official_key!=='total'&&found.variant_key!=='base'&&found.variant_key!=='attribute:0')throw new Error('La fuente selecciona una variante no vinculada explícitamente.');
@@ -64,7 +76,7 @@ export async function processSupplierJob(db:SupabaseClient,job:SyncJob,supplier:
     // A link does not rename the supplier's identity to the storefront title on every refresh.
     if(product){observation.title=prior?.title??product.title;observation.brand=prior?.brand??product.brand??found.brand;observation.model=prior?.model??product.model??found.model;}
     observation.gtin=prior?.gtin??found.gtin??null;
-    const payload={...parseObservation({...observation,variant_id:job.variant_id},supplier,'product_page'),evidence:{sourceTitle:found.title,availabilityBasis:'explicit',matchedBy:'curated_source_url'}};
+    const payload={...parseObservation({...observation,variant_id:job.variant_id},supplier,'product_page'),evidence:{sourceTitle:found.title,observedUrl:inspected.observedUrl,availabilityBasis:'explicit',matchedBy:'curated_source_url'}};
     const result=await db.rpc('record_supplier_observation_v1',{p:payload});if(result.error)throw new Error(result.error.message);
     const offerId=String(result.data);
     const usdRefresh=await db.rpc('tracker_reprice_offer_v1',{offer_input:offerId});

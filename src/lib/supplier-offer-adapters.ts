@@ -1,11 +1,21 @@
-import { fetchSupplierPage, readSupplierHtml } from "./supplier-url";
+import { fetchSupplierPage, readSupplierHtml, supplierUrl } from "./supplier-url";
 import { parseTotalAvailability } from "./total-availability";
 import type { IntelligenceSupplier, SupplierOffer } from "./supplier-intelligence";
 import { supplierSourceUrl } from "./supplier-intelligence";
-import { publicProductFromJsonLd,totalVisibleOffer,type PublicProduct } from "./supplier-public-data";
+import { primaryJsonLd,publicProductFromJsonLd,totalVisibleOffer,type PublicProduct } from "./supplier-public-data";
 import { atlanticoPublicProduct } from './atlantico-product';
 
 type Outcome = { ok: true; values: { availability: string; origin_cost: number | null; currency: string | null } } | { ok: false; missing?: boolean; message: string };
+/** Historical JSON-LD offers used attribute:0 for their sole source product. */
+export function registeredProductIdentityMatches(html:string,url:string,supplier:IntelligenceSupplier,prior:SupplierOffer,product:PublicProduct):boolean {
+  if (prior.external_id !== product.external_id) return false;
+  if (prior.variant_key === product.variant_key) return true;
+  if (!['atacado-connect','total'].includes(supplier.official_key??'') || prior.variant_key !== 'attribute:0' || product.variant_key !== 'base') return false;
+  const primary = primaryJsonLd(html,url,prior.external_id);
+  if (!primary || typeof primary.url !== 'string' || primary.isVariantOf ||
+    (primary.hasVariant && !(Array.isArray(primary.hasVariant) && primary.hasVariant.length === 0))) return false;
+  try { return new URL(primary.url,url).href === new URL(url).href; } catch { return false; }
+}
 /** Read only a JSON literal assigned by PrestaShop. Never evaluate third-party scripts. */
 export function pageCurrency(html: string): string | undefined {
   const match = /\b(?:var|let|const)\s+prestashop\s*=\s*\{/.exec(html);
@@ -86,12 +96,40 @@ export function inspectSupplierProduct(html:string,url:string,supplier:Intellige
   const id=supplier.official_key==='atacado-connect'?url.match(/\/(\d+)\/?(?:\?|$)/)?.[1]:sku;
   const result=publicProductFromJsonLd(html,url,id);
   if(result&&supplier.official_key==='total'){
+    // Total's JSON-LD productID is its commercial SKU; tracker identities use the URL ID.
+    const sourceId=new URL(url).pathname.match(/^\/produto\/[^/]+-(\d+)\.html$/)?.[1];
+    const primary=primaryJsonLd(html,url,id);
+    const canonicalTag=[...html.matchAll(/<link\b[^>]*>/gi)].map(m=>m[0]).find(tag=>/\brel\s*=\s*["']canonical["']/i.test(tag));
+    const canonical=canonicalTag?.match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
+    if(sourceId&&typeof primary?.url==='string'&&canonical){
+      try{if(new URL(primary.url,url).href===new URL(url).href&&new URL(canonical.replace(/&amp;/g,'&'),url).href===new URL(url).href)result.external_id=sourceId;}catch{/* Conflicting source identity stays available for the strict registration gate. */}
+    }
     const visible=totalVisibleOffer(html);
     // JSON-LD may quote a pre-tax/stale baseline. Only the primary visible USD quote is a cost.
     result.origin_cost=visible?.price??null;result.currency=visible?.price?'USD':null;
     if(visible&&visible.availability!=='unknown')result.availability=visible.availability;
   }
   return result;
+}
+/** Read one already reviewed USA native page; summary prices never establish USD or stock. */
+export async function inspectRegisteredSupplierProduct(html:string,url:string,supplier:IntelligenceSupplier,prior:SupplierOffer|null|undefined,
+  readNative:(url:string)=>Promise<string>,sku?:string):Promise<{product:PublicProduct|null;html:string;observedUrl:string}> {
+  const product=inspectSupplierProduct(html,url,supplier,prior?.external_id??sku);
+  const original={product,html,observedUrl:url};
+  if(product||!prior||supplier.official_key!=='atacado-usa'||prior.source_url!==url)return original;
+  const reviewed=(prior as SupplierOffer&{evidence?:{observedUrl?:unknown}}).evidence?.observedUrl;
+  if(typeof reviewed!=='string')return original;
+  let native:string;
+  try{
+    const source=new URL(url),candidate=new URL(supplierSourceUrl(reviewed,supplier));
+    if(source.pathname.match(/^\/produto\/(\d+)\/?$/)?.[1]!==prior.external_id||
+      candidate.pathname.match(/\/(\d+)-[^/]+\.html$/)?.[1]!==prior.external_id)return original;
+    native=supplierUrl(candidate.href);
+  }catch{return original;}
+  const detail=await readNative(native),found=inspectSupplierProduct(detail,url,supplier,prior.external_id);
+  if(!found||found.external_id!==prior.external_id||found.variant_key!==prior.variant_key||found.availability==='unknown'||
+    !found.currency||!found.origin_cost)return {product:null,html:detail,observedUrl:native};
+  return {product:found,html:detail,observedUrl:native};
 }
 export async function probeRegisteredOffer(offer: SupplierOffer, supplier: IntelligenceSupplier): Promise<Outcome> {
   try {

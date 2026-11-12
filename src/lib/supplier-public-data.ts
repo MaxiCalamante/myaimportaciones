@@ -1,13 +1,15 @@
 import type { IntelligenceSupplier, OfferObservation } from "./supplier-intelligence";
 
 export interface PublicProduct { external_id: string; variant_key: string; title: string; brand: string; model: string; source_url: string; origin_cost: number | null; currency: "USD" | "ARS" | "PYG" | null; availability: "in_stock" | "out_of_stock" | "unknown"; gtin?: string | null }
-export function parsePublicAmount(raw: string): number | null {
+export function parsePublicAmount(raw: string | number): number | null {
+  // JSON numbers already have an unambiguous decimal separator.
+  if (typeof raw === 'number') return Number.isFinite(raw)&&raw>0&&raw<1e10?raw:null;
   let value=raw.replace(/[^\d.,-]/g,"");
   if (!value || value.includes("-")) return null;
   const dot=value.lastIndexOf("."),comma=value.lastIndexOf(",");
   if(dot>=0&&comma>=0) value=dot>comma?value.replace(/,/g,""):value.replace(/\./g,"").replace(",",".");
   else if(comma>=0) value=/,\d{1,2}$/.test(value)?value.replace(/\./g,"").replace(",","."):value.replace(/,/g,"");
-  else if((value.match(/\./g)??[]).length>1) value=value.replace(/\./g,"");
+  else if(/^[1-9]\d{0,2}(?:\.\d{3})+$/.test(value)||(value.match(/\./g)??[]).length>1) value=value.replace(/\./g,"");
   const n=Number(value);return Number.isFinite(n)&&n>0&&n<1e10?n:null;
 }
 export function jsonLdProducts(html: string): Record<string, unknown>[] {
@@ -21,7 +23,7 @@ export function jsonLdProducts(html: string): Record<string, unknown>[] {
 }
 export function primaryJsonLd(html:string,url:string,externalId?:string){
   const all=jsonLdProducts(html),clean=(s:string)=>s.replace(/\/$/,"").split(/[?#]/)[0];
-  return all.find(p=>typeof p.url==='string'&&clean(p.url)===clean(url))??(externalId?all.find(p=>String(p.productID??p.sku??'')===externalId):undefined)??(all.length===1?all[0]:undefined);
+  return all.find(p=>typeof p.url==='string'&&clean(p.url)===clean(url))??(externalId?all.find(p=>String(p.productID??p.sku??'')===externalId):undefined)??(all.length===1&&!all[0].url?all[0]:undefined);
 }
 export function publicProductFromJsonLd(html:string,url:string,id?:string):PublicProduct|null{
   const p=primaryJsonLd(html,url,id);if(!p||typeof p.name!=='string')return null;
@@ -29,7 +31,9 @@ export function publicProductFromJsonLd(html:string,url:string,id?:string):Publi
   const amounts=offers.filter(o=>o&&typeof o==='object')as Record<string,unknown>[];
   const o=amounts.find(o=>o.priceCurrency==='USD')??amounts.find(o=>['ARS','PYG'].includes(String(o.priceCurrency)))??amounts[0];
   const currency=o&&['USD','ARS','PYG'].includes(String(o.priceCurrency))?String(o.priceCurrency)as PublicProduct['currency']:null;
-  const price=currency?parsePublicAmount(String(o?.price??'')):null;
+  const rawPrice=o?.price;
+  const canonical=typeof rawPrice==='string'&&/^\d+(?:\.\d+)?$/.test(rawPrice)?Number(rawPrice):rawPrice;
+  const price=currency?parsePublicAmount(typeof canonical==='number'?canonical:String(canonical??'')):null;
   const a=String(o?.availability??'').toLowerCase().replace(/[\s_-]/g,'');
   const availability=a.endsWith('/instock')||a==='instock'?'in_stock':a.endsWith('/outofstock')||a.endsWith('/soldout')?'out_of_stock':'unknown';
   const brand=p.brand&&typeof p.brand==='object'?String((p.brand as Record<string,unknown>).name??''):String(p.brand??'');
