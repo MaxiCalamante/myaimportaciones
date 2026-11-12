@@ -2,7 +2,7 @@
 import csv
 import json
 import sys
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 source, destination = map(Path, sys.argv[1:3])
@@ -18,7 +18,7 @@ for rows, label in ((products, 'products'), (variants, 'variants')):
 destination.mkdir(parents=True, exist_ok=True)
 
 def difference(a, b):
-    return str(Decimal(str(a)) - Decimal(str(b))) if a is not None and b is not None else None
+    return Decimal(str(a)) - Decimal(str(b)) if a is not None and b is not None else None
 
 def row(item):
     before = item['before_state']
@@ -30,21 +30,30 @@ def row(item):
     profile = after.get('profile') or before.get('profile') or {}
     basis = profile.get('basis') or {}
     offer = next((o for o in after.get('offers', before.get('offers', [])) if o['id'] == profile.get('source_offer_id')), {})
+    old_basis = (before.get('profile') or {}).get('basis') or {}
+    snapshot = new.get('profitability_snapshot') or {}
+    results = snapshot.get('results') or {}
+    retail_result = results.get('retail:transferencia') or results.get('retail:mercado_pago') or {}
+    wholesale_result = results.get('wholesale:transferencia') or results.get('wholesale:mercado_pago') or {}
     legacy = (before.get('productCosts') or {}) if item['variant_id'] is None else {}
     verified = item['status'] in ('corrected', 'unchanged') and item.get('eligible')
     return {
-        'run_id': item['run_id'], 'product_id': item['product_id'], 'variant_id': item['variant_id'],
+        'run_id': item['run_id'], 'baseline_run_id': item.get('baseline_run_id'), 'sql_status': item.get('sql_status', item['status']), 'product_id': item['product_id'], 'variant_id': item['variant_id'],
         'sku': variant.get('sku') if item['variant_id'] else product.get('sku'),
         'title': product['title'], 'variant': variant.get('title'), 'category_id': product.get('category_id'),
         'suppliers_recorded': ' | '.join(sorted({s['name'] for s in before.get('suppliers', [])})),
         'source_url': offer.get('source_url') or (product.get('source_url') if not item['variant_id'] else None),
-        'currency_recorded': basis.get('currency') or legacy.get('currency'),
-        'origin_cost_recorded': basis.get('origin', legacy.get('origin_cost')),
+        'currency_recorded': old_basis.get('currency') or legacy.get('currency'),
+        'origin_cost_recorded': old_basis.get('origin', legacy.get('origin_cost')),
         'origin_cost_verified': offer.get('origin_cost') if verified else None,
         'supplier_checked_at': offer.get('cost_checked_at'), 'supplier_availability': offer.get('availability'),
         'carrier_rule': json.dumps(basis.get('carrier'), ensure_ascii=False),
         'other_documented_costs': json.dumps(basis.get('components'), ensure_ascii=False),
-        'total_cost_usd_recorded': new.get('total_cost_usd'),
+        'total_cost_usd_before': old.get('total_cost_usd'), 'total_cost_usd_after': new.get('total_cost_usd'),
+        'retail_ars_after_verified': retail_result.get('effectivePaidArs') if verified else None,
+        'wholesale_ars_after_verified': wholesale_result.get('effectivePaidArs') if verified and new.get('wholesale_usd') is not None else None,
+        'public_usdt_ars_at_audit': summary.get('public_usdt_ars_at_audit'),
+        'retail_sale_fee_usd': retail_result.get('feesUsd') if verified else None,
         'retail_usd_before': old.get('retail_usd'), 'retail_usd_after': new.get('retail_usd'),
         'wholesale_usd_before': old.get('wholesale_usd'), 'wholesale_usd_after': new.get('wholesale_usd'),
         'retail_usd_difference': difference(new.get('retail_usd'), old.get('retail_usd')),

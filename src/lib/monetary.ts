@@ -26,3 +26,13 @@ export async function projectUsdProducts(products:Product[],client?:SupabaseClie
   const verification=await readPublicPriceVerification(products.map(p=>p.id),hasCommerceService()?createCommerceService():null);
   return projectPublicUsdPrices(products,rows,verification);
 }
+
+/** Admin sees all records; canonical amounts do not depend on public eligibility. */
+export async function projectAdminUsdProducts(products:Product[],client:SupabaseClient):Promise<Product[]>{
+ if(!products.length)return products;
+ const {readAllPages}=await import('./read-all-pages');
+ const {projectAdminUsdAmounts}=await import('./admin-usd-projection');
+ const exchange=await getExchangeSnapshot();
+ const rows=await readAllPages<import('./admin-usd-projection').AdminUsdAmount>((from,to)=>client.from('product_usd_prices').select('id,product_id,variant_id,retail_usd,wholesale_usd,state').order('id').range(from,to));
+ return projectAdminUsdAmounts(products,rows,exchange?.status==='valid'?exchange.rate:null,exchange?.roundArs??'1');
+}

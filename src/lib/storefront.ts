@@ -103,6 +103,7 @@ export const getStorefrontData = cache(async function getStorefrontData(options?
     .filter(p => options?.admin || (!excluded.has(p.categoryId) && isPubliclyEligible(p, options)));
 
   if (!options?.admin) products = await projectUsdProducts(products, supabase);
+  else {const money=await import('./monetary');products=await money.projectAdminUsdProducts(products,supabase);}
   const result: StorefrontData = {
     categories: options?.admin || options?.wholesale ? categories : categories.filter(c => !c.wholesaleOnly && !excluded.has(c.id)),
     products,

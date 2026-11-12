@@ -73,6 +73,7 @@ export interface ProductVariant {
   displayOrder: number;
   createdAt?: string;
   updatedAt?: string;
+  priceWarning?: string;
 }
 
 export interface Product {
