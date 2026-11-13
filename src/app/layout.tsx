@@ -17,6 +17,7 @@ import { WhatsAppContactModal } from "@/components/commerce/whatsapp-modal";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { AnalyticsConsent } from "@/components/analytics/consent";
 import { MarketingScripts } from "@/components/analytics/marketing-scripts";
+import { Analytics } from '@vercel/analytics/next';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -113,9 +114,9 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <MarketingScripts />
           </Suspense>
+          <Analytics />
         </CommerceProvider></CurrencyProvider>
       </body>
     </html>
   );
 }
-
